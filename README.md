@@ -61,7 +61,7 @@
 
 | Provider | API Key 格式 | 取得方式 |
 |----------|-------------|---------|
-| Google Gemini | `AIza...` | [Google AI Studio](https://aistudio.google.com/app/apikey)（免費） |
+| Google Gemini | `AIza...` | [Google AI Studio](https://aistudio.google.com/app/apikey)（pay as you go） |
 | Groq | `gsk_...` | [Groq Console](https://console.groq.com/keys)（免費） |
 | OpenRouter | `sk-or-...` | [OpenRouter](https://openrouter.ai/keys)（有免費額度） |
 | Google Cloud TTS | `AIza...` | [Google Cloud Console](https://console.cloud.google.com/apis/credentials)（選填） |
