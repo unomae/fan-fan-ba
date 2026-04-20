@@ -1,0 +1,691 @@
+/* ═══════════════════════════════════════════════
+   Gemini 文字助手 — 工具列 + 結果卡樣式
+   ═══════════════════════════════════════════════ */
+
+/* ── 共用 reset（避免被頁面樣式汙染）──────────── */
+#gemini-ai-toolbar *,
+#gemini-result-card * {
+  box-sizing: border-box !important;
+  font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
+  line-height: 1.5 !important;
+}
+
+/* ── 品牌 CSS 變數（作用域限於本元件）──────────── */
+#gemini-ai-toolbar,
+#gemini-result-card {
+  --ffb-glass-bg:     rgba(255, 255, 255, 0.45);
+  --ffb-glass-border: rgba(255, 255, 255, 0.5);
+  --ffb-brand-green:  #A3D179;
+  --ffb-brand-yellow: #F9D423;
+  --ffb-icon-default: #4B5563;
+  --ffb-glass-blur:   blur(8px);
+  --ffb-soft-shadow:  0 4px 12px rgba(0, 0, 0, 0.08);
+  --ffb-ease-fast:    all 0.2s ease-out;
+}
+
+/* ════════════════════════════════════════════════
+   1. 工具列（純圖示 pill）— 輕量毛玻璃樣式
+   ════════════════════════════════════════════════ */
+#gemini-ai-toolbar {
+  /* 完整樣式隔離，避免被原網頁汙染 */
+  all:                   initial;
+  position:              fixed !important;
+  z-index:               2147483647 !important;
+  display:               flex !important;
+  align-items:           center !important;
+  gap:                   0 !important;
+  padding:               2px 8px !important;
+
+  /* 輕量毛玻璃背景 */
+  background:            var(--ffb-glass-bg, rgba(255, 255, 255, 0.45)) !important;
+  backdrop-filter:       var(--ffb-glass-blur, blur(8px)) !important;
+  -webkit-backdrop-filter: var(--ffb-glass-blur, blur(8px)) !important;
+
+  /* 微圓角邊框與柔和陰影 */
+  border:                1px solid var(--ffb-glass-border, rgba(255, 255, 255, 0.5)) !important;
+  border-radius:         12px !important;
+  box-shadow:            var(--ffb-soft-shadow, 0 4px 12px rgba(0, 0, 0, 0.08)) !important;
+
+  /* 初始隱藏（WAAPI 控制入場）*/
+  opacity:               0 !important;
+  pointer-events:        none !important;
+  /* overflow: visible（不設 hidden，確保 tooltip 不被裁切）*/
+}
+
+#gemini-ai-toolbar.g-show {
+  opacity:        1 !important;
+  pointer-events: all !important;
+}
+
+/* hover：輕微加深玻璃感 */
+#gemini-ai-toolbar.g-show:hover {
+  background:  rgba(255, 255, 255, 0.62) !important;
+  box-shadow:  0 6px 16px rgba(0, 0, 0, 0.12) !important;
+  transition:  var(--ffb-ease-fast, all 0.2s ease-out) !important;
+}
+
+/* ── 圖示按鈕（淺色主題）──────────────────────── */
+.g-btn {
+  display:         flex !important;
+  align-items:     center !important;
+  justify-content: center !important;
+  width:           34px !important;
+  height:          34px !important;
+  border:          none !important;
+  background:      transparent !important;
+  border-radius:   8px !important;
+  cursor:          pointer !important;
+  /* 預設：深灰色圖示 */
+  color:           var(--ffb-icon-default, #4B5563) !important;
+  transition:      var(--ffb-ease-fast, all 0.2s ease-out) !important;
+  outline:         none !important;
+  padding:         6px !important;
+  flex-shrink:     0 !important;
+  position:        relative !important;
+}
+
+/* hover：淡綠背景 + 深品牌綠圖示（#6AAB45，比主色深約 20%）*/
+.g-btn:hover {
+  background: rgba(163, 209, 121, 0.12) !important;
+  color:      #6AAB45 !important;
+}
+
+.g-btn:active { transform: scale(0.9) !important; }
+
+/* 已選中狀態 */
+.g-btn.g-active {
+  color:      var(--ffb-brand-green, #A3D179) !important;
+  background: rgba(163, 209, 121, 0.15) !important;
+}
+
+.g-btn svg { display: block !important; }
+
+/* ── 自訂 Tooltip（深底白字，顯示於按鈕上方）─── */
+/* 注意：工具列不設 overflow:hidden，確保 tooltip 可延伸到工具列外 */
+.g-btn::after {
+  content:         attr(data-tooltip) !important;
+  position:        absolute !important;
+  bottom:          calc(100% + 8px) !important;
+  left:            50% !important;
+  transform:       translateX(-50%) !important;
+  background:      rgba(30, 30, 30, 0.88) !important;
+  color:           #fff !important;
+  font-size:       11px !important;
+  font-weight:     500 !important;
+  padding:         4px 9px !important;
+  border-radius:   6px !important;
+  white-space:     nowrap !important;
+  pointer-events:  none !important;
+  opacity:         0 !important;
+  transition:      opacity 0.18s ease !important;
+  backdrop-filter: blur(4px) !important;
+  box-shadow:      0 2px 6px rgba(0, 0, 0, 0.2) !important;
+  z-index:         9999 !important;
+}
+
+.g-btn::before {
+  content:          '' !important;
+  position:         absolute !important;
+  bottom:           calc(100% + 3px) !important;
+  left:             50% !important;
+  transform:        translateX(-50%) !important;
+  border:           4px solid transparent !important;
+  border-top-color: rgba(30, 30, 30, 0.88) !important;
+  pointer-events:   none !important;
+  opacity:          0 !important;
+  transition:       opacity 0.18s ease !important;
+  z-index:          9999 !important;
+}
+
+.g-btn:hover::after,
+.g-btn:hover::before {
+  opacity: 1 !important;
+}
+
+/* 分隔線（淺色主題用淡灰色）*/
+.g-sep {
+  display:     block !important;
+  width:       1px !important;
+  height:      14px !important;
+  background:  rgba(0, 0, 0, 0.10) !important;
+  flex-shrink: 0 !important;
+  margin:      0 2px !important;
+}
+
+/* ════════════════════════════════════════════════
+   2. 結果卡（獨立浮動視窗）
+   ════════════════════════════════════════════════ */
+#gemini-result-card {
+  position:              fixed !important;
+  z-index:               2147483646 !important;
+  width:                 500px !important;
+  background:            rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter:       blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border:                1px solid rgba(255, 255, 255, 0.5) !important;
+  border-radius:         16px !important;
+  box-shadow:            0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                         0 2px 4px -1px rgba(0, 0, 0, 0.06),
+                         0 20px 40px rgba(0, 0, 0, 0.12),
+                         0 0 0 0.5px rgba(0, 0, 0, 0.05) !important;
+  overflow:              hidden !important;
+  font-size:             13px !important;
+  color:                 #1a1a1a !important;
+
+  /* 進場動畫 */
+  opacity:               0 !important;
+  transform:             scale(0.95) translateY(10px) !important;
+  transition:            opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                         transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  pointer-events:        none !important;
+}
+
+#gemini-result-card.g-show {
+  opacity:        1 !important;
+  transform:      scale(1) translateY(0) !important;
+  pointer-events: all !important;
+}
+
+/* 卡片 header */
+.g-rc-header {
+  display:         flex !important;
+  align-items:     center !important;
+  justify-content: space-between !important;
+  padding:         8px 10px 6px !important;
+  border-bottom:   1px solid rgba(0, 0, 0, 0.06) !important;
+  background:      rgba(250, 250, 250, 0.6) !important;
+}
+
+.g-rc-tag {
+  display:        flex !important;
+  align-items:    center !important;
+  gap:            5px !important;
+  font-size:      10.5px !important;
+  font-weight:    700 !important;
+  color:          #1a73e8 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.6px !important;
+}
+.g-rc-tag svg {
+  flex-shrink: 0 !important;
+  stroke:      #1a73e8 !important;
+}
+
+.g-rc-actions {
+  display: flex !important;
+  gap:     2px !important;
+}
+
+.g-icon-btn {
+  display:         flex !important;
+  align-items:     center !important;
+  justify-content: center !important;
+  width:           26px !important;
+  height:          26px !important;
+  padding:         0 !important;
+  border:          none !important;
+  background:      transparent !important;
+  border-radius:   6px !important;
+  cursor:          pointer !important;
+  color:           #777 !important;
+  transition:      background 0.12s, color 0.12s, transform 0.15s !important;
+  outline:         none !important;
+}
+
+.g-icon-btn:hover  { background: rgba(0, 0, 0, 0.06) !important; color: #333 !important; }
+.g-icon-btn:active { transform: scale(0.88) !important; }
+.g-copy.g-copied   { color: #34a853 !important; }
+
+/* 卡片內容區 */
+.g-rc-body {
+  padding:    12px !important;
+  max-height: 440px !important;
+  overflow-y: auto !important;
+}
+
+/* ── Shimmer 骨架屏 Loading ── */
+.g-shimmer-wrap {
+  padding: 4px 0 !important;
+}
+
+.g-shimmer-line {
+  height:          13px !important;
+  border-radius:   6px !important;
+  background:      linear-gradient(90deg, #f0f0f0 25%, #e4e4e4 50%, #f0f0f0 75%) !important;
+  background-size: 400px 100% !important;
+  animation:       g-shimmer 1.4s ease infinite !important;
+  margin-bottom:   10px !important;
+  width:           100% !important;
+}
+
+.g-shimmer-line:nth-child(2) { width: 78% !important; }
+.g-shimmer-line:nth-child(3) { width: 55% !important; }
+
+@keyframes g-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+/* ── 字典樣式（翻譯單字用）────────────────────── */
+.g-dict-translations {
+  font-size:      22px !important;
+  font-weight:    700 !important;
+  color:          #1a1a1a !important;
+  margin-bottom:  6px !important;
+  line-height:    1.3 !important;
+  letter-spacing: -0.5px !important;
+}
+
+.g-dict-word-row {
+  display:       flex !important;
+  align-items:   center !important;
+  gap:           8px !important;
+  margin-bottom: 4px !important;
+}
+
+.g-dict-word {
+  font-size:   14px !important;
+  font-weight: 500 !important;
+  color:       #555 !important;
+}
+
+/* 發音按鈕 */
+.g-speak-btn {
+  display:         flex !important;
+  align-items:     center !important;
+  justify-content: center !important;
+  width:           28px !important;
+  height:          28px !important;
+  border:          none !important;
+  background:      transparent !important;
+  border-radius:   99px !important;
+  cursor:          pointer !important;
+  color:           #1a73e8 !important;
+  transition:      background 0.12s, transform 0.15s !important;
+  padding:         0 !important;
+  outline:         none !important;
+  flex-shrink:     0 !important;
+}
+
+.g-speak-btn:hover    { background: #e8f0fe !important; transform: scale(1.1) !important; }
+.g-speak-btn.g-speaking { color: #0d47a1 !important; }
+
+.g-dict-phonetic {
+  font-size:      12.5px !important;
+  color:          rgba(0, 0, 0, 0.38) !important;
+  margin-bottom:  10px !important;
+  font-family:    'Courier New', monospace !important;
+  letter-spacing: 0.3px !important;
+}
+
+.g-dict-divider {
+  height:     1px !important;
+  background: rgba(0, 0, 0, 0.07) !important;
+  margin:     10px 0 !important;
+}
+
+.g-dict-pos-def {
+  font-size:     13px !important;
+  color:         #333 !important;
+  margin-bottom: 8px !important;
+  line-height:   1.6 !important;
+}
+
+/* POS 詞性標籤（彩色 Badge）*/
+.g-pos {
+  display:        inline-block !important;
+  padding:        2px 8px !important;
+  border-radius:  99px !important;
+  font-size:      11px !important;
+  font-weight:    600 !important;
+  font-style:     normal !important;
+  margin-right:   6px !important;
+  vertical-align: middle !important;
+  letter-spacing: 0.2px !important;
+}
+
+.g-pos-n       { background: #e6f4ea !important; color: #137333 !important; } /* 名詞 — 綠 */
+.g-pos-v       { background: #e8f0fe !important; color: #1a73e8 !important; } /* 動詞 — 藍 */
+.g-pos-adj     { background: #fce8e6 !important; color: #c5221f !important; } /* 形容詞 — 紅 */
+.g-pos-adv     { background: #fef3c7 !important; color: #92400e !important; } /* 副詞 — 黃 */
+.g-pos-prep    { background: #ede9fe !important; color: #6d28d9 !important; } /* 介詞 — 紫 */
+.g-pos-default { background: #f3f4f6 !important; color: #6b7280 !important; } /* 其他 — 灰 */
+
+.g-dict-usage {
+  font-size:     12.5px !important;
+  color:         #555 !important;
+  line-height:   1.7 !important;
+  margin-bottom: 10px !important;
+}
+
+.g-dict-examples-title {
+  font-size:      11px !important;
+  font-weight:    700 !important;
+  color:          #999 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  margin-bottom:  8px !important;
+}
+
+.g-example {
+  margin-bottom: 8px !important;
+  padding-left:  10px !important;
+  border-left:   2px solid #c7d7fd !important;
+}
+
+.g-ex-en {
+  display:     block !important;
+  font-size:   12.5px !important;
+  color:       #333 !important;
+  font-style:  italic !important;
+  line-height: 1.6 !important;
+}
+
+.g-ex-zh {
+  display:    block !important;
+  font-size:  12px !important;
+  color:      rgba(0, 0, 0, 0.45) !important;
+  margin-top: 2px !important;
+}
+
+/* ── 一般文字（解釋 / 優化 / 長文翻譯）────────── */
+.g-text-body {
+  font-size:   13px !important;
+  color:       #333 !important;
+  line-height: 1.7 !important;
+  word-break:  break-word !important;
+}
+
+.g-text-body strong {
+  font-weight: 600 !important;
+  color:       #111 !important;
+}
+
+.g-num {
+  font-weight: 600 !important;
+  color:       #1a73e8 !important;
+}
+
+.g-error {
+  color:     #d93025 !important;
+  font-size: 12.5px !important;
+}
+
+/* 捲軸 */
+.g-rc-body::-webkit-scrollbar       { width: 4px !important; }
+.g-rc-body::-webkit-scrollbar-track { background: transparent !important; }
+.g-rc-body::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15) !important; border-radius: 2px !important; }
+
+/* ════════════════════════════════════════════════
+   3. 拖曳（結果卡 header 可拖曳移動）
+   ════════════════════════════════════════════════ */
+.g-rc-header {
+  cursor:      grab !important;
+  user-select: none !important;
+}
+
+/* 拖曳中：縮放 + 透明度回饋，關閉 transition 避免拖曳延遲 */
+#gemini-result-card.g-dragging {
+  transform:  scale(0.98) !important;
+  opacity:    0.92 !important;
+  transition: none !important;
+  cursor:     grabbing !important;
+}
+
+#gemini-result-card.g-dragging .g-rc-header {
+  cursor: grabbing !important;
+}
+
+/* ════════════════════════════════════════════════
+   4. 強化 Markdown — 段落 + 清單樣式
+   ════════════════════════════════════════════════ */
+.g-text-body .g-p {
+  margin:      0 0 5px !important;
+  font-size:   13px !important;
+  color:       #333 !important;
+  line-height: 1.7 !important;
+}
+
+.g-text-body .g-p:last-child { margin-bottom: 0 !important; }
+
+.g-text-body .g-list {
+  margin:       6px 0 !important;
+  padding-left: 18px !important;
+  list-style:   disc !important;
+}
+
+.g-text-body ol.g-list { list-style: decimal !important; }
+
+.g-text-body .g-list li {
+  font-size:     13px !important;
+  color:         #333 !important;
+  line-height:   1.7 !important;
+  margin-bottom: 3px !important;
+}
+
+.g-text-body .g-list li:last-child { margin-bottom: 0 !important; }
+
+/* ════════════════════════════════════════════════
+   5. RPD 上限警告卡
+   ════════════════════════════════════════════════ */
+.g-rpd-limit {
+  display:        flex !important;
+  flex-direction: column !important;
+  align-items:    center !important;
+  text-align:     center !important;
+  gap:            8px !important;
+  padding:        20px 16px 16px !important;
+}
+
+.g-rpd-icon { color: #f59e0b !important; }
+
+.g-rpd-title {
+  font-size:   14px !important;
+  font-weight: 600 !important;
+  color:       #1a1a1a !important;
+}
+
+.g-rpd-model {
+  font-size:  11.5px !important;
+  color:      #999 !important;
+  margin-top: -4px !important;
+}
+
+.g-rpd-bar-wrap {
+  width:         100% !important;
+  height:        6px !important;
+  background:    #fee2e2 !important;
+  border-radius: 99px !important;
+  overflow:      hidden !important;
+  margin-top:    4px !important;
+}
+
+.g-rpd-bar-fill {
+  width:         100% !important;
+  height:        100% !important;
+  background:    #ef4444 !important;
+  border-radius: 99px !important;
+}
+
+.g-rpd-count {
+  font-size:   12px !important;
+  color:       #ef4444 !important;
+  font-weight: 600 !important;
+  margin-top:  -2px !important;
+}
+
+.g-rpd-settings-btn {
+  margin-top:    6px !important;
+  padding:       7px 18px !important;
+  background:    #1a73e8 !important;
+  color:         #fff !important;
+  border:        none !important;
+  border-radius: 6px !important;
+  font-size:     12.5px !important;
+  font-weight:   500 !important;
+  cursor:        pointer !important;
+  transition:    background 0.12s !important;
+  outline:       none !important;
+}
+
+.g-rpd-settings-btn:hover { background: #1557b0 !important; }
+
+/* ════════════════════════════════════════════════
+   6. Obsidian 儲存面板
+   ════════════════════════════════════════════════ */
+
+.g-save-obs.g-saved { color: #6b5daa !important; }
+
+.g-obs-panel {
+  max-height:  0 !important;
+  overflow:    hidden !important;
+  transition:  max-height 0.22s ease !important;
+  border-top:  0 solid transparent !important;
+}
+
+.g-obs-panel.g-obs-open {
+  max-height: 380px !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+.g-obs-panel-title {
+  display:        flex !important;
+  align-items:    center !important;
+  gap:            6px !important;
+  padding:        10px 12px 6px !important;
+  font-size:      12px !important;
+  font-weight:    700 !important;
+  color:          #6b5daa !important;
+  letter-spacing: 0.3px !important;
+}
+
+.g-obs-input-row {
+  padding: 0 12px 8px !important;
+}
+
+.g-obs-input {
+  width:         100% !important;
+  padding:       8px 10px !important;
+  border:        1px solid #dde1e8 !important;
+  border-radius: 8px !important;
+  font-size:     13px !important;
+  font-family:   -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif !important;
+  color:         #1a1a1a !important;
+  background:    rgba(250, 250, 250, 0.8) !important;
+  outline:       none !important;
+  transition:    border-color 0.15s, box-shadow 0.15s !important;
+  box-sizing:    border-box !important;
+}
+
+.g-obs-input:focus {
+  border-color: #9b8ed4 !important;
+  box-shadow:   0 0 0 3px rgba(155, 142, 212, 0.2) !important;
+  background:   rgba(255, 255, 255, 0.95) !important;
+}
+
+.g-obs-input.g-obs-input-err {
+  border-color: #ef4444 !important;
+  box-shadow:   0 0 0 3px rgba(239, 68, 68, 0.12) !important;
+}
+
+.g-obs-dropdown {
+  display:       none !important;
+  margin:        0 12px 8px !important;
+  border:        1px solid #d0caee !important;
+  border-radius: 8px !important;
+  overflow:      hidden !important;
+  background:    rgba(255, 255, 255, 0.95) !important;
+}
+
+.g-obs-dropdown.g-obs-dd-open {
+  display: block !important;
+}
+
+.g-obs-dd-item {
+  display:       block !important;
+  width:         100% !important;
+  padding:       9px 12px !important;
+  background:    transparent !important;
+  border:        none !important;
+  border-bottom: 1px solid #e8e4f7 !important;
+  font-size:     12.5px !important;
+  font-family:   -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif !important;
+  color:         #333 !important;
+  text-align:    left !important;
+  cursor:        pointer !important;
+  outline:       none !important;
+  transition:    background 0.1s !important;
+}
+
+.g-obs-dd-item:last-child { border-bottom: none !important; }
+.g-obs-dd-item:hover      { background: #edeaf8 !important; color: #6b5daa !important; }
+
+.g-obs-dd-empty {
+  padding:    10px 12px !important;
+  font-size:  12px !important;
+  color:      #bbb !important;
+  text-align: center !important;
+}
+
+.g-obs-status {
+  display:       none !important;
+  margin:        0 12px 8px !important;
+  padding:       7px 10px !important;
+  background:    #f2f0fb !important;
+  border:        1px solid #d0caee !important;
+  border-radius: 7px !important;
+  font-size:     12px !important;
+  color:         #6b5daa !important;
+  line-height:   1.5 !important;
+}
+
+.g-obs-status.g-obs-status-show { display: block !important; }
+
+.g-obs-status.g-obs-status-ok {
+  background: #f0fdf4 !important;
+  border:     1px solid #bbf7d0 !important;
+  color:      #15803d !important;
+}
+
+.g-obs-split-wrap {
+  display: flex !important;
+  padding: 0 12px 14px !important;
+  gap:     0 !important;
+}
+
+.g-obs-confirm-btn {
+  flex:          1 !important;
+  padding:       10px 16px !important;
+  background:    #8875c7 !important;
+  color:         #fff !important;
+  border:        none !important;
+  border-radius: 8px 0 0 8px !important;
+  font-size:     13px !important;
+  font-weight:   600 !important;
+  font-family:   -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif !important;
+  cursor:        pointer !important;
+  transition:    background 0.12s, transform 0.15s !important;
+  outline:       none !important;
+  text-align:    center !important;
+}
+
+.g-obs-confirm-btn:hover  { background: #7664b5 !important; }
+.g-obs-confirm-btn:active { transform: scale(0.97) !important; }
+
+.g-obs-chevron-btn {
+  display:         flex !important;
+  align-items:     center !important;
+  justify-content: center !important;
+  width:           40px !important;
+  background:      #7664b5 !important;
+  color:           #fff !important;
+  border:          none !important;
+  border-left:     1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius:   0 8px 8px 0 !important;
+  cursor:          pointer !important;
+  transition:      background 0.12s !important;
+  outline:         none !important;
+  flex-shrink:     0 !important;
+}
+
+.g-obs-chevron-btn:hover { background: #6655a3 !important; }

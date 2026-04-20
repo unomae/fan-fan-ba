@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>翻翻吧 — 設定</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+      font-size: 14px;
+      background: #f5f7f2;
+      color: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 16px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid rgba(0, 0, 0, 0.07);
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      width: 100%;
+      max-width: 480px;
+      padding: 32px 28px;
+    }
+
+    /* ── 標題 ───────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .header-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      object-fit: contain;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(163, 209, 121, 0.4);
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a1a1a;
+      letter-spacing: -0.3px;
+    }
+
+    h1 span {
+      display: block;
+      font-size: 12px;
+      font-weight: 400;
+      color: #888;
+      margin-top: 3px;
+      letter-spacing: 0;
+    }
+
+    /* ── 欄位 ───────────────────────────── */
+    .field { margin-bottom: 20px; }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 6px;
+    }
+
+    label .hint {
+      font-weight: 400;
+      color: #aaa;
+      font-size: 12px;
+      margin-left: 4px;
+    }
+
+    input[type="password"],
+    input[type="text"],
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #dde1e8;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-family: inherit;
+      color: #1a1a1a;
+      background: #fafafa;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    input:focus, select:focus {
+      border-color: #A3D179;
+      box-shadow: 0 0 0 3px rgba(163, 209, 121, 0.2);
+      background: #fff;
+    }
+
+    /* ── API Key 包裝（含顯示/隱藏）──────── */
+    .input-wrap {
+      position: relative;
+    }
+
+    .input-wrap input { padding-right: 40px; }
+
+    .toggle-vis {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #aaa;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      transition: color 0.12s;
+    }
+
+    .toggle-vis:hover { color: #555; }
+
+    /* ── 說明文字 ────────────────────────── */
+    .field-note {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #999;
+      line-height: 1.5;
+    }
+
+    .field-note a {
+      color: #5a9a2e;
+      text-decoration: none;
+    }
+
+    .field-note a:hover { text-decoration: underline; }
+
+    /* ── API Key 安全說明區塊 ────────────── */
+    .security-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: #f9fdf5;
+      border: 1px solid #d4edbc;
+      border-radius: 8px;
+    }
+
+    .security-note svg {
+      flex-shrink: 0;
+      color: #5a9a2e;
+      margin-top: 1px;
+    }
+
+    .security-note-body {
+      font-size: 12px;
+      color: #555;
+      line-height: 1.6;
+    }
+
+    .security-note-body strong {
+      color: #3a7a1a;
+      font-weight: 600;
+    }
+
+    .security-note-body ul {
+      margin-top: 4px;
+      padding-left: 14px;
+      list-style: disc;
+      color: #777;
+    }
+
+    /* ── 分隔線 ──────────────────────────── */
+    .divider {
+      height: 1px;
+      background: #f0f0f0;
+      margin: 24px 0;
+    }
+
+    /* ── 按鈕 ───────────────────────────── */
+    .btn-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-save {
+      padding: 10px 24px;
+      background: #A3D179;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.12s;
+      letter-spacing: 0.2px;
+    }
+
+    .btn-save:hover  { background: #8abe5e; }
+    .btn-save:active { background: #72a348; transform: scale(0.98); }
+
+    .btn-test {
+      padding: 10px 18px;
+      background: transparent;
+      color: #5a9a2e;
+      border: 1px solid #c5e4a3;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .btn-test:hover { background: #f5fbee; border-color: #A3D179; }
+
+    /* ── 狀態訊息 ────────────────────────── */
+    #status {
+      margin-top: 14px;
+      font-size: 13px;
+      min-height: 20px;
+      padding: 8px 12px;
+      border-radius: 7px;
+      display: none;
+    }
+
+    /* 儲存成功 → 品牌黃色 */
+    #status.ok   { display: block; background: #fffbdd; color: #7a5a00; border: 1px solid #F9D423; }
+    #status.err  { display: block; background: #fce8e6; color: #c5221f; }
+    #status.info { display: block; background: #f0f9e6; color: #3a7a1a; }
+
+    /* ── 功能說明卡片 ──────────────────── */
+    .feature-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .feature-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 13px;
+      color: #555;
+      line-height: 1.5;
+    }
+
+    .feature-list .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 9px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .badge-translate { background: #eaf4de; color: #4a8a1e; }
+    .badge-explain   { background: #fffbdd; color: #9a6e00; }
+    .badge-optimize  { background: #ede9fe; color: #6d28d9; }
+  </style>
+</head>
+<body>
+  <div class="card">
+
+    <!-- 標題 -->
+    <div class="header">
+      <img class="header-icon" src="icons/icon128.png" alt="翻翻吧 Logo">
+      <h1>
+        翻翻吧
+        <span>Extension Settings</span>
+      </h1>
+    </div>
+
+    <!-- Gemini API Key -->
+    <div class="field">
+      <label>
+        Gemini API Key
+        <span class="hint">必填</span>
+      </label>
+      <div class="input-wrap">
+        <input type="password" id="apiKey" placeholder="AIza..." autocomplete="off" spellcheck="false">
+        <button class="toggle-vis" id="toggleVis" title="顯示 / 隱藏">
+          <svg id="eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+          <svg id="eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+            <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- 取得 Key 說明 -->
+      <p class="field-note">
+        至 <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> 免費取得 API Key。
+      </p>
+
+      <!-- 安全說明區塊 -->
+      <div class="security-note">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <div class="security-note-body">
+          <strong>API Key 安全儲存</strong>
+          <ul>
+            <li>僅儲存於本機 Chrome Storage，不會上傳至任何伺服器</li>
+            <li>只有本擴充功能可讀取，不對外暴露</li>
+            <li>可隨時在此頁修改或清空刪除</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 模型選擇 -->
+    <div class="field">
+      <label>預設模型</label>
+      <select id="model">
+        <optgroup label="Gemini（需 Gemini API Key）">
+          <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite（輕量省費）</option>
+          <option value="gemini-3-flash-preview">Gemini 3 Flash（速度快）</option>
+        </optgroup>
+        <optgroup label="Groq（需 Groq API Key）">
+          <option value="groq:meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout（極速）</option>
+        </optgroup>
+        <optgroup label="OpenRouter（需 OpenRouter API Key）">
+          <option value="openrouter:deepseek/deepseek-chat-v3-0324">DeepSeek V3（中文強）</option>
+          <option value="openrouter:qwen/qwen3-30b-a3b">Qwen3 30B（阿里雲）</option>
+          <option value="openrouter:mistralai/mistral-small-3.1-24b-instruct">Mistral Small 3.1（歐洲快速）</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <!-- Groq API Key -->
+    <div class="divider"></div>
+    <div class="field">
+      <label>
+        Groq API Key
+        <span class="hint">選填，使用 Llama 4 Scout 時必填</span>
+      </label>
+      <div class="input-wrap">
+        <input type="password" id="groqApiKey" placeholder="gsk_..." autocomplete="off" spellcheck="false">
+        <button class="toggle-vis" id="toggleGroqVis" title="顯示 / 隱藏">
+          <svg id="groq-eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+          <svg id="groq-eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+            <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>
+          </svg>
+        </button>
+      </div>
+      <p class="field-note">
+        至 <a href="https://console.groq.com/keys" target="_blank">Groq Console</a> 免費取得 API Key（格式：gsk_ 開頭）。
+      </p>
+    </div>
+
+    <!-- OpenRouter API Key -->
+    <div class="divider"></div>
+    <div class="field">
+      <label>
+        OpenRouter API Key
+        <span class="hint">選填，使用 DeepSeek / Qwen / Mistral 時必填</span>
+      </label>
+      <div class="input-wrap">
+        <input type="password" id="openrouterApiKey" placeholder="sk-or-..." autocomplete="off" spellcheck="false">
+        <button class="toggle-vis" id="toggleOrVis" title="顯示 / 隱藏">
+          <svg id="or-eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+          <svg id="or-eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+            <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>
+          </svg>
+        </button>
+      </div>
+      <p class="field-note">
+        至 <a href="https://openrouter.ai/keys" target="_blank">OpenRouter</a> 免費取得 API Key（格式：sk-or- 開頭）。
+      </p>
+    </div>
+
+    <!-- Google Cloud TTS -->
+    <div class="divider"></div>
+    <div class="field">
+      <label>
+        Google Cloud TTS API Key
+        <span class="hint">選填，用於高品質 Chirp HD 發音</span>
+      </label>
+      <div class="input-wrap">
+        <input type="password" id="ttsApiKey" placeholder="AIza..." autocomplete="off" spellcheck="false">
+        <button class="toggle-vis" id="toggleTtsVis" title="顯示 / 隱藏">
+          <svg id="tts-eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+          <svg id="tts-eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+            <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>
+          </svg>
+        </button>
+      </div>
+      <p class="field-note">
+        至 <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a> 建立並啟用 Cloud Text-to-Speech API。
+        語音：<code style="background:#f0f4ff;padding:1px 5px;border-radius:4px;font-size:11.5px;">en-US-Chirp-HD-D</code>，留空則使用瀏覽器內建語音。
+      </p>
+    </div>
+
+    <!-- Obsidian 整合 -->
+    <div class="divider"></div>
+    <div class="field">
+      <label>
+        Obsidian Vault 名稱
+        <span class="hint">選填，留空則使用目前開啟的 Vault</span>
+      </label>
+      <input type="text" id="obsidianVault" placeholder="例如：My Notes" autocomplete="off" spellcheck="false">
+      <p class="field-note">
+        存入功能使用
+        <a href="https://github.com/Vinzent03/obsidian-advanced-uri" target="_blank">Advanced URI 插件</a>，
+        請先在 Obsidian → 設定 → 社群插件 搜尋安裝。
+        每週結果存入 <code style="background:#f0f4ff;padding:1px 5px;border-radius:4px;font-size:11.5px;">資料夾/2026-W16.md</code>（按週自動建檔）。
+      </p>
+    </div>
+
+    <!-- 儲存 + 測試 -->
+    <div class="btn-row">
+      <button class="btn-save" id="btnSave">儲存設定</button>
+      <button class="btn-test" id="btnTest">測試連線</button>
+    </div>
+
+    <div id="status"></div>
+
+    <div class="divider"></div>
+
+    <!-- 功能說明 -->
+    <ul class="feature-list">
+      <li>
+        <span class="badge badge-translate">翻譯</span>
+        選取單字 → 詞性 + 釋義 + 例句；選取段落 → 直接翻成繁體中文
+      </li>
+      <li>
+        <span class="badge badge-explain">解釋</span>
+        根據網頁上下文解釋選取的詞彙或段落含義
+      </li>
+      <li>
+        <span class="badge badge-optimize">優化</span>
+        重寫選取內容，使表達更清晰流暢
+      </li>
+    </ul>
+
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
