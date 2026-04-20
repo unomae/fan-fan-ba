@@ -8,18 +8,6 @@
 
 ---
 
-## 📸 介面預覽
-
-| 懸浮工具列 | 翻譯結果卡（字典模式） |
-|:---------:|:------------------:|
-| ![toolbar](screenshots/toolbar.png) | ![result-card](screenshots/result-card.png) |
-
-| 存入 Obsidian 面板 | Obsidian 筆記成果 |
-|:----------------:|:---------------:|
-| ![obsidian-panel](screenshots/obsidian-panel.png) | ![obsidian-note](screenshots/obsidian-note.png) |
-
----
-
 ## ✨ 功能亮點
 
 ### 三大核心功能
@@ -120,6 +108,18 @@ fan-fan-ba/
 - **CSS 隔離**：`all: initial` + `!important` 防止宿主頁樣式干擾
 - **多 Provider 分流**：`groq:` / `openrouter:` 前綴識別，統一 OpenAI 相容介面
 - **Web Animations API**：工具列入場動畫使用 WAAPI，`fill: 'none'` 避免與 CSS 狀態衝突
+
+---
+
+## 📸 介面預覽
+
+| 懸浮工具列 | 翻譯結果卡（字典模式） |
+|:---------:|:------------------:|
+| ![toolbar](screenshots/toolbar.png) | ![result-card](screenshots/result-card.png) |
+
+| 存入 Obsidian 面板 | Obsidian 筆記成果 |
+|:----------------:|:---------------:|
+| ![obsidian-panel](screenshots/obsidian-panel.png) | ![obsidian-note](screenshots/obsidian-note.png) |
 
 ---
 
