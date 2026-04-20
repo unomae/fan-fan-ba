@@ -10,16 +10,20 @@ const DEFAULT_MODEL       = 'gemini-3-flash-preview';
 
 // ── 訊息監聽（來自 content.js）──────────────────────
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  const reply = (data) => {
+    if (chrome.runtime.lastError) return; // tab 已關閉，略過
+    sendResponse(data);
+  };
   if (request.type === 'GEMINI_REQUEST') {
     handleAIRequest(request)
-      .then(sendResponse)
-      .catch(err => sendResponse({ error: err.message }));
+      .then(reply)
+      .catch(err => reply({ error: err.message }));
     return true; // 保持 message channel 開放，等待 async 回應
   }
   if (request.type === 'TTS_REQUEST') {
     handleTtsRequest(request)
-      .then(sendResponse)
-      .catch(err => sendResponse({ error: err.message }));
+      .then(reply)
+      .catch(err => reply({ error: err.message }));
     return true;
   }
   if (request.type === 'OPEN_OPTIONS') {
@@ -30,9 +34,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // ── 主處理函式（依 provider 前綴分流）──────────────────
 async function handleAIRequest({ action, selectedText, context, pageTitle }) {
-  const { apiKey, groqApiKey, openrouterApiKey, model } =
-    await chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model']);
-  const useModel = model || DEFAULT_MODEL;
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('請求逾時，請稍後重試')), 30000)
+  );
+  return Promise.race([_handleAIRequest({ action, selectedText, context, pageTitle }), timeout]);
+}
+
+async function _handleAIRequest({ action, selectedText, context, pageTitle }) {
+  const { apiKey = '', groqApiKey = '', openrouterApiKey = '', model = DEFAULT_MODEL } =
+    await chrome.storage.sync.get({ apiKey: '', groqApiKey: '', openrouterApiKey: '', model: DEFAULT_MODEL });
+  const useModel = model;
 
   if (useModel.startsWith('groq:')) {
     if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');

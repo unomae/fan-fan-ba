@@ -26,24 +26,38 @@
   };
 
   // ── 事件監聽 ────────────────────────────────────────
-  document.addEventListener('mouseup',   onMouseUp);
+  document.addEventListener('mouseup',   (e) => { onDragEnd(e); onMouseUp(e); });
   document.addEventListener('keyup',     onKeyUp);
   document.addEventListener('mousedown', onMouseDown);
   document.addEventListener('mousemove', onDragMove);
-  document.addEventListener('mouseup',   onDragEnd);
+
+  // ── 頁面卸載時清理，避免 SPA 導航造成 memory leak ──
+  window.addEventListener('beforeunload', () => {
+    toolbar?.remove();
+    resultCard?.remove();
+    dragState = null;
+    savedSel  = null;
+  });
 
   // ── 拖曳處理 ────────────────────────────────────────────
+  let dragPending = false;
   function onDragMove(e) {
-    if (!dragState || !resultCard) return;
-    const dx      = e.clientX - dragState.startX;
-    const dy      = e.clientY - dragState.startY;
-    const margin  = 4;
-    const cardW   = resultCard.offsetWidth  || 500;
-    const cardH   = resultCard.offsetHeight || 200;
-    const newLeft = Math.max(margin, Math.min(dragState.origLeft + dx, window.innerWidth  - cardW - margin));
-    const newTop  = Math.max(margin, Math.min(dragState.origTop  + dy, window.innerHeight - cardH - margin));
-    resultCard.style.left = `${newLeft}px`;
-    resultCard.style.top  = `${newTop}px`;
+    if (!dragState || !resultCard || dragPending) return;
+    dragPending = true;
+    requestAnimationFrame(() => {
+      if (dragState) { // 可能在 rAF 回呼前就已結束拖曳
+        const dx      = e.clientX - dragState.startX;
+        const dy      = e.clientY - dragState.startY;
+        const margin  = 4;
+        const cardW   = resultCard.offsetWidth  || 500;
+        const cardH   = resultCard.offsetHeight || 200;
+        const newLeft = Math.max(margin, Math.min(dragState.origLeft + dx, window.innerWidth  - cardW - margin));
+        const newTop  = Math.max(margin, Math.min(dragState.origTop  + dy, window.innerHeight - cardH - margin));
+        resultCard.style.left = `${newLeft}px`;
+        resultCard.style.top  = `${newTop}px`;
+      }
+      dragPending = false;
+    });
   }
 
   function onDragEnd() {
@@ -420,8 +434,10 @@
     if (!resultCard) resultCard = createResultCard();
 
     // 新請求時收合 Obsidian 面板（避免上次開著的狀態殘留）
-    resultCard.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
-    resultCard.querySelector('.g-obs-dropdown')?.classList.remove('g-obs-dd-open');
+    const obsPanel    = resultCard.querySelector('.g-obs-panel');
+    const obsDropdown = resultCard.querySelector('.g-obs-dropdown');
+    obsPanel?.classList.remove('g-obs-open');
+    obsDropdown?.classList.remove('g-obs-dd-open');
 
     // 設定標籤 + Loading（圖示與工具列對應）
     const ACTION_META = {

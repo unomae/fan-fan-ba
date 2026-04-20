@@ -16,41 +16,21 @@ chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 'o
   }
 );
 
-// ── 顯示 / 隱藏 Gemini API Key ───────────────────────
-$('toggleVis').addEventListener('click', () => {
-  const input    = $('apiKey');
-  const isHidden = input.type === 'password';
-  input.type     = isHidden ? 'text' : 'password';
-  $('eye-show').style.display = isHidden ? 'none' : '';
-  $('eye-hide').style.display = isHidden ? ''     : 'none';
-});
+// ── 顯示 / 隱藏 API Key 共用函式 ─────────────────────
+function bindToggleVis(btnId, inputId, showId, hideId) {
+  $(btnId).addEventListener('click', () => {
+    const input    = $(inputId);
+    const isHidden = input.type === 'password';
+    input.type               = isHidden ? 'text' : 'password';
+    $(showId).style.display  = isHidden ? 'none' : '';
+    $(hideId).style.display  = isHidden ? ''     : 'none';
+  });
+}
 
-// ── 顯示 / 隱藏 Groq API Key ─────────────────────────
-$('toggleGroqVis').addEventListener('click', () => {
-  const input    = $('groqApiKey');
-  const isHidden = input.type === 'password';
-  input.type     = isHidden ? 'text' : 'password';
-  $('groq-eye-show').style.display = isHidden ? 'none' : '';
-  $('groq-eye-hide').style.display = isHidden ? ''     : 'none';
-});
-
-// ── 顯示 / 隱藏 OpenRouter API Key ───────────────────
-$('toggleOrVis').addEventListener('click', () => {
-  const input    = $('openrouterApiKey');
-  const isHidden = input.type === 'password';
-  input.type     = isHidden ? 'text' : 'password';
-  $('or-eye-show').style.display = isHidden ? 'none' : '';
-  $('or-eye-hide').style.display = isHidden ? ''     : 'none';
-});
-
-// ── 顯示 / 隱藏 TTS API Key ──────────────────────────
-$('toggleTtsVis').addEventListener('click', () => {
-  const input    = $('ttsApiKey');
-  const isHidden = input.type === 'password';
-  input.type     = isHidden ? 'text' : 'password';
-  $('tts-eye-show').style.display = isHidden ? 'none' : '';
-  $('tts-eye-hide').style.display = isHidden ? ''     : 'none';
-});
+bindToggleVis('toggleVis',    'apiKey',           'eye-show',      'eye-hide');
+bindToggleVis('toggleGroqVis','groqApiKey',        'groq-eye-show', 'groq-eye-hide');
+bindToggleVis('toggleOrVis',  'openrouterApiKey',  'or-eye-show',   'or-eye-hide');
+bindToggleVis('toggleTtsVis', 'ttsApiKey',         'tts-eye-show',  'tts-eye-hide');
 
 // ── 儲存設定 ─────────────────────────────────────────
 $('btnSave').addEventListener('click', () => {
