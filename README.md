@@ -1,7 +1,7 @@
 # 翻翻吧 Fan Fan Ba
 
 > AI-powered translation, explanation & text optimizer for Chrome / Edge
-> ![version](https://img.shields.io/badge/version-1.1.9-green)
+> ![version](https://img.shields.io/badge/version-1.2.0-green)
 
 看到不懂的一劃就翻譯、解釋，還能順手存進筆記，一氣呵成。  
 選取任意網頁文字，一鍵觸發翻譯、解釋、優化——多家 AI 模型驅動，結果即時浮現，不打斷閱讀流。    
@@ -20,7 +20,7 @@
 
 ### 其他功能
 - 🔊 **朗讀** — 優先使用 Google Cloud Chirp HD 高品質語音；未設定則自動 fallback 瀏覽器內建語音
-- 📝 **存入 Obsidian** — 一鍵 append 到週記筆記（`2026-W16.md`），停留原頁不切換視窗；字典模式保留完整結構化 markdown（含近義詞）
+- 📝 **存入 Obsidian** — 一鍵 append 到週記筆記（`2026-W16.md`），存入後自動切回原分頁保留結果卡；字典模式保留完整結構化 markdown（含近義詞）；macOS / Windows 跨平台相容
 - 📌 **釘住結果卡** — Pin 後選取新文字不關閉卡片，頂部藍線顯示釘住狀態
 - ↔️ **邊緣吸附** — 拖曳至螢幕邊緣自動吸附，含 snap 動畫
 - 🎨 **Glassmorphism UI** — 毛玻璃懸浮工具列 + 結果卡，不遮擋頁面內容，可自由拖曳

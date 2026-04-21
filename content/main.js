@@ -65,6 +65,7 @@ function snapToEdgeIfNear() {
 // ── 選取偵測 ─────────────────────────────────────────
 function onMouseUp(e) {
   if (isInOurUI(e.target)) return;
+  if (obsidianSaving) return; // 存入 Obsidian 期間 tab 切換可能觸發合成事件
   setTimeout(checkSelection, 20);
 }
 

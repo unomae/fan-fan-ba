@@ -67,16 +67,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'OBSIDIAN_URI') {
     (async () => {
       try {
-        // 記錄目前的 Chrome 視窗，存入後拉回前景
+        // 記錄目前的分頁與視窗，存入後拉回原始分頁
         const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        const winId = activeTab?.windowId;
-        // active:true 才能觸發 Windows 的 URI scheme handler
+        const originalTabId = activeTab?.id;
+        const winId         = activeTab?.windowId;
+        // active:true 才能觸發 URI scheme handler
         const newTab = await chrome.tabs.create({ url: request.url, active: true });
-        // 100ms 後關閉暫時分頁並拉回 Chrome 焦點
+        // macOS 上 Chrome 需顯示「開啟外部應用程式」確認對話框，
+        // OS 路由 URI 到 Obsidian 需要更長時間；Windows 幾乎即時
+        const isMac = /Mac/.test(navigator.userAgent);
         setTimeout(() => {
           chrome.tabs.remove(newTab.id).catch(() => {});
+          // 明確切回原始分頁，避免 Chrome 自動切到旁邊的分頁
+          if (originalTabId) chrome.tabs.update(originalTabId, { active: true }).catch(() => {});
           if (winId) chrome.windows.update(winId, { focused: true }).catch(() => {});
-        }, 100);
+        }, isMac ? 3000 : 500);
       } catch {}
       reply({ ok: true });
     })();

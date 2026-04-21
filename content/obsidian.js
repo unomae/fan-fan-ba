@@ -103,7 +103,10 @@ async function saveToObsidian(folderPath) {
 
   // 交給 background 觸發，避免 click 事件冒泡關掉結果卡
   const uri = `obsidian://advanced-uri?${encParts.join('&')}`;
+  // 設旗標防止 tab 切換時的合成 mouseup 關閉結果卡（macOS 尤其需要）
+  obsidianSaving = true;
   chrome.runtime.sendMessage({ type: 'OBSIDIAN_URI', url: uri }).catch(() => {});
+  setTimeout(() => { obsidianSaving = false; }, 4000);
 
   await saveRecentFolder(folderPath);
 }
