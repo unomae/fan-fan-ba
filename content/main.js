@@ -37,6 +37,29 @@ function onDragEnd() {
   if (!dragState) return;
   dragState = null;
   resultCard?.classList.remove('g-dragging');
+  snapToEdgeIfNear();
+}
+
+function snapToEdgeIfNear() {
+  if (!resultCard) return;
+  const margin    = 4;
+  const threshold = 28;
+  const rect      = resultCard.getBoundingClientRect();
+  let   left      = parseFloat(resultCard.style.left) || rect.left;
+  let   top       = parseFloat(resultCard.style.top)  || rect.top;
+  let   snapped   = false;
+
+  if (rect.left   < threshold)                            { left = margin;                                   snapped = true; }
+  else if (rect.right  > window.innerWidth  - threshold) { left = window.innerWidth  - rect.width  - margin; snapped = true; }
+  if (rect.top    < threshold)                            { top  = margin;                                   snapped = true; }
+  else if (rect.bottom > window.innerHeight - threshold) { top  = window.innerHeight - rect.height - margin; snapped = true; }
+
+  if (snapped) {
+    resultCard.classList.add('g-snapping');
+    resultCard.style.left = `${left}px`;
+    resultCard.style.top  = `${top}px`;
+    setTimeout(() => resultCard?.classList.remove('g-snapping'), 220);
+  }
 }
 
 // ── 選取偵測 ─────────────────────────────────────────
@@ -104,10 +127,7 @@ function triggerAction(action) {
   if (!savedSel) return;
 
   activeAction = action;
-  userDragged  = false;
-  isPinned     = false; // 新請求重置釘住狀態
-  resultCard?.classList.remove('g-pinned');
-  resultCard?.querySelector('.g-pin')?.classList.remove('g-pin-active');
+  if (!isPinned) userDragged = false; // pin 住時保留位置
 
   toolbar.querySelectorAll('.g-btn').forEach(b =>
     b.classList.toggle('g-active', b.dataset.action === action)
@@ -115,9 +135,10 @@ function triggerAction(action) {
 
   if (!resultCard || !document.body.contains(resultCard)) resultCard = createResultCard();
 
-  // 新請求時收合 Obsidian 面板
+  // 新請求時收合 Obsidian 面板與存入提示
   resultCard.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
   resultCard.querySelector('.g-obs-dropdown')?.classList.remove('g-obs-dd-open');
+  hideAutoSaveToast(resultCard);
 
   const meta = ACTION_META[action] || { label: action, svg: '' };
   resultCard.querySelector('.g-rc-tag').innerHTML = `${meta.svg}${meta.label}`;

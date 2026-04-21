@@ -8,6 +8,40 @@ const GROQ_API_BASE       = 'https://api.groq.com/openai/v1';
 const OPENROUTER_API_BASE = 'https://openrouter.ai/api/v1';
 const DEFAULT_MODEL       = 'gemini-3-flash-preview';
 
+// ── Exponential Backoff with Full Jitter ──────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function jitteredDelay(attempt) {
+  return Math.random() * Math.min(8000, 1000 * (2 ** attempt));
+}
+
+function isRetryable(err) {
+  return err.status === 429 || err.status === 503;
+}
+
+async function withRetry(fn, maxAttempts = 3) {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (i === maxAttempts - 1 || !isRetryable(err)) throw err;
+      await sleep(jitteredDelay(i));
+    }
+  }
+}
+
+// fetch + 狀態碼檢查，回傳 Response 或 throw 帶 status 屬性的 Error
+async function checkedFetch(url, options, label = '') {
+  const res = await fetch(url, options);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const err  = new Error(body.error?.message || `${label}API 錯誤 (HTTP ${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
+  return res;
+}
+
 // ── 訊息監聽（一次性請求，用於字典模式 + TTS）────────
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const reply = (data) => {
@@ -108,7 +142,7 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle }) {
   if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
 
   const prompt   = buildPrompt(action, selectedText, context, pageTitle);
-  const response = await fetch(
+  const response = await withRetry(() => checkedFetch(
     `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`,
     {
       method:  'POST',
@@ -121,13 +155,7 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle }) {
         }
       })
     }
-  );
-
-  if (!response.ok) {
-    if (response.status === 503) throw new Error('伺服器暫時忙碌，請稍後再試');
-    const errBody = await response.json().catch(() => ({}));
-    throw new Error(errBody.error?.message || `API 錯誤 (HTTP ${response.status})`);
-  }
+  ));
 
   const data   = await response.json();
   const result = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -137,7 +165,7 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle }) {
 
 async function handleOpenAICompatRequest({ action, selectedText, context, pageTitle, modelId, apiKey, baseUrl, label, extraHeaders = {} }) {
   const prompt   = buildPrompt(action, selectedText, context, pageTitle);
-  const response = await fetch(baseUrl, {
+  const response = await withRetry(() => checkedFetch(baseUrl, {
     method:  'POST',
     headers: {
       'Content-Type':  'application/json',
@@ -150,13 +178,7 @@ async function handleOpenAICompatRequest({ action, selectedText, context, pageTi
       temperature: action === 'optimize' ? 0.7 : 0.3,
       max_tokens:  1024
     })
-  });
-
-  if (!response.ok) {
-    if (response.status === 503) throw new Error(`${label} 伺服器暫時忙碌，請稍後再試`);
-    const errBody = await response.json().catch(() => ({}));
-    throw new Error(errBody.error?.message || `${label} API 錯誤 (HTTP ${response.status})`);
-  }
+  }, `${label} `));
 
   const data   = await response.json();
   const result = data.choices?.[0]?.message?.content;
@@ -202,7 +224,7 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle }, on
 
 // ── Gemini SSE Streaming（?alt=sse）───────────────
 async function streamGemini({ prompt, apiKey, model, action, onChunk }) {
-  const response = await fetch(
+  const response = await withRetry(() => checkedFetch(
     `${GEMINI_API_BASE}/${model}:streamGenerateContent?key=${apiKey}&alt=sse`,
     {
       method:  'POST',
@@ -215,13 +237,7 @@ async function streamGemini({ prompt, apiKey, model, action, onChunk }) {
         }
       })
     }
-  );
-
-  if (!response.ok) {
-    if (response.status === 503) throw new Error('伺服器暫時忙碌，請稍後再試');
-    const errBody = await response.json().catch(() => ({}));
-    throw new Error(errBody.error?.message || `API 錯誤 (HTTP ${response.status})`);
-  }
+  ));
 
   await parseSseStream(response.body, line => {
     try {
@@ -234,7 +250,7 @@ async function streamGemini({ prompt, apiKey, model, action, onChunk }) {
 
 // ── OpenAI 相容 SSE Streaming（Groq / OpenRouter）─
 async function streamOpenAICompat({ prompt, action, modelId, apiKey, baseUrl, label = '', extraHeaders = {}, onChunk }) {
-  const response = await fetch(baseUrl, {
+  const response = await withRetry(() => checkedFetch(baseUrl, {
     method:  'POST',
     headers: {
       'Content-Type':  'application/json',
@@ -248,13 +264,7 @@ async function streamOpenAICompat({ prompt, action, modelId, apiKey, baseUrl, la
       max_tokens:  1024,
       stream:      true
     })
-  });
-
-  if (!response.ok) {
-    if (response.status === 503) throw new Error(`${label} 伺服器暫時忙碌，請稍後再試`);
-    const errBody = await response.json().catch(() => ({}));
-    throw new Error(errBody.error?.message || `${label} API 錯誤 (HTTP ${response.status})`);
-  }
+  }, `${label} `));
 
   await parseSseStream(response.body, line => {
     if (line === '[DONE]') return;

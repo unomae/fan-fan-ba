@@ -436,6 +436,12 @@
   cursor: grabbing !important;
 }
 
+/* 邊緣吸附動畫 */
+#gemini-result-card.g-snapping {
+  transition: left 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              top  0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+}
+
 /* ════════════════════════════════════════════════
    4. 強化 Markdown — 段落 + 清單樣式
    ════════════════════════════════════════════════ */
