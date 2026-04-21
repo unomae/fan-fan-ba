@@ -20,6 +20,13 @@ function createResultCard() {
             <path d="M2 9h20"/>
           </svg>
         </button>
+        <button class="g-icon-btn g-history" title="最近查詢紀錄">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+            <path d="M12 7v5l4 2"/>
+          </svg>
+        </button>
         <button class="g-icon-btn g-copy" title="複製">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
@@ -38,6 +45,9 @@ function createResultCard() {
       <span class="g-autosave-text"></span>
       <button class="g-autosave-change">更換資料夾</button>
     </div>
+
+    <!-- 最近查詢紀錄下拉面板 -->
+    <div class="g-history-panel"></div>
 
     <div class="g-rc-body"></div>
 
@@ -120,6 +130,78 @@ function createResultCard() {
     e.stopPropagation();
     hideAutoSaveToast(el);
     openObsPanel(el);
+  });
+
+  // ── History 按鈕：toggle 歷史紀錄面板 ──────────────
+  el.querySelector('.g-history').addEventListener('click', async e => {
+    e.stopPropagation();
+    const panel  = el.querySelector('.g-history-panel');
+    const isOpen = panel.classList.contains('g-hist-open');
+
+    // 關閉其他面板
+    el.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
+    hideAutoSaveToast(el);
+
+    if (isOpen) {
+      panel.classList.remove('g-hist-open');
+      return;
+    }
+
+    const history = await loadHistory();
+
+    if (history.length === 0) {
+      panel.innerHTML = '<div class="g-hist-empty">尚無查詢紀錄</div>';
+    } else {
+      // 動作標籤文字與 CSS class 對應
+      const ACTION_LABEL = { translate: '翻譯', explain: '解釋', optimize: '優化' };
+      const ACTION_CLS   = { translate: 'g-hist-tag-translate', explain: 'g-hist-tag-explain', optimize: 'g-hist-tag-optimize' };
+
+      panel.innerHTML = history.map((h, i) => {
+        const label   = ACTION_LABEL[h.action] || h.action;
+        const cls     = ACTION_CLS[h.action]   || '';
+        const preview = h.text.length > 28 ? h.text.slice(0, 28) + '…' : h.text;
+        const time    = formatHistoryTime(h.ts);
+        return `
+          <button class="g-hist-item" data-index="${i}">
+            <span class="g-hist-tag ${cls}">${escapeHtml(label)}</span>
+            <span class="g-hist-text">${escapeHtml(preview)}</span>
+            <span class="g-hist-time">${escapeHtml(time)}</span>
+          </button>`;
+      }).join('');
+
+      // ── Step 7：點擊歷史項目 → 還原結果卡 ──────────
+      panel.querySelectorAll('.g-hist-item').forEach(btn => {
+        btn.addEventListener('click', e2 => {
+          e2.stopPropagation();
+          const idx  = parseInt(btn.dataset.index, 10);
+          const item = history[idx];
+          if (!item) return;
+
+          panel.classList.remove('g-hist-open');
+
+          // 還原全域狀態，讓 renderResult 可以正確存入 Obsidian
+          savedSel     = { text: item.text, range: null };
+          userDragged  = true; // 保持結果卡位置不跳動
+          lastDictData = item.dictData;
+
+          // 更新 header tag
+          const ACTION_META_LABEL = { translate: '翻譯', explain: '解釋', optimize: '優化' };
+          const ACTION_META_SVG   = {
+            translate: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>`,
+            explain:   `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`,
+            optimize:  `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>`
+          };
+          const tagSvg  = ACTION_META_SVG[item.action]   || '';
+          const tagText = ACTION_META_LABEL[item.action]  || item.action;
+          el.querySelector('.g-rc-tag').innerHTML = `${tagSvg}${tagText}`;
+
+          // 重新渲染內容（不觸發 saveToHistory 避免重複寫入）
+          renderResult(item.action, item.result, item.text);
+        });
+      });
+    }
+
+    panel.classList.add('g-hist-open');
   });
 
   // ── 下拉箭頭：最近資料夾清單 ──────────────────────
@@ -232,6 +314,34 @@ function openObsPanel(el) {
   });
 }
 
+// ── 歷史紀錄工具函式 ────────────────────────────────────
+
+// 儲存一筆查詢紀錄（去重、最多 5 筆）
+async function saveToHistory(action, text, result, dictData) {
+  try {
+    const { queryHistory = [] } = await chrome.storage.local.get('queryHistory');
+    const entry = { action, text, result, dictData: dictData || null, ts: Date.now() };
+    // 同 action + text 只保留最新一筆
+    const filtered = queryHistory.filter(h => !(h.action === action && h.text === text));
+    const updated  = [entry, ...filtered].slice(0, 5);
+    await chrome.storage.local.set({ queryHistory: updated });
+  } catch { /* 靜默忽略，不影響主流程 */ }
+}
+
+// 讀取最近 5 筆紀錄
+async function loadHistory() {
+  try {
+    const { queryHistory = [] } = await chrome.storage.local.get('queryHistory');
+    return queryHistory;
+  } catch { return []; }
+}
+
+// 格式化顯示時間（HH:MM）
+function formatHistoryTime(ts) {
+  const d = new Date(ts);
+  return d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
 // ── Autosave Toast 顯示 / 隱藏 ────────────────────────
 function showAutoSaveToast(el, folder) {
   const bar  = el.querySelector('.g-autosave-bar');
@@ -292,22 +402,26 @@ function renderResult(action, rawResult, selectedText) {
         e.stopPropagation();
         speakWord(data.word || selectedText, e.currentTarget, data.lang);
       });
+      saveToHistory(action, selectedText, rawResult, data);
       return;
     } catch { /* JSON 解析失敗 → fallback 純文字 */ }
   }
 
   if (action === 'optimize' && selectedText.length > 20) {
     body.innerHTML = buildOptimizeHTML(rawResult, selectedText);
+    saveToHistory(action, selectedText, rawResult, null);
     return;
   }
 
   if (action === 'explain') {
     body.innerHTML = buildExplainHTML(rawResult);
     initTagHandlers(body);
+    saveToHistory(action, selectedText, rawResult, null);
     return;
   }
 
   body.innerHTML = `<div class="g-text-body">${formatMarkdown(rawResult)}</div>`;
+  saveToHistory(action, selectedText, rawResult, null);
 }
 
 const CHEVRON_SVG = `<svg class="g-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
