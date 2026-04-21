@@ -70,11 +70,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // 記錄目前的 Chrome 視窗，存入後拉回前景
         const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
         const winId = activeTab?.windowId;
-        const newTab = await chrome.tabs.create({ url: request.url, active: false });
+        // active:true 才能觸發 Windows 的 URI scheme handler
+        const newTab = await chrome.tabs.create({ url: request.url, active: true });
+        // 100ms 後關閉暫時分頁並拉回 Chrome 焦點
         setTimeout(() => {
           chrome.tabs.remove(newTab.id).catch(() => {});
           if (winId) chrome.windows.update(winId, { focused: true }).catch(() => {});
-        }, 800);
+        }, 100);
       } catch {}
       reply({ ok: true });
     })();
@@ -388,11 +390,10 @@ function buildPrompt(action, selectedText, context, pageTitle) {
 上下文：${context}
 目標詞彙：「${selectedText}」
 
-請嚴格依以下格式輸出（===DEEP=== 單獨一行完整保留）：
+請依序輸出以下四點：
 
 **詞彙含義：** 這個詞彙本身的意思是什麼（1 句）
 **在此上下文中：** 在這段內容裡的用意（1 句）
-===DEEP===
 **比喻：** 用一個日常生活類比解釋此詞彙（1 句）
 **延伸：** {{相關術語1}} {{相關術語2}}`;
       }
@@ -405,11 +406,10 @@ function buildPrompt(action, selectedText, context, pageTitle) {
 目標句子：
 「${selectedText}」
 
-請嚴格依以下格式輸出（===DEEP=== 單獨一行完整保留）：
+請依序輸出以下四點：
 
 **句意解析：** 這句話的字面意思（1 句）
 **表達的意義：** 作者想傳達的深層含義（1 句）
-===DEEP===
 **比喻：** 用一個日常生活類比解釋（1 句）
 **延伸：** {{相關術語1}} {{相關術語2}}`;
       }
@@ -421,11 +421,10 @@ function buildPrompt(action, selectedText, context, pageTitle) {
 目標段落：
 「${selectedText}」
 
-請嚴格依以下格式輸出（===DEEP=== 單獨一行完整保留）：
+請依序輸出以下四點：
 
 **核心概念：** 這段話圍繞的主要概念（2 句）
 **重要術語：** 列出關鍵詞彙並簡短解釋（條列式）
-===DEEP===
 **比喻：** 用一個日常生活類比解釋整段內容（1 句）
 **延伸：** {{相關術語1}} {{相關術語2}}`;
 
@@ -438,13 +437,15 @@ function buildPrompt(action, selectedText, context, pageTitle) {
 
 請提供 2–3 個更精準或更有力的替換選項，並簡短說明各自適合的使用情境。`;
       }
-      return `你是專業文案編輯。請嚴格依以下格式輸出（標題完整保留，不加任何前綴說明）：
+      return `你是專業文案編輯。請優化以下文字，輸出語言必須與原文相同（英文輸入 → 英文輸出；中文輸入 → 中文輸出）。
+
+請嚴格依以下格式輸出（標題完整保留）：
 
 **優化後版本：**
-（直接輸出優化後的文字，不加引號）
+（直接輸出優化後的文字，語言與原文相同，不加引號或說明）
 
 **改動說明：**
-（條列說明調整項目與原因，每點以 - 開頭）
+（用繁體中文條列說明調整項目與原因，每點以 - 開頭）
 
 原始內容：
 「${selectedText}」`;

@@ -236,11 +236,9 @@
 .g-icon-btn:active { transform: scale(0.88) !important; }
 .g-copy.g-copied   { color: #34a853 !important; }
 
-/* 卡片內容區 */
+/* 卡片內容區（高度隨內容自動撐開，不設捲動） */
 .g-rc-body {
-  padding:    12px !important;
-  max-height: 440px !important;
-  overflow-y: auto !important;
+  padding: 12px !important;
 }
 
 /* ── Shimmer 骨架屏 Loading ── */
@@ -959,4 +957,50 @@ del.g-diff-del {
 .g-synonym-diff {
   font-size: 12px !important;
   color:     #666 !important;
+}
+
+/* ════════════════════════════════════════════════
+   14. 優化模式：原文 / 優化後 / 改動說明
+   ════════════════════════════════════════════════ */
+.g-optimize-block {
+  margin-bottom: 10px !important;
+}
+
+.g-optimize-label {
+  font-size:      10.5px !important;
+  font-weight:    700 !important;
+  color:          #999 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.4px !important;
+  margin-bottom:  4px !important;
+}
+
+.g-optimize-original {
+  background:    #f5f5f5 !important;
+  border:        1px solid rgba(0, 0, 0, 0.08) !important;
+  border-radius: 8px !important;
+  padding:       10px 12px !important;
+  font-size:     13.5px !important;
+  line-height:   1.65 !important;
+  color:         #444 !important;
+  white-space:   pre-wrap !important;
+  word-break:    break-word !important;
+}
+
+.g-optimize-result {
+  background:    #e6f4ea !important;
+  border:        1px solid #a8d5b5 !important;
+  border-radius: 8px !important;
+  padding:       10px 12px !important;
+  font-size:     13.5px !important;
+  line-height:   1.65 !important;
+  color:         #1a4f2e !important;
+  white-space:   pre-wrap !important;
+  word-break:    break-word !important;
+}
+
+.g-optimize-reasons {
+  border-top:  1px solid rgba(0, 0, 0, 0.07) !important;
+  padding-top: 8px !important;
+  margin-top:  4px !important;
 }

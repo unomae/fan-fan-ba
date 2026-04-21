@@ -292,20 +292,17 @@ function renderResult(action, rawResult, selectedText) {
         e.stopPropagation();
         speakWord(data.word || selectedText, e.currentTarget, data.lang);
       });
-      initDeepToggles(body);
       return;
     } catch { /* JSON 解析失敗 → fallback 純文字 */ }
   }
 
   if (action === 'optimize' && selectedText.length > 20) {
     body.innerHTML = buildOptimizeHTML(rawResult, selectedText);
-    initDeepToggles(body);
     return;
   }
 
   if (action === 'explain') {
     body.innerHTML = buildExplainHTML(rawResult);
-    initDeepToggles(body);
     initTagHandlers(body);
     return;
   }
@@ -320,9 +317,30 @@ function buildDictHTML(d) {
     ? d.translations.join('; ')
     : (d.translations || '');
 
-  // ── 快看層 ─────────────────────────────────────────
-  const quickHtml = `
-    <div class="g-dict-translations">${escapeHtml(translations)}</div>
+  const synonymHtml = d.synonym?.word ? `
+    <div class="g-dict-divider"></div>
+    <div class="g-synonym-row">
+      <span class="g-synonym-label">近義詞</span>
+      <span class="g-synonym-word">${escapeHtml(d.synonym.word)}</span>
+      <span class="g-synonym-diff">${escapeHtml(d.synonym.diff || '')}</span>
+    </div>` : '';
+
+  const examplesHtml = (d.examples || []).map(ex => {
+    const badge = ex.type === 'context'
+      ? '<span class="g-ex-badge g-ex-context">語境</span>'
+      : '<span class="g-ex-badge g-ex-general">通用</span>';
+    return `
+      <div class="g-example">
+        <div class="g-ex-src">${badge}<span class="g-ex-en">${escapeHtml(ex.src || ex.en || '')}</span></div>
+        <div class="g-ex-zh">${escapeHtml(ex.zh || '')}</div>
+      </div>`;
+  }).join('');
+
+  const usageHtml = d.usage
+    ? `<div class="g-dict-divider"></div><div class="g-dict-usage">${escapeHtml(d.usage)}</div>` : '';
+
+  // 順序：單字說明區塊 → 詞彙涵義與用法 → 近義詞 → 例句
+  return `
     <div class="g-dict-word-row">
       <span class="g-dict-word">${escapeHtml(d.word || '')}</span>
       <button class="g-speak-btn" title="發音">
@@ -339,64 +357,20 @@ function buildDictHTML(d) {
         ${d.pos ? `<span class="g-pos ${getPosClass(d.pos)}">${escapeHtml(d.pos)}</span>` : ''}
         ${escapeHtml(d.definition || '')}
       </div>` : ''}
+    <div class="g-dict-divider"></div>
+    <div class="g-dict-translations">${escapeHtml(translations)}</div>
+    ${d.usage ? `<div class="g-dict-usage">${escapeHtml(d.usage)}</div>` : ''}
+    ${synonymHtml}
+    ${examplesHtml ? `<div class="g-dict-divider"></div><div class="g-dict-examples-title">例句</div>${examplesHtml}` : ''}
   `;
-
-  // ── 深讀層 ─────────────────────────────────────────
-  const synonymHtml = d.synonym?.word ? `
-    <div class="g-synonym-row">
-      <span class="g-synonym-label">近義詞</span>
-      <span class="g-synonym-word">${escapeHtml(d.synonym.word)}</span>
-      <span class="g-synonym-diff">${escapeHtml(d.synonym.diff || '')}</span>
-    </div>` : '';
-
-  const examplesHtml = (d.examples || []).map(ex => {
-    const badge = ex.type === 'context'
-      ? '<span class="g-ex-badge g-ex-context">語境</span>'
-      : '<span class="g-ex-badge g-ex-general">通用</span>';
-    return `
-      <div class="g-example">
-        ${badge}
-        <span class="g-ex-en">${escapeHtml(ex.src || ex.en || '')}</span>
-        <span class="g-ex-zh">${escapeHtml(ex.zh || '')}</span>
-      </div>`;
-  }).join('');
-
-  const usageHtml = d.usage
-    ? `<div class="g-dict-usage">${escapeHtml(d.usage)}</div>` : '';
-
-  const deepInner = [
-    synonymHtml,
-    examplesHtml ? `<div class="g-dict-divider"></div><div class="g-dict-examples-title">例句</div>${examplesHtml}` : '',
-    usageHtml ? `<div class="g-dict-divider"></div>${usageHtml}` : ''
-  ].filter(Boolean).join('');
-
-  const deepHtml = deepInner ? `
-    <div class="g-deep-section">
-      <button class="g-deep-toggle"><span>深讀層</span>${CHEVRON_SVG}</button>
-      <div class="g-deep-content">${deepInner}</div>
-    </div>` : '';
-
-  return `<div class="g-dict-quick">${quickHtml}</div>${deepHtml}`;
 }
 
-// ── 解釋模式：快看 + 深讀折疊 ───────────────────────
+// ── 解釋模式：直接顯示全部內容 ─────────────────────
 function buildExplainHTML(raw) {
-  const parts    = raw.split(/\s*===DEEP===\s*/);
-  const quickHtml = `<div class="g-text-body">${formatMarkdown(parts[0].trim())}</div>`;
-
-  if (parts.length < 2 || !parts[1]?.trim()) return quickHtml;
-
-  return `
-    <div class="g-quick-section">${quickHtml}</div>
-    <div class="g-deep-section">
-      <button class="g-deep-toggle"><span>深讀層</span>${CHEVRON_SVG}</button>
-      <div class="g-deep-content">
-        <div class="g-text-body">${formatMarkdown(parts[1].trim())}</div>
-      </div>
-    </div>`;
+  return `<div class="g-text-body">${formatMarkdown(raw)}</div>`;
 }
 
-// ── 優化模式：Diff 快看 + 改動說明折疊 ──────────────
+// ── 優化模式：原文 → 優化後（綠底）→ 改動說明 ────
 function buildOptimizeHTML(raw, original) {
   const optimizedMatch = raw.match(/\*\*優化後版本[：:]\*\*\s*([\s\S]*?)(?=\n\s*\*\*改動說明|$)/);
   const reasonsMatch   = raw.match(/\*\*改動說明[：:]\*\*\s*([\s\S]*)/);
@@ -407,25 +381,21 @@ function buildOptimizeHTML(raw, original) {
 
   const optimizedText = optimizedMatch[1].trim();
   const reasonsText   = reasonsMatch?.[1]?.trim() || '';
-  const diffHtml      = renderDiff(original, optimizedText);
-
-  const quickHtml = `
-    <div class="g-diff-legend">
-      <span class="g-diff-label-del">刪除</span>
-      <span class="g-diff-label-ins">新增</span>
-    </div>
-    <div class="g-diff-view">${diffHtml}</div>`;
-
-  if (!reasonsText) return `<div class="g-quick-section">${quickHtml}</div>`;
 
   return `
-    <div class="g-quick-section">${quickHtml}</div>
-    <div class="g-deep-section">
-      <button class="g-deep-toggle"><span>改動說明</span>${CHEVRON_SVG}</button>
-      <div class="g-deep-content">
-        <div class="g-text-body">${formatMarkdown(reasonsText)}</div>
-      </div>
-    </div>`;
+    <div class="g-optimize-block">
+      <div class="g-optimize-label">原文</div>
+      <div class="g-optimize-original">${escapeHtml(original)}</div>
+    </div>
+    <div class="g-optimize-block">
+      <div class="g-optimize-label">優化後</div>
+      <div class="g-optimize-result">${escapeHtml(optimizedText)}</div>
+    </div>
+    ${reasonsText ? `<div class="g-optimize-reasons">
+      <div class="g-optimize-label">改動說明</div>
+      <div class="g-text-body">${formatMarkdown(reasonsText)}</div>
+    </div>` : ''}
+  `;
 }
 
 // ── 折疊 toggle 事件綁定 ──────────────────────────

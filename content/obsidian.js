@@ -27,27 +27,34 @@ function buildObsidianBlock({ tag, hm, date, preview }) {
   ];
 
   if (lastDictData) {
-    // 字典模式：結構化 markdown
+    // 字典模式：順序與結果卡一致（單字說明 → 涵義與用法 → 近義詞 → 例句）
     const d            = lastDictData;
     const translations = Array.isArray(d.translations)
       ? d.translations.join('; ')
       : (d.translations || '');
 
-    if (translations) lines.push(`## ${translations}`, '');
-
+    // 1. 單字說明區塊
     const phonetic = d.phonetic ? ` \`${d.phonetic}\`` : '';
     lines.push(`**${d.word || ''}**${phonetic}`, '');
-
     if (d.pos || d.definition) {
       lines.push(`\`${d.pos || ''}\`　${d.definition || ''}`, '');
     }
 
-    if (d.usage) lines.push(d.usage, '');
+    // 2. 詞彙涵義與用法
+    if (translations) lines.push('', `**涵義：** ${translations}`);
+    if (d.usage) lines.push('', d.usage);
 
+    // 3. 近義詞
+    if (d.synonym?.word) {
+      lines.push('', `**近義詞：** ${d.synonym.word}　${d.synonym.diff || ''}`);
+    }
+
+    // 4. 例句
     if (d.examples?.length) {
-      lines.push('**例句**', '');
+      lines.push('', '**例句**', '');
       d.examples.forEach(ex => {
-        lines.push(`> *${ex.src || ex.en || ''}*`);
+        const label = ex.type === 'context' ? '語境' : '通用';
+        lines.push(`> [${label}] *${ex.src || ex.en || ''}*`);
         lines.push(`> ${ex.zh || ''}`);
         lines.push('');
       });
@@ -94,7 +101,7 @@ async function saveToObsidian(folderPath) {
   ];
   if (obsidianVault?.trim()) encParts.push(`vault=${encodeURIComponent(obsidianVault.trim())}`);
 
-  // 交給 background 觸發，避免 Obsidian app 搶走焦點
+  // 交給 background 觸發，避免 click 事件冒泡關掉結果卡
   const uri = `obsidian://advanced-uri?${encParts.join('&')}`;
   chrome.runtime.sendMessage({ type: 'OBSIDIAN_URI', url: uri }).catch(() => {});
 
