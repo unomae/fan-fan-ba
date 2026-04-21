@@ -169,7 +169,7 @@ function createResultCard() {
           </button>`;
       }).join('');
 
-      // ── Step 7：點擊歷史項目 → 還原結果卡 ──────────
+      // ── 點擊歷史項目 → 還原結果卡 ──────────────────
       panel.querySelectorAll('.g-hist-item').forEach(btn => {
         btn.addEventListener('click', e2 => {
           e2.stopPropagation();
@@ -179,10 +179,9 @@ function createResultCard() {
 
           panel.classList.remove('g-hist-open');
 
-          // 還原全域狀態，讓 renderResult 可以正確存入 Obsidian
-          savedSel     = { text: item.text, range: null };
-          userDragged  = true; // 保持結果卡位置不跳動
-          lastDictData = item.dictData;
+          // savedSel / userDragged 必須更新，讓後續 Obsidian 存入可以正確取得文字
+          // （lastDictData 不在此設定，renderResult 內部會重新解析並賦值）
+          applyHistoryState(item.text);
 
           // 更新 header tag
           const ACTION_META_LABEL = { translate: '翻譯', explain: '解釋', optimize: '優化' };
@@ -195,8 +194,8 @@ function createResultCard() {
           const tagText = ACTION_META_LABEL[item.action]  || item.action;
           el.querySelector('.g-rc-tag').innerHTML = `${tagSvg}${tagText}`;
 
-          // 重新渲染內容（不觸發 saveToHistory 避免重複寫入）
-          renderResult(item.action, item.result, item.text);
+          // fromHistory: true → 不重複寫入 storage
+          renderResult(item.action, item.result, item.text, { fromHistory: true });
         });
       });
     }
@@ -286,6 +285,14 @@ function createResultCard() {
   return el;
 }
 
+// ── 歷史還原時更新必要的全域狀態 ─────────────────────────
+// savedSel.text 供後續 saveToObsidian 使用；userDragged 保持卡片位置不跳動
+// （刻意的 global mutation，原因見上方註解）
+function applyHistoryState(text) {
+  savedSel    = { text, range: null };
+  userDragged = true;
+}
+
 // ── Obsidian 面板開關（供寶石按鈕「第一次」與「更換」共用）──
 function openObsPanel(el) {
   const panel  = el.querySelector('.g-obs-panel');
@@ -316,16 +323,21 @@ function openObsPanel(el) {
 
 // ── 歷史紀錄工具函式 ────────────────────────────────────
 
-// 儲存一筆查詢紀錄（去重、最多 5 筆）
-async function saveToHistory(action, text, result, dictData) {
-  try {
-    const { queryHistory = [] } = await chrome.storage.local.get('queryHistory');
-    const entry = { action, text, result, dictData: dictData || null, ts: Date.now() };
-    // 同 action + text 只保留最新一筆
-    const filtered = queryHistory.filter(h => !(h.action === action && h.text === text));
-    const updated  = [entry, ...filtered].slice(0, 5);
-    await chrome.storage.local.set({ queryHistory: updated });
-  } catch { /* 靜默忽略，不影響主流程 */ }
+// ── [Lock] Promise chain 保證 storage 寫入不會 race condition ──
+let _histSaveChain = Promise.resolve();
+
+// 儲存一筆查詢紀錄（去重、最多 5 筆，串接保證順序）
+function saveToHistory(action, text, result, dictData) {
+  _histSaveChain = _histSaveChain.then(async () => {
+    try {
+      const { queryHistory = [] } = await chrome.storage.local.get('queryHistory');
+      const entry    = { action, text, result, dictData: dictData || null, ts: Date.now() };
+      // 同 action + text 只保留最新一筆
+      const filtered = queryHistory.filter(h => !(h.action === action && h.text === text));
+      const updated  = [entry, ...filtered].slice(0, 5);
+      await chrome.storage.local.set({ queryHistory: updated });
+    } catch { /* 靜默忽略，不影響主流程 */ }
+  });
 }
 
 // 讀取最近 5 筆紀錄
@@ -387,7 +399,8 @@ function positionResultCard() {
   } catch { /* 靜默忽略 */ }
 }
 
-function renderResult(action, rawResult, selectedText) {
+// fromHistory：true 表示從歷史紀錄還原，不重複寫入 storage
+function renderResult(action, rawResult, selectedText, { fromHistory = false } = {}) {
   lastDictData  = null;
   lastRawResult = rawResult;
   const body = resultCard?.querySelector('.g-rc-body');
@@ -402,26 +415,26 @@ function renderResult(action, rawResult, selectedText) {
         e.stopPropagation();
         speakWord(data.word || selectedText, e.currentTarget, data.lang);
       });
-      saveToHistory(action, selectedText, rawResult, data);
+      if (!fromHistory) saveToHistory(action, selectedText, rawResult, data);
       return;
     } catch { /* JSON 解析失敗 → fallback 純文字 */ }
   }
 
   if (action === 'optimize' && selectedText.length > 20) {
     body.innerHTML = buildOptimizeHTML(rawResult, selectedText);
-    saveToHistory(action, selectedText, rawResult, null);
+    if (!fromHistory) saveToHistory(action, selectedText, rawResult, null);
     return;
   }
 
   if (action === 'explain') {
     body.innerHTML = buildExplainHTML(rawResult);
     initTagHandlers(body);
-    saveToHistory(action, selectedText, rawResult, null);
+    if (!fromHistory) saveToHistory(action, selectedText, rawResult, null);
     return;
   }
 
   body.innerHTML = `<div class="g-text-body">${formatMarkdown(rawResult)}</div>`;
-  saveToHistory(action, selectedText, rawResult, null);
+  if (!fromHistory) saveToHistory(action, selectedText, rawResult, null);
 }
 
 const CHEVRON_SVG = `<svg class="g-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
