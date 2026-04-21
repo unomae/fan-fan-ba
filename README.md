@@ -1,7 +1,7 @@
 # 翻翻吧 Fan Fan Ba
 
 > AI-powered translation, explanation & text optimizer for Chrome / Edge
-> ![version](https://img.shields.io/badge/version-1.1.2-green)
+> ![version](https://img.shields.io/badge/version-1.1.3-green)
 
 看到不懂的一劃就翻譯、解釋，還能順手存進筆記，一氣呵成。  
 選取任意網頁文字，一鍵觸發翻譯、解釋、優化——多家 AI 模型驅動，結果即時浮現，不打斷閱讀流。    
@@ -94,17 +94,26 @@
 
 ```
 fan-fan-ba/
-├── manifest.json     # Manifest V3 設定
-├── background.js     # Service Worker：API 呼叫（Gemini / Groq / OpenRouter）+ TTS
-├── content.js        # 選字偵測、工具列 & 結果卡注入、Obsidian 存入
-├── content.css       # Glassmorphism 樣式（CSS isolation with all: initial）
-├── popup.html/js     # 模型快選 Popup
-├── options.html/js   # 完整設定頁
-└── icons/            # 16 / 48 / 64 / 128 px
+├── manifest.json       # Manifest V3 設定
+├── background.js       # Service Worker：API 分流 + Streaming + TTS
+├── content/
+│   ├── state.js        # 共用狀態變數 + 快取 Map
+│   ├── utils.js        # 工具函式（escapeHtml / formatMarkdown / parseJSON 等）
+│   ├── obsidian.js     # Obsidian 存入 + 最近資料夾管理
+│   ├── toolbar.js      # 懸浮工具列 UI + 定位
+│   ├── result-card.js  # 結果卡 UI + 渲染 + 字典 / 發音
+│   └── main.js         # 事件監聽 + triggerAction + 串流 / 非串流分流
+├── content.css         # Glassmorphism 樣式（CSS isolation with all: initial）
+├── popup.html/js       # 模型快選 Popup
+├── options.html/js     # 完整設定頁
+└── icons/              # 16 / 48 / 64 / 128 px
 ```
 
 **技術特點**
 - **Manifest V3**：Service Worker 架構，API Key 只在 background 層使用，不暴露於頁面
+- **Streaming 回應**：段落翻譯 / 解釋 / 優化使用 `chrome.runtime.connect()` + SSE（Gemini `?alt=sse`、Groq / OpenRouter `stream: true`），字典模式維持完整 JSON 回應
+- **同文字快取**：`Map` 快取相同 action + text 的結果，tab 生命週期內命中直接渲染，不重送 API
+- **模組化架構**：content scripts 按職責拆分為 6 個檔案，透過 manifest 依序載入共用同一 isolated world
 - **CSS 隔離**：`all: initial` + `!important` 防止宿主頁樣式干擾
 - **多 Provider 分流**：`groq:` / `openrouter:` 前綴識別，統一 OpenAI 相容介面
 - **Web Animations API**：工具列入場動畫使用 WAAPI，`fill: 'none'` 避免與 CSS 狀態衝突
