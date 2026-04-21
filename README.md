@@ -3,7 +3,7 @@
 > AI-powered translation, explanation & text optimizer for Chrome / Edge
 > ![version](https://img.shields.io/badge/version-1.1.2-green)
 
-劃字就懂啦！翻譯解釋秒出現，順手存Obsidian不遺忘多復習。
+劃字就懂啦！翻譯解釋秒出現，順手存Obsidian不遺忘多復習。  
 選取任意網頁文字，一鍵觸發翻譯、解釋、優化——多家 AI 模型驅動，結果即時浮現，不打斷閱讀流。
 
 ---
