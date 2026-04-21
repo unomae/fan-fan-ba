@@ -6,12 +6,15 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    html { overflow: hidden; } /* 封鎖 html 元素的預設捲動列 */
+
     body {
       font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
       width: 260px;
       background: #fff;
       color: #1a1a1a;
       font-size: 13px;
+      overflow: hidden;
     }
 
     /* ── 標題列 ─────────────────────────── */
@@ -82,14 +85,14 @@
     .model-list {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 2px;
     }
 
     .model-item {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 8px 10px;
+      padding: 6px 10px;
       border-radius: 8px;
       cursor: pointer;
       border: 1.5px solid transparent;

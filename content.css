@@ -689,3 +689,18 @@
 }
 
 .g-obs-chevron-btn:hover { background: #6655a3 !important; }
+
+/* ════════════════════════════════════════════════
+   7. Streaming 游標效果
+   ════════════════════════════════════════════════ */
+#gemini-result-card .g-streaming::after {
+  content:    '▋' !important;
+  animation:  g-cursor-blink 0.65s ease infinite !important;
+  color:      #1a73e8 !important;
+  font-style: normal !important;
+}
+
+@keyframes g-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}

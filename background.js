@@ -8,17 +8,17 @@ const GROQ_API_BASE       = 'https://api.groq.com/openai/v1';
 const OPENROUTER_API_BASE = 'https://openrouter.ai/api/v1';
 const DEFAULT_MODEL       = 'gemini-3-flash-preview';
 
-// ── 訊息監聽（來自 content.js）──────────────────────
+// ── 訊息監聽（一次性請求，用於字典模式 + TTS）────────
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const reply = (data) => {
-    if (chrome.runtime.lastError) return; // tab 已關閉，略過
+    if (chrome.runtime.lastError) return;
     sendResponse(data);
   };
   if (request.type === 'GEMINI_REQUEST') {
     handleAIRequest(request)
       .then(reply)
       .catch(err => reply({ error: err.message }));
-    return true; // 保持 message channel 開放，等待 async 回應
+    return true;
   }
   if (request.type === 'TTS_REQUEST') {
     handleTtsRequest(request)
@@ -32,7 +32,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// ── 主處理函式（依 provider 前綴分流）──────────────────
+// ── Port 監聽（長連線 streaming，用於段落翻譯 / 解釋 / 優化）──
+chrome.runtime.onConnect.addListener(port => {
+  if (port.name !== 'ai-stream') return;
+
+  port.onMessage.addListener(async (request) => {
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('請求逾時，請稍後重試')), 30000)
+    );
+    try {
+      await Promise.race([
+        _streamAIRequest(request, chunk => {
+          try { port.postMessage({ chunk }); } catch { /* port 已關閉 */ }
+        }),
+        timeout
+      ]);
+      try { port.postMessage({ done: true }); } catch {}
+    } catch (err) {
+      try { port.postMessage({ error: err.message }); } catch {}
+    }
+  });
+});
+
+// ── 非 streaming：維持原有邏輯（字典 JSON 需要完整回應）──
 async function handleAIRequest({ action, selectedText, context, pageTitle }) {
   const timeout = new Promise((_, reject) =>
     setTimeout(() => reject(new Error('請求逾時，請稍後重試')), 30000)
@@ -43,37 +65,35 @@ async function handleAIRequest({ action, selectedText, context, pageTitle }) {
 async function _handleAIRequest({ action, selectedText, context, pageTitle }) {
   const { apiKey = '', groqApiKey = '', openrouterApiKey = '', model = DEFAULT_MODEL } =
     await chrome.storage.sync.get({ apiKey: '', groqApiKey: '', openrouterApiKey: '', model: DEFAULT_MODEL });
-  const useModel = model;
 
-  if (useModel.startsWith('groq:')) {
+  if (model.startsWith('groq:')) {
     if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
     return handleOpenAICompatRequest({
       action, selectedText, context, pageTitle,
-      modelId: useModel.replace('groq:', ''),
+      modelId: model.replace('groq:', ''),
       apiKey:  groqApiKey,
       baseUrl: `${GROQ_API_BASE}/chat/completions`,
       label:   'Groq'
     });
   }
 
-  if (useModel.startsWith('openrouter:')) {
+  if (model.startsWith('openrouter:')) {
     if (!openrouterApiKey) throw new Error('請先在設定頁面輸入 OpenRouter API Key');
     return handleOpenAICompatRequest({
       action, selectedText, context, pageTitle,
-      modelId: useModel.replace('openrouter:', ''),
+      modelId: model.replace('openrouter:', ''),
       apiKey:  openrouterApiKey,
       baseUrl: `${OPENROUTER_API_BASE}/chat/completions`,
       label:   'OpenRouter',
-      extraHeaders: { 'X-Title': 'Fan Fan Ba' }
+      extraHeaders: { 'X-Title': 'Fan Fan Ba' }  // HTTP header 僅允許 ASCII
     });
   }
 
-  // ── Gemini 流程 ──────────────────────────────────────
   if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
 
   const prompt   = buildPrompt(action, selectedText, context, pageTitle);
   const response = await fetch(
-    `${GEMINI_API_BASE}/${useModel}:generateContent?key=${apiKey}`,
+    `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`,
     {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -99,7 +119,6 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle }) {
   return { result };
 }
 
-// ── OpenAI 相容格式（Groq / OpenRouter 共用）───────────
 async function handleOpenAICompatRequest({ action, selectedText, context, pageTitle, modelId, apiKey, baseUrl, label, extraHeaders = {} }) {
   const prompt   = buildPrompt(action, selectedText, context, pageTitle);
   const response = await fetch(baseUrl, {
@@ -129,7 +148,132 @@ async function handleOpenAICompatRequest({ action, selectedText, context, pageTi
   return { result };
 }
 
-// ── Google Cloud TTS（Chirp HD，依語言自動切換語音）──────
+// ── Streaming 分流 ─────────────────────────────────
+async function _streamAIRequest({ action, selectedText, context, pageTitle }, onChunk) {
+  const { apiKey = '', groqApiKey = '', openrouterApiKey = '', model = DEFAULT_MODEL } =
+    await chrome.storage.sync.get({ apiKey: '', groqApiKey: '', openrouterApiKey: '', model: DEFAULT_MODEL });
+
+  const prompt = buildPrompt(action, selectedText, context, pageTitle);
+
+  if (model.startsWith('groq:')) {
+    if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
+    return streamOpenAICompat({
+      prompt, action,
+      modelId:   model.replace('groq:', ''),
+      apiKey:    groqApiKey,
+      baseUrl:   `${GROQ_API_BASE}/chat/completions`,
+      label:     'Groq',
+      onChunk
+    });
+  }
+
+  if (model.startsWith('openrouter:')) {
+    if (!openrouterApiKey) throw new Error('請先在設定頁面輸入 OpenRouter API Key');
+    return streamOpenAICompat({
+      prompt, action,
+      modelId:      model.replace('openrouter:', ''),
+      apiKey:       openrouterApiKey,
+      baseUrl:      `${OPENROUTER_API_BASE}/chat/completions`,
+      label:        'OpenRouter',
+      extraHeaders: { 'X-Title': 'Fan Fan Ba' },
+      onChunk
+    });
+  }
+
+  if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
+  return streamGemini({ prompt, apiKey, model, action, onChunk });
+}
+
+// ── Gemini SSE Streaming（?alt=sse）───────────────
+async function streamGemini({ prompt, apiKey, model, action, onChunk }) {
+  const response = await fetch(
+    `${GEMINI_API_BASE}/${model}:streamGenerateContent?key=${apiKey}&alt=sse`,
+    {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature:     action === 'optimize' ? 0.7 : 0.3,
+          maxOutputTokens: 1024
+        }
+      })
+    }
+  );
+
+  if (!response.ok) {
+    if (response.status === 503) throw new Error('伺服器暫時忙碌，請稍後再試');
+    const errBody = await response.json().catch(() => ({}));
+    throw new Error(errBody.error?.message || `API 錯誤 (HTTP ${response.status})`);
+  }
+
+  await parseSseStream(response.body, line => {
+    try {
+      const obj  = JSON.parse(line);
+      const text = obj.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) onChunk(text);
+    } catch { /* 忽略非 JSON 行（如空行）*/ }
+  });
+}
+
+// ── OpenAI 相容 SSE Streaming（Groq / OpenRouter）─
+async function streamOpenAICompat({ prompt, action, modelId, apiKey, baseUrl, label = '', extraHeaders = {}, onChunk }) {
+  const response = await fetch(baseUrl, {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      ...extraHeaders
+    },
+    body: JSON.stringify({
+      model:       modelId,
+      messages:    [{ role: 'user', content: prompt }],
+      temperature: action === 'optimize' ? 0.7 : 0.3,
+      max_tokens:  1024,
+      stream:      true
+    })
+  });
+
+  if (!response.ok) {
+    if (response.status === 503) throw new Error(`${label} 伺服器暫時忙碌，請稍後再試`);
+    const errBody = await response.json().catch(() => ({}));
+    throw new Error(errBody.error?.message || `${label} API 錯誤 (HTTP ${response.status})`);
+  }
+
+  await parseSseStream(response.body, line => {
+    if (line === '[DONE]') return;
+    try {
+      const obj  = JSON.parse(line);
+      const text = obj.choices?.[0]?.delta?.content;
+      if (text) onChunk(text);
+    } catch { /* 忽略 */ }
+  });
+}
+
+// ── SSE 通用解析器（Gemini + OpenAI 相容格式共用）─
+async function parseSseStream(body, onData) {
+  const reader  = body.getReader();
+  const decoder = new TextDecoder();
+  let   buffer  = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop(); // 保留最後一段不完整的行
+
+    for (const line of lines) {
+      if (line.startsWith('data: ')) onData(line.slice(6).trim());
+    }
+  }
+
+  // 處理最後剩餘的 buffer
+  if (buffer.startsWith('data: ')) onData(buffer.slice(6).trim());
+}
+
+// ── Google Cloud TTS（Chirp HD，依語言自動切換語音）──
 const CHIRP_VOICE_MAP = {
   en: { lang: 'en-US', name: 'en-US-Chirp-HD-D' },
   ja: { lang: 'ja-JP', name: 'ja-JP-Chirp-HD-D' },
@@ -170,7 +314,7 @@ async function handleTtsRequest({ text, lang }) {
   return { audioContent: data.audioContent };
 }
 
-// ── Prompt 建構（依文字長度區分策略）───────────────────
+// ── Prompt 建構（依文字長度區分策略）──────────────
 function buildPrompt(action, selectedText, context, pageTitle) {
   const len    = selectedText.length;
   const isWord = len <= 20;
