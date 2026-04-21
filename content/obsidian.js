@@ -53,8 +53,11 @@ function buildObsidianBlock({ tag, hm, date, preview }) {
       });
     }
   } else {
-    // 一般模式：保留 markdown 語法的原始文字
-    lines.push(lastRawResult || '', '');
+    // 一般模式：清除 UI 標記再存入
+    const clean = (lastRawResult || '')
+      .replace(/\{\{([^}]+)\}\}/g, '$1')   // {{tag}} → 純文字
+      .replace(/===DEEP===/g, '---');        // DEEP 分隔標記 → markdown 分隔線
+    lines.push(clean, '');
   }
 
   return lines.join('\n');

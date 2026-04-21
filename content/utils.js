@@ -6,7 +6,7 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// 強化 Markdown 渲染：段落、無序 / 有序清單、粗體
+// 強化 Markdown 渲染：段落、無序 / 有序清單、粗體、{{tag}} 標籤
 function formatMarkdown(text) {
   const lines = text.split('\n');
   let html  = '';
@@ -14,8 +14,14 @@ function formatMarkdown(text) {
   let inOl  = false;
 
   for (const raw of lines) {
+    if (raw.trim() === '===DEEP===') continue; // 略過分隔標記（完成渲染後由 buildExplainHTML 處理）
+
     const esc    = escapeHtml(raw);
-    const inline = esc.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    const inline = esc
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\{\{([^}]+)\}\}/g, (_, t) =>
+        `<span class="g-tag" data-term="${t}">${t}</span>`
+      );
 
     const isBullet  = /^[-*]\s+/.test(raw);
     const isOrdered = /^\d+\.\s+/.test(raw);
@@ -106,4 +112,41 @@ function extractContext(selectedText, range) {
     if (end < full.length) ctx = ctx + '...';
     return ctx;
   } catch { return ''; }
+}
+
+// LCS word-level diff：比對原文與優化後版本，回傳帶 <ins>/<del> 標記的 HTML
+function renderDiff(original, optimized) {
+  const a = original.match(/\S+|\s+/g) || [];
+  const b = optimized.match(/\S+|\s+/g) || [];
+
+  // 文字過長時降級顯示（避免 LCS 表格佔用過多記憶體）
+  if (a.length > 600 || b.length > 600) {
+    return `<ins class="g-diff-ins">${escapeHtml(optimized)}</ins>`;
+  }
+
+  const n = a.length, m = b.length;
+  const dp = Array.from({ length: n + 1 }, () => new Int16Array(m + 1));
+  for (let i = 1; i <= n; i++)
+    for (let j = 1; j <= m; j++)
+      dp[i][j] = a[i-1] === b[j-1]
+        ? dp[i-1][j-1] + 1
+        : Math.max(dp[i-1][j], dp[i][j-1]);
+
+  const ops = [];
+  let i = n, j = m;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && a[i-1] === b[j-1]) {
+      ops.unshift({ t: '=', v: a[i-1] }); i--; j--;
+    } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
+      ops.unshift({ t: '+', v: b[j-1] }); j--;
+    } else {
+      ops.unshift({ t: '-', v: a[i-1] }); i--;
+    }
+  }
+
+  return ops.map(o =>
+    o.t === '=' ? escapeHtml(o.v) :
+    o.t === '+' ? `<ins class="g-diff-ins">${escapeHtml(o.v)}</ins>` :
+                  `<del class="g-diff-del">${escapeHtml(o.v)}</del>`
+  ).join('');
 }

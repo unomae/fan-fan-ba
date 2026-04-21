@@ -224,11 +224,8 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey) {
     }
     if (msg.done) {
       portDone = true;
-      // Stream 完成：套用完整 markdown 格式並存入快取
-      lastRawResult = accumulated;
-      if (body) {
-        body.innerHTML = `<div class="g-text-body">${formatMarkdown(accumulated)}</div>`;
-      }
+      // Stream 完成：交由 renderResult 做結構化渲染
+      renderResult(action, accumulated, selectedText);
       responseCache.set(cacheKey, accumulated);
       requestAnimationFrame(positionResultCard);
       port.disconnect();
@@ -236,9 +233,12 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey) {
     }
     if (msg.chunk) {
       accumulated += msg.chunk;
-      // 串流進行中：顯示純文字 + 閃爍游標
+      // 串流進行中：純文字 + 游標，DEEP 標記顯示為分隔線
       if (body) {
-        body.innerHTML = `<div class="g-text-body g-streaming">${escapeHtml(accumulated).replace(/\n/g, '<br>')}</div>`;
+        const display = escapeHtml(accumulated)
+          .replace(/===DEEP===/g, '<hr class="g-deep-divider">')
+          .replace(/\n/g, '<br>');
+        body.innerHTML = `<div class="g-text-body g-streaming">${display}</div>`;
       }
     }
   });

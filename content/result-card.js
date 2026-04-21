@@ -280,7 +280,8 @@ function positionResultCard() {
 function renderResult(action, rawResult, selectedText) {
   lastDictData  = null;
   lastRawResult = rawResult;
-  const body = resultCard.querySelector('.g-rc-body');
+  const body = resultCard?.querySelector('.g-rc-body');
+  if (!body) return;
 
   if (action === 'translate' && selectedText.length <= 20) {
     try {
@@ -291,27 +292,37 @@ function renderResult(action, rawResult, selectedText) {
         e.stopPropagation();
         speakWord(data.word || selectedText, e.currentTarget, data.lang);
       });
+      initDeepToggles(body);
       return;
     } catch { /* JSON 解析失敗 → fallback 純文字 */ }
   }
 
+  if (action === 'optimize' && selectedText.length > 20) {
+    body.innerHTML = buildOptimizeHTML(rawResult, selectedText);
+    initDeepToggles(body);
+    return;
+  }
+
+  if (action === 'explain') {
+    body.innerHTML = buildExplainHTML(rawResult);
+    initDeepToggles(body);
+    initTagHandlers(body);
+    return;
+  }
+
   body.innerHTML = `<div class="g-text-body">${formatMarkdown(rawResult)}</div>`;
 }
+
+const CHEVRON_SVG = `<svg class="g-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
 
 function buildDictHTML(d) {
   const translations = Array.isArray(d.translations)
     ? d.translations.join('; ')
     : (d.translations || '');
 
-  const examples = (d.examples || []).map(ex => `
-    <div class="g-example">
-      <span class="g-ex-en">${escapeHtml(ex.src || ex.en || '')}</span>
-      <span class="g-ex-zh">${escapeHtml(ex.zh || '')}</span>
-    </div>`).join('');
-
-  return `
+  // ── 快看層 ─────────────────────────────────────────
+  const quickHtml = `
     <div class="g-dict-translations">${escapeHtml(translations)}</div>
-
     <div class="g-dict-word-row">
       <span class="g-dict-word">${escapeHtml(d.word || '')}</span>
       <button class="g-speak-btn" title="發音">
@@ -322,24 +333,123 @@ function buildDictHTML(d) {
         </svg>
       </button>
     </div>
-
     ${d.phonetic ? `<div class="g-dict-phonetic">${escapeHtml(d.phonetic)}</div>` : ''}
-
-    <div class="g-dict-divider"></div>
-
     ${d.pos || d.definition ? `
       <div class="g-dict-pos-def">
         ${d.pos ? `<span class="g-pos ${getPosClass(d.pos)}">${escapeHtml(d.pos)}</span>` : ''}
         ${escapeHtml(d.definition || '')}
       </div>` : ''}
-
-    ${d.usage ? `<div class="g-dict-usage">${escapeHtml(d.usage)}</div>` : ''}
-
-    ${examples ? `
-      <div class="g-dict-divider"></div>
-      <div class="g-dict-examples-title">例句</div>
-      ${examples}` : ''}
   `;
+
+  // ── 深讀層 ─────────────────────────────────────────
+  const synonymHtml = d.synonym?.word ? `
+    <div class="g-synonym-row">
+      <span class="g-synonym-label">近義詞</span>
+      <span class="g-synonym-word">${escapeHtml(d.synonym.word)}</span>
+      <span class="g-synonym-diff">${escapeHtml(d.synonym.diff || '')}</span>
+    </div>` : '';
+
+  const examplesHtml = (d.examples || []).map(ex => {
+    const badge = ex.type === 'context'
+      ? '<span class="g-ex-badge g-ex-context">語境</span>'
+      : '<span class="g-ex-badge g-ex-general">通用</span>';
+    return `
+      <div class="g-example">
+        ${badge}
+        <span class="g-ex-en">${escapeHtml(ex.src || ex.en || '')}</span>
+        <span class="g-ex-zh">${escapeHtml(ex.zh || '')}</span>
+      </div>`;
+  }).join('');
+
+  const usageHtml = d.usage
+    ? `<div class="g-dict-usage">${escapeHtml(d.usage)}</div>` : '';
+
+  const deepInner = [
+    synonymHtml,
+    examplesHtml ? `<div class="g-dict-divider"></div><div class="g-dict-examples-title">例句</div>${examplesHtml}` : '',
+    usageHtml ? `<div class="g-dict-divider"></div>${usageHtml}` : ''
+  ].filter(Boolean).join('');
+
+  const deepHtml = deepInner ? `
+    <div class="g-deep-section">
+      <button class="g-deep-toggle"><span>深讀層</span>${CHEVRON_SVG}</button>
+      <div class="g-deep-content">${deepInner}</div>
+    </div>` : '';
+
+  return `<div class="g-dict-quick">${quickHtml}</div>${deepHtml}`;
+}
+
+// ── 解釋模式：快看 + 深讀折疊 ───────────────────────
+function buildExplainHTML(raw) {
+  const parts    = raw.split(/\s*===DEEP===\s*/);
+  const quickHtml = `<div class="g-text-body">${formatMarkdown(parts[0].trim())}</div>`;
+
+  if (parts.length < 2 || !parts[1]?.trim()) return quickHtml;
+
+  return `
+    <div class="g-quick-section">${quickHtml}</div>
+    <div class="g-deep-section">
+      <button class="g-deep-toggle"><span>深讀層</span>${CHEVRON_SVG}</button>
+      <div class="g-deep-content">
+        <div class="g-text-body">${formatMarkdown(parts[1].trim())}</div>
+      </div>
+    </div>`;
+}
+
+// ── 優化模式：Diff 快看 + 改動說明折疊 ──────────────
+function buildOptimizeHTML(raw, original) {
+  const optimizedMatch = raw.match(/\*\*優化後版本[：:]\*\*\s*([\s\S]*?)(?=\n\s*\*\*改動說明|$)/);
+  const reasonsMatch   = raw.match(/\*\*改動說明[：:]\*\*\s*([\s\S]*)/);
+
+  if (!optimizedMatch) {
+    return `<div class="g-text-body">${formatMarkdown(raw)}</div>`;
+  }
+
+  const optimizedText = optimizedMatch[1].trim();
+  const reasonsText   = reasonsMatch?.[1]?.trim() || '';
+  const diffHtml      = renderDiff(original, optimizedText);
+
+  const quickHtml = `
+    <div class="g-diff-legend">
+      <span class="g-diff-label-del">刪除</span>
+      <span class="g-diff-label-ins">新增</span>
+    </div>
+    <div class="g-diff-view">${diffHtml}</div>`;
+
+  if (!reasonsText) return `<div class="g-quick-section">${quickHtml}</div>`;
+
+  return `
+    <div class="g-quick-section">${quickHtml}</div>
+    <div class="g-deep-section">
+      <button class="g-deep-toggle"><span>改動說明</span>${CHEVRON_SVG}</button>
+      <div class="g-deep-content">
+        <div class="g-text-body">${formatMarkdown(reasonsText)}</div>
+      </div>
+    </div>`;
+}
+
+// ── 折疊 toggle 事件綁定 ──────────────────────────
+function initDeepToggles(el) {
+  el.querySelectorAll('.g-deep-toggle').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      btn.closest('.g-deep-section').classList.toggle('g-deep-open');
+    });
+  });
+}
+
+// ── Tag 點擊事件綁定（點擊後觸發 explain 查詢）────
+function initTagHandlers(el) {
+  el.querySelectorAll('.g-tag').forEach(tag => {
+    tag.addEventListener('click', e => {
+      e.stopPropagation();
+      const term = tag.dataset.term;
+      if (!term) return;
+      savedSel    = { text: term, range: null };
+      userDragged = true;
+      triggerAction('explain');
+    });
+  });
 }
 
 function setError(msg) {
