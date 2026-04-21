@@ -113,13 +113,24 @@ fan-fan-ba/
 
 ## 📸 介面預覽
 
-| 懸浮工具列 | 翻譯結果卡（字典模式） |
-|:---------:|:------------------:|
-| ![toolbar](screenshots/toolbar.png) | ![result-card](screenshots/result-card.png) |
-
-| 存入 Obsidian 面板 | Obsidian 筆記成果 |
-|:----------------:|:---------------:|
-| ![obsidian-panel](screenshots/obsidian-panel.png) | ![obsidian-note](screenshots/obsidian-note.png) |
+<table>
+  <tr>
+    <td align="center" width="50%"><b>懸浮工具列</b></td>
+    <td align="center" width="50%"><b>翻譯結果卡（字典模式）</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/toolbar.png" width="380"></td>
+    <td align="center"><img src="screenshots/result-card.png" width="380"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>存入 Obsidian 面板</b></td>
+    <td align="center"><b>Obsidian 筆記成果</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/obsidian-panel.png" width="380"></td>
+    <td align="center"><img src="screenshots/obsidian-note.png" width="380"></td>
+  </tr>
+</table>
 
 ---
 
