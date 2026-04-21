@@ -30,6 +30,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     chrome.runtime.openOptionsPage();
     sendResponse({});
   }
+  if (request.type === 'OBSIDIAN_URI') {
+    (async () => {
+      try {
+        // 記錄目前的 Chrome 視窗，存入後拉回前景
+        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const winId = activeTab?.windowId;
+        const newTab = await chrome.tabs.create({ url: request.url, active: false });
+        setTimeout(() => {
+          chrome.tabs.remove(newTab.id).catch(() => {});
+          if (winId) chrome.windows.update(winId, { focused: true }).catch(() => {});
+        }, 800);
+      } catch {}
+      reply({ ok: true });
+    })();
+    return true;
+  }
 });
 
 // ── Port 監聽（長連線 streaming，用於段落翻譯 / 解釋 / 優化）──

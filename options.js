@@ -5,14 +5,15 @@
 const $ = id => document.getElementById(id);
 
 // ── 載入已儲存的設定 ─────────────────────────────────
-chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 'obsidianVault', 'ttsApiKey'],
-  ({ apiKey, groqApiKey, openrouterApiKey, model, obsidianVault, ttsApiKey }) => {
-    if (apiKey)           $('apiKey').value           = apiKey;
-    if (groqApiKey)       $('groqApiKey').value       = groqApiKey;
-    if (openrouterApiKey) $('openrouterApiKey').value = openrouterApiKey;
-    if (model)            $('model').value            = model;
-    if (obsidianVault)    $('obsidianVault').value    = obsidianVault;
-    if (ttsApiKey)        $('ttsApiKey').value        = ttsApiKey;
+chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 'obsidianVault', 'ttsApiKey', 'obsidianDefaultFolder'],
+  ({ apiKey, groqApiKey, openrouterApiKey, model, obsidianVault, ttsApiKey, obsidianDefaultFolder }) => {
+    if (apiKey)                 $('apiKey').value                 = apiKey;
+    if (groqApiKey)             $('groqApiKey').value             = groqApiKey;
+    if (openrouterApiKey)       $('openrouterApiKey').value       = openrouterApiKey;
+    if (model)                  $('model').value                  = model;
+    if (obsidianVault)          $('obsidianVault').value          = obsidianVault;
+    if (ttsApiKey)              $('ttsApiKey').value              = ttsApiKey;
+    if (obsidianDefaultFolder)  $('obsidianDefaultFolder').value  = obsidianDefaultFolder;
   }
 );
 
@@ -53,11 +54,12 @@ $('btnSave').addEventListener('click', () => {
     if (!apiKey.startsWith('AIza')) { showStatus('err', 'Gemini API Key 格式不正確，應以 AIza 開頭'); return; }
   }
 
-  const obsidianVault = $('obsidianVault').value.trim();
-  const ttsApiKey     = $('ttsApiKey').value.trim();
+  const obsidianVault         = $('obsidianVault').value.trim();
+  const ttsApiKey             = $('ttsApiKey').value.trim();
+  const obsidianDefaultFolder = $('obsidianDefaultFolder').value.trim();
 
   chrome.storage.sync.set(
-    { apiKey, groqApiKey, openrouterApiKey, model, obsidianVault, ttsApiKey },
+    { apiKey, groqApiKey, openrouterApiKey, model, obsidianVault, ttsApiKey, obsidianDefaultFolder },
     () => showStatus('ok', '✓ 設定已儲存')
   );
 });

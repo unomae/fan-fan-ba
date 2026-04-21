@@ -36,7 +36,7 @@ function createToolbar() {
 }
 
 function showToolbar() {
-  if (!toolbar) toolbar = createToolbar();
+  if (!toolbar || !document.body.contains(toolbar)) toolbar = createToolbar();
   toolbar.querySelectorAll('.g-btn').forEach(b => b.classList.remove('g-active'));
   positionToolbar();
   toolbar.classList.add('g-show');

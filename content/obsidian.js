@@ -91,13 +91,9 @@ async function saveToObsidian(folderPath) {
   ];
   if (obsidianVault?.trim()) encParts.push(`vault=${encodeURIComponent(obsidianVault.trim())}`);
 
-  // 用 <a> 觸發 URI，避免 window.open 被 popup blocker 攔截
-  const a = document.createElement('a');
-  a.href  = `obsidian://advanced-uri?${encParts.join('&')}`;
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  // 交給 background 觸發，避免 Obsidian app 搶走焦點
+  const uri = `obsidian://advanced-uri?${encParts.join('&')}`;
+  chrome.runtime.sendMessage({ type: 'OBSIDIAN_URI', url: uri }).catch(() => {});
 
   await saveRecentFolder(folderPath);
 }

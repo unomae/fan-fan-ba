@@ -7,6 +7,12 @@ function createResultCard() {
     <div class="g-rc-header">
       <span class="g-rc-tag"></span>
       <div class="g-rc-actions">
+        <button class="g-icon-btn g-pin" title="釘住結果卡">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="17" x2="12" y2="22"/>
+            <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
+          </svg>
+        </button>
         <button class="g-icon-btn g-save-obs" title="存到 Obsidian">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M6 3h12l4 6-10 13L2 9Z"/>
@@ -26,6 +32,13 @@ function createResultCard() {
         </button>
       </div>
     </div>
+
+    <!-- 自動存入 Obsidian 成功提示列 -->
+    <div class="g-autosave-bar">
+      <span class="g-autosave-text"></span>
+      <button class="g-autosave-change">更換資料夾</button>
+    </div>
+
     <div class="g-rc-body"></div>
 
     <div class="g-obs-panel">
@@ -53,6 +66,14 @@ function createResultCard() {
     </div>
   `;
 
+  // ── Pin 按鈕 ───────────────────────────────────────
+  el.querySelector('.g-pin').addEventListener('click', e => {
+    e.stopPropagation();
+    isPinned = !isPinned;
+    el.classList.toggle('g-pinned', isPinned);
+    el.querySelector('.g-pin').classList.toggle('g-pin-active', isPinned);
+  });
+
   // ── 複製按鈕 ───────────────────────────────────────
   el.querySelector('.g-copy').addEventListener('click', e => {
     e.stopPropagation();
@@ -66,36 +87,39 @@ function createResultCard() {
   // ── 關閉按鈕 ───────────────────────────────────────
   el.querySelector('.g-close-rc').addEventListener('click', e => {
     e.stopPropagation();
+    isPinned = false;
+    el.classList.remove('g-pinned');
+    el.querySelector('.g-pin').classList.remove('g-pin-active');
     hideResultCard();
   });
 
-  // ── 寶石按鈕：展開 / 收合 Obsidian 面板 ──────────
+  // ── 寶石按鈕：有記錄資料夾 → 自動存入；否則展開面板 ─
   el.querySelector('.g-save-obs').addEventListener('click', async e => {
     e.stopPropagation();
-    const panel  = el.querySelector('.g-obs-panel');
-    const isOpen = panel.classList.contains('g-obs-open');
-    if (isOpen) {
-      panel.classList.remove('g-obs-open');
-      el.querySelector('.g-obs-dropdown').classList.remove('g-obs-dd-open');
-      el.querySelector('.g-obs-status').classList.remove('g-obs-status-show');
-      return;
-    }
-    const folders = await loadRecentFolders();
-    const input   = el.querySelector('.g-obs-input');
-    if (folders.length > 0 && !input.value) input.value = folders[0];
-    panel.classList.add('g-obs-open');
-    input.focus();
 
-    // 面板展開後自動往上移，避免超出視窗下緣
-    setTimeout(() => {
-      const rect     = el.getBoundingClientRect();
-      const overflow = rect.bottom - (window.innerHeight - 8);
-      if (overflow > 0) {
-        const newTop = Math.max(8, parseFloat(el.style.top || rect.top) - overflow);
-        el.style.top = `${newTop}px`;
-        userDragged  = true;
-      }
-    }, 240);
+    const { obsidianDefaultFolder } = await chrome.storage.sync.get('obsidianDefaultFolder');
+    const recentFolders = await loadRecentFolders();
+    const autoFolder    = obsidianDefaultFolder?.trim() || recentFolders[0];
+
+    if (autoFolder) {
+      // 自動存入：不展開面板
+      hideAutoSaveToast(el); // 先清除上一筆提示
+      await saveToObsidian(autoFolder);
+      const gemBtn = el.querySelector('.g-save-obs');
+      gemBtn.classList.add('g-saved');
+      setTimeout(() => gemBtn.classList.remove('g-saved'), 1800);
+      showAutoSaveToast(el, autoFolder);
+    } else {
+      // 第一次使用：展開面板讓使用者輸入資料夾
+      openObsPanel(el);
+    }
+  });
+
+  // ── autosave toast「更換資料夾」按鈕 ──────────────
+  el.querySelector('.g-autosave-change').addEventListener('click', e => {
+    e.stopPropagation();
+    hideAutoSaveToast(el);
+    openObsPanel(el);
   });
 
   // ── 下拉箭頭：最近資料夾清單 ──────────────────────
@@ -123,7 +147,7 @@ function createResultCard() {
     dropdown.classList.add('g-obs-dd-open');
   });
 
-  // ── 存入按鈕 ──────────────────────────────────────
+  // ── 面板存入按鈕 ───────────────────────────────────
   el.querySelector('.g-obs-confirm-btn').addEventListener('click', async e => {
     e.stopPropagation();
     const input      = el.querySelector('.g-obs-input');
@@ -147,18 +171,18 @@ function createResultCard() {
 
     confirmBtn.textContent = '已傳送 ✓';
     confirmBtn.disabled    = true;
-    statusEl.textContent   = '✓ 已傳送至 Obsidian';
-    statusEl.classList.add('g-obs-status-show', 'g-obs-status-ok');
 
+    // 關閉面板並顯示持久提示列
     setTimeout(() => {
       el.querySelector('.g-obs-panel').classList.remove('g-obs-open');
       statusEl.classList.remove('g-obs-status-show', 'g-obs-status-ok');
       confirmBtn.textContent = '新增到 Obsidian';
       confirmBtn.disabled    = false;
-    }, 2000);
+      showAutoSaveToast(el, folder);
+    }, 800);
   });
 
-  // 面板內 mousedown 不往上冒泡（避免觸發 hideAll）
+  // 面板內 mousedown 不往上冒泡
   el.querySelector('.g-obs-panel').addEventListener('mousedown', e => e.stopPropagation());
 
   // ── 拖曳（按住 header 移動結果卡）────────────────
@@ -180,6 +204,52 @@ function createResultCard() {
   return el;
 }
 
+// ── Obsidian 面板開關（供寶石按鈕「第一次」與「更換」共用）──
+function openObsPanel(el) {
+  const panel  = el.querySelector('.g-obs-panel');
+  const isOpen = panel.classList.contains('g-obs-open');
+  if (isOpen) {
+    panel.classList.remove('g-obs-open');
+    el.querySelector('.g-obs-dropdown').classList.remove('g-obs-dd-open');
+    el.querySelector('.g-obs-status').classList.remove('g-obs-status-show');
+    return;
+  }
+  loadRecentFolders().then(folders => {
+    const input = el.querySelector('.g-obs-input');
+    if (folders.length > 0 && !input.value) input.value = folders[0];
+    panel.classList.add('g-obs-open');
+    input.focus();
+
+    setTimeout(() => {
+      const rect     = el.getBoundingClientRect();
+      const overflow = rect.bottom - (window.innerHeight - 8);
+      if (overflow > 0) {
+        const newTop = Math.max(8, parseFloat(el.style.top || rect.top) - overflow);
+        el.style.top = `${newTop}px`;
+        userDragged  = true;
+      }
+    }, 240);
+  });
+}
+
+// ── Autosave Toast 顯示 / 隱藏 ────────────────────────
+function showAutoSaveToast(el, folder) {
+  const bar  = el.querySelector('.g-autosave-bar');
+  const text = el.querySelector('.g-autosave-text');
+  text.textContent = `✓ 已存入：${folder}`;
+  bar.classList.add('show');
+  clearTimeout(bar._hideTimer);
+  bar._hideTimer = setTimeout(() => bar.classList.remove('show'), 4500);
+}
+
+function hideAutoSaveToast(el) {
+  const bar = el.querySelector('.g-autosave-bar');
+  clearTimeout(bar._hideTimer);
+  bar.classList.remove('show');
+}
+
+// ── 以下函式與原版相同 ────────────────────────────────
+
 function hideResultCard() {
   resultCard?.classList.remove('g-show');
 }
@@ -188,7 +258,7 @@ function positionResultCard() {
   if (!savedSel || !resultCard) return;
   if (userDragged) return;
   try {
-    const rect  = savedSel.range.getBoundingClientRect();
+    const rect   = savedSel.range.getBoundingClientRect();
     const margin = 8;
     const cardW  = 500;
     const cardH  = resultCard.offsetHeight || 200;
@@ -277,12 +347,9 @@ function setError(msg) {
   if (body) body.innerHTML = `<span class="g-error">${escapeHtml(msg)}</span>`;
 }
 
-// 發音（優先 Google Cloud TTS Chirp HD，fallback 瀏覽器語音）
 function speakWord(word, btn, lang) {
   btn?.classList.add('g-speaking');
-
   if (!chrome.runtime?.id) { speakFallback(word, btn); return; }
-
   chrome.runtime.sendMessage({ type: 'TTS_REQUEST', text: word, lang: lang || 'en' }, response => {
     if (chrome.runtime.lastError || !response || response.fallback || response.error) {
       speakFallback(word, btn);

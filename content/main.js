@@ -53,6 +53,11 @@ function onKeyUp(e) {
 
 function onMouseDown(e) {
   if (isInOurUI(e.target)) return;
+  if (isPinned) {
+    // 釘住時只收起工具列，結果卡保留
+    hideToolbar();
+    return;
+  }
   hideAll();
 }
 
@@ -100,12 +105,15 @@ function triggerAction(action) {
 
   activeAction = action;
   userDragged  = false;
+  isPinned     = false; // 新請求重置釘住狀態
+  resultCard?.classList.remove('g-pinned');
+  resultCard?.querySelector('.g-pin')?.classList.remove('g-pin-active');
 
   toolbar.querySelectorAll('.g-btn').forEach(b =>
     b.classList.toggle('g-active', b.dataset.action === action)
   );
 
-  if (!resultCard) resultCard = createResultCard();
+  if (!resultCard || !document.body.contains(resultCard)) resultCard = createResultCard();
 
   // 新請求時收合 Obsidian 面板
   resultCard.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
