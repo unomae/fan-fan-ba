@@ -98,7 +98,9 @@ function checkSelection() {
       showToolbar();
     } catch { /* 跨 iframe 等情況靜默忽略 */ }
   } else {
-    hideAll();
+    // pin 住時只收工具列，結果卡保留
+    if (isPinned) hideToolbar();
+    else          hideAll();
   }
 }
 
