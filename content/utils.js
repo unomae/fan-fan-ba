@@ -150,3 +150,5 @@ function renderDiff(original, optimized) {
                   `<del class="g-diff-del">${escapeHtml(o.v)}</del>`
   ).join('');
 }
+
+if (typeof module !== 'undefined' && module.exports) { module.exports = { escapeHtml, formatMarkdown, parseJSON, getWeekLabel, getPosClass, extractContext, renderDiff }; }

@@ -123,3 +123,5 @@ function showStatus(type, msg) {
   el.textContent = msg;
   if (type === 'ok') setTimeout(() => { el.className = ''; el.textContent = ''; }, 3000);
 }
+
+if (typeof module !== 'undefined' && module.exports) { module.exports = { showStatus, bindToggleVis }; }

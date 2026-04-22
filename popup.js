@@ -113,3 +113,5 @@ function renderApiStatus(model, sync) {
 document.getElementById('openOptions').addEventListener('click', () => {
   chrome.runtime.openOptionsPage();
 });
+
+if (typeof module !== 'undefined' && module.exports) { module.exports = { renderModels, selectModel, renderApiStatus, MODELS }; }

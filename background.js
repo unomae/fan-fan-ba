@@ -466,3 +466,5 @@ function buildPrompt(action, selectedText, context, pageTitle) {
       throw new Error('未知的操作類型');
   }
 }
+
+if (typeof module !== 'undefined' && module.exports) { module.exports = { sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }
