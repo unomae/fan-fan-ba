@@ -1,10 +1,10 @@
 # 翻翻吧 Fan Fan Ba
 
 > AI-powered translation, explanation & text optimizer for Chrome / Edge
-> ![version](https://img.shields.io/badge/version-1.2.2-green)
+> ![version](https://img.shields.io/badge/version-1.2.3-green)
 
 看到不懂的一劃就翻譯、解釋，還能順手存進筆記，一氣呵成。  
-選取任意網頁文字，一鍵觸發翻譯、解釋、優化——多家 AI 模型驅動，結果即時浮現，不打斷閱讀流。    
+選取任意網頁文字，一鍵觸發翻譯、解釋、優化——多家 AI 模型驅動，結果即時浮現，不打斷閱讀流。
 
 ---
 
@@ -20,10 +20,11 @@
 
 ### 其他功能
 - 🔊 **朗讀** — 優先使用 Google Cloud Chirp HD 高品質語音；未設定則自動 fallback 瀏覽器內建語音
-- 📝 **存入 Obsidian** — 一鍵 append 到週記筆記（`2026-W16.md`），存入後自動切回原分頁保留結果卡；字典模式保留完整結構化 markdown（含近義詞）；macOS / Windows 跨平台相容
-- 🕐 **最近查詢紀錄** — 結果卡 Header 時鐘按鈕展開最近 5 筆紀錄，點擊即可重新載入，跨頁面 tab 生命週期內有效
+- 📝 **存入 Obsidian** — 一鍵 append 到週記筆記（`YYYY-W##.md`），存入後自動切回原分頁保留結果卡；字典模式保留完整結構化 markdown；macOS / Windows 跨平台相容
+- 🕐 **最近查詢紀錄** — 結果卡 Header 時鐘按鈕展開最近 5 筆紀錄，點擊即可重新載入
 - 📌 **釘住結果卡** — Pin 後選取新文字不關閉卡片，頂部藍線顯示釘住狀態
 - ↔️ **邊緣吸附** — 拖曳至螢幕邊緣自動吸附，含 snap 動畫
+- 🔄 **錯誤重試** — API 錯誤時顯示「↺ 重試」按鈕，一鍵重送請求
 - 🎨 **Glassmorphism UI** — 毛玻璃懸浮工具列 + 結果卡，不遮擋頁面內容，可自由拖曳
 
 ---
@@ -32,9 +33,9 @@
 
 | 模型 | Provider | 說明 |
 |------|----------|------|
-| Gemini 3.1 Flash Lite | Google | 輕量低延遲 |
+| **Llama 4 Scout** ⭐ | Groq | Meta 最新 MoE 模型，Groq 極速推論，**免費額度最大方，預設推薦** |
 | Gemini 3 Flash | Google | 速度快，適合日常使用 |
-| Llama 4 Scout | Groq | Meta 最新 MoE 模型，Groq 極速推論 |
+| Gemini 3.1 Flash Lite | Google | 輕量低延遲 |
 | DeepSeek V3 | OpenRouter | 中文理解超強，有免費額度 |
 | Qwen3 30B | OpenRouter | 阿里雲出品，中文強 |
 | Mistral Small 3.1 | OpenRouter | 歐洲模型，快速精準 |
@@ -52,10 +53,10 @@
    ```bash
    git clone https://github.com/unomae/fan-fan-ba.git
    ```
-2. 開啟 Chrome / Edge，前往 `edge://extensions` 或 `chrome://extensions`
+2. 開啟 Chrome / Edge，前往 `chrome://extensions` 或 `edge://extensions`
 3. 開啟右上角「**開發人員模式**」
 4. 點擊「**載入未封裝擴充功能**」，選擇 clone 下來的資料夾
-5. 擴充功能圖示出現於工具列即完成
+5. 擴充功能圖示出現於工具列即完成，首次安裝會自動開啟使用說明頁
 
 ---
 
@@ -63,30 +64,30 @@
 
 點擊工具列圖示 → **完整設定 →**，依照使用的模型填入對應 API Key：
 
-| Provider | API Key 格式 | 取得方式 |
-|----------|-------------|---------|
-| Google Gemini | `AIza...` | [Google AI Studio](https://aistudio.google.com/app/apikey)（pay as you go） |
-| Groq | `gsk_...` | [Groq Console](https://console.groq.com/keys)（免費） |
-| OpenRouter | `sk-or-...` | [OpenRouter](https://openrouter.ai/keys)（有免費額度） |
-| Google Cloud TTS | `AIza...` | [Google Cloud Console](https://console.cloud.google.com/apis/credentials)（選填） |
+| Provider | API Key 格式 | 取得方式 | 備註 |
+|----------|-------------|---------|------|
+| **Groq** | `gsk_...` | [Groq Console](https://console.groq.com/keys) | **必填・免費，強烈推薦** |
+| Google Gemini | `AIza...` | [Google AI Studio](https://aistudio.google.com/app/apikey) | 選填，只有基本免費額度 |
+| OpenRouter | `sk-or-...` | [OpenRouter](https://openrouter.ai/keys) | 選填，只有基本免費額度 |
+| Google Cloud TTS | `AIza...` | [Google Cloud Console](https://console.cloud.google.com/apis/credentials) | 選填，高品質朗讀 |
 
-> **Obsidian 整合**：需安裝 [Advanced URI 插件](https://github.com/Vinzent03/obsidian-advanced-uri)，在設定頁填入 Vault 名稱即可。
+> **Obsidian 整合**：需安裝 [Advanced URI 插件](https://github.com/Vinzent03/obsidian-advanced-uri)，在設定頁填入 Vault 名稱即可。每週自動建立 `YYYY-W##.md` 週記檔。
 
 ---
 
 ## 🚀 使用方式
 
 1. 在任意網頁**選取文字**
-2. 稍等約 0.3 秒，工具列自動浮現於選取文字上方
+2. 稍等約 0.3 秒，工具列自動浮現於選取文字旁
 3. 點擊對應功能按鈕：
 
    | 圖示 | 功能 |
    |------|------|
-   | `Aa` 雙語圖示 | 翻譯 |
-   | `ℹ` 圓圈資訊圖示 | 解釋 |
-   | `✦` 四角星圖示 | 優化 |
-   | `🔊` 喇叭圖示 | 朗讀（結果卡內） |
-   | `💎` 菱形寶石圖示 | 存入 Obsidian（結果卡內） |
+   | 雙語圖示 | 翻譯 |
+   | 圓圈資訊圖示 | 解釋 |
+   | 四角星圖示 | 優化 |
+   | 🔊 喇叭圖示 | 朗讀（結果卡內） |
+   | 💎 寶石圖示 | 存入 Obsidian（結果卡內） |
 
 4. 結果卡浮現，可拖曳移動位置
 5. 點擊結果卡外部或按 `Esc` 關閉
@@ -97,29 +98,33 @@
 
 ```
 fan-fan-ba/
-├── manifest.json       # Manifest V3 設定
-├── background.js       # Service Worker：API 分流 + Streaming + TTS
+├── manifest.json         # Manifest V3，僅 storage 權限 + 4 個 API host
+├── background.js         # Service Worker：API 分流 + Streaming + TTS + Obsidian URI
 ├── content/
-│   ├── state.js        # 共用狀態變數 + 快取 Map
-│   ├── utils.js        # 工具函式（escapeHtml / formatMarkdown / parseJSON 等）
-│   ├── obsidian.js     # Obsidian 存入 + 最近資料夾管理
-│   ├── toolbar.js      # 懸浮工具列 UI + 定位
-│   ├── result-card.js  # 結果卡 UI + 渲染 + 字典 / 發音
-│   └── main.js         # 事件監聽 + triggerAction + 串流 / 非串流分流
-├── content.css         # Glassmorphism 樣式（CSS isolation with all: initial）
-├── popup.html/js       # 模型快選 Popup
-├── options.html/js     # 完整設定頁
-└── icons/              # 16 / 48 / 64 / 128 px
+│   ├── state.js          # 共用狀態變數（isPinned / obsidianSaving / 快取 Map 等）
+│   ├── utils.js          # escapeHtml / formatMarkdown / parseJSON / getWeekLabel
+│   ├── obsidian.js       # Obsidian 存入 + 最近資料夾管理
+│   ├── toolbar.js        # 懸浮工具列 UI + 定位
+│   ├── result-card.js    # 結果卡 UI + 渲染（字典 / 解釋 / 優化）+ 歷史紀錄
+│   └── main.js           # 事件監聽 + triggerAction + 串流 / 非串流分流
+├── content.css           # Glassmorphism 樣式（16 個 section，全部 !important）
+├── popup.html / js       # 模型快選 Popup
+├── options.html / js     # 完整設定頁
+├── welcome.html / js     # 首次安裝 Onboarding 頁面
+├── privacy-policy.html   # 隱私權政策
+├── design.md             # 設計語言規範（色彩 / 元件 / 動畫）
+└── icons/                # 16 / 48 / 64 / 128 px
 ```
 
 **技術特點**
 - **Manifest V3**：Service Worker 架構，API Key 只在 background 層使用，不暴露於頁面
-- **Streaming 回應**：段落翻譯 / 解釋 / 優化使用 `chrome.runtime.connect()` + SSE（Gemini `?alt=sse`、Groq / OpenRouter `stream: true`），字典模式維持完整 JSON 回應
-- **同文字快取**：`Map` 快取相同 action + text 的結果，tab 生命週期內命中直接渲染，不重送 API
+- **Streaming 回應**：段落翻譯 / 解釋 / 優化使用 `chrome.runtime.connect()` + SSE，字典模式維持完整 JSON 回應
+- **同文字快取**：`Map` 快取相同 action + text 的結果，tab 生命週期內命中直接渲染
 - **模組化架構**：content scripts 按職責拆分為 6 個檔案，透過 manifest 依序載入共用同一 isolated world
-- **CSS 隔離**：`all: initial` + `!important` 防止宿主頁樣式干擾
+- **CSS 隔離**：`!important` 防止宿主頁樣式干擾，CSS 變數限定在元件 selector 避免污染 `:root`
 - **多 Provider 分流**：`groq:` / `openrouter:` 前綴識別，統一 OpenAI 相容介面
-- **Web Animations API**：工具列入場動畫使用 WAAPI，`fill: 'none'` 避免與 CSS 狀態衝突
+- **Exponential Backoff + Jitter**：429 / 503 自動重試，最多 3 次
+- **Onboarding**：`chrome.runtime.onInstalled` 首次安裝自動開啟 Welcome 頁面
 
 ---
 
@@ -152,7 +157,7 @@ fan-fan-ba/
 - 選取的文字**僅傳送給使用者選擇的 AI 服務商**，用於處理當次請求
 - 本擴充功能不設伺服器，不收集任何使用者資料
 
-完整隱私政策：[Privacy Policy](https://gist.github.com/unomae/209600efe580b040774f5eb6c806de12)
+完整說明：[隱私權政策](privacy-policy.html)
 
 ---
 
