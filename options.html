@@ -282,27 +282,46 @@
       </h1>
     </div>
 
-    <!-- Gemini API Key -->
+    <!-- 預設模型（最上方）-->
+    <div class="field">
+      <label>預設模型</label>
+      <select id="model">
+        <optgroup label="Groq（需 Groq API Key）">
+          <option value="groq:meta-llama/llama-4-scout-17b-16e-instruct" selected>Llama 4 Scout（極速・免費）</option>
+        </optgroup>
+        <optgroup label="Gemini（需 Gemini API Key）">
+          <option value="gemini-3-flash-preview">Gemini 3 Flash（速度快）</option>
+          <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite（輕量省費）</option>
+        </optgroup>
+        <optgroup label="OpenRouter（需 OpenRouter API Key）">
+          <option value="openrouter:deepseek/deepseek-chat-v3-0324">DeepSeek V3（中文強）</option>
+          <option value="openrouter:qwen/qwen3-30b-a3b">Qwen3 30B（阿里雲）</option>
+          <option value="openrouter:mistralai/mistral-small-3.1-24b-instruct">Mistral Small 3.1（歐洲快速）</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Groq API Key（必填）-->
     <div class="field">
       <label>
-        Gemini API Key
+        Groq API Key
         <span class="hint">必填</span>
       </label>
       <div class="input-wrap">
-        <input type="password" id="apiKey" placeholder="AIza..." autocomplete="off" spellcheck="false">
-        <button class="toggle-vis" id="toggleVis" title="顯示 / 隱藏">
-          <svg id="eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <input type="password" id="groqApiKey" placeholder="gsk_..." autocomplete="off" spellcheck="false">
+        <button class="toggle-vis" id="toggleGroqVis" title="顯示 / 隱藏">
+          <svg id="groq-eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
           </svg>
-          <svg id="eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <svg id="groq-eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
             <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>
           </svg>
         </button>
       </div>
-
-      <!-- 取得 Key 說明 -->
       <p class="field-note">
-        至 <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> 免費取得 API Key。
+        至 <a href="https://console.groq.com/keys" target="_blank">Groq Console</a> 免費取得（格式：gsk_ 開頭）。免費額度最大方，推薦優先申請。
       </p>
 
       <!-- 安全說明區塊 -->
@@ -321,54 +340,35 @@
       </div>
     </div>
 
-    <!-- 模型選擇 -->
-    <div class="field">
-      <label>預設模型</label>
-      <select id="model">
-        <optgroup label="Gemini（需 Gemini API Key）">
-          <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite（輕量省費）</option>
-          <option value="gemini-3-flash-preview">Gemini 3 Flash（速度快）</option>
-        </optgroup>
-        <optgroup label="Groq（需 Groq API Key）">
-          <option value="groq:meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout（極速）</option>
-        </optgroup>
-        <optgroup label="OpenRouter（需 OpenRouter API Key）">
-          <option value="openrouter:deepseek/deepseek-chat-v3-0324">DeepSeek V3（中文強）</option>
-          <option value="openrouter:qwen/qwen3-30b-a3b">Qwen3 30B（阿里雲）</option>
-          <option value="openrouter:mistralai/mistral-small-3.1-24b-instruct">Mistral Small 3.1（歐洲快速）</option>
-        </optgroup>
-      </select>
-    </div>
-
-    <!-- Groq API Key -->
+    <!-- Gemini API Key（選填）-->
     <div class="divider"></div>
     <div class="field">
       <label>
-        Groq API Key
-        <span class="hint">選填，使用 Llama 4 Scout 時必填</span>
+        Gemini API Key
+        <span class="hint">選填</span>
       </label>
       <div class="input-wrap">
-        <input type="password" id="groqApiKey" placeholder="gsk_..." autocomplete="off" spellcheck="false">
-        <button class="toggle-vis" id="toggleGroqVis" title="顯示 / 隱藏">
-          <svg id="groq-eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <input type="password" id="apiKey" placeholder="AIza..." autocomplete="off" spellcheck="false">
+        <button class="toggle-vis" id="toggleVis" title="顯示 / 隱藏">
+          <svg id="eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
           </svg>
-          <svg id="groq-eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <svg id="eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
             <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>
           </svg>
         </button>
       </div>
       <p class="field-note">
-        至 <a href="https://console.groq.com/keys" target="_blank">Groq Console</a> 免費取得 API Key（格式：gsk_ 開頭）。
+        至 <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> 免費取得（格式：AIza 開頭）。只有基本免費額度。
       </p>
     </div>
 
-    <!-- OpenRouter API Key -->
+    <!-- OpenRouter API Key（選填）-->
     <div class="divider"></div>
     <div class="field">
       <label>
         OpenRouter API Key
-        <span class="hint">選填，使用 DeepSeek / Qwen / Mistral 時必填</span>
+        <span class="hint">選填</span>
       </label>
       <div class="input-wrap">
         <input type="password" id="openrouterApiKey" placeholder="sk-or-..." autocomplete="off" spellcheck="false">
@@ -382,7 +382,7 @@
         </button>
       </div>
       <p class="field-note">
-        至 <a href="https://openrouter.ai/keys" target="_blank">OpenRouter</a> 免費取得 API Key（格式：sk-or- 開頭）。
+        至 <a href="https://openrouter.ai/keys" target="_blank">OpenRouter</a> 免費取得（格式：sk-or- 開頭）。只有基本免費額度。
       </p>
     </div>
 
@@ -464,14 +464,15 @@
       </li>
     </ul>
 
-  </div>
+    <!-- 隱私權政策（最底部）-->
+    <div class="divider"></div>
+    <div style="text-align:center;padding-bottom:4px;">
+      <a href="privacy-policy.html" target="_blank"
+         style="font-size:12px;color:#bbb;text-decoration:none;">
+        隱私權政策
+      </a>
+    </div>
 
-  <!-- 隱私政策頁腳連結 -->
-  <div style="text-align:center;margin-top:24px;padding-bottom:8px;">
-    <a href="privacy-policy.html" target="_blank"
-       style="font-size:12px;color:#64748b;text-decoration:none;">
-      隱私權政策
-    </a>
   </div>
 
   <script src="options.js"></script>

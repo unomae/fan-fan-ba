@@ -10,7 +10,8 @@ chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 'o
     if (apiKey)                 $('apiKey').value                 = apiKey;
     if (groqApiKey)             $('groqApiKey').value             = groqApiKey;
     if (openrouterApiKey)       $('openrouterApiKey').value       = openrouterApiKey;
-    if (model)                  $('model').value                  = model;
+    // 無儲存紀錄時預設 Groq（免費額度最大方）
+    $('model').value = model || 'groq:meta-llama/llama-4-scout-17b-16e-instruct';
     if (obsidianVault)          $('obsidianVault').value          = obsidianVault;
     if (ttsApiKey)              $('ttsApiKey').value              = ttsApiKey;
     if (obsidianDefaultFolder)  $('obsidianDefaultFolder').value  = obsidianDefaultFolder;

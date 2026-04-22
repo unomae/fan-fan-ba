@@ -13,7 +13,7 @@ chrome.runtime.onInstalled.addListener(details => {
 const GEMINI_API_BASE     = 'https://generativelanguage.googleapis.com/v1beta/models';
 const GROQ_API_BASE       = 'https://api.groq.com/openai/v1';
 const OPENROUTER_API_BASE = 'https://openrouter.ai/api/v1';
-const DEFAULT_MODEL       = 'gemini-3-flash-preview';
+const DEFAULT_MODEL       = 'groq:meta-llama/llama-4-scout-17b-16e-instruct'; // 預設 Groq（免費額度最大方）
 
 // ── Exponential Backoff with Full Jitter ──────────
 const sleep = ms => new Promise(r => setTimeout(r, ms));
