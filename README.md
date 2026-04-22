@@ -132,20 +132,26 @@ fan-fan-ba/
 
 <table>
   <tr>
-    <td align="center" width="50%"><b>懸浮工具列</b></td>
-    <td align="center" width="50%"><b>翻譯結果卡（字典模式）</b></td>
+    <td align="center" colspan="2"><b>翻譯 — 字典式詳細解說</b></td>
   </tr>
   <tr>
-    <td align="center"><img src="screenshots/toolbar.png" width="380"></td>
-    <td align="center"><img src="screenshots/result-card.png" width="380"></td>
+    <td align="center" colspan="2"><img src="screenshots/mockup-1.png" width="760"></td>
   </tr>
   <tr>
-    <td align="center"><b>存入 Obsidian 面板</b></td>
-    <td align="center"><b>Obsidian 筆記成果</b></td>
+    <td align="center" width="50%"><b>解釋 — 核心概念・術語・比喻</b></td>
+    <td align="center" width="50%"><b>優化 — AI 潤稿改寫</b></td>
   </tr>
   <tr>
-    <td align="center"><img src="screenshots/obsidian-panel.png" width="380"></td>
-    <td align="center"><img src="screenshots/obsidian-note.png" width="380"></td>
+    <td align="center"><img src="screenshots/mockup-4.png" width="380"></td>
+    <td align="center"><img src="screenshots/mockup-5.png" width="380"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>選字，工具列自動浮現</b></td>
+    <td align="center"><b>6 種 AI 模型一鍵切換</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/mockup-3.png" width="380"></td>
+    <td align="center"><img src="screenshots/mockup-2.png" width="380"></td>
   </tr>
 </table>
 
