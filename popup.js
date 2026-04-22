@@ -3,13 +3,15 @@
 'use strict';
 
 const MODELS = [
+  // Groq 優先（免費額度最大方，預設模型）
   {
-    id:        'gemini-3.1-flash-lite-preview',
-    name:      'Gemini 3.1 Flash Lite',
-    desc:      '輕量低延遲',
-    badge:     '輕量',
-    badgeClass: 'badge-lite'
+    id:        'groq:meta-llama/llama-4-scout-17b-16e-instruct',
+    name:      'Llama 4 Scout',
+    desc:      'Meta 最新 · Groq 極速・免費',
+    badge:     'Groq',
+    badgeClass: 'badge-groq'
   },
+  // Gemini
   {
     id:        'gemini-3-flash-preview',
     name:      'Gemini 3 Flash',
@@ -18,11 +20,11 @@ const MODELS = [
     badgeClass: 'badge-fast'
   },
   {
-    id:        'groq:meta-llama/llama-4-scout-17b-16e-instruct',
-    name:      'Llama 4 Scout',
-    desc:      'Meta 最新 · Groq 極速',
-    badge:     'Groq',
-    badgeClass: 'badge-groq'
+    id:        'gemini-3.1-flash-lite-preview',
+    name:      'Gemini 3.1 Flash Lite',
+    desc:      '輕量低延遲',
+    badge:     '輕量',
+    badgeClass: 'badge-lite'
   },
   {
     id:        'openrouter:deepseek/deepseek-chat-v3-0324',
@@ -49,7 +51,7 @@ const MODELS = [
 
 // ── 初始化 ────────────────────────────────────────────
 chrome.storage.sync.get(['model', 'apiKey', 'groqApiKey', 'openrouterApiKey']).then(sync => {
-  const current = sync.model || 'gemini-3-flash-preview';
+  const current = sync.model || 'groq:meta-llama/llama-4-scout-17b-16e-instruct';
   renderModels(current);
   renderApiStatus(current, sync);
 });
