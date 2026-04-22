@@ -564,9 +564,17 @@ function initTagHandlers(el) {
   });
 }
 
-function setError(msg) {
+// onRetry 選填：傳入 callback 則顯示「重試」按鈕
+function setError(msg, onRetry) {
   const body = resultCard?.querySelector('.g-rc-body');
-  if (body) body.innerHTML = `<span class="g-error">${escapeHtml(msg)}</span>`;
+  if (!body) return;
+  const retryHtml = onRetry
+    ? `<button class="g-retry-btn">↺ 重試</button>`
+    : '';
+  body.innerHTML = `<div class="g-error-wrap"><span class="g-error">${escapeHtml(msg)}</span>${retryHtml}</div>`;
+  if (onRetry) {
+    body.querySelector('.g-retry-btn')?.addEventListener('click', onRetry);
+  }
 }
 
 function speakWord(word, btn, lang) {

@@ -3,6 +3,13 @@
 
 'use strict';
 
+// ── 首次安裝時開啟 Welcome 頁面 ──────────────────────
+chrome.runtime.onInstalled.addListener(details => {
+  if (details.reason === 'install') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
+  }
+});
+
 const GEMINI_API_BASE     = 'https://generativelanguage.googleapis.com/v1beta/models';
 const GROQ_API_BASE       = 'https://api.groq.com/openai/v1';
 const OPENROUTER_API_BASE = 'https://openrouter.ai/api/v1';

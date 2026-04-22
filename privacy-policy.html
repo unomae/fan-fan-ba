@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>翻翻吧 — 隱私權政策</title>
+  <style>
+    /* ── 全域 ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 40px 20px 60px;
+      line-height: 1.7;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    /* ── 頂部標題 ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 36px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #A3D179, #F9D423);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .header-text h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+
+    .header-text p {
+      font-size: 13px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    /* ── 章節 ── */
+    .section {
+      margin-bottom: 32px;
+    }
+
+    h2 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #A3D179;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h2::before {
+      content: '';
+      display: inline-block;
+      width: 3px;
+      height: 14px;
+      background: #A3D179;
+      border-radius: 2px;
+    }
+
+    p, li {
+      font-size: 14px;
+      color: #94a3b8;
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    /* ── 重點卡片 ── */
+    .highlight-card {
+      background: rgba(163, 209, 121, 0.08);
+      border: 1px solid rgba(163, 209, 121, 0.2);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 16px 0;
+    }
+
+    .highlight-card p {
+      color: #c8e6a0;
+      font-size: 14px;
+    }
+
+    /* ── 表格 ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.05);
+      color: #94a3b8;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    td {
+      padding: 8px 12px;
+      color: #94a3b8;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      vertical-align: top;
+    }
+
+    td:first-child {
+      color: #cbd5e1;
+      white-space: nowrap;
+    }
+
+    /* ── 頁尾 ── */
+    .footer {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      font-size: 12px;
+      color: #475569;
+      text-align: center;
+    }
+
+    a { color: #A3D179; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- 標題 -->
+    <div class="header">
+      <div class="logo">🌿</div>
+      <div class="header-text">
+        <h1>翻翻吧 — 隱私權政策</h1>
+        <p>最後更新：2026 年 4 月 · 版本 1.2.x</p>
+      </div>
+    </div>
+
+    <!-- 摘要 -->
+    <div class="highlight-card">
+      <p>📌 <strong>重點摘要：</strong>翻翻吧不收集、不儲存任何使用者個人資料。所有 API Key 僅存於您的裝置本地端，選取的文字僅傳送至您自行設定的 AI API，不經過任何第三方伺服器中轉或留存。</p>
+    </div>
+
+    <!-- 1. 資料收集 -->
+    <div class="section">
+      <h2>資料收集</h2>
+      <p>翻翻吧<strong>不收集</strong>任何使用者個人識別資料，包括：</p>
+      <ul>
+        <li>不收集姓名、電子郵件或帳號資訊</li>
+        <li>不收集瀏覽歷史或網頁 URL</li>
+        <li>不記錄使用者選取的文字內容</li>
+        <li>不進行任何形式的使用行為追蹤或分析</li>
+      </ul>
+    </div>
+
+    <!-- 2. 資料使用方式 -->
+    <div class="section">
+      <h2>資料使用方式</h2>
+      <p>翻翻吧僅使用以下資料來提供核心功能：</p>
+      <table>
+        <thead>
+          <tr>
+            <th>資料</th>
+            <th>用途</th>
+            <th>儲存位置</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>API Key（Gemini / Groq / OpenRouter / TTS）</td>
+            <td>呼叫使用者自選的 AI 服務</td>
+            <td>僅存於 <code>chrome.storage.sync</code>（本地裝置）</td>
+          </tr>
+          <tr>
+            <td>選取的文字</td>
+            <td>傳送至 AI API 取得翻譯 / 解釋 / 優化結果</td>
+            <td>不儲存，僅在請求期間傳輸，完成即丟棄</td>
+          </tr>
+          <tr>
+            <td>最近 5 筆查詢紀錄</td>
+            <td>顯示歷史紀錄供快速回顧</td>
+            <td>僅存於 <code>chrome.storage.local</code>（本地裝置）</td>
+          </tr>
+          <tr>
+            <td>偏好設定（模型選擇、Obsidian Vault）</td>
+            <td>記住使用者設定</td>
+            <td>僅存於 <code>chrome.storage.sync</code>（本地裝置）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3. 第三方服務 -->
+    <div class="section">
+      <h2>第三方服務</h2>
+      <p>根據使用者選擇的模型，翻翻吧會將選取文字直接傳送至對應的 AI API：</p>
+      <ul>
+        <li><strong>Google Gemini API</strong>（<a href="https://policies.google.com/privacy" target="_blank">隱私權政策</a>）</li>
+        <li><strong>Groq API</strong>（<a href="https://groq.com/privacy-policy/" target="_blank">隱私權政策</a>）</li>
+        <li><strong>OpenRouter API</strong>（<a href="https://openrouter.ai/privacy" target="_blank">隱私權政策</a>）</li>
+        <li><strong>Google Cloud Text-to-Speech</strong>（<a href="https://policies.google.com/privacy" target="_blank">隱私權政策</a>）— 選填功能</li>
+      </ul>
+      <p style="margin-top:10px;">上述服務均由使用者自行申請 API Key 並直接使用，翻翻吧開發者不持有也無法存取任何通訊內容。</p>
+    </div>
+
+    <!-- 4. 資料安全 -->
+    <div class="section">
+      <h2>資料安全</h2>
+      <ul>
+        <li>API Key 僅儲存於瀏覽器本地端（<code>chrome.storage.sync</code>），不會傳送至任何翻翻吧伺服器（翻翻吧沒有伺服器）</li>
+        <li>所有 AI API 請求直接從您的瀏覽器發出，不經任何中間伺服器代理</li>
+        <li>擴充功能原始碼公開於 GitHub，可自行稽核</li>
+      </ul>
+    </div>
+
+    <!-- 5. 權限說明 -->
+    <div class="section">
+      <h2>權限說明</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>權限</th>
+            <th>用途</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>storage</code></td>
+            <td>儲存 API Key、模型設定、查詢歷史（本地端）</td>
+          </tr>
+          <tr>
+            <td><code>&lt;all_urls&gt;</code>（content script）</td>
+            <td>在任意網頁注入工具列，偵測文字選取事件</td>
+          </tr>
+          <tr>
+            <td>API host permissions</td>
+            <td>允許直接呼叫 Gemini / Groq / OpenRouter / TTS API</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 6. 聯絡方式 -->
+    <div class="section">
+      <h2>聯絡方式</h2>
+      <p>如有隱私相關疑問，請透過 <a href="https://github.com/unomae/fan-fan-ba/issues" target="_blank">GitHub Issues</a> 聯絡。</p>
+    </div>
+
+    <div class="footer">
+      翻翻吧 · <a href="https://github.com/unomae/fan-fan-ba" target="_blank">GitHub</a> · 本政策隨擴充功能版本更新而修訂
+    </div>
+
+  </div>
+</body>
+</html>

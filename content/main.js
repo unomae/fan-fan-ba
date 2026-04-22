@@ -186,17 +186,20 @@ function sendNonStreaming(action, selectedText, context, pageTitle, cacheKey) {
       response => {
         if (chrome.runtime.lastError) {
           const msg = chrome.runtime.lastError.message || '';
-          setError(msg.includes('context invalidated')
-            ? '擴充功能已更新，請重新整理頁面（F5）'
-            : '連線失敗，請重試');
+          // 擴充功能失效需重整頁面，不提供重試；其他連線錯誤可重試
+          if (msg.includes('context invalidated')) {
+            setError('擴充功能已更新，請重新整理頁面（F5）');
+          } else {
+            setError('連線失敗，請重試', () => triggerAction(activeAction));
+          }
           return;
         }
-        if (!response)        { setError('無回應，請重試'); return; }
+        if (!response)        { setError('無回應，請重試', () => triggerAction(activeAction)); return; }
         if (response.error) {
           if (response.code === 'RPD_LIMIT') {
             showRpdLimitWarning(response);
           } else {
-            setError(response.error);
+            setError(response.error, () => triggerAction(activeAction));
           }
           return;
         }
@@ -219,7 +222,7 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey) {
 
   port.onMessage.addListener(msg => {
     if (msg.error) {
-      setError(msg.error);
+      setError(msg.error, () => triggerAction(activeAction)); // streaming 錯誤可重試
       port.disconnect();
       return;
     }
@@ -247,7 +250,7 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey) {
   port.onDisconnect.addListener(() => {
     // port 意外斷線（擴充功能更新等）且串流尚未完成
     if (!portDone && chrome.runtime.lastError) {
-      setError('連線中斷，請重試');
+      setError('連線中斷，請重試', () => triggerAction(activeAction));
     }
   });
 
