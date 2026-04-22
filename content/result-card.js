@@ -422,6 +422,14 @@ function renderResult(action, rawResult, selectedText, { fromHistory = false } =
 
   if (action === 'optimize' && selectedText.length > 20) {
     body.innerHTML = buildOptimizeHTML(rawResult, selectedText);
+    // 綁定「優化後」區塊的複製按鈕
+    body.querySelector('.g-opt-copy-btn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      const text = e.currentTarget.dataset.text || '';
+      navigator.clipboard.writeText(text).catch(() => {});
+      e.currentTarget.classList.add('g-opt-copied');
+      setTimeout(() => e.currentTarget.classList.remove('g-opt-copied'), 1500);
+    });
     if (!fromHistory) saveToHistory(action, selectedText, rawResult, null);
     return;
   }
@@ -515,7 +523,14 @@ function buildOptimizeHTML(raw, original) {
       <div class="g-optimize-original">${escapeHtml(original)}</div>
     </div>
     <div class="g-optimize-block">
-      <div class="g-optimize-label">優化後</div>
+      <div class="g-optimize-label-row">
+        <span class="g-optimize-label">優化後</span>
+        <button class="g-opt-copy-btn" title="複製優化後文字" data-text="${escapeHtml(optimizedText)}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+          </svg>
+        </button>
+      </div>
       <div class="g-optimize-result">${escapeHtml(optimizedText)}</div>
     </div>
     ${reasonsText ? `<div class="g-optimize-reasons">

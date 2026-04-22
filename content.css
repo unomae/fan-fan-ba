@@ -999,6 +999,46 @@ del.g-diff-del {
   word-break:    break-word !important;
 }
 
+/* 優化後 label 列（label + 複製按鈕並排） */
+.g-optimize-label-row {
+  display:     flex !important;
+  align-items: center !important;
+  gap:         6px !important;
+  margin-bottom: 4px !important;
+}
+
+.g-optimize-label-row .g-optimize-label {
+  margin-bottom: 0 !important;
+}
+
+/* 優化後複製按鈕 */
+.g-opt-copy-btn {
+  display:       inline-flex !important;
+  align-items:   center !important;
+  justify-content: center !important;
+  padding:       2px 4px !important;
+  background:    none !important;
+  border:        1px solid rgba(0, 0, 0, 0.15) !important;
+  border-radius: 4px !important;
+  cursor:        pointer !important;
+  color:         #888 !important;
+  transition:    color 0.15s, background 0.15s, border-color 0.15s !important;
+  line-height:   1 !important;
+}
+
+.g-opt-copy-btn:hover {
+  background:   rgba(163, 209, 121, 0.15) !important;
+  border-color: #a3d179 !important;
+  color:        #3a7a1e !important;
+}
+
+/* 複製成功狀態：變綠打勾 */
+.g-opt-copy-btn.g-opt-copied {
+  background:   rgba(163, 209, 121, 0.25) !important;
+  border-color: #a3d179 !important;
+  color:        #2f7a1f !important;
+}
+
 .g-optimize-reasons {
   border-top:  1px solid rgba(0, 0, 0, 0.07) !important;
   padding-top: 8px !important;
