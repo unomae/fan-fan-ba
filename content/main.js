@@ -1,5 +1,13 @@
 'use strict';
 
+// ── 注入品牌字型（content script 無法用靜態 CSS @font-face，需動態取得 extension URL）
+(function injectBrandFont() {
+  const url = chrome.runtime.getURL('fonts/jf-openhuninn-2.1.ttf');
+  const style = document.createElement('style');
+  style.textContent = `@font-face{font-family:'jf-openhuninn';src:url('${url}')format('truetype');font-display:block;}`;
+  document.head.appendChild(style);
+})();
+
 // ── 事件監聽 ─────────────────────────────────────────
 document.addEventListener('mouseup',   (e) => { onDragEnd(e); onMouseUp(e); });
 document.addEventListener('keyup',     onKeyUp);

@@ -6,8 +6,15 @@
 #gemini-ai-toolbar *,
 #gemini-result-card * {
   box-sizing: border-box !important;
-  font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
   line-height: 1.5 !important;
+}
+
+#gemini-ai-toolbar * {
+  font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
+}
+
+#gemini-result-card * {
+  font-family: 'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
 }
 
 /* ── 品牌 CSS 變數（作用域限於本元件）──────────── */
@@ -202,6 +209,7 @@
   gap:            5px !important;
   font-size:      10.5px !important;
   font-weight:    700 !important;
+  font-family:    'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
   color:          #1a73e8 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.6px !important;
@@ -359,6 +367,7 @@
 .g-dict-examples-title {
   font-size:      11px !important;
   font-weight:    700 !important;
+  font-family:    'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
   color:          #999 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.5px !important;
@@ -486,6 +495,7 @@
 .g-rpd-title {
   font-size:   14px !important;
   font-weight: 600 !important;
+  font-family: 'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
   color:       #1a1a1a !important;
 }
 
@@ -568,6 +578,7 @@
   padding:        10px 12px 6px !important;
   font-size:      12px !important;
   font-weight:    700 !important;
+  font-family:    'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
   color:          #6b5daa !important;
   letter-spacing: 0.3px !important;
 }
