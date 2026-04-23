@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <title>翻翻吧</title>
   <style>
+    @font-face {
+      font-family: 'jf-openhuninn';
+      src: url('fonts/jf-openhuninn-2.1.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     html { overflow: hidden; } /* 封鎖 html 元素的預設捲動列 */
@@ -60,6 +68,7 @@
       font-size: 14px;
       font-weight: 700;
       color: #1a1a1a;
+      font-family: 'jf-openhuninn', 'Microsoft JhengHei', sans-serif;
     }
 
     .header p {
@@ -225,7 +234,6 @@
       overflow: hidden;
     }
 
-    /* 正常：品牌色漸層（綠 → 黃）*/
     .rpd-bar {
       height: 100%;
       border-radius: 99px;
@@ -233,10 +241,7 @@
       transition: width 0.4s ease;
     }
 
-    /* > 70%：橘黃 → 橘紅 */
     .rpd-bar.warn { background: linear-gradient(90deg, #f9ab00, #ef4444); }
-
-    /* > 90%：全紅 */
     .rpd-bar.full { background: linear-gradient(90deg, #ea4335, #c62828); }
 
     .rpd-text {

@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>翻翻吧 — 設定</title>
   <style>
+    @font-face {
+      font-family: 'jf-openhuninn';
+      src: url('fonts/jf-openhuninn-2.1.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
@@ -51,6 +59,7 @@
       font-weight: 700;
       color: #1a1a1a;
       letter-spacing: -0.3px;
+      font-family: 'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif;
     }
 
     h1 span {
@@ -60,6 +69,7 @@
       color: #888;
       margin-top: 3px;
       letter-spacing: 0;
+      font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
     }
 
     /* ── 欄位 ───────────────────────────── */
@@ -232,7 +242,6 @@
       display: none;
     }
 
-    /* 儲存成功 → 品牌黃色 */
     #status.ok   { display: block; background: #fffbdd; color: #7a5a00; border: 1px solid #F9D423; }
     #status.err  { display: block; background: #fce8e6; color: #c5221f; }
     #status.info { display: block; background: #f0f9e6; color: #3a7a1a; }

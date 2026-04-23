@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>歡迎使用翻翻吧</title>
   <style>
+    @font-face {
+      font-family: 'jf-openhuninn';
+      src: url('fonts/jf-openhuninn-2.1.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
@@ -37,7 +45,6 @@
       border-bottom: 1px solid #f0f0f0;
     }
 
-    /* 與 popup.html 一致的 icon 光暈動畫 */
     .logo-wrap {
       position: relative;
       display: inline-block;
@@ -64,6 +71,7 @@
       font-weight: 800;
       color: #1a1a1a;
       margin-bottom: 6px;
+      font-family: 'jf-openhuninn', 'Microsoft JhengHei', sans-serif;
     }
 
     .subtitle {
@@ -115,6 +123,7 @@
       font-weight: 700;
       color: #1a1a1a;
       margin-bottom: 5px;
+      font-family: 'jf-openhuninn', 'Microsoft JhengHei', sans-serif;
     }
 
     .step-content p {
@@ -125,7 +134,6 @@
 
     .step-content strong { color: #333; }
 
-    /* code tag — 與 popup 的 badge 風格一致 */
     .step-content code {
       background: #f0f9e6;
       color: #5a9a2e;
@@ -155,7 +163,6 @@
       transition: background 0.12s;
     }
 
-    /* Groq 推薦項目 highlight */
     .api-item.featured {
       background: #f0f9e6;
       border-color: #c8e6a0;
@@ -168,7 +175,6 @@
       flex-shrink: 0;
     }
 
-    /* badge pill — 與 popup.html 的 .model-badge 一致 */
     .api-badge {
       font-size: 10px;
       font-weight: 600;
@@ -266,7 +272,6 @@
           <h3>設定 API Key</h3>
           <p>點擊下方「前往設定」，至少設定一個 API Key 即可開始使用。</p>
           <div class="api-list">
-            <!-- Groq 優先推薦 -->
             <div class="api-item featured">
               <div class="api-dot" style="background:#A3D179;"></div>
               <span class="api-badge badge-free">推薦・免費</span>

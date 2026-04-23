@@ -1,7 +1,7 @@
 # 翻翻吧 — Design Language
 
 > 本文件記錄翻翻吧的設計語言，所有新頁面與 UI 元件均應遵循此規範。
-> 最後更新：2026-04-22
+> 最後更新：2026-04-24
 
 ---
 
@@ -71,9 +71,58 @@
 
 ## 3. 字型
 
+### 字型堆疊
+
 ```css
+/* 標題（H1–H3、品牌文字）— 使用品牌字型 */
+font-family: 'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+
+/* Body / Label / Input / Caption — 使用系統字型 */
 font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif;
 ```
+
+### 品牌字型：jf-openhuninn
+
+| 屬性 | 值 |
+|------|----|
+| 字型檔 | `fonts/jf-openhuninn-2.1.ttf` |
+| 用途 | H1 / H2 / H3、icon 旁品牌名稱、步驟標題 |
+| 不使用的地方 | Body copy、label、input、caption、content script（浮層） |
+| 授權 | SIL Open Font License 1.1，可商用 |
+
+```css
+/* 在 popup.html / options.html / welcome.html 的 <style> 頂端加入 */
+@font-face {
+  font-family: 'jf-openhuninn';
+  src: url('fonts/jf-openhuninn-2.1.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+```
+
+### 各頁面套用位置
+
+| 檔案 | 選擇器 | 動作 |
+|------|--------|------|
+| `popup.html` | `.header h1` | 加 `font-family: 'jf-openhuninn', ...` |
+| `options.html` | `h1` | 加 `font-family: 'jf-openhuninn', ...` |
+| `welcome.html` | `h1` | 加 `font-family: 'jf-openhuninn', ...` |
+| `welcome.html` | `.step-content h3` | 加 `font-family: 'jf-openhuninn', ...` |
+| `content.css` | — | **不套用**，浮層維持 system stack |
+
+### manifest.json 新增（必要）
+
+```json
+"web_accessible_resources": [
+  {
+    "resources": ["fonts/jf-openhuninn-2.1.ttf"],
+    "matches": ["<all_urls>"]
+  }
+]
+```
+
+### 字體大小
 
 - 預設字體大小：`13px`（popup）/ `14px`（options）
 - 標題字重：`700` / `800`
@@ -362,3 +411,4 @@ body（#fff，width: 260px）
 - 工具列不設 `overflow: hidden`，否則 tooltip `::after` 會被截斷
 - HTTP header 只允許 ASCII，中文字串改用英文替代（如 `X-Title: 'Fan Fan Ba'`）
 - 顏色使用 Hex 而非 HSL，保持與現有程式碼一致
+- **jf-openhuninn 只用於全頁面 HTML**（popup / options / welcome），content script 不套用
