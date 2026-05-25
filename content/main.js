@@ -91,6 +91,7 @@ function onKeyUp(e) {
 
 function onMouseDown(e) {
   if (isInOurUI(e.target)) return;
+  hideFloatingBallMenu?.();
   if (fanFanBaPaused) return;
   if (isPinned) {
     // 釘住時只收起工具列，結果卡保留
@@ -125,6 +126,7 @@ function checkSelection() {
 function hideAll() {
   hideToolbar();
   hideResultCard();
+  hideFloatingBallMenu?.();
 }
 
 // ── 觸發 AI 功能 ─────────────────────────────────────

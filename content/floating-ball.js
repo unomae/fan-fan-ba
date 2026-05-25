@@ -212,6 +212,10 @@ function updateFloatingBallPausedState() {
   if (label) label.textContent = fanFanBaPaused ? '恢復此網站' : '暫停此網站';
 }
 
+function hideFloatingBallMenu() {
+  floatingBall?.classList.remove('ffb-menu-open');
+}
+
 function updateFloatingBallPageTranslationState({ running = false, activated = false, canContinue = false } = {}) {
   if (!floatingBall) return;
   const label = floatingBall.querySelector('.ffb-page-translate-label');

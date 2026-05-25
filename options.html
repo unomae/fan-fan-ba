@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>翻翻吧 — 設定</title>
+  <title>翻翻吧 - 設定</title>
   <style>
     @font-face {
       font-family: 'jf-openhuninn';
@@ -15,78 +15,238 @@
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      --ink: #172033;
+      --muted: #697586;
+      --soft: #f7faf2;
+      --surface: #ffffff;
+      --line: #dfe6dc;
+      --green: #A3D179;
+      --green-deep: #5a9a2e;
+      --yellow: #F9D423;
+      --blue-soft: #eef4ff;
+      --violet-soft: #f3efff;
+      --shadow: 0 18px 44px rgba(24, 32, 51, 0.12);
+    }
+
     body {
+      min-height: 100vh;
+      padding: 36px 18px;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 0%, rgba(249, 212, 35, 0.12), transparent 28%),
+        radial-gradient(circle at 90% 14%, rgba(163, 209, 121, 0.18), transparent 30%),
+        linear-gradient(180deg, #f7f8f1 0%, #eef4f7 100%);
       font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif;
       font-size: 14px;
-      background: #f5f7f2;
-      color: #1a1a1a;
-      min-height: 100vh;
+    }
+
+    button, input, select { font: inherit; }
+
+    .settings-page {
+      width: min(1040px, 100%);
+      margin: 0 auto;
+    }
+
+    .app-header {
       display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      padding: 40px 16px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
     }
 
-    .card {
-      background: #fff;
-      border: 1px solid rgba(0, 0, 0, 0.07);
-      border-radius: 16px;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-      width: 100%;
-      max-width: 480px;
-      padding: 32px 28px;
-    }
-
-    /* ── 標題 ───────────────────────────── */
-    .header {
+    .brand {
       display: flex;
       align-items: center;
       gap: 14px;
-      margin-bottom: 28px;
+      min-width: 0;
     }
 
     .header-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
       object-fit: contain;
       flex-shrink: 0;
-      box-shadow: 0 2px 8px rgba(163, 209, 121, 0.4);
+      box-shadow: 0 8px 22px rgba(163, 209, 121, 0.34);
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      font-family: 'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+      letter-spacing: 0;
     }
 
     h1 {
-      font-size: 20px;
-      font-weight: 700;
-      color: #1a1a1a;
-      letter-spacing: -0.3px;
-      font-family: 'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+      font-size: 24px;
+      line-height: 1.2;
     }
 
-    h1 span {
-      display: block;
-      font-size: 12px;
-      font-weight: 400;
-      color: #888;
+    .header-subtitle {
       margin-top: 3px;
-      letter-spacing: 0;
-      font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+      color: var(--muted);
+      font-size: 13px;
     }
 
-    /* ── 欄位 ───────────────────────────── */
-    .field { margin-bottom: 20px; }
+    .top-status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid rgba(90, 154, 46, 0.18);
+      color: var(--green-deep);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .settings-shell {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      min-height: 610px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(24, 32, 51, 0.1);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .settings-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 18px;
+      background: rgba(250, 253, 247, 0.86);
+      border-right: 1px solid rgba(24, 32, 51, 0.08);
+    }
+
+    .settings-tab {
+      width: 100%;
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 11px;
+      color: #425064;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(24, 32, 51, 0.09);
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: left;
+      font-weight: 800;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .settings-tab:hover {
+      border-color: rgba(90, 154, 46, 0.28);
+      color: var(--green-deep);
+    }
+
+    .settings-tab.is-active {
+      color: #243716;
+      background: #f2f9e8;
+      border-color: rgba(90, 154, 46, 0.38);
+      box-shadow: inset 0 0 0 1px rgba(163, 209, 121, 0.18);
+    }
+
+    .settings-tab small {
+      color: #7b8794;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .nav-footer {
+      margin-top: auto;
+      padding-top: 14px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .nav-footer a {
+      color: var(--green-deep);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .settings-main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: rgba(255, 255, 255, 0.82);
+    }
+
+    .settings-panel {
+      display: grid;
+      gap: 18px;
+      padding: 24px;
+    }
+
+    .settings-panel[hidden] { display: none; }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(24, 32, 51, 0.08);
+    }
+
+    .panel-head h2 {
+      font-size: 22px;
+      line-height: 1.25;
+      margin-bottom: 5px;
+    }
+
+    .panel-head p {
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 13px;
+      max-width: 620px;
+    }
+
+    .panel-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      color: var(--green-deep);
+      background: #f1f8eb;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field.full { grid-column: 1 / -1; }
 
     label {
       display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: #444;
-      margin-bottom: 6px;
+      color: #3f4b5f;
+      font-size: 12px;
+      font-weight: 800;
     }
 
     label .hint {
-      font-weight: 400;
-      color: #aaa;
-      font-size: 12px;
+      color: #98a2b3;
+      font-weight: 600;
       margin-left: 4px;
     }
 
@@ -94,27 +254,24 @@
     input[type="text"],
     select {
       width: 100%;
+      min-height: 42px;
       padding: 10px 12px;
-      border: 1px solid #dde1e8;
+      color: var(--ink);
+      background: #fff;
+      border: 1px solid #dce3db;
       border-radius: 8px;
       font-size: 13.5px;
-      font-family: inherit;
-      color: #1a1a1a;
-      background: #fafafa;
       outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
     }
 
     input:focus, select:focus {
-      border-color: #A3D179;
+      border-color: var(--green);
       box-shadow: 0 0 0 3px rgba(163, 209, 121, 0.2);
       background: #fff;
     }
 
-    /* ── API Key 包裝（含顯示/隱藏）──────── */
-    .input-wrap {
-      position: relative;
-    }
+    .input-wrap { position: relative; }
 
     .input-wrap input { padding-right: 40px; }
 
@@ -123,378 +280,551 @@
       right: 10px;
       top: 50%;
       transform: translateY(-50%);
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: #aaa;
-      padding: 4px;
       display: flex;
       align-items: center;
-      transition: color 0.12s;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      color: #98a2b3;
+      background: transparent;
+      border: 0;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
     }
 
-    .toggle-vis:hover { color: #555; }
+    .toggle-vis:hover {
+      color: #526071;
+      background: #f2f4f0;
+    }
 
-    /* ── 說明文字 ────────────────────────── */
     .field-note {
-      margin-top: 6px;
+      color: var(--muted);
       font-size: 12px;
-      color: #999;
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
     .field-note a {
-      color: #5a9a2e;
+      color: var(--green-deep);
       text-decoration: none;
+      font-weight: 700;
     }
 
     .field-note a:hover { text-decoration: underline; }
 
-    /* ── API Key 安全說明區塊 ────────────── */
-    .security-note {
+    code {
+      padding: 1px 5px;
+      color: #43506a;
+      background: #f0f4ff;
+      border-radius: 4px;
+      font-size: 11.5px;
+    }
+
+    .provider-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .provider-card {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      background: #fff;
+      border: 1px solid rgba(24, 32, 51, 0.1);
+      border-radius: 8px;
+      min-width: 0;
+    }
+
+    .provider-card.is-primary {
+      background: #fbfff6;
+      border-color: rgba(90, 154, 46, 0.36);
+      box-shadow: inset 0 0 0 1px rgba(163, 209, 121, 0.12);
+    }
+
+    .provider-head {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
+      justify-content: space-between;
       gap: 8px;
-      margin-top: 10px;
-      padding: 10px 12px;
+    }
+
+    .provider-head h3 {
+      font-size: 15px;
+    }
+
+    .mini-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 23px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .mini-badge.green { color: var(--green-deep); background: #eff8e8; }
+    .mini-badge.blue { color: #3154ad; background: var(--blue-soft); }
+    .mini-badge.violet { color: #5c4598; background: var(--violet-soft); }
+
+    .security-note {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      padding: 12px 14px;
       background: #f9fdf5;
       border: 1px solid #d4edbc;
       border-radius: 8px;
     }
 
     .security-note svg {
+      color: var(--green-deep);
+      margin-top: 2px;
       flex-shrink: 0;
-      color: #5a9a2e;
-      margin-top: 1px;
     }
 
-    .security-note-body {
-      font-size: 12px;
-      color: #555;
-      line-height: 1.6;
-    }
-
-    .security-note-body strong {
+    .security-note strong {
+      display: block;
       color: #3a7a1a;
-      font-weight: 600;
-    }
-
-    .security-note-body ul {
-      margin-top: 4px;
-      padding-left: 14px;
-      list-style: disc;
-      color: #777;
-    }
-
-    /* ── 分隔線 ──────────────────────────── */
-    .divider {
-      height: 1px;
-      background: #f0f0f0;
-      margin: 24px 0;
-    }
-
-    /* ── 按鈕 ───────────────────────────── */
-    .btn-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .btn-save {
-      padding: 10px 24px;
-      background: #A3D179;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 13.5px;
-      font-weight: 700;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background 0.15s, transform 0.12s;
-      letter-spacing: 0.2px;
-    }
-
-    .btn-save:hover  { background: #8abe5e; }
-    .btn-save:active { background: #72a348; transform: scale(0.98); }
-
-    .btn-test {
-      padding: 10px 18px;
-      background: transparent;
-      color: #5a9a2e;
-      border: 1px solid #c5e4a3;
-      border-radius: 8px;
-      font-size: 13.5px;
-      font-weight: 500;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s;
-    }
-
-    .btn-test:hover { background: #f5fbee; border-color: #A3D179; }
-
-    /* ── 狀態訊息 ────────────────────────── */
-    #status {
-      margin-top: 14px;
+      margin-bottom: 3px;
       font-size: 13px;
-      min-height: 20px;
-      padding: 8px 12px;
-      border-radius: 7px;
-      display: none;
     }
 
-    #status.ok   { display: block; background: #fffbdd; color: #7a5a00; border: 1px solid #F9D423; }
-    #status.err  { display: block; background: #fce8e6; color: #c5221f; }
-    #status.info { display: block; background: #f0f9e6; color: #3a7a1a; }
+    .security-note ul {
+      margin-left: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
+    }
 
-    /* ── 功能說明卡片 ──────────────────── */
     .feature-list {
       list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      display: grid;
+      gap: 9px;
     }
 
     .feature-list li {
       display: flex;
       align-items: flex-start;
       gap: 8px;
+      color: #4b586a;
       font-size: 13px;
-      color: #555;
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
     .feature-list .badge {
       display: inline-flex;
       align-items: center;
-      padding: 2px 9px;
-      border-radius: 99px;
+      min-height: 24px;
+      padding: 3px 9px;
+      border-radius: 999px;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 800;
       white-space: nowrap;
       flex-shrink: 0;
     }
 
     .badge-translate { background: #eaf4de; color: #4a8a1e; }
-    .badge-explain   { background: #fffbdd; color: #9a6e00; }
-    .badge-optimize  { background: #ede9fe; color: #6d28d9; }
+    .badge-explain { background: #fffbdd; color: #9a6e00; }
+    .badge-optimize { background: #ede9fe; color: #6d28d9; }
+
+    .settings-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: auto;
+      padding: 16px 24px;
+      border-top: 1px solid rgba(24, 32, 51, 0.08);
+      background: rgba(250, 253, 247, 0.72);
+    }
+
+    .btn-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn-save,
+    .btn-test {
+      min-height: 40px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, transform 0.12s;
+    }
+
+    .btn-save {
+      color: #fff;
+      background: var(--green);
+      border: 0;
+    }
+
+    .btn-save:hover { background: #8abe5e; }
+    .btn-save:active { background: #72a348; transform: scale(0.98); }
+
+    .btn-test {
+      color: var(--green-deep);
+      background: #f5fbee;
+      border: 1px solid #c5e4a3;
+    }
+
+    .btn-test:hover {
+      background: #eef8e4;
+      border-color: var(--green);
+    }
+
+    #status {
+      min-height: 34px;
+      display: none;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    #status.ok { display: flex; color: #7a5a00; background: #fffbdd; border: 1px solid var(--yellow); }
+    #status.err { display: flex; color: #c5221f; background: #fce8e6; }
+    #status.info { display: flex; color: #3a7a1a; background: #f0f9e6; }
+
+    .action-note {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 860px) {
+      body { padding: 18px 12px; }
+
+      .app-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .settings-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .settings-nav {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        overflow: visible;
+        border-right: 0;
+        border-bottom: 1px solid rgba(24, 32, 51, 0.08);
+      }
+
+      .settings-tab {
+        min-width: 0;
+      }
+
+      .nav-footer {
+        display: none;
+      }
+
+      .provider-grid,
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .settings-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      #status {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 520px) {
+      h1 { font-size: 21px; }
+
+      .settings-panel {
+        padding: 18px;
+      }
+
+      .panel-head {
+        flex-direction: column;
+      }
+
+      .btn-row {
+        width: 100%;
+      }
+
+      .btn-save,
+      .btn-test {
+        flex: 1;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-
-    <!-- 標題 -->
-    <div class="header">
-      <img class="header-icon" src="icons/icon128.png" alt="翻翻吧 Logo">
-      <h1>
-        翻翻吧
-        <span>Extension Settings</span>
-      </h1>
-    </div>
-
-    <!-- 預設模型（最上方）-->
-    <div class="field">
-      <label>預設模型</label>
-      <select id="model">
-      </select>
-    </div>
-
-    <div class="field">
-      <label>翻譯目標語言</label>
-      <select id="targetLanguage"></select>
-      <p class="field-note">
-        影響翻譯、單字卡釋義與例句翻譯；預設為繁體中文。
-      </p>
-    </div>
-
-    <div class="field">
-      <label>解釋語言</label>
-      <select id="explanationLanguage"></select>
-      <p class="field-note">
-        解釋模式與優化改動說明使用此語言；建議跟隨翻譯語言。
-      </p>
-    </div>
-
-    <div class="field">
-      <label>朗讀語音</label>
-      <select id="ttsLanguageMode"></select>
-      <p class="field-note">
-        單字卡預設依 AI 偵測的原文語言朗讀，也可改為跟隨翻譯語言。
-      </p>
-    </div>
-
-    <div class="divider"></div>
-
-    <!-- Groq API Key（必填）-->
-    <div class="field">
-      <label>
-        Groq API Key
-        <span class="hint">必填</span>
-      </label>
-      <div class="input-wrap">
-        <input type="password" id="groqApiKey" placeholder="gsk_..." autocomplete="off" spellcheck="false">
-        <button class="toggle-vis" id="toggleGroqVis" title="顯示 / 隱藏">
-          <svg id="groq-eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
-          </svg>
-          <svg id="groq-eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-            <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>
-          </svg>
-        </button>
-      </div>
-      <p class="field-note">
-        至 <a href="https://console.groq.com/keys" target="_blank">Groq Console</a> 免費取得（格式：gsk_ 開頭）。免費額度最大方，推薦優先申請。
-      </p>
-
-      <!-- 安全說明區塊 -->
-      <div class="security-note">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        </svg>
-        <div class="security-note-body">
-          <strong>API Key 安全儲存</strong>
-          <ul>
-            <li>僅儲存於本機 Chrome Storage，不會上傳至任何伺服器</li>
-            <li>只有本擴充功能可讀取，不對外暴露</li>
-            <li>可隨時在此頁修改或清空刪除</li>
-          </ul>
+  <main class="settings-page">
+    <header class="app-header">
+      <div class="brand">
+        <img class="header-icon" src="icons/icon128.png" alt="翻翻吧 Logo">
+        <div>
+          <h1>翻翻吧設定</h1>
+          <p class="header-subtitle">把常用設定分組管理，需要調整時切換左側分類即可。</p>
         </div>
       </div>
-    </div>
+      <span class="top-status">Extension Settings</span>
+    </header>
 
-    <!-- Gemini API Key（選填）-->
-    <div class="divider"></div>
-    <div class="field">
-      <label>
-        Gemini API Key
-        <span class="hint">選填</span>
-      </label>
-      <div class="input-wrap">
-        <input type="password" id="apiKey" placeholder="AIza..." autocomplete="off" spellcheck="false">
-        <button class="toggle-vis" id="toggleVis" title="顯示 / 隱藏">
-          <svg id="eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
-          </svg>
-          <svg id="eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-            <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>
-          </svg>
+    <section class="settings-shell" aria-label="翻翻吧設定">
+      <nav class="settings-nav" aria-label="設定分類">
+        <button class="settings-tab is-active" type="button" data-panel="model" aria-selected="true">
+          模型與金鑰
+          <small>3</small>
         </button>
-      </div>
-      <p class="field-note">
-        至 <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> 免費取得（格式：AIza 開頭）。只有基本免費額度。
-      </p>
-    </div>
-
-    <!-- OpenRouter API Key（選填）-->
-    <div class="divider"></div>
-    <div class="field">
-      <label>
-        OpenRouter API Key
-        <span class="hint">選填</span>
-      </label>
-      <div class="input-wrap">
-        <input type="password" id="openrouterApiKey" placeholder="sk-or-..." autocomplete="off" spellcheck="false">
-        <button class="toggle-vis" id="toggleOrVis" title="顯示 / 隱藏">
-          <svg id="or-eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
-          </svg>
-          <svg id="or-eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-            <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>
-          </svg>
+        <button class="settings-tab" type="button" data-panel="language" aria-selected="false">
+          語言與朗讀
+          <small>4</small>
         </button>
-      </div>
-      <p class="field-note">
-        至 <a href="https://openrouter.ai/keys" target="_blank">OpenRouter</a> 免費取得（格式：sk-or- 開頭）。只有基本免費額度。
-      </p>
-    </div>
-
-    <!-- Google Cloud TTS -->
-    <div class="divider"></div>
-    <div class="field">
-      <label>
-        Google Cloud TTS API Key
-        <span class="hint">選填，用於高品質 Chirp HD 發音</span>
-      </label>
-      <div class="input-wrap">
-        <input type="password" id="ttsApiKey" placeholder="AIza..." autocomplete="off" spellcheck="false">
-        <button class="toggle-vis" id="toggleTtsVis" title="顯示 / 隱藏">
-          <svg id="tts-eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
-          </svg>
-          <svg id="tts-eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-            <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>
-          </svg>
+        <button class="settings-tab" type="button" data-panel="obsidian" aria-selected="false">
+          Obsidian
+          <small>2</small>
         </button>
+        <button class="settings-tab" type="button" data-panel="privacy" aria-selected="false">
+          隱私與說明
+          <small>3</small>
+        </button>
+        <div class="nav-footer">
+          <a href="privacy-policy.html" target="_blank">隱私權政策</a><br>
+          API Key 僅儲存在本機 Chrome Storage。
+        </div>
+      </nav>
+
+      <div class="settings-main">
+        <section class="settings-panel" data-panel-content="model">
+          <div class="panel-head">
+            <div>
+              <h2>模型與 API Key</h2>
+              <p>選擇預設模型後，只需要確認對應供應商的 API Key 已設定；其他 Key 可保留作為備援。</p>
+            </div>
+            <span class="panel-badge">建議優先設定 Groq</span>
+          </div>
+
+          <div class="field full">
+            <label for="model">預設模型</label>
+            <select id="model"></select>
+          </div>
+
+          <div class="provider-grid">
+            <div class="provider-card is-primary">
+              <div class="provider-head">
+                <h3>Groq</h3>
+                <span class="mini-badge green">推薦</span>
+              </div>
+              <div class="field">
+                <label for="groqApiKey">Groq API Key <span class="hint">必填</span></label>
+                <div class="input-wrap">
+                  <input type="password" id="groqApiKey" placeholder="gsk_..." autocomplete="off" spellcheck="false">
+                  <button class="toggle-vis" id="toggleGroqVis" type="button" title="顯示 / 隱藏">
+                    <svg id="groq-eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <svg id="groq-eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>
+                    </svg>
+                  </button>
+                </div>
+                <p class="field-note">
+                  至 <a href="https://console.groq.com/keys" target="_blank">Groq Console</a> 免費取得，格式為 <code>gsk_</code> 開頭。
+                </p>
+              </div>
+            </div>
+
+            <div class="provider-card">
+              <div class="provider-head">
+                <h3>Gemini</h3>
+                <span class="mini-badge blue">備用</span>
+              </div>
+              <div class="field">
+                <label for="apiKey">Gemini API Key <span class="hint">選填</span></label>
+                <div class="input-wrap">
+                  <input type="password" id="apiKey" placeholder="AIza..." autocomplete="off" spellcheck="false">
+                  <button class="toggle-vis" id="toggleVis" type="button" title="顯示 / 隱藏">
+                    <svg id="eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <svg id="eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>
+                    </svg>
+                  </button>
+                </div>
+                <p class="field-note">
+                  至 <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> 取得，格式為 <code>AIza</code> 開頭。
+                </p>
+              </div>
+            </div>
+
+            <div class="provider-card">
+              <div class="provider-head">
+                <h3>OpenRouter</h3>
+                <span class="mini-badge violet">進階</span>
+              </div>
+              <div class="field">
+                <label for="openrouterApiKey">OpenRouter API Key <span class="hint">選填</span></label>
+                <div class="input-wrap">
+                  <input type="password" id="openrouterApiKey" placeholder="sk-or-..." autocomplete="off" spellcheck="false">
+                  <button class="toggle-vis" id="toggleOrVis" type="button" title="顯示 / 隱藏">
+                    <svg id="or-eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <svg id="or-eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>
+                    </svg>
+                  </button>
+                </div>
+                <p class="field-note">
+                  至 <a href="https://openrouter.ai/keys" target="_blank">OpenRouter</a> 取得，格式為 <code>sk-or-</code> 開頭。
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-panel" data-panel-content="language" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>語言與朗讀</h2>
+              <p>集中管理翻譯輸出、解釋文字與單字卡朗讀偏好。</p>
+            </div>
+            <span class="panel-badge">影響翻譯與單字卡</span>
+          </div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="targetLanguage">翻譯目標語言</label>
+              <select id="targetLanguage"></select>
+              <p class="field-note">影響翻譯、單字卡釋義與例句翻譯；預設為繁體中文。</p>
+            </div>
+
+            <div class="field">
+              <label for="explanationLanguage">解釋語言</label>
+              <select id="explanationLanguage"></select>
+              <p class="field-note">解釋模式與優化改動說明使用此語言；建議跟隨翻譯語言。</p>
+            </div>
+
+            <div class="field">
+              <label for="ttsLanguageMode">朗讀語音</label>
+              <select id="ttsLanguageMode"></select>
+              <p class="field-note">單字卡預設依 AI 偵測的原文語言朗讀，也可改為跟隨翻譯語言。</p>
+            </div>
+
+            <div class="field">
+              <label for="ttsApiKey">Google Cloud TTS API Key <span class="hint">選填</span></label>
+              <div class="input-wrap">
+                <input type="password" id="ttsApiKey" placeholder="AIza..." autocomplete="off" spellcheck="false">
+                <button class="toggle-vis" id="toggleTtsVis" type="button" title="顯示 / 隱藏">
+                  <svg id="tts-eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  <svg id="tts-eye-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>
+                  </svg>
+                </button>
+              </div>
+              <p class="field-note">
+                至 <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a> 建立並啟用 Cloud Text-to-Speech API。留空則使用瀏覽器內建語音。
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-panel" data-panel-content="obsidian" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>Obsidian 存入</h2>
+              <p>設定 Vault 與預設資料夾後，結果卡可直接把查詢結果整理進筆記。</p>
+            </div>
+            <span class="panel-badge">Advanced URI</span>
+          </div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="obsidianVault">Obsidian Vault 名稱 <span class="hint">選填</span></label>
+              <input type="text" id="obsidianVault" placeholder="例如：My Notes" autocomplete="off" spellcheck="false">
+              <p class="field-note">留空則使用目前開啟的 Vault。</p>
+            </div>
+
+            <div class="field">
+              <label for="obsidianDefaultFolder">Obsidian 預設存入資料夾 <span class="hint">選填</span></label>
+              <input type="text" id="obsidianDefaultFolder" placeholder="例如：翻翻吧  或  Reading/單字本" autocomplete="off" spellcheck="false">
+              <p class="field-note">設定後，點擊結果卡的寶石圖示會直接存入此資料夾。</p>
+            </div>
+
+            <div class="security-note field full">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              <div>
+                <strong>Obsidian 寫入方式</strong>
+                <ul>
+                  <li>存入功能使用 <a href="https://github.com/Vinzent03/obsidian-advanced-uri" target="_blank">Advanced URI 插件</a>。</li>
+                  <li>每週結果存入 <code>資料夾/YYYY-W##.md</code>，按週自動建檔。</li>
+                  <li>若資料夾留空，第一次手動存入後會自動記住。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-panel" data-panel-content="privacy" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>隱私與功能說明</h2>
+              <p>API Key 與設定保存在本機；這裡保留安全說明與主要使用情境。</p>
+            </div>
+            <span class="panel-badge">本機儲存</span>
+          </div>
+
+          <div class="security-note">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <div>
+              <strong>API Key 安全儲存</strong>
+              <ul>
+                <li>僅儲存於本機 Chrome Storage，不會上傳至任何伺服器。</li>
+                <li>只有本擴充功能可讀取，不對外暴露。</li>
+                <li>可隨時在此頁修改或清空刪除。</li>
+              </ul>
+            </div>
+          </div>
+
+          <ul class="feature-list">
+            <li>
+              <span class="badge badge-translate">翻譯</span>
+              選取單字時顯示詞性、釋義與例句；選取段落時直接翻成目標語言。
+            </li>
+            <li>
+              <span class="badge badge-explain">解釋</span>
+              根據網頁上下文解釋選取的詞彙或段落含義。
+            </li>
+            <li>
+              <span class="badge badge-optimize">優化</span>
+              重寫選取內容，使表達更清晰流暢。
+            </li>
+          </ul>
+        </section>
+
+        <div class="settings-actions">
+          <div class="btn-row">
+            <button class="btn-save" id="btnSave" type="button">儲存設定</button>
+            <button class="btn-test" id="btnTest" type="button">測試連線</button>
+          </div>
+          <div id="status" role="status" aria-live="polite"></div>
+          <span class="action-note">修改任一分頁後，請按儲存設定。</span>
+        </div>
       </div>
-      <p class="field-note">
-        至 <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a> 建立並啟用 Cloud Text-to-Speech API。
-        語音：<code style="background:#f0f4ff;padding:1px 5px;border-radius:4px;font-size:11.5px;">en-US-Chirp-HD-D</code>，留空則使用瀏覽器內建語音。
-      </p>
-    </div>
-
-    <!-- Obsidian 整合 -->
-    <div class="divider"></div>
-    <div class="field">
-      <label>
-        Obsidian Vault 名稱
-        <span class="hint">選填，留空則使用目前開啟的 Vault</span>
-      </label>
-      <input type="text" id="obsidianVault" placeholder="例如：My Notes" autocomplete="off" spellcheck="false">
-      <p class="field-note">
-        存入功能使用
-        <a href="https://github.com/Vinzent03/obsidian-advanced-uri" target="_blank">Advanced URI 插件</a>，
-        請先在 Obsidian → 設定 → 社群插件 搜尋安裝。
-        每週結果存入 <code style="background:#f0f4ff;padding:1px 5px;border-radius:4px;font-size:11.5px;">資料夾/YYYY-W##.md</code>（按週自動建檔）。
-      </p>
-    </div>
-
-    <div class="field">
-      <label>
-        Obsidian 預設存入資料夾
-        <span class="hint">選填，設定後點寶石圖示即一鍵存入</span>
-      </label>
-      <input type="text" id="obsidianDefaultFolder" placeholder="例如：翻翻吧  或  Reading/單字本" autocomplete="off" spellcheck="false">
-      <p class="field-note">
-        設定後，點擊結果卡的寶石圖示會直接存入此資料夾，不需每次手動輸入。<br>
-        若留空，第一次手動存入後會自動記住，下次同樣一鍵存入。
-      </p>
-    </div>
-
-    <!-- 儲存 + 測試 -->
-    <div class="btn-row">
-      <button class="btn-save" id="btnSave">儲存設定</button>
-      <button class="btn-test" id="btnTest">測試連線</button>
-    </div>
-
-    <div id="status"></div>
-
-    <div class="divider"></div>
-
-    <!-- 功能說明 -->
-    <ul class="feature-list">
-      <li>
-        <span class="badge badge-translate">翻譯</span>
-        選取單字 → 詞性 + 釋義 + 例句；選取段落 → 直接翻成繁體中文
-      </li>
-      <li>
-        <span class="badge badge-explain">解釋</span>
-        根據網頁上下文解釋選取的詞彙或段落含義
-      </li>
-      <li>
-        <span class="badge badge-optimize">優化</span>
-        重寫選取內容，使表達更清晰流暢
-      </li>
-    </ul>
-
-    <!-- 隱私權政策（最底部）-->
-    <div class="divider"></div>
-    <div style="text-align:center;padding-bottom:4px;">
-      <a href="privacy-policy.html" target="_blank"
-         style="font-size:12px;color:#bbb;text-decoration:none;">
-        隱私權政策
-      </a>
-    </div>
-
-  </div>
+    </section>
+  </main>
 
   <script src="models.js"></script>
   <script src="options.js"></script>

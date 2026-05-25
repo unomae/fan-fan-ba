@@ -18,8 +18,8 @@
 
     body {
       font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-      width: 260px;
-      background: #fff;
+      width: 304px;
+      background: #fbfcf8;
       color: #1a1a1a;
       font-size: 13px;
       overflow: hidden;
@@ -31,7 +31,8 @@
       align-items: center;
       gap: 10px;
       padding: 14px 14px 10px;
-      border-bottom: 1px solid #f0f0f0;
+      background: #fff;
+      border-bottom: 1px solid #eef1ec;
     }
 
     /* Logo 容器（光暈動畫在此）*/
@@ -77,9 +78,97 @@
       margin-top: 1px;
     }
 
+    /* ── 迷你總覽 ───────────────────────── */
+    .overview {
+      margin: 10px 12px 0;
+      padding: 10px;
+      background: #fff;
+      border: 1px solid #e7eddf;
+      border-radius: 10px;
+      box-shadow: 0 6px 18px rgba(36, 55, 22, 0.06);
+    }
+
+    .overview-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .state-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 24px;
+      padding: 3px 8px;
+      border-radius: 99px;
+      background: #f0f9e6;
+      color: #4a8a1e;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .state-pill.err {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+
+    .state-pill.warn {
+      background: #fffbdd;
+      color: #8a6500;
+    }
+
+    .state-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .overview-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #89919c;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .current-model {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .current-model strong {
+      display: block;
+      color: #1f2937;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .current-model span {
+      display: block;
+      color: #808a96;
+      font-size: 11px;
+      margin-top: 1px;
+    }
+
+    .provider-chip {
+      flex-shrink: 0;
+      padding: 2px 7px;
+      border-radius: 99px;
+      background: #f5fbee;
+      color: #5a9a2e;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
     /* ── 模型選擇區 ──────────────────────── */
     .section {
-      padding: 12px 14px;
+      padding: 11px 12px 8px;
     }
 
     .section-label {
@@ -94,14 +183,14 @@
     .model-list {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 3px;
     }
 
     .model-item {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 6px 10px;
+      padding: 7px 10px;
       border-radius: 8px;
       cursor: pointer;
       border: 1.5px solid transparent;
@@ -159,18 +248,69 @@
       font-size: 11.5px;
       color: #5a9a2e;
       text-align: center;
-      padding: 0 14px 6px;
+      padding: 0 14px 5px;
       min-height: 20px;
       opacity: 0;
       transition: opacity 0.2s;
     }
+
+    .health {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding: 0 12px 10px;
+    }
+
+    .health-item {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+      padding: 8px 7px;
+      border: 1px solid #edf1e8;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .health-head {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: #596575;
+      font-size: 10.5px;
+      font-weight: 700;
+    }
+
+    .health-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #cbd5e1;
+      flex-shrink: 0;
+    }
+
+    .health-dot.ok { background: #A3D179; }
+    .health-dot.warn { background: #F9D423; }
+    .health-dot.err { background: #ea4335; }
+
+    .health-value {
+      color: #88919e;
+      font-size: 10.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .health-value.ok { color: #5a9a2e; }
+    .health-value.warn { color: #8a6500; }
+    .health-value.err { color: #c5221f; }
 
     #save-msg.show { opacity: 1; }
 
     /* ── 底部 ────────────────────────────── */
     .footer {
       border-top: 1px solid #f0f0f0;
-      padding: 8px 14px;
+      padding: 8px 12px;
+      background: #fff;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -269,6 +409,24 @@
     </div>
   </div>
 
+  <!-- 迷你總覽 -->
+  <div class="overview">
+    <div class="overview-top">
+      <div class="overview-label">目前狀態</div>
+      <div class="state-pill" id="popupState">
+        <span class="state-dot"></span>
+        <span id="popupStateText">檢查中...</span>
+      </div>
+    </div>
+    <div class="current-model">
+      <div>
+        <strong id="currentModelName">載入中...</strong>
+        <span id="currentModelMeta">正在讀取模型設定</span>
+      </div>
+      <span class="provider-chip" id="currentProvider">Model</span>
+    </div>
+  </div>
+
   <!-- 模型選擇 -->
   <div class="section">
     <div class="section-label">選擇模型</div>
@@ -279,6 +437,22 @@
 
   <!-- 儲存提示 -->
   <div id="save-msg">✓ 已切換</div>
+
+  <!-- 狀態摘要 -->
+  <div class="health" aria-label="設定狀態摘要">
+    <div class="health-item">
+      <div class="health-head"><span class="health-dot" id="healthApiDot"></span>API Key</div>
+      <div class="health-value" id="healthApiText">檢查中</div>
+    </div>
+    <div class="health-item">
+      <div class="health-head"><span class="health-dot" id="healthTtsDot"></span>TTS</div>
+      <div class="health-value" id="healthTtsText">檢查中</div>
+    </div>
+    <div class="health-item">
+      <div class="health-head"><span class="health-dot" id="healthObsidianDot"></span>Obsidian</div>
+      <div class="health-value" id="healthObsidianText">檢查中</div>
+    </div>
+  </div>
 
   <!-- 底部 -->
   <div class="footer">

@@ -7,6 +7,7 @@ const ModelRegistry = globalThis.FanFanBaModels || require('./models');
 
 renderModelSelect();
 renderLanguageSelects();
+initSettingsTabs();
 
 // ── 載入已儲存的設定 ─────────────────────────────────
 chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 'targetLanguage', 'explanationLanguage', 'ttsLanguageMode', 'obsidianVault', 'ttsApiKey', 'obsidianDefaultFolder'],
@@ -71,6 +72,28 @@ function renderLanguageSelects() {
       .map(mode => `<option value="${mode.id}">${mode.name}</option>`)
       .join('');
   }
+}
+
+function initSettingsTabs() {
+  const tabs = document.querySelectorAll('.settings-tab[data-panel]');
+  const panels = document.querySelectorAll('.settings-panel[data-panel-content]');
+  if (!tabs.length || !panels.length) return;
+
+  function activatePanel(panelName) {
+    tabs.forEach(tab => {
+      const isActive = tab.dataset.panel === panelName;
+      tab.classList.toggle('is-active', isActive);
+      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    panels.forEach(panel => {
+      panel.hidden = panel.dataset.panelContent !== panelName;
+    });
+  }
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => activatePanel(tab.dataset.panel));
+  });
 }
 
 // ── 顯示 / 隱藏 API Key 共用函式 ─────────────────────
@@ -197,4 +220,4 @@ function buildOpenAICompatTestBody(modelId) {
   return JSON.stringify({ model: modelId, messages: [{ role: 'user', content: '回覆 OK 即可' }], max_tokens: 10 });
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { showStatus, bindToggleVis, renderModelSelect, renderLanguageSelects }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { showStatus, bindToggleVis, renderModelSelect, renderLanguageSelects, initSettingsTabs }; }
