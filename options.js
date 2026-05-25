@@ -3,6 +3,20 @@
 'use strict';
 
 const $ = id => document.getElementById(id);
+const DEFAULT_MODEL = 'groq:meta-llama/llama-4-scout-17b-16e-instruct';
+const OPENROUTER_DEFAULT_MODEL = 'openrouter:deepseek/deepseek-v4-flash:free';
+const MODEL_MIGRATIONS = {
+  'gemini-3-flash-preview':                              'gemini-3.5-flash',
+  'gemini-3.1-flash-lite-preview':                       'gemini-3.5-flash',
+  'openrouter/free':                                     OPENROUTER_DEFAULT_MODEL,
+  'openrouter:deepseek/deepseek-chat-v3-0324':           OPENROUTER_DEFAULT_MODEL,
+  'openrouter:qwen/qwen3-30b-a3b':                       OPENROUTER_DEFAULT_MODEL,
+  'openrouter:mistralai/mistral-small-3.1-24b-instruct': OPENROUTER_DEFAULT_MODEL
+};
+
+function normalizeModel(model) {
+  return MODEL_MIGRATIONS[model] || model || DEFAULT_MODEL;
+}
 
 // ── 載入已儲存的設定 ─────────────────────────────────
 chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 'obsidianVault', 'ttsApiKey', 'obsidianDefaultFolder'],
@@ -11,7 +25,9 @@ chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 'o
     if (groqApiKey)             $('groqApiKey').value             = groqApiKey;
     if (openrouterApiKey)       $('openrouterApiKey').value       = openrouterApiKey;
     // 無儲存紀錄時預設 Groq（免費額度最大方）
-    $('model').value = model || 'groq:meta-llama/llama-4-scout-17b-16e-instruct';
+    const currentModel = normalizeModel(model);
+    $('model').value = currentModel;
+    if (model && currentModel !== model) chrome.storage.sync.set({ model: currentModel });
     if (obsidianVault)          $('obsidianVault').value          = obsidianVault;
     if (ttsApiKey)              $('ttsApiKey').value              = ttsApiKey;
     if (obsidianDefaultFolder)  $('obsidianDefaultFolder').value  = obsidianDefaultFolder;
@@ -67,7 +83,7 @@ $('btnSave').addEventListener('click', () => {
 
 // ── 測試連線 ─────────────────────────────────────────
 $('btnTest').addEventListener('click', async () => {
-  const model        = $('model').value || 'gemini-3-flash-preview';
+  const model        = $('model').value || 'gemini-3.5-flash';
   const isGroq       = model.startsWith('groq:');
   const isOpenRouter = model.startsWith('openrouter:');
 

@@ -2,6 +2,21 @@
 
 'use strict';
 
+const DEFAULT_MODEL = 'groq:meta-llama/llama-4-scout-17b-16e-instruct';
+const OPENROUTER_DEFAULT_MODEL = 'openrouter:deepseek/deepseek-v4-flash:free';
+const MODEL_MIGRATIONS = {
+  'gemini-3-flash-preview':                              'gemini-3.5-flash',
+  'gemini-3.1-flash-lite-preview':                       'gemini-3.5-flash',
+  'openrouter/free':                                     OPENROUTER_DEFAULT_MODEL,
+  'openrouter:deepseek/deepseek-chat-v3-0324':           OPENROUTER_DEFAULT_MODEL,
+  'openrouter:qwen/qwen3-30b-a3b':                       OPENROUTER_DEFAULT_MODEL,
+  'openrouter:mistralai/mistral-small-3.1-24b-instruct': OPENROUTER_DEFAULT_MODEL
+};
+
+function normalizeModel(model) {
+  return MODEL_MIGRATIONS[model] || model || DEFAULT_MODEL;
+}
+
 const MODELS = [
   // Groq 優先（免費額度最大方，預設模型）
   {
@@ -13,37 +28,16 @@ const MODELS = [
   },
   // Gemini
   {
-    id:        'gemini-3-flash-preview',
-    name:      'Gemini 3 Flash',
-    desc:      '最新，速度快',
+    id:        'gemini-3.5-flash',
+    name:      'Gemini 3.5 Flash',
+    desc:      '最新穩定版 · 免費額度',
     badge:     '快速',
     badgeClass: 'badge-fast'
   },
   {
-    id:        'gemini-3.1-flash-lite-preview',
-    name:      'Gemini 3.1 Flash Lite',
-    desc:      '輕量低延遲',
-    badge:     '輕量',
-    badgeClass: 'badge-lite'
-  },
-  {
-    id:        'openrouter:deepseek/deepseek-chat-v3-0324',
-    name:      'DeepSeek V3',
-    desc:      '中文超強 · 免費額度',
-    badge:     'OR',
-    badgeClass: 'badge-or'
-  },
-  {
-    id:        'openrouter:qwen/qwen3-30b-a3b',
-    name:      'Qwen3 30B',
-    desc:      '阿里雲 · 中文強',
-    badge:     'OR',
-    badgeClass: 'badge-or'
-  },
-  {
-    id:        'openrouter:mistralai/mistral-small-3.1-24b-instruct',
-    name:      'Mistral Small 3.1',
-    desc:      '歐洲模型 · 快速',
+    id:        'openrouter:deepseek/deepseek-v4-flash:free',
+    name:      'DeepSeek V4 Flash',
+    desc:      'OpenRouter 免費 · 中文/推理強',
     badge:     'OR',
     badgeClass: 'badge-or'
   }
@@ -51,7 +45,8 @@ const MODELS = [
 
 // ── 初始化 ────────────────────────────────────────────
 chrome.storage.sync.get(['model', 'apiKey', 'groqApiKey', 'openrouterApiKey']).then(sync => {
-  const current = sync.model || 'groq:meta-llama/llama-4-scout-17b-16e-instruct';
+  const current = normalizeModel(sync.model);
+  if (sync.model && current !== sync.model) chrome.storage.sync.set({ model: current });
   renderModels(current);
   renderApiStatus(current, sync);
 });

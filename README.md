@@ -34,11 +34,8 @@
 | 模型 | Provider | 說明 |
 |------|----------|------|
 | **Llama 4 Scout** ⭐ | Groq | Meta 最新 MoE 模型，Groq 極速推論，**免費額度最大方，預設推薦** |
-| Gemini 3 Flash | Google | 速度快，適合日常使用 |
-| Gemini 3.1 Flash Lite | Google | 輕量低延遲 |
-| DeepSeek V3 | OpenRouter | 中文理解超強，有免費額度 |
-| Qwen3 30B | OpenRouter | 阿里雲出品，中文強 |
-| Mistral Small 3.1 | OpenRouter | 歐洲模型，快速精準 |
+| Gemini 3.5 Flash | Google | 最新穩定 Flash 模型，適合日常翻譯、解釋與優化 |
+| DeepSeek V4 Flash | OpenRouter | 免費模型，中文、推理與程式任務表現佳 |
 
 ---
 
@@ -147,7 +144,7 @@ fan-fan-ba/
   </tr>
   <tr>
     <td align="center"><b>選字，工具列自動浮現</b></td>
-    <td align="center"><b>6 種 AI 模型一鍵切換</b></td>
+    <td align="center"><b>3 種 AI 模型一鍵切換</b></td>
   </tr>
   <tr>
     <td align="center"><img src="screenshots/mockup-3.png" width="380"></td>

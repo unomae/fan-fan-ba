@@ -14,6 +14,19 @@ const GEMINI_API_BASE     = 'https://generativelanguage.googleapis.com/v1beta/mo
 const GROQ_API_BASE       = 'https://api.groq.com/openai/v1';
 const OPENROUTER_API_BASE = 'https://openrouter.ai/api/v1';
 const DEFAULT_MODEL       = 'groq:meta-llama/llama-4-scout-17b-16e-instruct'; // 預設 Groq（免費額度最大方）
+const OPENROUTER_DEFAULT_MODEL = 'openrouter:deepseek/deepseek-v4-flash:free';
+const MODEL_MIGRATIONS    = {
+  'gemini-3-flash-preview':                              'gemini-3.5-flash',
+  'gemini-3.1-flash-lite-preview':                       'gemini-3.5-flash',
+  'openrouter/free':                                     OPENROUTER_DEFAULT_MODEL,
+  'openrouter:deepseek/deepseek-chat-v3-0324':           OPENROUTER_DEFAULT_MODEL,
+  'openrouter:qwen/qwen3-30b-a3b':                       OPENROUTER_DEFAULT_MODEL,
+  'openrouter:mistralai/mistral-small-3.1-24b-instruct': OPENROUTER_DEFAULT_MODEL
+};
+
+function normalizeModel(model) {
+  return MODEL_MIGRATIONS[model] || model || DEFAULT_MODEL;
+}
 
 // ── Exponential Backoff with Full Jitter ──────────
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -129,23 +142,24 @@ async function handleAIRequest({ action, selectedText, context, pageTitle }) {
 async function _handleAIRequest({ action, selectedText, context, pageTitle }) {
   const { apiKey = '', groqApiKey = '', openrouterApiKey = '', model = DEFAULT_MODEL } =
     await chrome.storage.sync.get({ apiKey: '', groqApiKey: '', openrouterApiKey: '', model: DEFAULT_MODEL });
+  const selectedModel = normalizeModel(model);
 
-  if (model.startsWith('groq:')) {
+  if (selectedModel.startsWith('groq:')) {
     if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
     return handleOpenAICompatRequest({
       action, selectedText, context, pageTitle,
-      modelId: model.replace('groq:', ''),
+      modelId: selectedModel.replace('groq:', ''),
       apiKey:  groqApiKey,
       baseUrl: `${GROQ_API_BASE}/chat/completions`,
       label:   'Groq'
     });
   }
 
-  if (model.startsWith('openrouter:')) {
+  if (selectedModel.startsWith('openrouter:')) {
     if (!openrouterApiKey) throw new Error('請先在設定頁面輸入 OpenRouter API Key');
     return handleOpenAICompatRequest({
       action, selectedText, context, pageTitle,
-      modelId: model.replace('openrouter:', ''),
+      modelId: selectedModel.replace('openrouter:', ''),
       apiKey:  openrouterApiKey,
       baseUrl: `${OPENROUTER_API_BASE}/chat/completions`,
       label:   'OpenRouter',
@@ -157,7 +171,7 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle }) {
 
   const prompt   = buildPrompt(action, selectedText, context, pageTitle);
   const response = await withRetry(() => checkedFetch(
-    `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`,
+    `${GEMINI_API_BASE}/${selectedModel}:generateContent?key=${apiKey}`,
     {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -204,14 +218,15 @@ async function handleOpenAICompatRequest({ action, selectedText, context, pageTi
 async function _streamAIRequest({ action, selectedText, context, pageTitle }, onChunk) {
   const { apiKey = '', groqApiKey = '', openrouterApiKey = '', model = DEFAULT_MODEL } =
     await chrome.storage.sync.get({ apiKey: '', groqApiKey: '', openrouterApiKey: '', model: DEFAULT_MODEL });
+  const selectedModel = normalizeModel(model);
 
   const prompt = buildPrompt(action, selectedText, context, pageTitle);
 
-  if (model.startsWith('groq:')) {
+  if (selectedModel.startsWith('groq:')) {
     if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
     return streamOpenAICompat({
       prompt, action,
-      modelId:   model.replace('groq:', ''),
+      modelId:   selectedModel.replace('groq:', ''),
       apiKey:    groqApiKey,
       baseUrl:   `${GROQ_API_BASE}/chat/completions`,
       label:     'Groq',
@@ -219,11 +234,11 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle }, on
     });
   }
 
-  if (model.startsWith('openrouter:')) {
+  if (selectedModel.startsWith('openrouter:')) {
     if (!openrouterApiKey) throw new Error('請先在設定頁面輸入 OpenRouter API Key');
     return streamOpenAICompat({
       prompt, action,
-      modelId:      model.replace('openrouter:', ''),
+      modelId:      selectedModel.replace('openrouter:', ''),
       apiKey:       openrouterApiKey,
       baseUrl:      `${OPENROUTER_API_BASE}/chat/completions`,
       label:        'OpenRouter',
@@ -233,7 +248,7 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle }, on
   }
 
   if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
-  return streamGemini({ prompt, apiKey, model, action, onChunk });
+  return streamGemini({ prompt, apiKey, model: selectedModel, action, onChunk });
 }
 
 // ── Gemini SSE Streaming（?alt=sse）───────────────

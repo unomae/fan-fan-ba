@@ -18,11 +18,8 @@ let obsidianSaving = false; // 存入 Obsidian 期間暫時防止 mouseup 關閉
 const responseCache = new Map();
 
 const MODEL_NAMES = {
-  'gemini-3.1-flash-lite-preview':                            'Gemini 3.1 Flash Lite',
-  'gemini-3-flash-preview':                                   'Gemini 3 Flash',
+  'gemini-3.5-flash':                                         'Gemini 3.5 Flash',
   'gemini-2.5-flash':                                         'Gemini 2.5 Flash',
   'groq:meta-llama/llama-4-scout-17b-16e-instruct':           'Llama 4 Scout',
-  'openrouter:deepseek/deepseek-chat-v3-0324':                'DeepSeek V3',
-  'openrouter:qwen/qwen3-30b-a3b':                            'Qwen3 30B',
-  'openrouter:mistralai/mistral-small-3.1-24b-instruct':      'Mistral Small 3.1'
+  'openrouter:deepseek/deepseek-v4-flash:free':               'DeepSeek V4 Flash'
 };
