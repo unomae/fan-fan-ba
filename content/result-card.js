@@ -411,6 +411,7 @@ function renderResult(action, rawResult, selectedText, { fromHistory = false } =
       const data = parseJSON(rawResult);
       lastDictData = data;
       body.innerHTML = buildDictHTML(data);
+      showResultMeta(getResultLanguage(action, data.targetLang));
       body.querySelector('.g-speak-btn')?.addEventListener('click', e => {
         e.stopPropagation();
         speakWord(data.word || selectedText, e.currentTarget, data.lang);
@@ -422,6 +423,7 @@ function renderResult(action, rawResult, selectedText, { fromHistory = false } =
 
   if (action === 'optimize' && selectedText.length > 20) {
     body.innerHTML = buildOptimizeHTML(rawResult, selectedText);
+    showResultMeta(getResultLanguage(action));
     // 綁定「優化後」區塊的複製按鈕
     body.querySelector('.g-opt-copy-btn')?.addEventListener('click', e => {
       e.stopPropagation();
@@ -436,21 +438,21 @@ function renderResult(action, rawResult, selectedText, { fromHistory = false } =
 
   if (action === 'explain') {
     body.innerHTML = buildExplainHTML(rawResult);
+    showResultMeta(getResultLanguage(action));
     initTagHandlers(body);
     if (!fromHistory) saveToHistory(action, selectedText, rawResult, null);
     return;
   }
 
   body.innerHTML = `<div class="g-text-body">${formatMarkdown(rawResult)}</div>`;
+  showResultMeta(getResultLanguage(action));
   if (!fromHistory) saveToHistory(action, selectedText, rawResult, null);
 }
 
 const CHEVRON_SVG = `<svg class="g-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
 
 function buildDictHTML(d) {
-  const translations = Array.isArray(d.translations)
-    ? d.translations.join('; ')
-    : (d.translations || '');
+  const translations = normalizeTranslations(d.translations);
 
   const synonymHtml = d.synonym?.word ? `
     <div class="g-dict-divider"></div>
@@ -492,12 +494,18 @@ function buildDictHTML(d) {
         ${d.pos ? `<span class="g-pos ${getPosClass(d.pos)}">${escapeHtml(d.pos)}</span>` : ''}
         ${escapeHtml(d.definition || '')}
       </div>` : ''}
-    <div class="g-dict-divider"></div>
-    <div class="g-dict-translations">${escapeHtml(translations)}</div>
+    ${translations.length ? `
+      <div class="g-dict-divider"></div>
+      <div class="g-dict-translations">${translations.map(text => `<span>${escapeHtml(text)}</span>`).join('')}</div>` : ''}
     ${d.usage ? `<div class="g-dict-usage">${escapeHtml(d.usage)}</div>` : ''}
     ${synonymHtml}
     ${examplesHtml ? `<div class="g-dict-divider"></div><div class="g-dict-examples-title">例句</div>${examplesHtml}` : ''}
   `;
+}
+
+function normalizeTranslations(translations) {
+  const values = Array.isArray(translations) ? translations : String(translations || '').split(/[;；]/);
+  return values.map(item => String(item || '').trim()).filter(Boolean);
 }
 
 // ── 解釋模式：直接顯示全部內容 ─────────────────────
@@ -583,26 +591,47 @@ function showResultNotice(msg) {
   body.insertAdjacentHTML('afterbegin', `<div class="g-provider-notice">${escapeHtml(msg)}</div>`);
 }
 
+function showResultMeta(language) {
+  const body = resultCard?.querySelector('.g-rc-body');
+  if (!body) return;
+  const modelName = FanFanBaModels.getModelDisplayName(activeModel);
+  const langName = FanFanBaModels.getLanguageName(language || targetLanguage, navigator.language || '');
+  body.insertAdjacentHTML('afterbegin', `<div class="g-result-meta">${escapeHtml(modelName)} · ${escapeHtml(langName)}</div>`);
+}
+
+function getResultLanguage(action, responseLanguage) {
+  if (action === 'translate') return responseLanguage || targetLanguage;
+  return explanationLanguage === 'target' ? targetLanguage : explanationLanguage;
+}
+
 function speakWord(word, btn, lang) {
   btn?.classList.add('g-speaking');
-  if (!chrome.runtime?.id) { speakFallback(word, btn); return; }
-  chrome.runtime.sendMessage({ type: 'TTS_REQUEST', text: word, lang: lang || 'en' }, response => {
+  const speakLang = resolveSpeechLanguage(lang);
+  if (!chrome.runtime?.id) { speakFallback(word, btn, speakLang); return; }
+  chrome.runtime.sendMessage({ type: 'TTS_REQUEST', text: word, lang: speakLang }, response => {
     if (chrome.runtime.lastError || !response || response.fallback || response.error) {
-      speakFallback(word, btn);
+      speakFallback(word, btn, speakLang);
       return;
     }
     const audio = new Audio(`data:audio/mp3;base64,${response.audioContent}`);
     audio.onended = () => btn?.classList.remove('g-speaking');
-    audio.onerror = () => { btn?.classList.remove('g-speaking'); speakFallback(word, btn); };
+    audio.onerror = () => { btn?.classList.remove('g-speaking'); speakFallback(word, btn, speakLang); };
     audio.play().catch(() => btn?.classList.remove('g-speaking'));
   });
 }
 
-function speakFallback(word, btn) {
+function resolveSpeechLanguage(sourceLang) {
+  const mode = FanFanBaModels.normalizeTtsLanguageMode(ttsLanguageMode, 'auto');
+  if (mode === 'target') return targetLanguage === 'browser' ? (navigator.language || 'en') : targetLanguage;
+  if (mode === 'source' || mode === 'auto') return sourceLang || 'en';
+  return sourceLang || 'en';
+}
+
+function speakFallback(word, btn, lang = 'en') {
   if (!window.speechSynthesis) { btn?.classList.remove('g-speaking'); return; }
   window.speechSynthesis.cancel();
   const utt  = new SpeechSynthesisUtterance(word);
-  utt.lang   = 'en-US';
+  utt.lang   = lang;
   utt.rate   = 0.85;
   utt.pitch  = 1;
   utt.onend  = utt.onerror = () => btn?.classList.remove('g-speaking');

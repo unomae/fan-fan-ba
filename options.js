@@ -6,10 +6,11 @@ const $ = id => document.getElementById(id);
 const ModelRegistry = globalThis.FanFanBaModels || require('./models');
 
 renderModelSelect();
+renderLanguageSelects();
 
 // ── 載入已儲存的設定 ─────────────────────────────────
-chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 'obsidianVault', 'ttsApiKey', 'obsidianDefaultFolder'],
-  ({ apiKey, groqApiKey, openrouterApiKey, model, obsidianVault, ttsApiKey, obsidianDefaultFolder }) => {
+chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 'targetLanguage', 'explanationLanguage', 'ttsLanguageMode', 'obsidianVault', 'ttsApiKey', 'obsidianDefaultFolder'],
+  ({ apiKey, groqApiKey, openrouterApiKey, model, targetLanguage, explanationLanguage, ttsLanguageMode, obsidianVault, ttsApiKey, obsidianDefaultFolder }) => {
     if (apiKey)                 $('apiKey').value                 = apiKey;
     if (groqApiKey)             $('groqApiKey').value             = groqApiKey;
     if (openrouterApiKey)       $('openrouterApiKey').value       = openrouterApiKey;
@@ -17,6 +18,15 @@ chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 'o
     const currentModel = ModelRegistry.normalizeModel(model);
     $('model').value = currentModel;
     if (model && currentModel !== model) chrome.storage.sync.set({ model: currentModel });
+    if ($('targetLanguage')) {
+      $('targetLanguage').value = ModelRegistry.normalizeLanguage(targetLanguage, 'zh-TW');
+    }
+    if ($('explanationLanguage')) {
+      $('explanationLanguage').value = ModelRegistry.normalizeExplanationLanguage(explanationLanguage, 'target');
+    }
+    if ($('ttsLanguageMode')) {
+      $('ttsLanguageMode').value = ModelRegistry.normalizeTtsLanguageMode(ttsLanguageMode, 'auto');
+    }
     if (obsidianVault)          $('obsidianVault').value          = obsidianVault;
     if (ttsApiKey)              $('ttsApiKey').value              = ttsApiKey;
     if (obsidianDefaultFolder)  $('obsidianDefaultFolder').value  = obsidianDefaultFolder;
@@ -42,6 +52,27 @@ function renderModelSelect() {
   }).join('');
 }
 
+function renderLanguageSelects() {
+  const targetSelect = $('targetLanguage');
+  const explanationSelect = $('explanationLanguage');
+  const ttsSelect = $('ttsLanguageMode');
+  if (targetSelect) {
+    targetSelect.innerHTML = ModelRegistry.LANGUAGE_OPTIONS
+      .map(lang => `<option value="${lang.id}">${lang.name}</option>`)
+      .join('');
+  }
+  if (explanationSelect) {
+    explanationSelect.innerHTML = ModelRegistry.EXPLANATION_LANGUAGE_OPTIONS
+      .map(lang => `<option value="${lang.id}">${lang.name}</option>`)
+      .join('');
+  }
+  if (ttsSelect) {
+    ttsSelect.innerHTML = ModelRegistry.TTS_LANGUAGE_OPTIONS
+      .map(mode => `<option value="${mode.id}">${mode.name}</option>`)
+      .join('');
+  }
+}
+
 // ── 顯示 / 隱藏 API Key 共用函式 ─────────────────────
 function bindToggleVis(btnId, inputId, showId, hideId) {
   $(btnId).addEventListener('click', () => {
@@ -64,6 +95,9 @@ $('btnSave').addEventListener('click', () => {
   const groqApiKey       = $('groqApiKey').value.trim();
   const openrouterApiKey = $('openrouterApiKey').value.trim();
   const model            = $('model').value;
+  const targetLanguage   = ModelRegistry.normalizeLanguage($('targetLanguage')?.value, 'zh-TW');
+  const explanationLanguage = ModelRegistry.normalizeExplanationLanguage($('explanationLanguage')?.value, 'target');
+  const ttsLanguageMode  = ModelRegistry.normalizeTtsLanguageMode($('ttsLanguageMode')?.value, 'auto');
   const isGroq           = model.startsWith('groq:');
   const isOpenRouter     = model.startsWith('openrouter:');
 
@@ -84,7 +118,7 @@ $('btnSave').addEventListener('click', () => {
   const obsidianDefaultFolder = $('obsidianDefaultFolder').value.trim();
 
   chrome.storage.sync.set(
-    { apiKey, groqApiKey, openrouterApiKey, model, obsidianVault, ttsApiKey, obsidianDefaultFolder },
+    { apiKey, groqApiKey, openrouterApiKey, model, targetLanguage, explanationLanguage, ttsLanguageMode, obsidianVault, ttsApiKey, obsidianDefaultFolder },
     () => showStatus('ok', '✓ 設定已儲存')
   );
 });
@@ -163,4 +197,4 @@ function buildOpenAICompatTestBody(modelId) {
   return JSON.stringify({ model: modelId, messages: [{ role: 'user', content: '回覆 OK 即可' }], max_tokens: 10 });
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { showStatus, bindToggleVis, renderModelSelect }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { showStatus, bindToggleVis, renderModelSelect, renderLanguageSelects }; }

@@ -128,14 +128,14 @@ chrome.runtime.onConnect.addListener(port => {
 });
 
 // ── 非 streaming：維持原有邏輯（字典 JSON 需要完整回應）──
-async function handleAIRequest({ action, selectedText, context, pageTitle }) {
+async function handleAIRequest({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage }) {
   const timeout = new Promise((_, reject) =>
     setTimeout(() => reject(new Error('請求逾時，請稍後重試')), 30000)
   );
-  return Promise.race([_handleAIRequest({ action, selectedText, context, pageTitle }), timeout]);
+  return Promise.race([_handleAIRequest({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage }), timeout]);
 }
 
-async function _handleAIRequest({ action, selectedText, context, pageTitle }) {
+async function _handleAIRequest({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage }) {
   const { apiKey = '', groqApiKey = '', openrouterApiKey = '', model = DEFAULT_MODEL } =
     await chrome.storage.sync.get({ apiKey: '', groqApiKey: '', openrouterApiKey: '', model: DEFAULT_MODEL });
   const selectedModel = ModelRegistry.normalizeModel(model);
@@ -143,7 +143,7 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle }) {
   if (selectedModel.startsWith('groq:')) {
     if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
     return handleOpenAICompatRequest({
-      action, selectedText, context, pageTitle,
+      action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage,
       modelId: ModelRegistry.toApiModelId(selectedModel),
       apiKey:  groqApiKey,
       baseUrl: `${GROQ_API_BASE}/chat/completions`,
@@ -155,7 +155,7 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle }) {
     if (!openrouterApiKey) throw new Error('請先在設定頁面輸入 OpenRouter API Key');
     const modelId = ModelRegistry.toApiModelId(selectedModel);
     return handleOpenRouterRequestWithFallback({
-      action, selectedText, context, pageTitle,
+      action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage,
       modelId,
       apiKey:  openrouterApiKey,
       baseUrl: `${OPENROUTER_API_BASE}/chat/completions`,
@@ -166,7 +166,7 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle }) {
 
   if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
 
-  const prompt   = buildPrompt(action, selectedText, context, pageTitle);
+  const prompt   = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage });
   const response = await withRetry(() => checkedFetch(
     `${GEMINI_API_BASE}/${selectedModel}:generateContent?key=${apiKey}`,
     {
@@ -204,8 +204,8 @@ async function handleOpenRouterRequestWithFallback(params) {
   }
 }
 
-async function handleOpenAICompatRequest({ action, selectedText, context, pageTitle, modelId, apiKey, baseUrl, label, extraHeaders = {} }) {
-  const prompt   = buildPrompt(action, selectedText, context, pageTitle);
+async function handleOpenAICompatRequest({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage, modelId, apiKey, baseUrl, label, extraHeaders = {} }) {
+  const prompt   = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage });
   const response = await withRetry(() => checkedFetch(baseUrl, {
     method:  'POST',
     headers: {
@@ -233,12 +233,12 @@ async function handleOpenAICompatRequest({ action, selectedText, context, pageTi
 }
 
 // ── Streaming 分流 ─────────────────────────────────
-async function _streamAIRequest({ action, selectedText, context, pageTitle }, onChunk, onStatus = () => {}) {
+async function _streamAIRequest({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage }, onChunk, onStatus = () => {}) {
   const { apiKey = '', groqApiKey = '', openrouterApiKey = '', model = DEFAULT_MODEL } =
     await chrome.storage.sync.get({ apiKey: '', groqApiKey: '', openrouterApiKey: '', model: DEFAULT_MODEL });
   const selectedModel = ModelRegistry.normalizeModel(model);
 
-  const prompt = buildPrompt(action, selectedText, context, pageTitle);
+  const prompt = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage });
 
   if (selectedModel.startsWith('groq:')) {
     if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
@@ -416,16 +416,23 @@ async function handleTtsRequest({ text, lang }) {
 }
 
 // ── Prompt 建構（依文字長度區分策略）──────────────
-function buildPrompt(action, selectedText, context, pageTitle) {
+function buildPrompt(action, selectedText, context, pageTitle, settings = {}) {
   const len    = selectedText.length;
   const isWord = len <= 20;
   const isMid  = len > 20 && len <= 150;
+  const targetLanguage = ModelRegistry.getPromptLanguageName(settings.targetLanguage || 'zh-TW', settings.browserLanguage || '');
+  const explanationLanguage = ModelRegistry.resolveExplanationLanguage(
+    settings.explanationLanguage || 'target',
+    settings.targetLanguage || 'zh-TW',
+    settings.browserLanguage || ''
+  );
 
   switch (action) {
 
     case 'translate':
       if (isWord) {
         return `你是專業多語詞典助手。請針對以下單字或片語提供完整詞典條目，自動判斷輸入語言。
+所有翻譯、釋義、用法說明、近義詞差異與例句翻譯，請使用：${targetLanguage}。
 
 必須嚴格以下方 JSON 格式回覆，不要加任何多餘文字、說明或 markdown：
 {
@@ -433,13 +440,14 @@ function buildPrompt(action, selectedText, context, pageTitle) {
   "lang": "該語言的 BCP 47 代碼，如 en / ja / de / fr / ko / es / it / pt",
   "phonetic": "適合該語言的發音標注（英文用 IPA /…/；日文用平假名讀音；韓文用諺文讀音；其他語言用羅馬拼音或當地標音）",
   "pos": "詞性縮寫（adj. / n. / v. / adv. 等，依原語言慣例）",
-  "translations": ["繁體中文翻譯1", "翻譯2", "翻譯3"],
-  "definition": "一句話的繁體中文釋義",
-  "usage": "含義、語感與使用語境的延伸說明（2 句，繁體中文）",
-  "synonym": { "word": "最相近的近義詞（原語言）", "diff": "一句話說明兩者差別（繁體中文）" },
+  "targetLang": "翻譯與說明使用的 BCP 47 語言代碼",
+  "translations": ["${targetLanguage}翻譯1", "翻譯2", "翻譯3"],
+  "definition": "一句話的${targetLanguage}釋義",
+  "usage": "含義、語感與使用語境的延伸說明（2 句，${targetLanguage}）",
+  "synonym": { "word": "最相近的近義詞（原語言）", "diff": "一句話說明兩者差別（${targetLanguage}）" },
   "examples": [
-    { "src": "通用例句（不限語境）", "zh": "繁體中文翻譯", "type": "general" },
-    { "src": "基於下方網頁語境的原創例句", "zh": "繁體中文翻譯", "type": "context" }
+    { "src": "通用例句（不限語境）", "zh": "${targetLanguage}翻譯", "type": "general" },
+    { "src": "基於下方網頁語境的原創例句", "zh": "${targetLanguage}翻譯", "type": "context" }
   ]
 }
 
@@ -447,7 +455,7 @@ function buildPrompt(action, selectedText, context, pageTitle) {
 上下文：${context}
 目標單字／片語：「${selectedText}」`;
       }
-      return `你是專業翻譯助手，請將以下內容翻譯成繁體中文，保持原文語氣與風格，直接輸出譯文，不加說明。
+      return `你是專業翻譯助手，請將以下內容翻譯成${targetLanguage}，保持原文語氣與風格，直接輸出譯文，不加說明。
 
 網頁標題：${pageTitle}
 上下文：${context}
@@ -457,7 +465,7 @@ function buildPrompt(action, selectedText, context, pageTitle) {
 
     case 'explain':
       if (isWord) {
-        return `你是知識解說助手，請以繁體中文回覆，格式清晰簡潔。
+        return `你是知識解說助手，請以${explanationLanguage}回覆，格式清晰簡潔。
 
 網頁標題：${pageTitle}
 上下文：${context}
@@ -471,7 +479,7 @@ function buildPrompt(action, selectedText, context, pageTitle) {
 **延伸：** {{相關術語1}} {{相關術語2}}`;
       }
       if (isMid) {
-        return `你是知識解說助手，請以繁體中文回覆，格式清晰簡潔。
+        return `你是知識解說助手，請以${explanationLanguage}回覆，格式清晰簡潔。
 
 網頁標題：${pageTitle}
 上下文：${context}
@@ -486,7 +494,7 @@ function buildPrompt(action, selectedText, context, pageTitle) {
 **比喻：** 用一個日常生活類比解釋（1 句）
 **延伸：** {{相關術語1}} {{相關術語2}}`;
       }
-      return `你是知識解說助手，請以繁體中文回覆，格式清晰簡潔。
+      return `你是知識解說助手，請以${explanationLanguage}回覆，格式清晰簡潔。
 
 網頁標題：${pageTitle}
 上下文：${context}
@@ -503,7 +511,7 @@ function buildPrompt(action, selectedText, context, pageTitle) {
 
     case 'optimize':
       if (isWord) {
-        return `你是寫作優化助手，請以繁體中文回覆。
+        return `你是寫作優化助手，請以${explanationLanguage}回覆。
 
 目標詞彙：「${selectedText}」
 上下文：${context}
@@ -518,7 +526,7 @@ function buildPrompt(action, selectedText, context, pageTitle) {
 （直接輸出優化後的文字，語言與原文相同，不加引號或說明）
 
 **改動說明：**
-（用繁體中文條列說明調整項目與原因，每點以 - 開頭）
+（用${explanationLanguage}條列說明調整項目與原因，每點以 - 開頭）
 
 原始內容：
 「${selectedText}」`;

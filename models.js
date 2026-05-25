@@ -52,6 +52,72 @@
     'gemini-2.5-flash': 'Gemini 2.5 Flash'
   });
 
+  const LANGUAGE_OPTIONS = [
+    { id: 'browser', name: '跟隨瀏覽器', promptName: '使用者瀏覽器偏好的語言' },
+    { id: 'zh-TW', name: '繁體中文', promptName: '繁體中文' },
+    { id: 'zh-CN', name: '簡體中文', promptName: '簡體中文' },
+    { id: 'en', name: '英文', promptName: 'English' },
+    { id: 'ja', name: '日文', promptName: '日本語' },
+    { id: 'ko', name: '韓文', promptName: '한국어' },
+    { id: 'de', name: '德文', promptName: 'Deutsch' },
+    { id: 'fr', name: '法文', promptName: 'Français' },
+    { id: 'es', name: '西文', promptName: 'Español' },
+    { id: 'pt', name: '葡文', promptName: 'Português' }
+  ];
+
+  const EXPLANATION_LANGUAGE_OPTIONS = [
+    { id: 'target', name: '跟隨翻譯語言' },
+    { id: 'zh-TW', name: '繁體中文' },
+    { id: 'en', name: '英文' }
+  ];
+
+  const TTS_LANGUAGE_OPTIONS = [
+    { id: 'auto', name: '自動偵測' },
+    { id: 'target', name: '跟隨翻譯語言' },
+    { id: 'source', name: '跟隨原文語言' }
+  ];
+
+  function getLanguageOption(language) {
+    return LANGUAGE_OPTIONS.find(item => item.id === language);
+  }
+
+  function normalizeLanguage(language, fallback = 'zh-TW') {
+    const value = language || fallback;
+    return getLanguageOption(value) ? value : fallback;
+  }
+
+  function normalizeExplanationLanguage(language, fallback = 'target') {
+    const value = language || fallback;
+    return EXPLANATION_LANGUAGE_OPTIONS.some(item => item.id === value) ? value : fallback;
+  }
+
+  function normalizeTtsLanguageMode(mode, fallback = 'auto') {
+    const value = mode || fallback;
+    return TTS_LANGUAGE_OPTIONS.some(item => item.id === value) ? value : fallback;
+  }
+
+  function getLanguageName(language, browserLanguage = '') {
+    const normalized = normalizeLanguage(language, language || 'zh-TW');
+    if (normalized === 'browser') {
+      return browserLanguage ? `瀏覽器語言（${browserLanguage}）` : '瀏覽器語言';
+    }
+    return getLanguageOption(normalized)?.name || normalized;
+  }
+
+  function getPromptLanguageName(language, browserLanguage = '') {
+    const normalized = normalizeLanguage(language, language || 'zh-TW');
+    if (normalized === 'browser') {
+      return browserLanguage || 'the user browser preferred language';
+    }
+    return getLanguageOption(normalized)?.promptName || normalized;
+  }
+
+  function resolveExplanationLanguage(explanationLanguage, targetLanguage, browserLanguage = '') {
+    const value = normalizeExplanationLanguage(explanationLanguage);
+    if (value === 'target') return getPromptLanguageName(targetLanguage, browserLanguage);
+    return getPromptLanguageName(value, browserLanguage);
+  }
+
   function normalizeModel(model) {
     return MODEL_MIGRATIONS[model] || model || DEFAULT_MODEL;
   }
@@ -98,10 +164,11 @@
     return (hash >>> 0).toString(36);
   }
 
-  function buildCacheKey({ action, text, model, targetLanguage = 'default', context = '', pageTitle = '' }) {
+  function buildCacheKey({ action, text, model, targetLanguage = 'zh-TW', explanationLanguage = 'target', context = '', pageTitle = '' }) {
     return [
       normalizeModel(model),
-      targetLanguage || 'default',
+      normalizeLanguage(targetLanguage, 'zh-TW'),
+      normalizeExplanationLanguage(explanationLanguage, 'target'),
       action || 'unknown',
       stableHash(text),
       stableHash(context),
@@ -116,6 +183,9 @@
     MODELS,
     MODEL_MIGRATIONS,
     MODEL_NAME_MAP,
+    LANGUAGE_OPTIONS,
+    EXPLANATION_LANGUAGE_OPTIONS,
+    TTS_LANGUAGE_OPTIONS,
     normalizeModel,
     getModel,
     getProvider,
@@ -123,7 +193,14 @@
     toApiModelId,
     shouldFallbackOpenRouter,
     stableHash,
-    buildCacheKey
+    buildCacheKey,
+    getLanguageOption,
+    normalizeLanguage,
+    normalizeExplanationLanguage,
+    normalizeTtsLanguageMode,
+    getLanguageName,
+    getPromptLanguageName,
+    resolveExplanationLanguage
   };
 
   global.FanFanBaModels = registry;

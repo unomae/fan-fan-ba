@@ -179,6 +179,7 @@ function triggerAction(action) {
     text: savedSel.text,
     model: activeModel,
     targetLanguage,
+    explanationLanguage,
     context,
     pageTitle
   });
@@ -204,7 +205,7 @@ function triggerAction(action) {
 function sendNonStreaming(action, selectedText, context, pageTitle, cacheKey) {
   try {
     chrome.runtime.sendMessage(
-      { type: 'GEMINI_REQUEST', action, selectedText, context, pageTitle },
+      { type: 'GEMINI_REQUEST', action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' },
       response => {
         if (chrome.runtime.lastError) {
           const msg = chrome.runtime.lastError.message || '';
@@ -285,14 +286,16 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey) {
     }
   });
 
-  port.postMessage({ action, selectedText, context, pageTitle });
+  port.postMessage({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' });
 }
 
 function initContentSettings() {
-  chrome.storage.sync.get({ model: FanFanBaModels.DEFAULT_MODEL, targetLanguage: 'default' })
+  chrome.storage.sync.get({ model: FanFanBaModels.DEFAULT_MODEL, targetLanguage: 'zh-TW', explanationLanguage: 'target', ttsLanguageMode: 'auto' })
     .then(settings => {
       activeModel = FanFanBaModels.normalizeModel(settings.model);
-      targetLanguage = settings.targetLanguage || 'default';
+      targetLanguage = FanFanBaModels.normalizeLanguage(settings.targetLanguage, 'zh-TW');
+      explanationLanguage = FanFanBaModels.normalizeExplanationLanguage(settings.explanationLanguage, 'target');
+      ttsLanguageMode = FanFanBaModels.normalizeTtsLanguageMode(settings.ttsLanguageMode, 'auto');
     })
     .catch(() => {});
 
@@ -306,7 +309,9 @@ function initContentSettings() {
   chrome.storage.onChanged?.addListener((changes, area) => {
     if (area === 'sync') {
       if (changes.model) activeModel = FanFanBaModels.normalizeModel(changes.model.newValue);
-      if (changes.targetLanguage) targetLanguage = changes.targetLanguage.newValue || 'default';
+      if (changes.targetLanguage) targetLanguage = FanFanBaModels.normalizeLanguage(changes.targetLanguage.newValue, 'zh-TW');
+      if (changes.explanationLanguage) explanationLanguage = FanFanBaModels.normalizeExplanationLanguage(changes.explanationLanguage.newValue, 'target');
+      if (changes.ttsLanguageMode) ttsLanguageMode = FanFanBaModels.normalizeTtsLanguageMode(changes.ttsLanguageMode.newValue, 'auto');
     }
     if (area === 'local' && changes[getPauseStorageKey()]) {
       fanFanBaPaused = !!changes[getPauseStorageKey()].newValue;
