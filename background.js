@@ -3,6 +3,9 @@
 
 'use strict';
 
+if (typeof importScripts === 'function' && !globalThis.FanFanBaModels) importScripts('models.js');
+const ModelRegistry = globalThis.FanFanBaModels || require('./models');
+
 // ── 首次安裝時開啟 Welcome 頁面 ──────────────────────
 chrome.runtime.onInstalled.addListener(details => {
   if (details.reason === 'install') {
@@ -13,20 +16,7 @@ chrome.runtime.onInstalled.addListener(details => {
 const GEMINI_API_BASE     = 'https://generativelanguage.googleapis.com/v1beta/models';
 const GROQ_API_BASE       = 'https://api.groq.com/openai/v1';
 const OPENROUTER_API_BASE = 'https://openrouter.ai/api/v1';
-const DEFAULT_MODEL       = 'groq:meta-llama/llama-4-scout-17b-16e-instruct'; // 預設 Groq（免費額度最大方）
-const OPENROUTER_DEFAULT_MODEL = 'openrouter:deepseek/deepseek-v4-flash:free';
-const MODEL_MIGRATIONS    = {
-  'gemini-3-flash-preview':                              'gemini-3.5-flash',
-  'gemini-3.1-flash-lite-preview':                       'gemini-3.5-flash',
-  'openrouter/free':                                     OPENROUTER_DEFAULT_MODEL,
-  'openrouter:deepseek/deepseek-chat-v3-0324':           OPENROUTER_DEFAULT_MODEL,
-  'openrouter:qwen/qwen3-30b-a3b':                       OPENROUTER_DEFAULT_MODEL,
-  'openrouter:mistralai/mistral-small-3.1-24b-instruct': OPENROUTER_DEFAULT_MODEL
-};
-
-function normalizeModel(model) {
-  return MODEL_MIGRATIONS[model] || model || DEFAULT_MODEL;
-}
+const DEFAULT_MODEL       = ModelRegistry.DEFAULT_MODEL; // 預設 Groq（免費額度最大方）
 
 // ── Exponential Backoff with Full Jitter ──────────
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -119,9 +109,15 @@ chrome.runtime.onConnect.addListener(port => {
     );
     try {
       await Promise.race([
-        _streamAIRequest(request, chunk => {
-          try { port.postMessage({ chunk }); } catch { /* port 已關閉 */ }
-        }),
+        _streamAIRequest(
+          request,
+          chunk => {
+            try { port.postMessage({ chunk }); } catch { /* port 已關閉 */ }
+          },
+          status => {
+            try { port.postMessage({ status }); } catch { /* port 已關閉 */ }
+          }
+        ),
         timeout
       ]);
       try { port.postMessage({ done: true }); } catch {}
@@ -142,13 +138,13 @@ async function handleAIRequest({ action, selectedText, context, pageTitle }) {
 async function _handleAIRequest({ action, selectedText, context, pageTitle }) {
   const { apiKey = '', groqApiKey = '', openrouterApiKey = '', model = DEFAULT_MODEL } =
     await chrome.storage.sync.get({ apiKey: '', groqApiKey: '', openrouterApiKey: '', model: DEFAULT_MODEL });
-  const selectedModel = normalizeModel(model);
+  const selectedModel = ModelRegistry.normalizeModel(model);
 
   if (selectedModel.startsWith('groq:')) {
     if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
     return handleOpenAICompatRequest({
       action, selectedText, context, pageTitle,
-      modelId: selectedModel.replace('groq:', ''),
+      modelId: ModelRegistry.toApiModelId(selectedModel),
       apiKey:  groqApiKey,
       baseUrl: `${GROQ_API_BASE}/chat/completions`,
       label:   'Groq'
@@ -157,9 +153,10 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle }) {
 
   if (selectedModel.startsWith('openrouter:')) {
     if (!openrouterApiKey) throw new Error('請先在設定頁面輸入 OpenRouter API Key');
-    return handleOpenAICompatRequest({
+    const modelId = ModelRegistry.toApiModelId(selectedModel);
+    return handleOpenRouterRequestWithFallback({
       action, selectedText, context, pageTitle,
-      modelId: selectedModel.replace('openrouter:', ''),
+      modelId,
       apiKey:  openrouterApiKey,
       baseUrl: `${OPENROUTER_API_BASE}/chat/completions`,
       label:   'OpenRouter',
@@ -191,6 +188,22 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle }) {
   return { result };
 }
 
+async function handleOpenRouterRequestWithFallback(params) {
+  try {
+    return await handleOpenAICompatRequest(params);
+  } catch (err) {
+    if (!ModelRegistry.shouldFallbackOpenRouter(err.status, err.message, params.modelId)) throw err;
+    const result = await handleOpenAICompatRequest({
+      ...params,
+      modelId: ModelRegistry.OPENROUTER_FALLBACK_MODEL_ID
+    });
+    return {
+      ...result,
+      notice: 'DeepSeek 免費節點忙碌，已改用 OpenRouter Free 備援。'
+    };
+  }
+}
+
 async function handleOpenAICompatRequest({ action, selectedText, context, pageTitle, modelId, apiKey, baseUrl, label, extraHeaders = {} }) {
   const prompt   = buildPrompt(action, selectedText, context, pageTitle);
   const response = await withRetry(() => checkedFetch(baseUrl, {
@@ -209,16 +222,21 @@ async function handleOpenAICompatRequest({ action, selectedText, context, pageTi
   }, `${label} `));
 
   const data   = await response.json();
+  if (data.error) {
+    const err = new Error(data.error.message || `${label}API 錯誤`);
+    err.status = data.error.code;
+    throw err;
+  }
   const result = data.choices?.[0]?.message?.content;
   if (!result) throw new Error('AI 無回應，請重試');
   return { result };
 }
 
 // ── Streaming 分流 ─────────────────────────────────
-async function _streamAIRequest({ action, selectedText, context, pageTitle }, onChunk) {
+async function _streamAIRequest({ action, selectedText, context, pageTitle }, onChunk, onStatus = () => {}) {
   const { apiKey = '', groqApiKey = '', openrouterApiKey = '', model = DEFAULT_MODEL } =
     await chrome.storage.sync.get({ apiKey: '', groqApiKey: '', openrouterApiKey: '', model: DEFAULT_MODEL });
-  const selectedModel = normalizeModel(model);
+  const selectedModel = ModelRegistry.normalizeModel(model);
 
   const prompt = buildPrompt(action, selectedText, context, pageTitle);
 
@@ -226,7 +244,7 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle }, on
     if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
     return streamOpenAICompat({
       prompt, action,
-      modelId:   selectedModel.replace('groq:', ''),
+      modelId:   ModelRegistry.toApiModelId(selectedModel),
       apiKey:    groqApiKey,
       baseUrl:   `${GROQ_API_BASE}/chat/completions`,
       label:     'Groq',
@@ -236,19 +254,41 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle }, on
 
   if (selectedModel.startsWith('openrouter:')) {
     if (!openrouterApiKey) throw new Error('請先在設定頁面輸入 OpenRouter API Key');
-    return streamOpenAICompat({
+    const modelId = ModelRegistry.toApiModelId(selectedModel);
+    return streamOpenRouterWithFallback({
       prompt, action,
-      modelId:      selectedModel.replace('openrouter:', ''),
+      modelId,
       apiKey:       openrouterApiKey,
       baseUrl:      `${OPENROUTER_API_BASE}/chat/completions`,
       label:        'OpenRouter',
       extraHeaders: { 'X-Title': 'Fan Fan Ba' },
-      onChunk
+      onChunk,
+      onStatus
     });
   }
 
   if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
   return streamGemini({ prompt, apiKey, model: selectedModel, action, onChunk });
+}
+
+async function streamOpenRouterWithFallback(params) {
+  let streamed = false;
+  try {
+    return await streamOpenAICompat({
+      ...params,
+      onChunk: chunk => {
+        streamed = true;
+        params.onChunk(chunk);
+      }
+    });
+  } catch (err) {
+    if (streamed || !ModelRegistry.shouldFallbackOpenRouter(err.status, err.message, params.modelId)) throw err;
+    params.onStatus?.('DeepSeek 免費節點忙碌，已改用 OpenRouter Free 備援。');
+    return streamOpenAICompat({
+      ...params,
+      modelId: ModelRegistry.OPENROUTER_FALLBACK_MODEL_ID
+    });
+  }
 }
 
 // ── Gemini SSE Streaming（?alt=sse）───────────────
@@ -297,11 +337,17 @@ async function streamOpenAICompat({ prompt, action, modelId, apiKey, baseUrl, la
 
   await parseSseStream(response.body, line => {
     if (line === '[DONE]') return;
+    let obj;
     try {
-      const obj  = JSON.parse(line);
-      const text = obj.choices?.[0]?.delta?.content;
-      if (text) onChunk(text);
-    } catch { /* 忽略 */ }
+      obj = JSON.parse(line);
+    } catch { return; }
+    if (obj.error) {
+      const err = new Error(obj.error.message || `${label}串流錯誤`);
+      err.status = obj.error.code;
+      throw err;
+    }
+    const text = obj.choices?.[0]?.delta?.content;
+    if (text) onChunk(text);
   });
 }
 

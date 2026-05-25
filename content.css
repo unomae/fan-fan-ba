@@ -4,12 +4,14 @@
 
 /* ── 共用 reset（避免被頁面樣式汙染）──────────── */
 #gemini-ai-toolbar *,
-#gemini-result-card * {
+#gemini-result-card *,
+#fanfanba-floating * {
   box-sizing: border-box !important;
   line-height: 1.5 !important;
 }
 
-#gemini-ai-toolbar * {
+#gemini-ai-toolbar *,
+#fanfanba-floating * {
   font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
 }
 
@@ -19,7 +21,8 @@
 
 /* ── 品牌 CSS 變數（作用域限於本元件）──────────── */
 #gemini-ai-toolbar,
-#gemini-result-card {
+#gemini-result-card,
+#fanfanba-floating {
   --ffb-glass-bg:     rgba(255, 255, 255, 0.45);
   --ffb-glass-border: rgba(255, 255, 255, 0.5);
   --ffb-brand-green:  #A3D179;
@@ -1179,4 +1182,183 @@ del.g-diff-del {
 
 .g-retry-btn:hover {
   background: rgba(248, 113, 113, 0.18) !important;
+}
+
+.g-provider-notice {
+  margin: 0 0 10px !important;
+  padding: 7px 10px !important;
+  border: 1px solid rgba(90, 158, 58, 0.24) !important;
+  border-radius: 8px !important;
+  background: rgba(237, 247, 232, 0.9) !important;
+  color: #3f7528 !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+}
+
+/* ════════════════════════════════════════════════
+   17. 右側常駐懸浮球
+   ════════════════════════════════════════════════ */
+#fanfanba-floating {
+  all: initial;
+  position: fixed !important;
+  z-index: 2147483645 !important;
+  display: flex !important;
+  flex-direction: row-reverse !important;
+  align-items: center !important;
+  gap: 8px !important;
+  pointer-events: auto !important;
+}
+
+.ffb-ball-main {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 46px !important;
+  height: 46px !important;
+  padding: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.75) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: 0 8px 24px rgba(35, 53, 28, 0.18) !important;
+  cursor: grab !important;
+  outline: none !important;
+  transition: transform 0.16s ease, background 0.16s ease, opacity 0.16s ease !important;
+}
+
+.ffb-ball-main:hover {
+  background: rgba(255, 255, 255, 0.94) !important;
+  transform: translateX(-2px) !important;
+}
+
+.ffb-ball-main:active {
+  cursor: grabbing !important;
+  transform: scale(0.96) !important;
+}
+
+.ffb-ball-main img {
+  width: 30px !important;
+  height: 30px !important;
+  display: block !important;
+  pointer-events: none !important;
+}
+
+#fanfanba-floating.ffb-paused .ffb-ball-main {
+  opacity: 0.55 !important;
+  filter: grayscale(0.4) !important;
+}
+
+.ffb-ball-menu {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  min-width: 148px !important;
+  padding: 7px !important;
+  border: 1px solid rgba(255, 255, 255, 0.75) !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  box-shadow: 0 12px 28px rgba(35, 53, 28, 0.16) !important;
+  opacity: 0 !important;
+  transform: translateX(8px) scale(0.98) !important;
+  pointer-events: none !important;
+  transition: opacity 0.16s ease, transform 0.16s ease !important;
+}
+
+#fanfanba-floating.ffb-menu-open .ffb-ball-menu {
+  opacity: 1 !important;
+  transform: translateX(0) scale(1) !important;
+  pointer-events: auto !important;
+}
+
+.ffb-ball-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  min-height: 34px !important;
+  padding: 7px 9px !important;
+  border: none !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  color: #31442b !important;
+  font-size: 12.5px !important;
+  font-weight: 650 !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  outline: none !important;
+  transition: background 0.14s ease, color 0.14s ease !important;
+}
+
+.ffb-ball-item:hover {
+  background: rgba(163, 209, 121, 0.16) !important;
+  color: #2f6d20 !important;
+}
+
+.ffb-ball-item:disabled {
+  color: #9aa59a !important;
+  cursor: default !important;
+}
+
+.ffb-ball-item:disabled:hover {
+  background: transparent !important;
+}
+
+.ffb-ball-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 6px !important;
+  background: #edf7e8 !important;
+  color: #5a9e3a !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  flex-shrink: 0 !important;
+}
+
+.g-floating-history {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.g-floating-history-item {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  padding: 8px 10px !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  border-radius: 8px !important;
+  background: rgba(250, 250, 250, 0.82) !important;
+  color: #333 !important;
+  cursor: pointer !important;
+  text-align: left !important;
+}
+
+.g-floating-history-item:hover {
+  background: rgba(163, 209, 121, 0.14) !important;
+}
+
+.g-floating-history-item span {
+  padding: 2px 6px !important;
+  border-radius: 5px !important;
+  background: rgba(26, 115, 232, 0.1) !important;
+  color: #1a73e8 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+
+.g-floating-history-item strong {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
 }

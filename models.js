@@ -1,0 +1,131 @@
+(function initFanFanBaModels(global) {
+  'use strict';
+
+  const DEFAULT_MODEL = 'groq:meta-llama/llama-4-scout-17b-16e-instruct';
+  const OPENROUTER_PRIMARY_MODEL = 'openrouter:deepseek/deepseek-v4-flash:free';
+  const OPENROUTER_FALLBACK_MODEL_ID = 'openrouter/free';
+
+  const MODELS = [
+    {
+      id: DEFAULT_MODEL,
+      provider: 'groq',
+      apiKeyName: 'groqApiKey',
+      name: 'Llama 4 Scout',
+      desc: 'Meta 最新 · Groq 極速・免費',
+      badge: 'Groq',
+      badgeClass: 'badge-groq'
+    },
+    {
+      id: 'gemini-3.5-flash',
+      provider: 'gemini',
+      apiKeyName: 'apiKey',
+      name: 'Gemini 3.5 Flash',
+      desc: '最新穩定版 · 免費額度',
+      badge: '快速',
+      badgeClass: 'badge-fast'
+    },
+    {
+      id: OPENROUTER_PRIMARY_MODEL,
+      provider: 'openrouter',
+      apiKeyName: 'openrouterApiKey',
+      fallbackModelId: OPENROUTER_FALLBACK_MODEL_ID,
+      name: 'DeepSeek V4 Flash',
+      desc: 'OpenRouter 免費 · 中文/推理強',
+      badge: 'OR',
+      badgeClass: 'badge-or'
+    }
+  ];
+
+  const MODEL_MIGRATIONS = {
+    'gemini-3-flash-preview': 'gemini-3.5-flash',
+    'gemini-3.1-flash-lite-preview': 'gemini-3.5-flash',
+    'openrouter/free': OPENROUTER_PRIMARY_MODEL,
+    'openrouter:deepseek/deepseek-chat-v3-0324': OPENROUTER_PRIMARY_MODEL,
+    'openrouter:qwen/qwen3-30b-a3b': OPENROUTER_PRIMARY_MODEL,
+    'openrouter:mistralai/mistral-small-3.1-24b-instruct': OPENROUTER_PRIMARY_MODEL
+  };
+
+  const MODEL_NAME_MAP = MODELS.reduce((acc, model) => {
+    acc[model.id] = model.name;
+    return acc;
+  }, {
+    'gemini-2.5-flash': 'Gemini 2.5 Flash'
+  });
+
+  function normalizeModel(model) {
+    return MODEL_MIGRATIONS[model] || model || DEFAULT_MODEL;
+  }
+
+  function getModel(model) {
+    const normalized = normalizeModel(model);
+    return MODELS.find(item => item.id === normalized) || MODELS[0];
+  }
+
+  function getProvider(model) {
+    const normalized = normalizeModel(model);
+    if (normalized.startsWith('groq:')) return 'groq';
+    if (normalized.startsWith('openrouter:')) return 'openrouter';
+    return 'gemini';
+  }
+
+  function getModelDisplayName(model) {
+    return MODEL_NAME_MAP[normalizeModel(model)] || model || MODEL_NAME_MAP[DEFAULT_MODEL];
+  }
+
+  function toApiModelId(model) {
+    const normalized = normalizeModel(model);
+    if (normalized.startsWith('groq:')) return normalized.slice('groq:'.length);
+    if (normalized.startsWith('openrouter:')) return normalized.slice('openrouter:'.length);
+    return normalized;
+  }
+
+  function shouldFallbackOpenRouter(status, message, modelId) {
+    if (modelId !== toApiModelId(OPENROUTER_PRIMARY_MODEL)) return false;
+    const text = (message || '').toLowerCase();
+    return status === 502 ||
+           status === 503 ||
+           text.includes('provider') ||
+           text.includes('no available model provider') ||
+           text.includes('down');
+  }
+
+  function stableHash(value) {
+    const input = String(value || '');
+    let hash = 5381;
+    for (let i = 0; i < input.length; i += 1) {
+      hash = ((hash << 5) + hash) ^ input.charCodeAt(i);
+    }
+    return (hash >>> 0).toString(36);
+  }
+
+  function buildCacheKey({ action, text, model, targetLanguage = 'default', context = '', pageTitle = '' }) {
+    return [
+      normalizeModel(model),
+      targetLanguage || 'default',
+      action || 'unknown',
+      stableHash(text),
+      stableHash(context),
+      stableHash(pageTitle)
+    ].join(':');
+  }
+
+  const registry = {
+    DEFAULT_MODEL,
+    OPENROUTER_PRIMARY_MODEL,
+    OPENROUTER_FALLBACK_MODEL_ID,
+    MODELS,
+    MODEL_MIGRATIONS,
+    MODEL_NAME_MAP,
+    normalizeModel,
+    getModel,
+    getProvider,
+    getModelDisplayName,
+    toApiModelId,
+    shouldFallbackOpenRouter,
+    stableHash,
+    buildCacheKey
+  };
+
+  global.FanFanBaModels = registry;
+  if (typeof module !== 'undefined' && module.exports) module.exports = registry;
+})(typeof globalThis !== 'undefined' ? globalThis : window);

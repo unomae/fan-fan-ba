@@ -577,6 +577,12 @@ function setError(msg, onRetry) {
   }
 }
 
+function showResultNotice(msg) {
+  const body = resultCard?.querySelector('.g-rc-body');
+  if (!body || !msg) return;
+  body.insertAdjacentHTML('afterbegin', `<div class="g-provider-notice">${escapeHtml(msg)}</div>`);
+}
+
 function speakWord(word, btn, lang) {
   btn?.classList.add('g-speaking');
   if (!chrome.runtime?.id) { speakFallback(word, btn); return; }

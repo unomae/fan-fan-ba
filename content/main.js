@@ -17,9 +17,12 @@ document.addEventListener('mousemove', onDragMove);
 window.addEventListener('beforeunload', () => {
   toolbar?.remove();
   resultCard?.remove();
+  floatingBall?.remove();
   dragState = null;
   savedSel  = null;
 });
+
+initContentSettings();
 
 // ── 拖曳（rAF throttle）──────────────────────────────
 function onDragMove(e) {
@@ -72,12 +75,14 @@ function snapToEdgeIfNear() {
 
 // ── 選取偵測 ─────────────────────────────────────────
 function onMouseUp(e) {
+  if (fanFanBaPaused) return;
   if (isInOurUI(e.target)) return;
   if (obsidianSaving) return; // 存入 Obsidian 期間 tab 切換可能觸發合成事件
   setTimeout(checkSelection, 20);
 }
 
 function onKeyUp(e) {
+  if (fanFanBaPaused) return;
   if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(e.key)) {
     setTimeout(checkSelection, 20);
   }
@@ -85,6 +90,7 @@ function onKeyUp(e) {
 
 function onMouseDown(e) {
   if (isInOurUI(e.target)) return;
+  if (fanFanBaPaused) return;
   if (isPinned) {
     // 釘住時只收起工具列，結果卡保留
     hideToolbar();
@@ -95,7 +101,8 @@ function onMouseDown(e) {
 
 function isInOurUI(el) {
   return (toolbar    && toolbar.contains(el))
-      || (resultCard && resultCard.contains(el));
+      || (resultCard && resultCard.contains(el))
+      || (floatingBall && floatingBall.contains(el));
 }
 
 function checkSelection() {
@@ -165,9 +172,16 @@ function triggerAction(action) {
     return;
   }
 
-  const cacheKey  = `${action}:${savedSel.text}`;
   const context   = extractContext(savedSel.text, savedSel.range);
   const pageTitle = document.title;
+  const cacheKey  = FanFanBaModels.buildCacheKey({
+    action,
+    text: savedSel.text,
+    model: activeModel,
+    targetLanguage,
+    context,
+    pageTitle
+  });
 
   // 快取命中：直接渲染，不發 API 請求
   if (responseCache.has(cacheKey)) {
@@ -213,6 +227,7 @@ function sendNonStreaming(action, selectedText, context, pageTitle, cacheKey) {
         }
         responseCache.set(cacheKey, response.result);
         renderResult(action, response.result, selectedText);
+        if (response.notice) showResultNotice(response.notice);
         requestAnimationFrame(positionResultCard);
       }
     );
@@ -227,8 +242,14 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey) {
   let   accumulated = '';
   const body        = resultCard?.querySelector('.g-rc-body');
   let   portDone    = false;
+  let   streamNotice = '';
 
   port.onMessage.addListener(msg => {
+    if (msg.status) {
+      streamNotice = msg.status;
+      if (body && !accumulated) body.innerHTML = `<div class="g-provider-notice">${escapeHtml(streamNotice)}</div>`;
+      return;
+    }
     if (msg.error) {
       setError(msg.error, () => triggerAction(activeAction)); // streaming 錯誤可重試
       port.disconnect();
@@ -238,6 +259,7 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey) {
       portDone = true;
       // Stream 完成：交由 renderResult 做結構化渲染
       renderResult(action, accumulated, selectedText);
+      if (streamNotice) showResultNotice(streamNotice);
       responseCache.set(cacheKey, accumulated);
       requestAnimationFrame(positionResultCard);
       port.disconnect();
@@ -250,7 +272,8 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey) {
         const display = escapeHtml(accumulated)
           .replace(/===DEEP===/g, '<hr class="g-deep-divider">')
           .replace(/\n/g, '<br>');
-        body.innerHTML = `<div class="g-text-body g-streaming">${display}</div>`;
+        const notice = streamNotice ? `<div class="g-provider-notice">${escapeHtml(streamNotice)}</div>` : '';
+        body.innerHTML = `${notice}<div class="g-text-body g-streaming">${display}</div>`;
       }
     }
   });
@@ -263,4 +286,32 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey) {
   });
 
   port.postMessage({ action, selectedText, context, pageTitle });
+}
+
+function initContentSettings() {
+  chrome.storage.sync.get({ model: FanFanBaModels.DEFAULT_MODEL, targetLanguage: 'default' })
+    .then(settings => {
+      activeModel = FanFanBaModels.normalizeModel(settings.model);
+      targetLanguage = settings.targetLanguage || 'default';
+    })
+    .catch(() => {});
+
+  chrome.storage.local.get(getPauseStorageKey())
+    .then(data => {
+      fanFanBaPaused = !!data[getPauseStorageKey()];
+      updateFloatingBallPausedState?.();
+    })
+    .catch(() => {});
+
+  chrome.storage.onChanged?.addListener((changes, area) => {
+    if (area === 'sync') {
+      if (changes.model) activeModel = FanFanBaModels.normalizeModel(changes.model.newValue);
+      if (changes.targetLanguage) targetLanguage = changes.targetLanguage.newValue || 'default';
+    }
+    if (area === 'local' && changes[getPauseStorageKey()]) {
+      fanFanBaPaused = !!changes[getPauseStorageKey()].newValue;
+      updateFloatingBallPausedState?.();
+      if (fanFanBaPaused) hideAll();
+    }
+  });
 }

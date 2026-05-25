@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "翻翻吧",
-  "version": "1.2.4",
+  "version": "1.3.0",
   "description": "選取文字後使用AI 翻譯、解釋、優化改寫",
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
@@ -20,11 +20,13 @@
     {
       "matches": ["<all_urls>"],
       "js": [
+        "models.js",
         "content/state.js",
         "content/utils.js",
         "content/obsidian.js",
         "content/toolbar.js",
         "content/result-card.js",
+        "content/floating-ball.js",
         "content/main.js"
       ],
       "css": ["content.css"],
@@ -53,7 +55,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["fonts/jf-openhuninn-2.1.ttf"],
+      "resources": ["fonts/jf-openhuninn-2.1.ttf", "icons/icon48.png"],
       "matches": ["<all_urls>"]
     }
   ]

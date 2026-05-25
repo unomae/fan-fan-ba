@@ -3,20 +3,9 @@
 'use strict';
 
 const $ = id => document.getElementById(id);
-const DEFAULT_MODEL = 'groq:meta-llama/llama-4-scout-17b-16e-instruct';
-const OPENROUTER_DEFAULT_MODEL = 'openrouter:deepseek/deepseek-v4-flash:free';
-const MODEL_MIGRATIONS = {
-  'gemini-3-flash-preview':                              'gemini-3.5-flash',
-  'gemini-3.1-flash-lite-preview':                       'gemini-3.5-flash',
-  'openrouter/free':                                     OPENROUTER_DEFAULT_MODEL,
-  'openrouter:deepseek/deepseek-chat-v3-0324':           OPENROUTER_DEFAULT_MODEL,
-  'openrouter:qwen/qwen3-30b-a3b':                       OPENROUTER_DEFAULT_MODEL,
-  'openrouter:mistralai/mistral-small-3.1-24b-instruct': OPENROUTER_DEFAULT_MODEL
-};
+const ModelRegistry = globalThis.FanFanBaModels || require('./models');
 
-function normalizeModel(model) {
-  return MODEL_MIGRATIONS[model] || model || DEFAULT_MODEL;
-}
+renderModelSelect();
 
 // ── 載入已儲存的設定 ─────────────────────────────────
 chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 'obsidianVault', 'ttsApiKey', 'obsidianDefaultFolder'],
@@ -25,7 +14,7 @@ chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 'o
     if (groqApiKey)             $('groqApiKey').value             = groqApiKey;
     if (openrouterApiKey)       $('openrouterApiKey').value       = openrouterApiKey;
     // 無儲存紀錄時預設 Groq（免費額度最大方）
-    const currentModel = normalizeModel(model);
+    const currentModel = ModelRegistry.normalizeModel(model);
     $('model').value = currentModel;
     if (model && currentModel !== model) chrome.storage.sync.set({ model: currentModel });
     if (obsidianVault)          $('obsidianVault').value          = obsidianVault;
@@ -33,6 +22,25 @@ chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 'o
     if (obsidianDefaultFolder)  $('obsidianDefaultFolder').value  = obsidianDefaultFolder;
   }
 );
+
+function renderModelSelect() {
+  const select = $('model');
+  if (!select || select.tagName !== 'SELECT') return;
+
+  const providerLabels = {
+    groq: 'Groq（需 Groq API Key）',
+    gemini: 'Gemini（需 Gemini API Key）',
+    openrouter: 'OpenRouter（需 OpenRouter API Key）'
+  };
+
+  select.innerHTML = ['groq', 'gemini', 'openrouter'].map(provider => {
+    const options = ModelRegistry.MODELS
+      .filter(model => model.provider === provider)
+      .map(model => `<option value="${model.id}">${model.name}（${model.desc}）</option>`)
+      .join('');
+    return `<optgroup label="${providerLabels[provider]}">${options}</optgroup>`;
+  }).join('');
+}
 
 // ── 顯示 / 隱藏 API Key 共用函式 ─────────────────────
 function bindToggleVis(btnId, inputId, showId, hideId) {
@@ -97,10 +105,10 @@ $('btnTest').addEventListener('click', async () => {
     fetchBody    = JSON.stringify({ model: model.replace('groq:', ''), messages: [{ role: 'user', content: '回覆 OK 即可' }], max_tokens: 10 });
   } else if (isOpenRouter) {
     apiKey      = $('openrouterApiKey').value.trim();
-    displayName = model.replace('openrouter:', '');
+    displayName = ModelRegistry.toApiModelId(model);
     fetchUrl    = 'https://openrouter.ai/api/v1/chat/completions';
     fetchHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'X-Title': 'Fan Fan Ba' };
-    fetchBody    = JSON.stringify({ model: model.replace('openrouter:', ''), messages: [{ role: 'user', content: '回覆 OK 即可' }], max_tokens: 10 });
+    fetchBody    = buildOpenAICompatTestBody(ModelRegistry.toApiModelId(model));
   } else {
     apiKey      = $('apiKey').value.trim();
     displayName = model;
@@ -118,9 +126,20 @@ $('btnTest').addEventListener('click', async () => {
   $('btnTest').disabled = true;
 
   try {
-    const res = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body: fetchBody });
+    let res = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body: fetchBody });
+    let fallbackUsed = false;
+    if (isOpenRouter && !res.ok) {
+      const err = await res.clone().json().catch(() => ({}));
+      const modelId = ModelRegistry.toApiModelId(model);
+      if (ModelRegistry.shouldFallbackOpenRouter(res.status, err.error?.message, modelId)) {
+        fallbackUsed = true;
+        displayName = ModelRegistry.OPENROUTER_FALLBACK_MODEL_ID;
+        fetchBody = buildOpenAICompatTestBody(ModelRegistry.OPENROUTER_FALLBACK_MODEL_ID);
+        res = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body: fetchBody });
+      }
+    }
     if (res.ok) {
-      showStatus('ok', `✓ 連線成功！模型：${displayName}`);
+      showStatus('ok', `✓ 連線成功！模型：${displayName}${fallbackUsed ? '（備援）' : ''}`);
     } else {
       const err = await res.json().catch(() => ({}));
       showStatus('err', `連線失敗：${err.error?.message || `HTTP ${res.status}`}`);
@@ -140,4 +159,8 @@ function showStatus(type, msg) {
   if (type === 'ok') setTimeout(() => { el.className = ''; el.textContent = ''; }, 3000);
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { showStatus, bindToggleVis }; }
+function buildOpenAICompatTestBody(modelId) {
+  return JSON.stringify({ model: modelId, messages: [{ role: 'user', content: '回覆 OK 即可' }], max_tokens: 10 });
+}
+
+if (typeof module !== 'undefined' && module.exports) { module.exports = { showStatus, bindToggleVis, renderModelSelect }; }
