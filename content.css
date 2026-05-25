@@ -1247,10 +1247,17 @@ del.g-diff-del {
   position: fixed !important;
   z-index: 2147483645 !important;
   display: flex !important;
-  flex-direction: row-reverse !important;
   align-items: center !important;
   gap: 8px !important;
   pointer-events: auto !important;
+}
+
+#fanfanba-floating.ffb-side-right {
+  flex-direction: row-reverse !important;
+}
+
+#fanfanba-floating.ffb-side-left {
+  flex-direction: row !important;
 }
 
 .ffb-ball-main {
@@ -1291,6 +1298,67 @@ del.g-diff-del {
 #fanfanba-floating.ffb-paused .ffb-ball-main {
   opacity: 0.55 !important;
   filter: grayscale(0.4) !important;
+}
+
+#fanfanba-floating .ffb-continue-tip {
+  display: none !important;
+  position: absolute !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: max-content !important;
+  max-width: 180px !important;
+  padding: 6px 9px !important;
+  border: 1px solid rgba(90, 158, 58, 0.28) !important;
+  border-radius: 999px !important;
+  background: rgba(237, 247, 232, 0.96) !important;
+  color: #3f7528 !important;
+  box-shadow: 0 8px 18px rgba(35, 53, 28, 0.14) !important;
+  font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  line-height: 1.25 !important;
+  pointer-events: none !important;
+}
+
+#fanfanba-floating.ffb-side-right .ffb-continue-tip {
+  right: 54px !important;
+}
+
+#fanfanba-floating.ffb-side-left .ffb-continue-tip {
+  left: 54px !important;
+}
+
+#fanfanba-floating.ffb-can-continue .ffb-continue-tip {
+  display: block !important;
+}
+
+#fanfanba-floating.ffb-can-continue .ffb-ball-main {
+  border-color: rgba(90, 158, 58, 0.62) !important;
+  background: rgba(237, 247, 232, 0.95) !important;
+  box-shadow: 0 0 0 0 rgba(90, 158, 58, 0.34), 0 8px 24px rgba(35, 53, 28, 0.18) !important;
+  animation: ffb-continue-pulse 1.8s ease-out infinite !important;
+}
+
+#fanfanba-floating.ffb-page-running .ffb-ball-main {
+  opacity: 0.78 !important;
+  box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.12), 0 8px 24px rgba(35, 53, 28, 0.18) !important;
+}
+
+#fanfanba-floating.ffb-can-continue [data-action="page-translate"] {
+  background: rgba(163, 209, 121, 0.18) !important;
+  color: #2f6d20 !important;
+}
+
+@keyframes ffb-continue-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(90, 158, 58, 0.34), 0 8px 24px rgba(35, 53, 28, 0.18);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(90, 158, 58, 0), 0 8px 24px rgba(35, 53, 28, 0.18);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(90, 158, 58, 0), 0 8px 24px rgba(35, 53, 28, 0.18);
+  }
 }
 
 .ffb-ball-menu {
@@ -1351,6 +1419,7 @@ del.g-diff-del {
 }
 
 .ffb-page-panel-modes,
+.ffb-page-panel-density,
 .ffb-page-panel-actions {
   display: flex !important;
   gap: 6px !important;
@@ -1358,6 +1427,7 @@ del.g-diff-del {
 }
 
 .ffb-page-panel-modes button,
+.ffb-page-panel-density button,
 .ffb-page-panel-actions button,
 .ffb-page-retry {
   border: 1px solid rgba(31, 41, 55, 0.12) !important;
@@ -1375,18 +1445,24 @@ del.g-diff-del {
   flex: 1 !important;
 }
 
+.ffb-page-panel-density button {
+  flex: 1 !important;
+}
+
 .ffb-page-panel-actions button {
   flex: 1 !important;
 }
 
 .ffb-page-panel-modes button:hover,
+.ffb-page-panel-density button:hover,
 .ffb-page-panel-actions button:hover,
 .ffb-page-retry:hover {
   background: rgba(163, 209, 121, 0.14) !important;
   border-color: rgba(90, 158, 58, 0.28) !important;
 }
 
-.ffb-page-panel-modes button.ffb-page-active {
+.ffb-page-panel-modes button.ffb-page-active,
+.ffb-page-panel-density button.ffb-page-active {
   background: #edf7e8 !important;
   border-color: rgba(90, 158, 58, 0.34) !important;
   color: #3f7528 !important;
@@ -1398,29 +1474,120 @@ del.g-diff-del {
 }
 
 .ffb-page-translation-block {
-  margin: 8px 0 12px !important;
-  padding: 9px 11px !important;
+  position: relative !important;
+  margin: 8px 0 14px !important;
+  padding: 11px 13px !important;
   border-left: 3px solid #a3d179 !important;
   border-radius: 0 8px 8px 0 !important;
-  background: rgba(237, 247, 232, 0.82) !important;
+  background: linear-gradient(180deg, rgba(246, 252, 243, 0.96), rgba(237, 247, 232, 0.88)) !important;
   color: #1f2937 !important;
-  font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
+  font-family: 'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', -apple-system, sans-serif !important;
   text-align: left !important;
+  outline: 2px solid transparent !important;
+  outline-offset: 2px !important;
+  transition: background 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, outline-color 0.16s ease !important;
 }
 
-.ffb-page-translation-label {
-  margin-bottom: 4px !important;
+.ffb-page-translation-head {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  margin-bottom: 5px !important;
+}
+
+.ffb-page-translation-mark {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 auto !important;
+  width: 22px !important;
+  height: 22px !important;
+  border: 1px solid rgba(90, 158, 58, 0.25) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.92) !important;
   color: #4f7f35 !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 750 !important;
-  line-height: 1.35 !important;
+  line-height: 1 !important;
+  box-shadow: 0 1px 4px rgba(59, 92, 42, 0.08) !important;
+}
+
+.ffb-page-translation-mark-error {
+  border-color: rgba(185, 28, 28, 0.24) !important;
+  color: #b91c1c !important;
+}
+
+.ffb-page-translation-actions {
+  display: inline-flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+  gap: 4px !important;
+  flex: 0 0 auto !important;
+  max-width: 120px !important;
+  opacity: 0.72 !important;
+  transition: opacity 0.14s ease !important;
+}
+
+.ffb-page-translation-block:hover .ffb-page-translation-actions,
+.ffb-page-translation-block.ffb-pair-active .ffb-page-translation-actions {
+  opacity: 1 !important;
+}
+
+.ffb-page-translation-actions button {
+  border: 1px solid rgba(90, 158, 58, 0.22) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  color: #3f7528 !important;
+  cursor: pointer !important;
+  font-size: 17px !important;
+  font-weight: 750 !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+}
+
+.ffb-page-expand-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 26px !important;
+  height: 26px !important;
+  box-shadow: 0 2px 8px rgba(59, 92, 42, 0.1) !important;
+}
+
+.ffb-page-translation-actions button:hover,
+.ffb-page-translation-actions button.ffb-page-copied {
+  background: #ffffff !important;
+  border-color: rgba(90, 158, 58, 0.42) !important;
+  color: #2f6d20 !important;
 }
 
 .ffb-page-translation-text {
   color: #1f2937 !important;
-  font-size: 14px !important;
-  line-height: 1.7 !important;
+  font-family: inherit !important;
+  font-size: var(--ffb-page-source-font-size, 14px) !important;
+  line-height: var(--ffb-page-source-line-height, 1.72) !important;
   word-break: break-word !important;
+  white-space: normal !important;
+}
+
+.ffb-page-collapsible.ffb-page-collapsed .ffb-page-translation-text {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 4 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+.ffb-page-collapsible.ffb-page-collapsed::after {
+  content: '' !important;
+  position: absolute !important;
+  left: 3px !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  height: 52px !important;
+  border-radius: 0 0 8px 0 !important;
+  background: linear-gradient(180deg, rgba(237, 247, 232, 0), rgba(237, 247, 232, 0.98)) !important;
+  pointer-events: none !important;
 }
 
 .ffb-page-translation-loading .ffb-page-translation-text {
@@ -1432,12 +1599,45 @@ del.g-diff-del {
   background: rgba(254, 242, 242, 0.88) !important;
 }
 
-.ffb-page-translation-error .ffb-page-translation-label {
-  color: #b91c1c !important;
-}
-
 .ffb-page-retry {
   margin-top: 8px !important;
+}
+
+.ffb-page-source-translated {
+  transition: background 0.16s ease, box-shadow 0.16s ease, outline-color 0.16s ease !important;
+}
+
+.ffb-page-source-translated.ffb-pair-active {
+  border-radius: 6px !important;
+  outline: 2px solid rgba(47, 92, 156, 0.45) !important;
+  outline-offset: 3px !important;
+  background: rgba(47, 92, 156, 0.12) !important;
+  box-shadow: 0 0 0 5px rgba(47, 92, 156, 0.08) !important;
+}
+
+.ffb-page-translation-block.ffb-pair-active {
+  border-left-color: #5a9e3a !important;
+  background: #f0faeb !important;
+  outline-color: rgba(90, 158, 58, 0.42) !important;
+  box-shadow: 0 0 0 5px rgba(90, 158, 58, 0.12) !important;
+}
+
+html.ffb-page-translation-density-compact .ffb-page-translation-block {
+  margin: 5px 0 8px !important;
+  padding: 7px 9px !important;
+}
+
+html.ffb-page-translation-density-compact .ffb-page-translation-head {
+  margin-bottom: 3px !important;
+}
+
+html.ffb-page-translation-density-compact .ffb-page-translation-text {
+  line-height: max(1.48, calc(var(--ffb-page-source-line-height, 1.72) - 0.12)) !important;
+}
+
+html.ffb-page-translation-density-compact .ffb-page-translation-actions button {
+  width: 24px !important;
+  height: 24px !important;
 }
 
 html.ffb-page-translation-mode-original .ffb-page-translation-block {
@@ -1485,6 +1685,35 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
 
 .ffb-ball-item:disabled:hover {
   background: transparent !important;
+}
+
+.ffb-page-model-row {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 34px !important;
+  padding: 6px 8px !important;
+  border-top: 1px solid rgba(49, 68, 43, 0.08) !important;
+  color: #5f6f5a !important;
+  font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 750 !important;
+}
+
+.ffb-page-model-select {
+  min-width: 0 !important;
+  width: 100% !important;
+  height: 28px !important;
+  padding: 3px 6px !important;
+  border: 1px solid rgba(49, 68, 43, 0.14) !important;
+  border-radius: 6px !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+  color: #31442b !important;
+  font-family: inherit !important;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+  outline: none !important;
 }
 
 .ffb-ball-icon {

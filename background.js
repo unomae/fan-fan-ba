@@ -128,17 +128,17 @@ chrome.runtime.onConnect.addListener(port => {
 });
 
 // ── 非 streaming：維持原有邏輯（字典 JSON 需要完整回應）──
-async function handleAIRequest({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage }) {
+async function handleAIRequest({ action, selectedText, context, pageTitle, model, targetLanguage, explanationLanguage, browserLanguage }) {
   const timeout = new Promise((_, reject) =>
     setTimeout(() => reject(new Error('請求逾時，請稍後重試')), 30000)
   );
-  return Promise.race([_handleAIRequest({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage }), timeout]);
+  return Promise.race([_handleAIRequest({ action, selectedText, context, pageTitle, model, targetLanguage, explanationLanguage, browserLanguage }), timeout]);
 }
 
-async function _handleAIRequest({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage }) {
+async function _handleAIRequest({ action, selectedText, context, pageTitle, model: requestedModel, targetLanguage, explanationLanguage, browserLanguage }) {
   const { apiKey = '', groqApiKey = '', openrouterApiKey = '', model = DEFAULT_MODEL } =
     await chrome.storage.sync.get({ apiKey: '', groqApiKey: '', openrouterApiKey: '', model: DEFAULT_MODEL });
-  const selectedModel = ModelRegistry.normalizeModel(model);
+  const selectedModel = ModelRegistry.normalizeModel(requestedModel || model);
 
   if (selectedModel.startsWith('groq:')) {
     if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
@@ -455,7 +455,8 @@ function buildPrompt(action, selectedText, context, pageTitle, settings = {}) {
 上下文：${context}
 目標單字／片語：「${selectedText}」`;
       }
-      return `你是專業翻譯助手，請將以下內容翻譯成${targetLanguage}，保持原文語氣與風格，直接輸出譯文，不加說明。
+      return `你是專業翻譯助手，請將以下內容翻譯成${targetLanguage}，保持原文語氣與風格。
+只輸出譯文正文，不要重複原文，不要加入「原文：」「譯文：」「翻譯：」等標籤，也不要加說明。
 
 網頁標題：${pageTitle}
 上下文：${context}

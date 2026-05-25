@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>翻翻吧｜全文翻譯 UX Review</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8f3;
+      --paper: #ffffff;
+      --ink: #172016;
+      --muted: #647160;
+      --line: #dfe8d9;
+      --green: #5a9e3a;
+      --green-soft: #edf7e8;
+      --blue: #2f5c9c;
+      --blue-soft: #edf4ff;
+      --yellow-soft: #fff8df;
+      --red-soft: #fff0ed;
+      --shadow: 0 10px 30px rgba(25, 36, 19, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif;
+      line-height: 1.65;
+    }
+
+    header {
+      background: var(--paper);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .wrap {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .hero {
+      padding: 42px 0 26px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 5vw, 46px);
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 850px;
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 0 0 22px;
+    }
+
+    nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdf9;
+      color: var(--ink);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    main {
+      padding: 28px 0 56px;
+    }
+
+    section {
+      margin: 0 0 28px;
+      padding: 28px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 17px;
+    }
+
+    p { margin: 0 0 12px; }
+
+    ul, ol {
+      margin: 8px 0 0;
+      padding-left: 22px;
+    }
+
+    li { margin: 7px 0; }
+
+    code {
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: #eef3ea;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 0.92em;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    th {
+      width: 160px;
+      background: #f3f8ef;
+      color: #31442b;
+      font-size: 13px;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: #fcfefb;
+    }
+
+    .panel h3 {
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 750;
+      background: var(--green-soft);
+      color: var(--green);
+      white-space: nowrap;
+    }
+
+    .badge.blue { background: var(--blue-soft); color: var(--blue); }
+    .badge.warn { background: var(--yellow-soft); color: #8b6400; }
+    .badge.risk { background: var(--red-soft); color: #b1452f; }
+
+    .recommendation {
+      display: flex;
+      gap: 12px;
+      margin: 0 0 18px;
+      padding: 14px 16px;
+      border: 1px solid #cfe7c4;
+      border-radius: 8px;
+      background: var(--green-soft);
+    }
+
+    .recommendation strong {
+      display: block;
+      margin-bottom: 2px;
+      color: #315f20;
+    }
+
+    .recommendation p {
+      margin: 0;
+      color: #496541;
+      font-size: 14px;
+    }
+
+    .mockup {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .browser {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdf9;
+      overflow: hidden;
+    }
+
+    .browser-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #f7faf3;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #cfd8c8;
+    }
+
+    .article {
+      padding: 18px;
+    }
+
+    .source {
+      margin: 0 0 8px;
+      color: #2d352c;
+      font-size: 15px;
+      line-height: 1.75;
+    }
+
+    .source.selected {
+      padding: 8px 10px;
+      border-radius: 7px;
+      background: rgba(47, 92, 156, 0.1);
+      outline: 1px solid rgba(47, 92, 156, 0.22);
+    }
+
+    .translation-card {
+      margin: 10px 0 18px;
+      padding: 10px 12px;
+      border-left: 3px solid var(--green);
+      border-radius: 0 8px 8px 0;
+      background: rgba(237, 247, 232, 0.9);
+    }
+
+    .translation-card.selected {
+      box-shadow: 0 0 0 2px rgba(90, 158, 58, 0.2);
+      background: #f0faeb;
+    }
+
+    .translation-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 5px;
+      color: #4f7f35;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .translation-actions {
+      display: inline-flex;
+      gap: 5px;
+    }
+
+    .mini-btn {
+      border: 1px solid rgba(90, 158, 58, 0.22);
+      border-radius: 6px;
+      background: #fff;
+      color: #3f7528;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+    }
+
+    .translation-text {
+      margin: 0;
+      color: #1f2937;
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .callout {
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fcfefb;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .flow-step {
+      border-left: 4px solid var(--green);
+      border-radius: 0 8px 8px 0;
+      background: #fbfdf9;
+      padding: 13px 14px;
+      min-height: 120px;
+    }
+
+    .flow-step strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+      padding-top: 8px;
+    }
+
+    @media (max-width: 860px) {
+      .grid, .mockup, .flow { grid-template-columns: 1fr; }
+      section { padding: 22px; }
+      th { width: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="hero">
+        <div class="eyebrow">Phase 3.1 UX Review</div>
+        <h1>全文翻譯段落呈現與同步選取建議</h1>
+        <p class="lead">這份 review 聚焦在兩件事：翻譯後段落如何更像閱讀工具而不是插入訊息，以及使用者選取原文時，如何讓對應譯文同步被看見、定位或複製。</p>
+      </div>
+      <nav>
+        <a href="#visual">段落呈現</a>
+        <a href="#selection">同步選取</a>
+        <a href="#implementation">實作建議</a>
+        <a href="#phasing">Phase 規劃</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="summary">
+      <h2>結論</h2>
+      <div class="recommendation">
+        <span class="badge">建議採用</span>
+        <div>
+          <strong>先做「雙語段落卡 + 配對高亮」，不要一開始做真正的雙區文字選取。</strong>
+          <p>Chrome/Edge 的 Selection API 對同時選兩段不同 DOM 文字支援有限。比較穩的做法是：使用者選取原文時，視覺上同步高亮對應譯文，並提供「複製譯文」「複製雙語」「定位原文」按鈕。</p>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="panel">
+          <h3><span class="badge">P1</span> 翻譯卡更像閱讀註解</h3>
+          <p>譯文用淡綠底、左側語言色條、緊湊標籤與操作鈕，避免整頁被一堆大塊卡片切碎。</p>
+        </div>
+        <div class="panel">
+          <h3><span class="badge blue">P1</span> 原文/譯文配對高亮</h3>
+          <p>每個原文段落和譯文段落綁定同一個 <code>data-ffb-pair-id</code>。選到原文時，譯文卡同步亮起。</p>
+        </div>
+        <div class="panel">
+          <h3><span class="badge warn">P2</span> 複製體驗補強</h3>
+          <p>提供「複製譯文」「複製雙語」「只看譯文」操作，比強行同步真實選取更可靠。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="visual">
+      <h2>段落呈現可以怎麼美化</h2>
+      <table>
+        <tbody>
+          <tr>
+            <th>目前問題</th>
+            <td>譯文區塊容易像一般提示訊息，段落多時視覺節奏會碎；語言、狀態、操作也不夠明確。</td>
+          </tr>
+          <tr>
+            <th>建議方向</th>
+            <td>把譯文做成「輕量閱讀註解」：低彩度背景、左側色條、語言 label、短操作鈕，並維持原文主視覺權重。</td>
+          </tr>
+          <tr>
+            <th>不要做</th>
+            <td>不要每段都放很厚的 card shadow，也不要把譯文字級做得比原文大；長文頁面會變成工具 UI 搶過內容。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>建議版型</h3>
+      <div class="mockup">
+        <div class="browser">
+          <div class="browser-bar">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <div class="article">
+            <p class="source selected">Large language models can summarize, translate, and restructure long passages, but readers still need clear context while moving through the original page.</p>
+            <div class="translation-card selected">
+              <div class="translation-head">
+                <span>繁體中文 · Llama 4 Scout</span>
+                <span class="translation-actions">
+                  <button class="mini-btn">複製譯文</button>
+                  <button class="mini-btn">雙語</button>
+                </span>
+              </div>
+              <p class="translation-text">大型語言模型可以摘要、翻譯並重整長段文字，但讀者在瀏覽原始頁面時，仍然需要清楚的上下文。</p>
+            </div>
+            <p class="source">A good reading tool should preserve the page flow while making translated content easy to scan and compare.</p>
+            <div class="translation-card">
+              <div class="translation-head">
+                <span>繁體中文 · Llama 4 Scout</span>
+                <span class="translation-actions">
+                  <button class="mini-btn">複製譯文</button>
+                </span>
+              </div>
+              <p class="translation-text">好的閱讀工具應該保留原頁面的閱讀流，同時讓譯文容易掃讀與比較。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout">
+          <h3>推薦細節</h3>
+          <ul>
+            <li>譯文卡左側保留 3px 綠色線，建立「這是翻翻吧翻譯」的固定識別。</li>
+            <li>語言與模型放在小 label，不干擾閱讀，但可追溯輸出來源。</li>
+            <li>操作鈕只在 hover 或 selected 狀態顯示完整，平常降低存在感。</li>
+            <li>當原文被選到或 hover 時，譯文卡用淡色外框同步亮起。</li>
+            <li>長譯文可折疊成 4 行，避免單段過長把頁面撐太開。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="selection">
+      <h2>原文與譯文同步選取</h2>
+      <div class="recommendation">
+        <span class="badge blue">重點判斷</span>
+        <div>
+          <strong>同步「視覺選取」可做且穩；同步「真正文字反白選取」不建議作為第一版。</strong>
+          <p>使用者拖選原文時，瀏覽器通常只維持一個真實 selection range。若強制把 selection 切到譯文，會讓使用者正在選的原文消失，體感反而怪。</p>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>方案</th>
+            <th>體驗</th>
+            <th>技術風險</th>
+            <th>建議</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>配對高亮</td>
+            <td>選到原文段落時，譯文卡同步亮起；選到譯文時，原文段落也亮起。</td>
+            <td>低。用 <code>selectionchange</code> 找最近段落即可。</td>
+            <td><span class="badge">先做</span></td>
+          </tr>
+          <tr>
+            <td>同步捲動定位</td>
+            <td>點譯文卡的定位按鈕，可捲回對應原文；點原文可聚焦譯文。</td>
+            <td>低。靠 pair id + <code>scrollIntoView</code>。</td>
+            <td><span class="badge">先做</span></td>
+          </tr>
+          <tr>
+            <td>複製雙語</td>
+            <td>選取原文後，工具列可複製「原文 + 譯文」或只複製譯文。</td>
+            <td>中低。需處理目前 pair 的 clipboard 格式。</td>
+            <td><span class="badge blue">第二步</span></td>
+          </tr>
+          <tr>
+            <td>真實雙區反白</td>
+            <td>原文與譯文同時呈現瀏覽器原生選取色。</td>
+            <td>高。Chromium 對 multiple ranges 不可靠，跨 DOM selection 容易打斷使用者操作。</td>
+            <td><span class="badge risk">暫緩</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="implementation">
+      <h2>實作建議</h2>
+      <div class="flow">
+        <div class="flow-step">
+          <strong>1. 建 pair id</strong>
+          <p>翻譯時為原文與譯文卡加入同一個 <code>data-ffb-pair-id</code>。</p>
+        </div>
+        <div class="flow-step">
+          <strong>2. 監聽 selection</strong>
+          <p>用 <code>document.selectionchange</code> 找目前 selection 所在的原文或譯文。</p>
+        </div>
+        <div class="flow-step">
+          <strong>3. 同步高亮</strong>
+          <p>清除上一組高亮，為對應 pair 加上 <code>ffb-pair-active</code>。</p>
+        </div>
+        <div class="flow-step">
+          <strong>4. 顯示操作</strong>
+          <p>在 active 譯文卡顯示複製譯文、複製雙語、定位原文。</p>
+        </div>
+      </div>
+
+      <h3>資料結構</h3>
+      <table>
+        <tbody>
+          <tr>
+            <th>原文段落</th>
+            <td><code>class="ffb-page-source-translated"</code>、<code>data-ffb-pair-id="ffb-pair-12"</code></td>
+          </tr>
+          <tr>
+            <th>譯文卡</th>
+            <td><code>class="ffb-page-translation-block"</code>、<code>data-ffb-pair-id="ffb-pair-12"</code></td>
+          </tr>
+          <tr>
+            <th>active 樣式</th>
+            <td><code>ffb-pair-active</code> 套在原文與譯文卡，用淡藍原文、淡綠譯文呈現同步。</td>
+          </tr>
+          <tr>
+            <th>clipboard</th>
+            <td>在 state 裡保存 <code>sourceText</code> 與 <code>translatedText</code>，提供複製譯文與複製雙語。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>互動規則</h3>
+      <ul>
+        <li>使用者選取原文任一文字：整個原文段落和對應譯文卡同步高亮。</li>
+        <li>使用者選取譯文：對應原文段落同步高亮。</li>
+        <li>點譯文卡：不強迫改變瀏覽器選取，只讓 pair active，避免干擾閱讀。</li>
+        <li>按 Esc 或點空白處：取消 pair active。</li>
+        <li>切換只看譯文模式時，pair highlighter 仍可保留，但「定位原文」會先切回雙語或原文可見。</li>
+      </ul>
+    </section>
+
+    <section id="phasing">
+      <h2>建議 Phase</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>階段</th>
+            <th>內容</th>
+            <th>驗收標準</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Phase 3.1</td>
+            <td>譯文卡視覺更新、pair id、原文/譯文 hover 與 selection 視覺同步。</td>
+            <td>選取原文時譯文卡穩定亮起；選取譯文時原文段落亮起；不干擾原生選取。</td>
+          </tr>
+          <tr>
+            <td>Phase 3.2</td>
+            <td>譯文卡操作列：複製譯文、複製雙語、定位原文、重試此段。</td>
+            <td>使用者可快速把 paired bilingual content 貼到筆記或文件。</td>
+          </tr>
+          <tr>
+            <td>Phase 3.3</td>
+            <td>長譯文折疊、段落密度設定、只看譯文模式下的定位改善。</td>
+            <td>長文頁面翻譯後仍可掃讀，不會被譯文卡撐得太碎。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <p class="footer-note">Review 版本：v0.1 · 建議先做視覺同步與配對操作，再評估真正雙區 selection。</p>
+  </main>
+</body>
+</html>
