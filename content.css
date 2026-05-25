@@ -1311,6 +1311,143 @@ del.g-diff-del {
   transition: opacity 0.16s ease, transform 0.16s ease !important;
 }
 
+.ffb-page-translation-panel {
+  all: initial;
+  position: fixed !important;
+  right: 72px !important;
+  bottom: 24px !important;
+  z-index: 2147483644 !important;
+  width: 260px !important;
+  padding: 12px !important;
+  box-sizing: border-box !important;
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: #1f2937 !important;
+  box-shadow: 0 12px 34px rgba(35, 53, 28, 0.18) !important;
+  font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
+  text-align: left !important;
+}
+
+.ffb-page-translation-panel *,
+.ffb-page-translation-block * {
+  box-sizing: border-box !important;
+  font-family: inherit !important;
+}
+
+.ffb-page-panel-title {
+  margin-bottom: 4px !important;
+  color: #111827 !important;
+  font-size: 13px !important;
+  font-weight: 750 !important;
+  line-height: 1.35 !important;
+}
+
+.ffb-page-panel-status {
+  margin-bottom: 10px !important;
+  color: #6b7280 !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+
+.ffb-page-panel-modes,
+.ffb-page-panel-actions {
+  display: flex !important;
+  gap: 6px !important;
+  margin-top: 7px !important;
+}
+
+.ffb-page-panel-modes button,
+.ffb-page-panel-actions button,
+.ffb-page-retry {
+  border: 1px solid rgba(31, 41, 55, 0.12) !important;
+  border-radius: 7px !important;
+  background: rgba(255, 255, 255, 0.76) !important;
+  color: #374151 !important;
+  cursor: pointer !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+  line-height: 1.3 !important;
+  padding: 6px 9px !important;
+}
+
+.ffb-page-panel-modes button {
+  flex: 1 !important;
+}
+
+.ffb-page-panel-actions button {
+  flex: 1 !important;
+}
+
+.ffb-page-panel-modes button:hover,
+.ffb-page-panel-actions button:hover,
+.ffb-page-retry:hover {
+  background: rgba(163, 209, 121, 0.14) !important;
+  border-color: rgba(90, 158, 58, 0.28) !important;
+}
+
+.ffb-page-panel-modes button.ffb-page-active {
+  background: #edf7e8 !important;
+  border-color: rgba(90, 158, 58, 0.34) !important;
+  color: #3f7528 !important;
+}
+
+.ffb-page-panel-actions button:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.48 !important;
+}
+
+.ffb-page-translation-block {
+  margin: 8px 0 12px !important;
+  padding: 9px 11px !important;
+  border-left: 3px solid #a3d179 !important;
+  border-radius: 0 8px 8px 0 !important;
+  background: rgba(237, 247, 232, 0.82) !important;
+  color: #1f2937 !important;
+  font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
+  text-align: left !important;
+}
+
+.ffb-page-translation-label {
+  margin-bottom: 4px !important;
+  color: #4f7f35 !important;
+  font-size: 11px !important;
+  font-weight: 750 !important;
+  line-height: 1.35 !important;
+}
+
+.ffb-page-translation-text {
+  color: #1f2937 !important;
+  font-size: 14px !important;
+  line-height: 1.7 !important;
+  word-break: break-word !important;
+}
+
+.ffb-page-translation-loading .ffb-page-translation-text {
+  color: #6b7280 !important;
+}
+
+.ffb-page-translation-error {
+  border-left-color: #f87171 !important;
+  background: rgba(254, 242, 242, 0.88) !important;
+}
+
+.ffb-page-translation-error .ffb-page-translation-label {
+  color: #b91c1c !important;
+}
+
+.ffb-page-retry {
+  margin-top: 8px !important;
+}
+
+html.ffb-page-translation-mode-original .ffb-page-translation-block {
+  display: none !important;
+}
+
+html.ffb-page-translation-mode-translation .ffb-page-source-translated {
+  display: none !important;
+}
+
 #fanfanba-floating.ffb-menu-open .ffb-ball-menu {
   opacity: 1 !important;
   transform: translateX(0) scale(1) !important;

@@ -28,7 +28,7 @@ function createFloatingBall() {
         <span class="ffb-ball-icon">↺</span>
         <span>最近查詢</span>
       </button>
-      <button class="ffb-ball-item" type="button" data-action="page-translate" disabled>
+      <button class="ffb-ball-item" type="button" data-action="page-translate">
         <span class="ffb-ball-icon">文</span>
         <span>全文翻譯 Beta</span>
       </button>
@@ -57,6 +57,11 @@ function createFloatingBall() {
     e.stopPropagation();
     el.classList.remove('ffb-menu-open');
     showFloatingHistoryPanel();
+  });
+  el.querySelector('[data-action="page-translate"]').addEventListener('click', e => {
+    e.stopPropagation();
+    el.classList.remove('ffb-menu-open');
+    startPageTranslationBeta?.();
   });
   el.querySelector('[data-action="pause"]').addEventListener('click', e => {
     e.stopPropagation();

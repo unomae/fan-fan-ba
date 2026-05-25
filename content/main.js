@@ -18,6 +18,7 @@ window.addEventListener('beforeunload', () => {
   toolbar?.remove();
   resultCard?.remove();
   floatingBall?.remove();
+  pageTranslationPanel?.remove();
   dragState = null;
   savedSel  = null;
 });
@@ -102,7 +103,8 @@ function onMouseDown(e) {
 function isInOurUI(el) {
   return (toolbar    && toolbar.contains(el))
       || (resultCard && resultCard.contains(el))
-      || (floatingBall && floatingBall.contains(el));
+      || (floatingBall && floatingBall.contains(el))
+      || (pageTranslationPanel && pageTranslationPanel.contains(el));
 }
 
 function checkSelection() {

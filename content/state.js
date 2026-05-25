@@ -5,6 +5,7 @@
 let toolbar      = null;   // 懸浮工具列 DOM
 let resultCard   = null;   // 結果卡 DOM
 let floatingBall = null;   // 右側常駐懸浮球 DOM
+let pageTranslationPanel = null; // 全文翻譯 Beta 控制面板
 let savedSel     = null;   // { text, range } 最近一次選取
 let activeAction = null;
 let activeModel  = FanFanBaModels.DEFAULT_MODEL;
