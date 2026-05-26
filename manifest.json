@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "翻翻吧",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "選取文字後使用AI 翻譯、解釋、優化改寫",
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
