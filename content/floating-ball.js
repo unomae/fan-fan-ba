@@ -23,7 +23,7 @@ function createFloatingBall() {
     <button class="ffb-ball-main" type="button" title="翻翻吧">
       <img src="${chrome.runtime.getURL('icons/icon48.png')}" alt="">
     </button>
-    <span class="ffb-continue-tip">有新的段落可翻譯</span>
+    <button class="ffb-continue-tip" type="button" title="直接翻譯新的可見段落">有新的段落可翻譯</button>
     <div class="ffb-ball-menu">
       <button class="ffb-ball-item" type="button" data-action="history">
         <span class="ffb-ball-icon">↺</span>
@@ -58,6 +58,13 @@ function createFloatingBall() {
   });
 
   el.addEventListener('click', e => e.stopPropagation());
+  el.querySelector('.ffb-continue-tip')?.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (floatingBall?.classList.contains('ffb-page-running')) return;
+    el.classList.remove('ffb-menu-open');
+    startPageTranslationBeta?.();
+  });
   el.querySelector('.ffb-ball-menu').addEventListener('mousedown', e => e.stopPropagation());
   el.querySelector('[data-action="history"]').addEventListener('click', e => {
     e.stopPropagation();
@@ -220,8 +227,13 @@ function updateFloatingBallPageTranslationState({ running = false, activated = f
   if (!floatingBall) return;
   const label = floatingBall.querySelector('.ffb-page-translate-label');
   const button = floatingBall.querySelector('[data-action="page-translate"]');
+  const continueTip = floatingBall.querySelector('.ffb-continue-tip');
   floatingBall.classList.toggle('ffb-page-running', running);
   floatingBall.classList.toggle('ffb-can-continue', !running && canContinue);
+  if (continueTip) {
+    continueTip.disabled = running || !canContinue;
+    continueTip.title = canContinue ? '直接翻譯新的可見段落' : '目前沒有新的段落';
+  }
   if (label) {
     if (running) label.textContent = '翻譯中...';
     else if (activated) label.textContent = '繼續翻譯下個段落';

@@ -4,6 +4,8 @@ const PAGE_TRANSLATION_LIMITS = {
   maxBlocks: 8,
   maxChars: 3200,
   minChars: 24,
+  minHeadingChars: 4,
+  minListChars: 8,
   maxBlockChars: 1200,
   collapseChars: 420
 };
@@ -118,11 +120,50 @@ function isPageTranslatableElement(el) {
 }
 
 function getElementTranslationText(el) {
-  const text = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
-  if (text.length < PAGE_TRANSLATION_LIMITS.minChars) return '';
+  const text = getElementStructuredTranslationText(el);
+  const compactText = text.replace(/\s+/g, ' ').trim();
+  if (!compactText) return '';
+  const minChars = getElementMinTranslationChars(el);
+  if (compactText.length < minChars) return '';
   if (text.length > PAGE_TRANSLATION_LIMITS.maxBlockChars) return '';
-  if (/^[\d\s.,:;!?()[\]{}'"-]+$/.test(text)) return '';
+  if (/^[\d\s.,:;!?()[\]{}'"\-•・、。]+$/.test(compactText)) return '';
   return text;
+}
+
+function getElementStructuredTranslationText(el) {
+  let text = (el.innerText || el.textContent || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\u00a0/g, ' ')
+    .split('\n')
+    .map(line => line.replace(/[ \t]+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+
+  if (el.tagName === 'LI' && text && !isPageTranslationListLine(text)) {
+    text = `${getPageTranslationListMarker(el)} ${text}`;
+  }
+  return text;
+}
+
+function getElementMinTranslationChars(el) {
+  if (/^H[1-6]$/.test(el.tagName)) return PAGE_TRANSLATION_LIMITS.minHeadingChars;
+  if (el.tagName === 'LI') return PAGE_TRANSLATION_LIMITS.minListChars;
+  return PAGE_TRANSLATION_LIMITS.minChars;
+}
+
+function getPageTranslationListMarker(el) {
+  const parent = el.parentElement;
+  if (parent?.tagName === 'OL') {
+    const start = Number.parseInt(parent.getAttribute('start') || '1', 10);
+    const index = Array.prototype.indexOf.call(parent.children, el);
+    return `${(Number.isFinite(start) ? start : 1) + Math.max(index, 0)}.`;
+  }
+  return '•';
+}
+
+function isPageTranslationListLine(text) {
+  return /^\s*(?:[-*•・‧]|[0-9０-９]+[.)．、])\s+/.test(String(text || ''));
 }
 
 async function runPageTranslationQueue() {
@@ -306,9 +347,52 @@ function renderPageTranslationResult(item, result) {
         ${shouldCollapse ? '<button class="ffb-page-expand-btn" type="button" data-ffb-action="toggle-collapse" title="展開全文" aria-label="展開全文">⌄</button>' : ''}
       </div>
     </div>
-    <div class="ffb-page-translation-text">${escapeHtml(result).replace(/\n/g, '<br>')}</div>
+    <div class="ffb-page-translation-text">${formatPageTranslationText(result)}</div>
   `;
   bindPageTranslationBlockEvents(item.translationNode);
+}
+
+function formatPageTranslationText(text) {
+  const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
+  let html = '';
+  let inUl = false;
+  let inOl = false;
+
+  const closeLists = () => {
+    if (inUl) { html += '</ul>'; inUl = false; }
+    if (inOl) { html += '</ol>'; inOl = false; }
+  };
+
+  lines.forEach(rawLine => {
+    const line = rawLine.trim();
+    if (!line) {
+      closeLists();
+      return;
+    }
+
+    const bulletMatch = line.match(/^(?:[-*•・‧])\s+(.+)$/);
+    const orderedMatch = line.match(/^([0-9０-９]+)[.)．、]\s+(.+)$/);
+
+    if (bulletMatch) {
+      if (inOl) { html += '</ol>'; inOl = false; }
+      if (!inUl) { html += '<ul class="ffb-page-translation-list">'; inUl = true; }
+      html += `<li>${escapeHtml(bulletMatch[1])}</li>`;
+      return;
+    }
+
+    if (orderedMatch) {
+      if (inUl) { html += '</ul>'; inUl = false; }
+      if (!inOl) { html += '<ol class="ffb-page-translation-list">'; inOl = true; }
+      html += `<li>${escapeHtml(orderedMatch[2])}</li>`;
+      return;
+    }
+
+    closeLists();
+    html += `<p>${escapeHtml(line)}</p>`;
+  });
+
+  closeLists();
+  return html || escapeHtml(text);
 }
 
 function renderPageTranslationError(item, message) {
@@ -497,6 +581,8 @@ function bindPageTranslationSelectionWatcher() {
   document.addEventListener('selectionchange', handlePageTranslationSelectionChange);
   document.addEventListener('mouseover', handlePageTranslationPointerFocus, true);
   document.addEventListener('pointerover', handlePageTranslationPointerFocus, true);
+  document.addEventListener('mouseout', handlePageTranslationPointerBlur, true);
+  document.addEventListener('pointerout', handlePageTranslationPointerBlur, true);
   document.addEventListener('mousedown', e => {
     if (!e.target.closest('[data-ffb-pair-id], .ffb-page-translation-panel')) {
       clearActivePageTranslationPair();
@@ -507,6 +593,14 @@ function bindPageTranslationSelectionWatcher() {
 function handlePageTranslationPointerFocus(event) {
   const pairEl = findPageTranslationPairElement(event.target);
   if (pairEl) setActivePageTranslationPair(pairEl.dataset.ffbPairId);
+}
+
+function handlePageTranslationPointerBlur(event) {
+  const pairEl = findPageTranslationPairElement(event.target);
+  if (!pairEl || pageTranslationState.activePairId !== pairEl.dataset.ffbPairId) return;
+  const nextPairEl = findPageTranslationPairElement(event.relatedTarget);
+  if (nextPairEl?.dataset.ffbPairId === pairEl.dataset.ffbPairId) return;
+  clearActivePageTranslationPair();
 }
 
 function handlePageTranslationSelectionChange() {

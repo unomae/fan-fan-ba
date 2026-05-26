@@ -23,17 +23,17 @@ function formatMarkdown(text) {
         `<span class="g-tag" data-term="${t}">${t}</span>`
       );
 
-    const isBullet  = /^[-*]\s+/.test(raw);
-    const isOrdered = /^\d+\.\s+/.test(raw);
+    const isBullet  = /^\s*[-*•・‧]\s+/.test(raw);
+    const isOrdered = /^\s*[0-9０-９]+[.)．、]\s+/.test(raw);
 
     if (isBullet) {
       if (inOl) { html += '</ol>'; inOl = false; }
       if (!inUl) { html += '<ul class="g-list">'; inUl = true; }
-      html += `<li>${inline.replace(/^[-*]\s+/, '')}</li>`;
+      html += `<li>${inline.replace(/^\s*[-*•・‧]\s+/, '')}</li>`;
     } else if (isOrdered) {
       if (inUl) { html += '</ul>'; inUl = false; }
       if (!inOl) { html += '<ol class="g-list">'; inOl = true; }
-      html += `<li>${inline.replace(/^\d+\.\s+/, '')}</li>`;
+      html += `<li>${inline.replace(/^\s*[0-9０-９]+[.)．、]\s+/, '')}</li>`;
     } else {
       if (inUl) { html += '</ul>'; inUl = false; }
       if (inOl) { html += '</ol>'; inOl = false; }

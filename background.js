@@ -457,6 +457,8 @@ function buildPrompt(action, selectedText, context, pageTitle, settings = {}) {
       }
       return `你是專業翻譯助手，請將以下內容翻譯成${targetLanguage}，保持原文語氣與風格。
 只輸出譯文正文，不要重複原文，不要加入「原文：」「譯文：」「翻譯：」等標籤，也不要加說明。
+請保留原文的可見格式：標題仍輸出為標題文字，換行維持換行，條列項目保留每一項的項目符號或編號，段落不要任意合併。
+如果待翻譯內容本身是標題、清單項目、編號項目或多行文字，譯文也必須使用相同結構輸出。
 
 網頁標題：${pageTitle}
 上下文：${context}
