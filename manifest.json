@@ -24,6 +24,7 @@
         "content/state.js",
         "content/utils.js",
         "content/vocabulary.js",
+        "content/vocabulary-highlighter.js",
         "content/obsidian.js",
         "content/toolbar.js",
         "content/result-card.js",

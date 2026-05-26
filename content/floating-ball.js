@@ -13,6 +13,7 @@ function initFloatingBall() {
   document.body.appendChild(floatingBall);
   restoreFloatingBallPosition();
   updateFloatingBallPausedState();
+  globalThis.restoreVocabularyHighlightState?.();
   return floatingBall;
 }
 
@@ -32,6 +33,10 @@ function createFloatingBall() {
       <button class="ffb-ball-item" type="button" data-action="vocabulary">
         <span class="ffb-ball-icon">字</span>
         <span>單字本</span>
+      </button>
+      <button class="ffb-ball-item" type="button" data-action="vocab-highlight">
+        <span class="ffb-ball-icon">標</span>
+        <span class="ffb-vocab-highlight-label">開啟單字高亮</span>
       </button>
       <button class="ffb-ball-item" type="button" data-action="page-translate">
         <span class="ffb-ball-icon">文</span>
@@ -83,6 +88,10 @@ function createFloatingBall() {
     e.stopPropagation();
     el.classList.remove('ffb-menu-open');
     showFloatingVocabularyPanel();
+  });
+  el.querySelector('[data-action="vocab-highlight"]').addEventListener('click', e => {
+    e.stopPropagation();
+    globalThis.toggleVocabularyHighlightForSite?.();
   });
   el.querySelector('[data-action="page-translate"]').addEventListener('click', e => {
     e.stopPropagation();
@@ -257,6 +266,13 @@ function updateFloatingBallPausedState() {
   if (label) label.textContent = fanFanBaPaused ? '恢復此網站' : '暫停此網站';
 }
 
+function updateFloatingBallVocabularyHighlightState(enabled = false) {
+  if (!floatingBall) return;
+  floatingBall.classList.toggle('ffb-vocab-highlight-on', Boolean(enabled));
+  const label = floatingBall.querySelector('.ffb-vocab-highlight-label');
+  if (label) label.textContent = enabled ? '關閉單字高亮' : '開啟單字高亮';
+}
+
 function hideFloatingBallMenu() {
   floatingBall?.classList.remove('ffb-menu-open');
 }
@@ -360,11 +376,16 @@ function renderFloatingVocabularyPanel(body, initialItems) {
         <input class="g-vocab-search" type="search" placeholder="搜尋單字">
         <div class="g-vocab-tabs">
           <button type="button" class="g-vocab-tab g-active" data-filter="today">今日新增</button>
+          <button type="button" class="g-vocab-tab" data-filter="recent">最近遇到</button>
+          <button type="button" class="g-vocab-tab" data-filter="frequent">最常遇到</button>
+          <button type="button" class="g-vocab-tab" data-filter="learning">還不熟</button>
+          <button type="button" class="g-vocab-tab" data-filter="known">已記得</button>
           <button type="button" class="g-vocab-tab" data-filter="all">全部</button>
         </div>
       </div>
       <div class="g-vocab-panel-actions">
-        <button type="button" class="g-vocab-export">複製今日 Markdown</button>
+        <button type="button" class="g-vocab-export" data-vocab-export="markdown">複製今日 Markdown</button>
+        <button type="button" class="g-vocab-export" data-vocab-export="csv">複製今日 CSV</button>
       </div>
       <div class="g-vocab-panel-list"></div>
     </div>
@@ -388,6 +409,28 @@ function renderFloatingVocabularyPanel(body, initialItems) {
         render();
       });
     });
+    listEl.querySelectorAll('[data-vocab-copy]').forEach(button => {
+      button.addEventListener('click', async e => {
+        e.stopPropagation();
+        const item = items.find(entry => entry.id === button.dataset.vocabCopy);
+        const markdown = buildVocabularyMarkdownExport?.(item ? [item] : []) || '';
+        await copyVocabularyPanelText(markdown, button, '已複製');
+      });
+    });
+    listEl.querySelectorAll('[data-vocab-status]').forEach(button => {
+      button.addEventListener('click', async e => {
+        e.stopPropagation();
+        const id = button.dataset.vocabStatus;
+        const nextStatus = button.dataset.nextStatus === 'known' ? 'known' : 'learning';
+        const updated = await updateVocabularyEntryStatus?.(id, nextStatus);
+        if (updated) {
+          items = typeof listVocabularyItems === 'function'
+            ? await listVocabularyItems()
+            : items.map(item => item.id === id ? updated : item);
+          render();
+        }
+      });
+    });
   };
 
   searchEl.addEventListener('input', e => {
@@ -404,26 +447,27 @@ function renderFloatingVocabularyPanel(body, initialItems) {
     });
   });
 
-  body.querySelector('.g-vocab-export')?.addEventListener('click', async e => {
-    e.stopPropagation();
-    const todayItems = items.filter(item => isVocabularyItemFromToday?.(item));
-    const markdown = buildVocabularyMarkdownExport?.(todayItems) || '';
-    if (!markdown) {
-      e.currentTarget.textContent = '今日沒有單字';
-      setTimeout(() => { e.currentTarget.textContent = '複製今日 Markdown'; }, 1400);
-      return;
-    }
-    await navigator.clipboard.writeText(markdown).catch(() => {});
-    e.currentTarget.textContent = '已複製';
-    setTimeout(() => { e.currentTarget.textContent = '複製今日 Markdown'; }, 1400);
+  body.querySelectorAll('[data-vocab-export]').forEach(button => {
+    button.addEventListener('click', async e => {
+      e.stopPropagation();
+      const todayItems = items.filter(item => isVocabularyItemFromToday?.(item));
+      const type = button.dataset.vocabExport;
+      const text = type === 'csv'
+        ? buildVocabularyCsvExport?.(todayItems)
+        : buildVocabularyMarkdownExport?.(todayItems);
+      const fallback = type === 'csv' ? '複製今日 CSV' : '複製今日 Markdown';
+      await copyVocabularyPanelText(text || '', button, '已複製', fallback);
+    });
   });
 
   render();
 }
 
 function filterVocabularyPanelItems(items, filter, query) {
-  return items.filter(item => {
+  const visible = items.filter(item => {
     if (filter === 'today' && !isVocabularyItemFromToday?.(item)) return false;
+    if (filter === 'learning' && item.status === 'known') return false;
+    if (filter === 'known' && item.status !== 'known') return false;
     if (!query) return true;
     const haystack = [
       item.word,
@@ -433,11 +477,29 @@ function filterVocabularyPanelItems(items, filter, query) {
     ].join(' ').toLowerCase();
     return haystack.includes(query);
   });
+
+  if (filter === 'frequent') {
+    return visible.slice().sort((a, b) => {
+      const countDiff = Number(b.count || 1) - Number(a.count || 1);
+      if (countDiff) return countDiff;
+      return getVocabularyItemTime(b) - getVocabularyItemTime(a);
+    });
+  }
+  return visible.slice().sort((a, b) => getVocabularyItemTime(b) - getVocabularyItemTime(a));
+}
+
+function getVocabularyItemTime(item) {
+  return Date.parse(item?.lastSeenAt || item?.createdAt || 0) || 0;
 }
 
 function buildVocabularyPanelItemHtml(item) {
   const translations = Array.isArray(item.translations) ? item.translations.slice(0, 3).join('；') : '';
   const count = Number(item.count || 1);
+  const exportedBadge = item.obsidianExportedAt ? '<span>已匯出</span>' : '';
+  const isKnown = item.status === 'known';
+  const statusBadge = isKnown ? '<span class="g-vocab-known">已記得</span>' : '<span class="g-vocab-learning">還不熟</span>';
+  const nextStatus = isKnown ? 'learning' : 'known';
+  const statusLabel = isKnown ? '還不熟' : '我記得了';
   return `
     <div class="g-vocab-panel-item">
       <div class="g-vocab-panel-main">
@@ -446,13 +508,45 @@ function buildVocabularyPanelItemHtml(item) {
           ${item.pos ? `<span>${escapeHtml(item.pos)}</span>` : ''}
           <span>${escapeHtml(item.lang || 'und')}</span>
           <span>遇到 ${count} 次</span>
+          ${statusBadge}
+          ${exportedBadge}
         </div>
         ${translations ? `<div class="g-vocab-panel-meaning">${escapeHtml(translations)}</div>` : ''}
         ${item.definition ? `<div class="g-vocab-panel-def">${escapeHtml(item.definition)}</div>` : ''}
       </div>
-      <button class="g-vocab-delete" type="button" data-vocab-delete="${escapeHtml(item.id)}" title="刪除">刪除</button>
+      <div class="g-vocab-panel-item-actions">
+        <button class="g-vocab-status" type="button" data-vocab-status="${escapeHtml(item.id)}" data-next-status="${nextStatus}" title="更新熟悉度">${statusLabel}</button>
+        <button class="g-vocab-copy" type="button" data-vocab-copy="${escapeHtml(item.id)}" title="複製 Markdown">複製</button>
+        <button class="g-vocab-delete" type="button" data-vocab-delete="${escapeHtml(item.id)}" title="刪除">刪除</button>
+      </div>
     </div>
   `;
+}
+
+async function copyVocabularyPanelText(text, button, successText, fallbackText) {
+  const originalText = fallbackText || button?.textContent || '';
+  if (!text) {
+    if (button) {
+      button.textContent = '沒有資料';
+      setTimeout(() => { button.textContent = originalText; }, 1400);
+    }
+    return false;
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+    if (button) {
+      button.textContent = successText || '已複製';
+      setTimeout(() => { button.textContent = originalText; }, 1400);
+    }
+    return true;
+  } catch {
+    if (button) {
+      button.textContent = '複製失敗';
+      setTimeout(() => { button.textContent = originalText; }, 1400);
+    }
+    return false;
+  }
 }
 
 function positionResultCardNearFloatingBall() {

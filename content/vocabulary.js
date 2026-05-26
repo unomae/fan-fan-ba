@@ -46,6 +46,19 @@ async function deleteVocabularyEntry(id) {
   return true;
 }
 
+async function updateVocabularyEntryStatus(id, status) {
+  const normalizedStatus = status === 'known' ? 'known' : 'learning';
+  const items = await loadVocabularyItems();
+  if (!items[id]) return null;
+  items[id] = {
+    ...items[id],
+    status: normalizedStatus,
+    reviewedAt: new Date().toISOString()
+  };
+  await chrome.storage.local.set({ [VOCABULARY_STORAGE_KEY]: items });
+  return items[id];
+}
+
 async function saveVocabularyEntry(dictData, selectedText) {
   const base = normalizeVocabularyEntry(dictData, selectedText);
   if (!base.id) throw new Error('無法收藏這個單字');
@@ -211,6 +224,41 @@ function buildVocabularyMarkdownExport(items) {
   const list = Array.isArray(items) ? items : [];
   if (!list.length) return '';
   return list.map(item => buildVocabularyObsidianBlock(item).trim()).filter(Boolean).join('\n\n---\n\n');
+}
+
+function buildVocabularyCsvExport(items) {
+  const list = Array.isArray(items) ? items : [];
+  const header = [
+    'word',
+    'lang',
+    'translations',
+    'definition',
+    'sourceTitle',
+    'sourceUrl',
+    'createdAt',
+    'count'
+  ];
+  const rows = list.map(item => {
+    const source = item.sources?.[0] || {};
+    return [
+      item.word || '',
+      item.lang || '',
+      Array.isArray(item.translations) ? item.translations.join('；') : '',
+      item.definition || '',
+      source.title || '',
+      source.url || '',
+      item.createdAt || '',
+      Number(item.count || 1)
+    ];
+  });
+
+  return `\ufeff${[header, ...rows].map(row => row.map(escapeVocabularyCsvCell).join(',')).join('\r\n')}`;
+}
+
+function escapeVocabularyCsvCell(value) {
+  const text = String(value ?? '');
+  if (/[",\r\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
+  return text;
 }
 
 function isVocabularyItemFromToday(item) {

@@ -616,7 +616,7 @@
       <h2>Roadmap</h2>
       <div class="timeline">
         <div class="step">
-          <strong>P1.1 本地單字本核心</strong>
+          <strong>P1.1 本地單字本核心（完成）</strong>
           <ul>
             <li>字典卡收藏按鈕</li>
             <li>本地 storage 寫入</li>
@@ -625,7 +625,7 @@
           </ul>
         </div>
         <div class="step">
-          <strong>P1.2 Obsidian 匯出</strong>
+          <strong>P1.2 Obsidian 匯出（完成）</strong>
           <ul>
             <li>設定單字本資料夾</li>
             <li>收藏時自動 append</li>
@@ -634,7 +634,7 @@
           </ul>
         </div>
         <div class="step">
-          <strong>P1.3 單字本 UI</strong>
+          <strong>P1.3 單字本 UI（完成）</strong>
           <ul>
             <li>懸浮球入口</li>
             <li>今日新增</li>
@@ -643,7 +643,7 @@
           </ul>
         </div>
         <div class="step">
-          <strong>P1.4 頁面高亮</strong>
+          <strong>P1.4 頁面高亮（Beta 完成）</strong>
           <ul>
             <li>已收藏字淡標記</li>
             <li>Hover 簡短釋義</li>
@@ -652,7 +652,7 @@
           </ul>
         </div>
         <div class="step">
-          <strong>P1.5 輕量複習</strong>
+          <strong>P1.5 輕量複習（完成）</strong>
           <ul>
             <li>最近遇到</li>
             <li>最常遇到</li>
@@ -693,6 +693,118 @@
           <td>5</td>
           <td>已收藏高亮</td>
           <td>效能穩、樣式低干擾、可關閉。</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td>輕量複習</td>
+          <td>可依最近遇到、最常遇到、還不熟、已記得整理單字；可一鍵切換熟悉度。</td>
+        </tr>
+      </table>
+
+      <h3>P1 完成狀態</h3>
+      <table>
+        <tr>
+          <th>項目</th>
+          <th>目前狀態</th>
+          <th>備註</th>
+        </tr>
+        <tr>
+          <td>P1.1 本地單字本核心</td>
+          <td>完成</td>
+          <td>使用 <code>chrome.storage.local</code> object map；支援新增、查詢、去重、刪除、來源上限。</td>
+        </tr>
+        <tr>
+          <td>P1.2 Obsidian 匯出</td>
+          <td>完成</td>
+          <td>收藏後可 append 到週記；支援今日 Markdown 與 Excel 可開啟的 UTF-8 CSV。</td>
+        </tr>
+        <tr>
+          <td>P1.3 單字本 UI</td>
+          <td>完成</td>
+          <td>懸浮球入口、今日新增、全部、搜尋、刪除、單筆複製。</td>
+        </tr>
+        <tr>
+          <td>P1.4 頁面高亮</td>
+          <td>Beta 完成</td>
+          <td>預設關閉；網站級開關；有文字節點與標記數量上限。</td>
+        </tr>
+        <tr>
+          <td>P1.5 輕量複習</td>
+          <td>完成</td>
+          <td>支援最近遇到、最常遇到、還不熟、已記得與熟悉度切換；暫不做完整 SRS。</td>
+        </tr>
+      </table>
+
+      <h3>你可以協助驗收的項目</h3>
+      <table>
+        <tr>
+          <th>情境</th>
+          <th>驗收方式</th>
+          <th>通過標準</th>
+        </tr>
+        <tr>
+          <td>收藏單字</td>
+          <td>選英文單字後執行翻譯，在字典卡點「收藏」。</td>
+          <td>按鈕變成已收藏；重開頁面後同字仍顯示已收藏。</td>
+        </tr>
+        <tr>
+          <td>單字本面板</td>
+          <td>從懸浮球開啟單字本，切換今日新增、全部、最近遇到、最常遇到。</td>
+          <td>列表排序與篩選合理；搜尋可找到字義或單字。</td>
+        </tr>
+        <tr>
+          <td>輕量複習</td>
+          <td>在單字卡點「我記得了」與「還不熟」。</td>
+          <td>單字會在「已記得」與「還不熟」視圖之間移動。</td>
+        </tr>
+        <tr>
+          <td>匯出</td>
+          <td>點「複製今日 Markdown」與「複製今日 CSV」，貼到筆記或 Excel。</td>
+          <td>Markdown 格式可讀；CSV 在 Excel 中欄位正常，不亂碼。</td>
+        </tr>
+        <tr>
+          <td>頁面高亮</td>
+          <td>在有已收藏字的文章頁從懸浮球開啟單字高亮。</td>
+          <td>只標文章文字；不標 input、code、按鈕、翻翻吧自己的 UI；關閉後可還原。</td>
+        </tr>
+        <tr>
+          <td>Obsidian</td>
+          <td>已設定 Vault/資料夾時收藏新單字。</td>
+          <td>Obsidian 開啟指定週記檔並 append 單字卡；同字不重複 append。</td>
+        </tr>
+      </table>
+
+      <h3>後續進階方向</h3>
+      <table>
+        <tr>
+          <th>方向</th>
+          <th>價值</th>
+          <th>建議時機</th>
+        </tr>
+        <tr>
+          <td>真正 <code>.xlsx</code> 匯出</td>
+          <td>讓 Excel 使用者不用透過 CSV；可保留欄寬、工作表與格式。</td>
+          <td>CSV 驗收穩定後再做，避免第一版引入打包依賴風險。</td>
+        </tr>
+        <tr>
+          <td>備份 / 匯入</td>
+          <td>讓使用者可搬移單字本、避免移除 extension 後資料消失。</td>
+          <td>P1 上線前或資料量開始增加時。</td>
+        </tr>
+        <tr>
+          <td>IndexedDB migration</td>
+          <td>大量單字時降低單一 storage object 的讀寫負擔。</td>
+          <td>單字量接近數千筆或高亮速度變慢時。</td>
+        </tr>
+        <tr>
+          <td>高亮斷詞改善</td>
+          <td>減少英文詞形、大小寫、多語詞彙的漏標與誤標。</td>
+          <td>頁面高亮 Beta 收到實際網站回饋後。</td>
+        </tr>
+        <tr>
+          <td>進階複習</td>
+          <td>加入每日複習佇列、簡易間隔提醒、錯題回看。</td>
+          <td>確認使用者真的會用「已記得 / 還不熟」後。</td>
         </tr>
       </table>
     </section>
@@ -745,7 +857,7 @@
       </div>
     </section>
 
-    <p class="footer-note">Review version: 2026-05-26 · Fan Fan Ba Vocabulary Notebook Roadmap</p>
+    <p class="footer-note">Review version: 2026-05-26 · P1.1-P1.5 completed · Fan Fan Ba Vocabulary Notebook Roadmap</p>
   </main>
   <script>
     (() => {

@@ -20,7 +20,6 @@
 }
 
 /* ── 品牌 CSS 變數（作用域限於本元件）──────────── */
-#gemini-ai-toolbar,
 #gemini-result-card,
 .g-vocab-panel {
   display: flex !important;
@@ -61,6 +60,8 @@
 
 .g-vocab-tab,
 .g-vocab-export,
+.g-vocab-status,
+.g-vocab-copy,
 .g-vocab-delete {
   min-height: 30px !important;
   padding: 5px 9px !important;
@@ -76,7 +77,9 @@
 }
 
 .g-vocab-tab:hover,
-.g-vocab-export:hover {
+.g-vocab-export:hover,
+.g-vocab-status:hover,
+.g-vocab-copy:hover {
   background: rgba(163, 209, 121, 0.14) !important;
   border-color: rgba(90, 158, 58, 0.28) !important;
   color: #3f7528 !important;
@@ -86,6 +89,11 @@
   background: #edf7e8 !important;
   border-color: rgba(90, 158, 58, 0.34) !important;
   color: #3f7528 !important;
+}
+
+.g-vocab-tabs {
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
 }
 
 .g-vocab-panel-list {
@@ -105,6 +113,12 @@
   border: 1px solid rgba(90, 158, 58, 0.12) !important;
   border-radius: 8px !important;
   background: rgba(252, 254, 251, 0.88) !important;
+}
+
+.g-vocab-panel-item-actions {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
 }
 
 .g-vocab-panel-word {
@@ -129,6 +143,28 @@
   color: #4f7f35 !important;
   font-size: 10.5px !important;
   font-weight: 750 !important;
+}
+
+.g-vocab-panel-meta .g-vocab-known {
+  background: rgba(219, 234, 254, 0.88) !important;
+  color: #1d4ed8 !important;
+}
+
+.g-vocab-panel-meta .g-vocab-learning {
+  background: rgba(255, 247, 237, 0.92) !important;
+  color: #9a3412 !important;
+}
+
+.g-vocab-status {
+  color: #1d4ed8 !important;
+  background: rgba(219, 234, 254, 0.78) !important;
+  border-color: rgba(29, 78, 216, 0.16) !important;
+}
+
+.g-vocab-status:hover {
+  color: #1e40af !important;
+  background: rgba(191, 219, 254, 0.9) !important;
+  border-color: rgba(29, 78, 216, 0.28) !important;
 }
 
 .g-vocab-panel-meaning {
@@ -157,6 +193,53 @@
   border-color: rgba(185, 28, 28, 0.28) !important;
 }
 
+.g-vocab-highlight {
+  padding: 0 2px !important;
+  border-radius: 4px !important;
+  background: rgba(255, 230, 128, 0.34) !important;
+  color: inherit !important;
+  box-shadow: inset 0 -1px 0 rgba(151, 111, 0, 0.28) !important;
+  cursor: help !important;
+}
+
+.g-vocab-highlight-tip {
+  position: fixed !important;
+  z-index: 2147483646 !important;
+  display: none !important;
+  width: max-content !important;
+  max-width: 220px !important;
+  padding: 8px 10px !important;
+  border: 1px solid rgba(90, 158, 58, 0.22) !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #1f2937 !important;
+  box-shadow: 0 10px 26px rgba(35, 53, 28, 0.16) !important;
+  font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  pointer-events: none !important;
+}
+
+.g-vocab-highlight-tip.g-show {
+  display: grid !important;
+  gap: 2px !important;
+}
+
+.g-vocab-highlight-tip strong {
+  color: #111827 !important;
+  font-size: 13px !important;
+}
+
+.g-vocab-highlight-tip span {
+  color: #3f7528 !important;
+  font-weight: 700 !important;
+}
+
+.g-vocab-highlight-tip em {
+  color: #6b7280 !important;
+  font-style: normal !important;
+}
+
 #fanfanba-floating {
   --ffb-glass-bg:     rgba(255, 255, 255, 0.45);
   --ffb-glass-border: rgba(255, 255, 255, 0.5);
@@ -177,9 +260,15 @@
   position:              fixed !important;
   z-index:               2147483647 !important;
   display:               flex !important;
+  flex-direction:        row !important;
+  flex-wrap:             nowrap !important;
   align-items:           center !important;
+  justify-content:       center !important;
   gap:                   0 !important;
-  padding:               2px 8px !important;
+  width:                 max-content !important;
+  min-width:             0 !important;
+  max-width:             none !important;
+  padding:               2px 6px !important;
 
   /* 輕量毛玻璃背景 */
   background:            var(--ffb-glass-bg, rgba(255, 255, 255, 0.45)) !important;
@@ -188,7 +277,7 @@
 
   /* 微圓角邊框與柔和陰影 */
   border:                1px solid var(--ffb-glass-border, rgba(255, 255, 255, 0.5)) !important;
-  border-radius:         12px !important;
+  border-radius:         10px !important;
   box-shadow:            var(--ffb-soft-shadow, 0 4px 12px rgba(0, 0, 0, 0.08)) !important;
 
   /* 初始隱藏（WAAPI 控制入場）*/
@@ -214,18 +303,21 @@
   display:         flex !important;
   align-items:     center !important;
   justify-content: center !important;
-  width:           34px !important;
-  height:          34px !important;
+  width:           30px !important;
+  height:          30px !important;
+  min-width:       30px !important;
+  min-height:      30px !important;
   border:          none !important;
   background:      transparent !important;
-  border-radius:   8px !important;
+  border-radius:   7px !important;
   cursor:          pointer !important;
   /* 預設：深灰色圖示 */
   color:           var(--ffb-icon-default, #4B5563) !important;
   transition:      var(--ffb-ease-fast, all 0.2s ease-out) !important;
   outline:         none !important;
-  padding:         6px !important;
+  padding:         5px !important;
   flex-shrink:     0 !important;
+  flex-grow:       0 !important;
   position:        relative !important;
 }
 
@@ -243,7 +335,11 @@
   background: rgba(163, 209, 121, 0.15) !important;
 }
 
-.g-btn svg { display: block !important; }
+.g-btn svg {
+  display: block !important;
+  width: 15px !important;
+  height: 15px !important;
+}
 
 /* ── 自訂 Tooltip（深底白字，顯示於按鈕上方）─── */
 /* 注意：工具列不設 overflow:hidden，確保 tooltip 可延伸到工具列外 */
@@ -291,10 +387,10 @@
 .g-sep {
   display:     block !important;
   width:       1px !important;
-  height:      14px !important;
+  height:      13px !important;
   background:  rgba(0, 0, 0, 0.10) !important;
   flex-shrink: 0 !important;
-  margin:      0 2px !important;
+  margin:      0 1px !important;
 }
 
 /* ════════════════════════════════════════════════
@@ -1559,6 +1655,11 @@ del.g-diff-del {
 #fanfanba-floating.ffb-can-continue [data-action="page-translate"] {
   background: rgba(163, 209, 121, 0.18) !important;
   color: #2f6d20 !important;
+}
+
+#fanfanba-floating.ffb-vocab-highlight-on [data-action="vocab-highlight"] {
+  background: rgba(255, 230, 128, 0.26) !important;
+  color: #6f5100 !important;
 }
 
 @keyframes ffb-continue-pulse {
