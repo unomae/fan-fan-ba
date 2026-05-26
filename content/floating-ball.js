@@ -29,6 +29,10 @@ function createFloatingBall() {
         <span class="ffb-ball-icon">↺</span>
         <span>最近查詢</span>
       </button>
+      <button class="ffb-ball-item" type="button" data-action="vocabulary">
+        <span class="ffb-ball-icon">字</span>
+        <span>單字本</span>
+      </button>
       <button class="ffb-ball-item" type="button" data-action="page-translate">
         <span class="ffb-ball-icon">文</span>
         <span class="ffb-page-translate-label">全文翻譯 Beta</span>
@@ -52,11 +56,15 @@ function createFloatingBall() {
   renderFloatingPageModelSelect(el);
   mainBtn.addEventListener('pointerdown', startFloatingBallPointer);
   mainBtn.addEventListener('click', e => {
-    // 選單切換由 pointerup 處理；click 僅阻止事件外溢到宿主頁。
+    // 選單由 hover/focus 與 pointerup 處理；click 僅阻止事件外溢到宿主頁。
     e.preventDefault();
     e.stopPropagation();
   });
 
+  el.addEventListener('mouseenter', openFloatingBallMenu);
+  el.addEventListener('mouseleave', scheduleFloatingBallMenuClose);
+  el.addEventListener('focusin', openFloatingBallMenu);
+  el.addEventListener('focusout', scheduleFloatingBallMenuClose);
   el.addEventListener('click', e => e.stopPropagation());
   el.querySelector('.ffb-continue-tip')?.addEventListener('click', e => {
     e.preventDefault();
@@ -70,6 +78,11 @@ function createFloatingBall() {
     e.stopPropagation();
     el.classList.remove('ffb-menu-open');
     showFloatingHistoryPanel();
+  });
+  el.querySelector('[data-action="vocabulary"]').addEventListener('click', e => {
+    e.stopPropagation();
+    el.classList.remove('ffb-menu-open');
+    showFloatingVocabularyPanel();
   });
   el.querySelector('[data-action="page-translate"]').addEventListener('click', e => {
     e.stopPropagation();
@@ -117,7 +130,9 @@ function startFloatingBallPointer(e) {
     moved: false
   };
 
+  clearFloatingBallMenuTimer();
   floatingBall.setPointerCapture?.(e.pointerId);
+  floatingBall.classList.add('ffb-dragging');
 
   function move(ev) {
     if (ev.pointerId !== drag.pointerId) return;
@@ -139,17 +154,40 @@ function startFloatingBallPointer(e) {
     floatingBall.removeEventListener('pointerup', end, true);
     floatingBall.removeEventListener('pointercancel', end, true);
     floatingBall.releasePointerCapture?.(drag.pointerId);
+    floatingBall.classList.remove('ffb-dragging');
     if (drag.moved) {
       snapFloatingBallToSide();
       saveFloatingBallPosition();
     } else {
-      floatingBall.classList.toggle('ffb-menu-open');
+      openFloatingBallMenu();
     }
   }
 
   floatingBall.addEventListener('pointermove', move, true);
   floatingBall.addEventListener('pointerup', end, true);
   floatingBall.addEventListener('pointercancel', end, true);
+}
+
+function openFloatingBallMenu() {
+  if (!floatingBall || floatingBall.classList.contains('ffb-dragging')) return;
+  clearFloatingBallMenuTimer();
+  floatingBall.classList.add('ffb-menu-open');
+}
+
+function scheduleFloatingBallMenuClose() {
+  if (!floatingBall) return;
+  clearFloatingBallMenuTimer();
+  floatingBall._menuCloseTimer = setTimeout(() => {
+    if (!floatingBall?.matches(':hover') && !floatingBall?.contains(document.activeElement)) {
+      floatingBall?.classList.remove('ffb-menu-open');
+    }
+  }, 220);
+}
+
+function clearFloatingBallMenuTimer() {
+  if (!floatingBall?._menuCloseTimer) return;
+  clearTimeout(floatingBall._menuCloseTimer);
+  floatingBall._menuCloseTimer = null;
 }
 
 async function restoreFloatingBallPosition() {
@@ -291,6 +329,130 @@ async function showFloatingHistoryPanel() {
 
   resultCard.classList.add('g-show');
   positionResultCardNearFloatingBall();
+}
+
+async function showFloatingVocabularyPanel() {
+  if (!resultCard || !document.body.contains(resultCard)) resultCard = createResultCard();
+  savedSel = { text: '單字本', range: null };
+  userDragged = true;
+  resultCard.querySelector('.g-rc-tag').innerHTML = '單字本';
+  resultCard.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
+  resultCard.querySelector('.g-history-panel')?.classList.remove('g-hist-open');
+  hideAutoSaveToast(resultCard);
+
+  const body = resultCard.querySelector('.g-rc-body');
+  body.innerHTML = '<div class="g-hist-empty">讀取單字本中...</div>';
+
+  const items = typeof listVocabularyItems === 'function' ? await listVocabularyItems() : [];
+  renderFloatingVocabularyPanel(body, items);
+  resultCard.classList.add('g-show');
+  positionResultCardNearFloatingBall();
+}
+
+function renderFloatingVocabularyPanel(body, initialItems) {
+  let items = initialItems;
+  let filter = 'today';
+  let query = '';
+
+  body.innerHTML = `
+    <div class="g-vocab-panel">
+      <div class="g-vocab-panel-toolbar">
+        <input class="g-vocab-search" type="search" placeholder="搜尋單字">
+        <div class="g-vocab-tabs">
+          <button type="button" class="g-vocab-tab g-active" data-filter="today">今日新增</button>
+          <button type="button" class="g-vocab-tab" data-filter="all">全部</button>
+        </div>
+      </div>
+      <div class="g-vocab-panel-actions">
+        <button type="button" class="g-vocab-export">複製今日 Markdown</button>
+      </div>
+      <div class="g-vocab-panel-list"></div>
+    </div>
+  `;
+
+  const listEl = body.querySelector('.g-vocab-panel-list');
+  const searchEl = body.querySelector('.g-vocab-search');
+
+  const render = () => {
+    const visible = filterVocabularyPanelItems(items, filter, query);
+    listEl.innerHTML = visible.length
+      ? visible.map(item => buildVocabularyPanelItemHtml(item)).join('')
+      : '<div class="g-hist-empty">沒有符合的單字</div>';
+
+    listEl.querySelectorAll('[data-vocab-delete]').forEach(button => {
+      button.addEventListener('click', async e => {
+        e.stopPropagation();
+        const id = button.dataset.vocabDelete;
+        await deleteVocabularyEntry?.(id);
+        items = items.filter(item => item.id !== id);
+        render();
+      });
+    });
+  };
+
+  searchEl.addEventListener('input', e => {
+    query = e.currentTarget.value.trim().toLowerCase();
+    render();
+  });
+
+  body.querySelectorAll('.g-vocab-tab').forEach(button => {
+    button.addEventListener('click', e => {
+      e.stopPropagation();
+      filter = button.dataset.filter || 'today';
+      body.querySelectorAll('.g-vocab-tab').forEach(tab => tab.classList.toggle('g-active', tab === button));
+      render();
+    });
+  });
+
+  body.querySelector('.g-vocab-export')?.addEventListener('click', async e => {
+    e.stopPropagation();
+    const todayItems = items.filter(item => isVocabularyItemFromToday?.(item));
+    const markdown = buildVocabularyMarkdownExport?.(todayItems) || '';
+    if (!markdown) {
+      e.currentTarget.textContent = '今日沒有單字';
+      setTimeout(() => { e.currentTarget.textContent = '複製今日 Markdown'; }, 1400);
+      return;
+    }
+    await navigator.clipboard.writeText(markdown).catch(() => {});
+    e.currentTarget.textContent = '已複製';
+    setTimeout(() => { e.currentTarget.textContent = '複製今日 Markdown'; }, 1400);
+  });
+
+  render();
+}
+
+function filterVocabularyPanelItems(items, filter, query) {
+  return items.filter(item => {
+    if (filter === 'today' && !isVocabularyItemFromToday?.(item)) return false;
+    if (!query) return true;
+    const haystack = [
+      item.word,
+      item.pos,
+      item.definition,
+      ...(item.translations || [])
+    ].join(' ').toLowerCase();
+    return haystack.includes(query);
+  });
+}
+
+function buildVocabularyPanelItemHtml(item) {
+  const translations = Array.isArray(item.translations) ? item.translations.slice(0, 3).join('；') : '';
+  const count = Number(item.count || 1);
+  return `
+    <div class="g-vocab-panel-item">
+      <div class="g-vocab-panel-main">
+        <div class="g-vocab-panel-word">${escapeHtml(item.word || '')}</div>
+        <div class="g-vocab-panel-meta">
+          ${item.pos ? `<span>${escapeHtml(item.pos)}</span>` : ''}
+          <span>${escapeHtml(item.lang || 'und')}</span>
+          <span>遇到 ${count} 次</span>
+        </div>
+        ${translations ? `<div class="g-vocab-panel-meaning">${escapeHtml(translations)}</div>` : ''}
+        ${item.definition ? `<div class="g-vocab-panel-def">${escapeHtml(item.definition)}</div>` : ''}
+      </div>
+      <button class="g-vocab-delete" type="button" data-vocab-delete="${escapeHtml(item.id)}" title="刪除">刪除</button>
+    </div>
+  `;
 }
 
 function positionResultCardNearFloatingBall() {

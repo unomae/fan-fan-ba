@@ -416,6 +416,7 @@ function renderResult(action, rawResult, selectedText, { fromHistory = false } =
         e.stopPropagation();
         speakWord(data.word || selectedText, e.currentTarget, data.lang);
       });
+      initVocabularySaveButton(body, data, selectedText);
       if (!fromHistory) saveToHistory(action, selectedText, rawResult, data);
       return;
     } catch { /* JSON 解析失敗 → fallback 純文字 */ }
@@ -487,6 +488,12 @@ function buildDictHTML(d) {
           <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
         </svg>
       </button>
+      <button class="g-vocab-save-btn" type="button" title="收藏到單字本">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>收藏</span>
+      </button>
     </div>
     ${d.phonetic ? `<div class="g-dict-phonetic">${escapeHtml(d.phonetic)}</div>` : ''}
     ${d.pos || d.definition ? `
@@ -506,6 +513,65 @@ function buildDictHTML(d) {
 function normalizeTranslations(translations) {
   const values = Array.isArray(translations) ? translations : String(translations || '').split(/[;；]/);
   return values.map(item => String(item || '').trim()).filter(Boolean);
+}
+
+async function initVocabularySaveButton(body, data, selectedText) {
+  const button = body.querySelector('.g-vocab-save-btn');
+  if (!button || typeof isVocabularySaved !== 'function') return;
+
+  const word = data.word || selectedText;
+  const lang = data.lang || '';
+  const saved = await isVocabularySaved(word, lang);
+  setVocabularyButtonState(button, saved ? 'saved' : 'idle');
+
+  button.addEventListener('click', async e => {
+    e.stopPropagation();
+    if (button.disabled || typeof saveVocabularyEntry !== 'function') return;
+    setVocabularyButtonState(button, 'saving');
+
+    try {
+      const { item } = await saveVocabularyEntry(data, selectedText);
+      let exported = false;
+      if (typeof exportVocabularyEntryToObsidianIfConfigured === 'function' && !item.obsidianExportedAt) {
+        const result = await exportVocabularyEntryToObsidianIfConfigured(item);
+        exported = Boolean(result.exported);
+      }
+      setVocabularyButtonState(button, 'saved', exported);
+    } catch {
+      setVocabularyButtonState(button, 'error');
+    }
+  });
+}
+
+function setVocabularyButtonState(button, state, exported = false) {
+  button.classList.remove('g-vocab-saving', 'g-vocab-saved', 'g-vocab-error');
+  button.disabled = false;
+
+  if (state === 'saving') {
+    button.classList.add('g-vocab-saving');
+    button.disabled = true;
+    button.querySelector('span').textContent = '收藏中';
+    button.title = '正在收藏到單字本';
+    return;
+  }
+
+  if (state === 'saved') {
+    button.classList.add('g-vocab-saved');
+    button.disabled = true;
+    button.querySelector('span').textContent = exported ? '已收藏並匯出' : '已收藏';
+    button.title = exported ? '已收藏到單字本並匯出 Obsidian' : '已收藏到單字本';
+    return;
+  }
+
+  if (state === 'error') {
+    button.classList.add('g-vocab-error');
+    button.querySelector('span').textContent = '重試收藏';
+    button.title = '收藏失敗，點擊重試';
+    return;
+  }
+
+  button.querySelector('span').textContent = '收藏';
+  button.title = '收藏到單字本';
 }
 
 // ── 解釋模式：直接顯示全部內容 ─────────────────────

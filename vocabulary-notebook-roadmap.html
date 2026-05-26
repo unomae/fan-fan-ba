@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>翻翻吧｜輕量單字本 Roadmap</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8f3;
+      --paper: #ffffff;
+      --ink: #172016;
+      --muted: #647160;
+      --line: #dfe8d9;
+      --green: #5a9e3a;
+      --green-soft: #edf7e8;
+      --blue: #2f5c9c;
+      --blue-soft: #edf4ff;
+      --yellow-soft: #fff8df;
+      --red-soft: #fff0ed;
+      --shadow: 0 10px 30px rgba(25, 36, 19, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif;
+      line-height: 1.65;
+    }
+
+    header {
+      background: var(--paper);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .wrap {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .hero {
+      padding: 42px 0 26px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 5vw, 46px);
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 850px;
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 0 0 22px;
+    }
+
+    nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdf9;
+      color: var(--ink);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .sticky-comment-tools {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(10px);
+    }
+
+    .sticky-comment-tools .wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 10px;
+      padding-bottom: 10px;
+    }
+
+    .sticky-comment-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    main {
+      padding: 28px 0 56px;
+    }
+
+    section {
+      margin: 0 0 28px;
+      padding: 28px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 17px;
+    }
+
+    p { margin: 0 0 12px; }
+
+    ul, ol {
+      margin: 8px 0 0;
+      padding-left: 22px;
+    }
+
+    li { margin: 7px 0; }
+
+    code {
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: #eef3ea;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      overflow: auto;
+      margin: 12px 0 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdf9;
+      color: #24301f;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 13px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f3f8ef;
+      color: #31442b;
+      font-size: 13px;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: #fcfefb;
+    }
+
+    .panel h3 {
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 750;
+      background: var(--green-soft);
+      color: var(--green);
+      white-space: nowrap;
+    }
+
+    .badge.idea { background: var(--blue-soft); color: var(--blue); }
+    .badge.warn { background: var(--yellow-soft); color: #8b6400; }
+    .badge.risk { background: var(--red-soft); color: #b1452f; }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .step {
+      border-left: 4px solid var(--green);
+      padding: 14px 14px 14px 16px;
+      background: #fbfdf9;
+      border-radius: 0 8px 8px 0;
+      min-height: 210px;
+    }
+
+    .step strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .decision {
+      margin-top: 14px;
+      padding: 14px;
+      border: 1px dashed rgba(90, 158, 58, 0.42);
+      border-radius: 8px;
+      background: #fbfdf9;
+    }
+
+    .decision strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #31442b;
+    }
+
+    .comment-slot {
+      display: block;
+      width: 100%;
+      min-height: 78px;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--ink);
+      font-family: inherit;
+      font-size: 13px;
+      line-height: 1.55;
+      resize: vertical;
+    }
+
+    .comment-slot::placeholder {
+      color: var(--muted);
+    }
+
+    .comment-slot:focus {
+      outline: 2px solid rgba(90, 158, 58, 0.32);
+      border-color: rgba(90, 158, 58, 0.52);
+      box-shadow: 0 0 0 4px rgba(90, 158, 58, 0.08);
+    }
+
+    .comment-tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 14px 0 16px;
+    }
+
+    .comment-tools button {
+      min-height: 36px;
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdf9;
+      color: var(--ink);
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .comment-tools button:hover {
+      border-color: rgba(90, 158, 58, 0.42);
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .sticky-comment-tools .comment-tools {
+      margin: 0;
+    }
+
+    .callout {
+      margin-top: 12px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      border: 1px solid #d8e7d0;
+      background: var(--green-soft);
+    }
+
+    .callout.warn {
+      border-color: #f0dfac;
+      background: var(--yellow-soft);
+    }
+
+    .resolution {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #d8e7d0;
+      background: var(--green-soft);
+      color: #31442b;
+      font-size: 13px;
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .grid, .two-col, .timeline {
+        grid-template-columns: 1fr;
+      }
+
+      section {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="hero">
+        <div class="eyebrow">Fan Fan Ba Roadmap · P1 Vocabulary Notebook</div>
+        <h1>輕量單字本與 Obsidian 整合規劃</h1>
+        <p class="lead">
+          這份規劃聚焦在「把字典卡的價值留住」：先做收藏、今日新增、已收藏高亮、Markdown / CSV / Obsidian 匯出，
+          不急著做完整 SRS，也不把 Obsidian 當成互動資料庫。
+        </p>
+      </div>
+      <nav>
+        <a href="#principle">核心原則</a>
+        <a href="#model">資料模型</a>
+        <a href="#obsidian">Obsidian</a>
+        <a href="#flows">使用流程</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="#review">Review Comments</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="sticky-comment-tools">
+    <div class="wrap">
+      <div class="sticky-comment-label">Review comments 會自動暫存在此瀏覽器</div>
+      <div class="comment-tools">
+        <button type="button" data-comment-action="copy">複製 comments</button>
+        <button type="button" data-comment-action="clear">清除 comments</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <section id="principle">
+      <h2>核心原則</h2>
+      <div class="grid">
+        <div class="panel">
+          <h3><span class="badge">建議</span> 本地資料是主資料庫</h3>
+          <p>單字收藏、查重、更新、已收藏狀態、頁面高亮、刪除，都放在 Chrome local storage 管理。</p>
+          <p>這讓 extension 可以快速判斷某個字是否已存，不需要讀 Obsidian 檔案。</p>
+        </div>
+        <div class="panel">
+          <h3><span class="badge idea">整合</span> Obsidian 是沉澱出口</h3>
+          <p>收藏時可自動 append 到 Obsidian，也能手動匯出今日新增。</p>
+          <p>Obsidian 筆記是可讀、可搜尋、可長期保存的外部知識庫。</p>
+        </div>
+        <div class="panel">
+          <h3><span class="badge warn">暫緩</span> 不做雙向同步</h3>
+          <p>第一版不從 Obsidian 反向讀回 extension。</p>
+          <p>避免 Markdown 解析、刪除衝突、重新命名、跨裝置同步等複雜問題提早爆開。</p>
+        </div>
+      </div>
+
+      <div class="decision">
+        <strong>Review point A：這個邊界是否 OK？</strong>
+        <p>Extension 本地資料負責互動狀態；Obsidian 負責筆記輸出與沉澱。第一版只做 one-way export。</p>
+        <div class="resolution"><strong>Decision：</strong>OK，依此邊界實作。</div>
+        <textarea class="comment-slot" data-comment-id="principle-a" placeholder="Comment："></textarea>
+      </div>
+    </section>
+
+    <section id="model">
+      <h2>本地資料模型</h2>
+      <p>建議新增 storage key：<code>fanFanBaVocabularyItems</code>，第一版儲存在 <code>chrome.storage.local</code>。這是 Chrome extension 的本地持久化儲存，關掉瀏覽器不會消失；除非使用者移除 extension、清除擴充功能資料，或在單字本內手動刪除。</p>
+      <p>資料量初期不大，第一版用 keyed object map 讓查重快速；同時保留未來遷移到 IndexedDB 的空間，避免單字量變大後被單一 JSON 物件拖慢。</p>
+
+      <pre>{
+  "en:infrastructure": {
+    "id": "en:infrastructure",
+    "word": "infrastructure",
+    "lang": "en",
+    "targetLang": "zh-TW",
+    "phonetic": "/ˈɪnfrəˌstrʌktʃər/",
+    "pos": "n.",
+    "translations": ["基礎建設", "基礎設施"],
+    "definition": "支撐社會、城市或系統運作的基本設施。",
+    "usage": "常用於交通、能源、網路、公共建設等脈絡。",
+    "synonym": {
+      "word": "facilities",
+      "diff": "facilities 偏具體設施，infrastructure 偏整體支撐系統。"
+    },
+    "examples": [
+      {
+        "src": "The city invested in public infrastructure.",
+        "zh": "這座城市投資公共基礎建設。",
+        "type": "general"
+      }
+    ],
+    "sources": [
+      {
+        "title": "Article Title",
+        "url": "https://example.com/article",
+        "context": "原始選取附近的短句",
+        "savedAt": "2026-05-26T10:30:00+08:00"
+      }
+    ],
+    "createdAt": "2026-05-26T10:30:00+08:00",
+    "lastSeenAt": "2026-05-26T10:30:00+08:00",
+    "count": 1,
+    "status": "learning",
+    "obsidianExportedAt": "2026-05-26T10:30:03+08:00"
+  }
+}</pre>
+
+      <table>
+        <tr>
+          <th>欄位</th>
+          <th>用途</th>
+          <th>第一版是否必做</th>
+        </tr>
+        <tr>
+          <td><code>id</code></td>
+          <td>建議用 <code>lang:normalizedWord</code>，同字同語言去重。</td>
+          <td>必做</td>
+        </tr>
+        <tr>
+          <td><code>sources</code></td>
+          <td>保留來源頁面與語境，讓單字不是孤立資料。</td>
+          <td>必做，但最多保留近 5 筆即可</td>
+        </tr>
+        <tr>
+          <td><code>count / lastSeenAt</code></td>
+          <td>支援「最近遇到」「最常遇到」視圖。</td>
+          <td>必做</td>
+        </tr>
+        <tr>
+          <td><code>status</code></td>
+          <td>先放 <code>learning</code> / <code>known</code>，未來可接輕量複習。</td>
+          <td>可做</td>
+        </tr>
+        <tr>
+          <td><code>obsidianExportedAt</code></td>
+          <td>避免收藏同一字時一直重複 append。</td>
+          <td>必做</td>
+        </tr>
+      </table>
+
+      <div class="callout warn">
+        <strong>擴充性策略：</strong>
+        第一版每個單字最多保存近 5 筆來源，例句與來源文字做長度上限；若使用者累積到大量單字，再新增 storage version migration，
+        將 <code>fanFanBaVocabularyItems</code> 拆成索引 + IndexedDB 明細資料。
+      </div>
+
+      <div class="decision">
+        <strong>Review point B：同字去重規則</strong>
+        <p>建議第一版用「來源語言 + 小寫/trim 後的單字」去重。例如 <code>en:infrastructure</code>。片語也照同規則處理。</p>
+        <div class="resolution"><strong>Decision：</strong>OK；補充擴充性要求：使用 object map、限制來源筆數，未來可 migration 到 IndexedDB。</div>
+        <textarea class="comment-slot" data-comment-id="model-b" placeholder="Comment："></textarea>
+      </div>
+    </section>
+
+    <section id="obsidian">
+      <h2>Obsidian 整合設計</h2>
+      <div class="two-col">
+        <div class="panel">
+          <h3><span class="badge">路徑</span> 建議資料夾</h3>
+          <pre>翻翻吧/
+  單字本/
+    2026-W22.md
+  查詢紀錄/
+    2026-W22.md</pre>
+          <p>沿用目前週記 append 的邏輯，最容易實作，也符合你原本的筆記節奏。</p>
+        </div>
+        <div class="panel">
+          <h3><span class="badge idea">設定</span> 新增選項</h3>
+          <ul>
+            <li>Obsidian 單字本資料夾</li>
+            <li>收藏時自動匯出到 Obsidian</li>
+            <li>同字重複出現時是否再次記錄來源</li>
+            <li>匯出格式：詳細 / 精簡</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>建議 Markdown 格式</h3>
+      <pre>## 2026-05-26
+
+### infrastructure
+
+- 詞性：n.
+- 音標：/ˈɪnfrəˌstrʌktʃər/
+- 涵義：基礎建設；基礎設施
+- 解釋：支撐社會、城市或系統運作的基本設施。
+- 用法：常用於交通、能源、網路、公共建設等脈絡。
+- 近義詞：facilities
+  - 差異：facilities 偏具體設施，infrastructure 偏整體支撐系統。
+- 例句：
+  - The city invested in public infrastructure.
+  - 這座城市投資公共基礎建設。
+- 來源：[Article Title](https://example.com/article)
+- Tags：#翻翻吧 #vocab/en</pre>
+
+      <div class="callout">
+        <strong>推薦策略：</strong>
+        收藏第一次 append 完整單字卡；之後再遇到同字，只更新 extension 本地的 <code>count</code> 與 <code>lastSeenAt</code>。
+        若使用者開啟「記錄每次出現來源」，再 append 一行來源紀錄到 Obsidian。
+      </div>
+
+      <div class="decision">
+        <strong>Review point C：Obsidian 是否要預設自動匯出？</strong>
+        <p>建議預設開啟，但前提是使用者已設定 Vault。沒有設定時只收藏到本地，並提供「稍後匯出」。</p>
+        <div class="resolution"><strong>Decision：</strong>OK。收藏到本地指 <code>chrome.storage.local</code>，關掉瀏覽器不會消失。</div>
+        <textarea class="comment-slot" data-comment-id="obsidian-c" placeholder="Comment："></textarea>
+      </div>
+    </section>
+
+    <section id="flows">
+      <h2>使用流程</h2>
+      <div class="grid">
+        <div class="panel">
+          <h3><span class="badge">Flow 1</span> 從字典卡收藏</h3>
+          <ol>
+            <li>使用者選字並按翻譯。</li>
+            <li>字典卡顯示收藏按鈕。</li>
+            <li>按下收藏後，本地寫入單字本。</li>
+            <li>若已設定 Obsidian，自動 append。</li>
+            <li>按鈕變成已收藏狀態。</li>
+          </ol>
+        </div>
+        <div class="panel">
+          <h3><span class="badge">Flow 2</span> 今日新增</h3>
+          <ol>
+            <li>懸浮球選單進入單字本。</li>
+            <li>預設顯示今日新增。</li>
+            <li>可搜尋、複製、刪除、手動匯出。</li>
+            <li>可切到全部 / 最近遇到 / 最常遇到。</li>
+          </ol>
+        </div>
+        <div class="panel">
+          <h3><span class="badge">Flow 3</span> 已收藏高亮</h3>
+          <ol>
+            <li>頁面載入後讀本地單字本。</li>
+            <li>只在文章主內容或可見區域做淡標記。</li>
+            <li>Hover 顯示簡短釋義。</li>
+            <li>設定可關閉，避免干擾閱讀。</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <strong>高亮要非常克制：</strong>
+        第一版不要全文 DOM 大掃描，也不要在每個網站都強制開啟。建議使用可見區域、節流、上限數量，並預設只在使用者開啟「單字高亮」後生效。
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <h2>Roadmap</h2>
+      <div class="timeline">
+        <div class="step">
+          <strong>P1.1 本地單字本核心</strong>
+          <ul>
+            <li>字典卡收藏按鈕</li>
+            <li>本地 storage 寫入</li>
+            <li>同字去重</li>
+            <li>已收藏狀態顯示</li>
+          </ul>
+        </div>
+        <div class="step">
+          <strong>P1.2 Obsidian 匯出</strong>
+          <ul>
+            <li>設定單字本資料夾</li>
+            <li>收藏時自動 append</li>
+            <li>手動匯出今日新增</li>
+            <li>Markdown / CSV</li>
+          </ul>
+        </div>
+        <div class="step">
+          <strong>P1.3 單字本 UI</strong>
+          <ul>
+            <li>懸浮球入口</li>
+            <li>今日新增</li>
+            <li>全部 / 搜尋</li>
+            <li>刪除與複製</li>
+          </ul>
+        </div>
+        <div class="step">
+          <strong>P1.4 頁面高亮</strong>
+          <ul>
+            <li>已收藏字淡標記</li>
+            <li>Hover 簡短釋義</li>
+            <li>網站級開關</li>
+            <li>效能上限</li>
+          </ul>
+        </div>
+        <div class="step">
+          <strong>P1.5 輕量複習</strong>
+          <ul>
+            <li>最近遇到</li>
+            <li>最常遇到</li>
+            <li>我記得了 / 還不熟</li>
+            <li>暫不做完整 SRS</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>建議實作順序</h3>
+      <table>
+        <tr>
+          <th>順序</th>
+          <th>任務</th>
+          <th>驗收標準</th>
+        </tr>
+        <tr>
+          <td>1</td>
+          <td>建立 vocabulary storage helper</td>
+          <td>可新增、更新、查詢、刪除單字；同字去重有效。</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>字典卡收藏按鈕</td>
+          <td>字典結果能一鍵收藏；重開頁面仍知道已收藏。</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>Obsidian append</td>
+          <td>收藏後能依週記檔 append 指定 Markdown 格式。</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>單字本面板</td>
+          <td>可看今日新增、搜尋、刪除、手動匯出。</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>已收藏高亮</td>
+          <td>效能穩、樣式低干擾、可關閉。</td>
+        </tr>
+      </table>
+    </section>
+
+    <section id="review">
+      <h2>Review Comments</h2>
+      <p>這些是開工前最值得確認的點。你可以直接回覆編號，我再按你的 comments 調整規劃或開始實作。</p>
+      <div class="comment-tools">
+        <button type="button" data-comment-action="copy">複製 comments</button>
+        <button type="button" data-comment-action="clear">清除 comments</button>
+      </div>
+      <table>
+        <tr>
+          <th>編號</th>
+          <th>待確認事項</th>
+          <th>目前建議</th>
+        </tr>
+        <tr>
+          <td>A</td>
+          <td>Obsidian 是否只做 one-way export？</td>
+          <td>是。不要第一版做雙向同步。</td>
+        </tr>
+        <tr>
+          <td>B</td>
+          <td>收藏同字時是否再次寫入 Obsidian？</td>
+          <td>預設不重複 append，只更新本地；可選擇記錄每次來源。</td>
+        </tr>
+        <tr>
+          <td>C</td>
+          <td>單字本入口放哪裡？</td>
+          <td>懸浮球選單新增「單字本」，字典卡內也有收藏按鈕。</td>
+        </tr>
+        <tr>
+          <td>D</td>
+          <td>高亮預設是否開啟？</td>
+          <td>建議預設關閉，讓使用者手動開啟，避免干擾閱讀。</td>
+        </tr>
+        <tr>
+          <td>E</td>
+          <td>CSV 匯出欄位</td>
+          <td>word, lang, translations, definition, sourceTitle, sourceUrl, createdAt, count。</td>
+        </tr>
+      </table>
+
+      <div class="decision">
+        <strong>總評 Comment</strong>
+        <p>請確認：這份 roadmap 是否可以作為 P1 輕量單字本的實作依據？哪些項目要提前或延後？</p>
+        <div class="resolution"><strong>Decision：</strong>可以作為 P1 實作依據。</div>
+        <textarea class="comment-slot" data-comment-id="summary" placeholder="Comment："></textarea>
+      </div>
+    </section>
+
+    <p class="footer-note">Review version: 2026-05-26 · Fan Fan Ba Vocabulary Notebook Roadmap</p>
+  </main>
+  <script>
+    (() => {
+      const storageKey = 'fanFanBaVocabularyRoadmapComments';
+      const slots = Array.from(document.querySelectorAll('.comment-slot'));
+
+      function readComments() {
+        try {
+          return JSON.parse(localStorage.getItem(storageKey) || '{}');
+        } catch {
+          return {};
+        }
+      }
+
+      function writeComments(comments) {
+        localStorage.setItem(storageKey, JSON.stringify(comments));
+      }
+
+      function getLabel(slot) {
+        const decision = slot.closest('.decision');
+        return decision?.querySelector('strong')?.textContent?.trim() || slot.dataset.commentId;
+      }
+
+      const comments = readComments();
+      slots.forEach(slot => {
+        slot.value = comments[slot.dataset.commentId] || '';
+        slot.addEventListener('input', () => {
+          const next = readComments();
+          next[slot.dataset.commentId] = slot.value;
+          writeComments(next);
+        });
+      });
+
+      async function copyComments() {
+        const output = slots
+          .map(slot => {
+            const value = slot.value.trim();
+            return value ? `## ${getLabel(slot)}\n${value}` : '';
+          })
+          .filter(Boolean)
+          .join('\n\n');
+
+        if (!output) {
+          alert('目前沒有 comments。');
+          return;
+        }
+
+        await navigator.clipboard.writeText(output);
+        alert('Comments 已複製。');
+      }
+
+      function clearComments() {
+        if (!confirm('確定要清除這份 roadmap 的所有 comments？')) return;
+        localStorage.removeItem(storageKey);
+        slots.forEach(slot => { slot.value = ''; });
+      }
+
+      document.querySelectorAll('[data-comment-action="copy"]').forEach(button => {
+        button.addEventListener('click', copyComments);
+      });
+
+      document.querySelectorAll('[data-comment-action="clear"]').forEach(button => {
+        button.addEventListener('click', clearComments);
+      });
+    })();
+  </script>
+</body>
+</html>
