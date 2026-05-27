@@ -6,18 +6,20 @@ const $ = id => document.getElementById(id);
 const ModelRegistry = globalThis.FanFanBaModels || require('./models');
 
 renderModelSelect();
+renderPageTranslationModelSelect();
 renderLanguageSelects();
 initSettingsTabs();
 
 // ── 載入已儲存的設定 ─────────────────────────────────
-chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 'targetLanguage', 'explanationLanguage', 'ttsLanguageMode', 'obsidianVault', 'ttsApiKey', 'obsidianDefaultFolder'],
-  ({ apiKey, groqApiKey, openrouterApiKey, model, targetLanguage, explanationLanguage, ttsLanguageMode, obsidianVault, ttsApiKey, obsidianDefaultFolder }) => {
+chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 'pageTranslationModel', 'targetLanguage', 'explanationLanguage', 'ttsLanguageMode', 'vocabularyHighlightMode', 'obsidianVault', 'ttsApiKey', 'obsidianDefaultFolder'],
+  ({ apiKey, groqApiKey, openrouterApiKey, model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, ttsApiKey, obsidianDefaultFolder }) => {
     if (apiKey)                 $('apiKey').value                 = apiKey;
     if (groqApiKey)             $('groqApiKey').value             = groqApiKey;
     if (openrouterApiKey)       $('openrouterApiKey').value       = openrouterApiKey;
     // 無儲存紀錄時預設 Groq（免費額度最大方）
     const currentModel = ModelRegistry.normalizeModel(model);
     $('model').value = currentModel;
+    if ($('pageTranslationModel')) $('pageTranslationModel').value = ModelRegistry.normalizeModel(pageTranslationModel || currentModel);
     if (model && currentModel !== model) chrome.storage.sync.set({ model: currentModel });
     if ($('targetLanguage')) {
       $('targetLanguage').value = ModelRegistry.normalizeLanguage(targetLanguage, 'zh-TW');
@@ -27,6 +29,9 @@ chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 't
     }
     if ($('ttsLanguageMode')) {
       $('ttsLanguageMode').value = ModelRegistry.normalizeTtsLanguageMode(ttsLanguageMode, 'auto');
+    }
+    if ($('vocabularyHighlightMode')) {
+      $('vocabularyHighlightMode').value = vocabularyHighlightMode === 'auto' ? 'auto' : 'off';
     }
     if (obsidianVault)          $('obsidianVault').value          = obsidianVault;
     if (ttsApiKey)              $('ttsApiKey').value              = ttsApiKey;
@@ -51,6 +56,15 @@ function renderModelSelect() {
       .join('');
     return `<optgroup label="${providerLabels[provider]}">${options}</optgroup>`;
   }).join('');
+}
+
+function renderPageTranslationModelSelect() {
+  const select = $('pageTranslationModel');
+  if (!select || select.tagName !== 'SELECT') return;
+
+  select.innerHTML = ModelRegistry.MODELS
+    .map(model => `<option value="${model.id}">${model.name}（${model.desc}）</option>`)
+    .join('');
 }
 
 function renderLanguageSelects() {
@@ -118,9 +132,11 @@ $('btnSave').addEventListener('click', () => {
   const groqApiKey       = $('groqApiKey').value.trim();
   const openrouterApiKey = $('openrouterApiKey').value.trim();
   const model            = $('model').value;
+  const pageTranslationModel = ModelRegistry.normalizeModel($('pageTranslationModel')?.value || model);
   const targetLanguage   = ModelRegistry.normalizeLanguage($('targetLanguage')?.value, 'zh-TW');
   const explanationLanguage = ModelRegistry.normalizeExplanationLanguage($('explanationLanguage')?.value, 'target');
   const ttsLanguageMode  = ModelRegistry.normalizeTtsLanguageMode($('ttsLanguageMode')?.value, 'auto');
+  const vocabularyHighlightMode = $('vocabularyHighlightMode')?.value === 'auto' ? 'auto' : 'off';
   const isGroq           = model.startsWith('groq:');
   const isOpenRouter     = model.startsWith('openrouter:');
 
@@ -141,7 +157,7 @@ $('btnSave').addEventListener('click', () => {
   const obsidianDefaultFolder = $('obsidianDefaultFolder').value.trim();
 
   chrome.storage.sync.set(
-    { apiKey, groqApiKey, openrouterApiKey, model, targetLanguage, explanationLanguage, ttsLanguageMode, obsidianVault, ttsApiKey, obsidianDefaultFolder },
+    { apiKey, groqApiKey, openrouterApiKey, model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, ttsApiKey, obsidianDefaultFolder },
     () => showStatus('ok', '✓ 設定已儲存')
   );
 });
@@ -220,4 +236,4 @@ function buildOpenAICompatTestBody(modelId) {
   return JSON.stringify({ model: modelId, messages: [{ role: 'user', content: '回覆 OK 即可' }], max_tokens: 10 });
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { showStatus, bindToggleVis, renderModelSelect, renderLanguageSelects, initSettingsTabs }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { showStatus, bindToggleVis, renderModelSelect, renderPageTranslationModelSelect, renderLanguageSelects, initSettingsTabs }; }

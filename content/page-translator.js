@@ -24,7 +24,7 @@ let pageTranslationState = {
   selectionBound: false,
   activePairId: null,
   mode: 'bilingual',
-  density: 'comfortable',
+  density: 'compact',
   items: [],
   done: 0,
   errors: 0,
@@ -49,7 +49,7 @@ function startPageTranslationBeta() {
     selectionBound: pageTranslationState.selectionBound,
     activePairId: pageTranslationState.activePairId,
     mode: pageTranslationState.mode || 'bilingual',
-    density: pageTranslationState.density || 'comfortable',
+    density: pageTranslationState.density || 'compact',
     items,
     done: 0,
     errors: 0,
@@ -420,20 +420,21 @@ function ensurePageTranslationPanel() {
   pageTranslationPanel = document.createElement('div');
   pageTranslationPanel.className = 'ffb-page-translation-panel';
   pageTranslationPanel.innerHTML = `
-    <div class="ffb-page-panel-title">全文翻譯 Beta</div>
+    <div class="ffb-page-panel-head">
+      <div class="ffb-page-panel-title">全文翻譯 <span>Beta</span></div>
+      <div class="ffb-page-panel-count">0/0</div>
+    </div>
     <div class="ffb-page-panel-status"></div>
-    <div class="ffb-page-panel-modes">
-      <button type="button" data-mode="bilingual">雙語</button>
-      <button type="button" data-mode="translation">譯文</button>
-      <button type="button" data-mode="original">原文</button>
-    </div>
-    <div class="ffb-page-panel-density">
-      <button type="button" data-density="comfortable">舒適</button>
-      <button type="button" data-density="compact">緊湊</button>
-    </div>
-    <div class="ffb-page-panel-actions">
-      <button type="button" data-action="stop">停止</button>
-      <button type="button" data-action="restore">還原</button>
+    <div class="ffb-page-panel-controls">
+      <div class="ffb-page-panel-modes" aria-label="全文翻譯顯示模式">
+        <button type="button" data-mode="bilingual" title="雙語">雙</button>
+        <button type="button" data-mode="translation" title="只看譯文">譯</button>
+        <button type="button" data-mode="original" title="只看原文">原</button>
+      </div>
+      <div class="ffb-page-panel-actions">
+        <button type="button" data-action="stop" title="停止">■</button>
+        <button type="button" data-action="restore" title="還原">↺</button>
+      </div>
     </div>
   `;
   pageTranslationPanel.addEventListener('mousedown', e => e.stopPropagation());
@@ -460,6 +461,7 @@ function ensurePageTranslationPanel() {
 function updatePageTranslationPanel(message = '') {
   if (!pageTranslationPanel) return;
   const status = pageTranslationPanel.querySelector('.ffb-page-panel-status');
+  const count = pageTranslationPanel.querySelector('.ffb-page-panel-count');
   const modeButtons = pageTranslationPanel.querySelectorAll('[data-mode]');
   const densityButtons = pageTranslationPanel.querySelectorAll('[data-density]');
   const stopButton = pageTranslationPanel.querySelector('[data-action="stop"]');
@@ -467,8 +469,9 @@ function updatePageTranslationPanel(message = '') {
   const total = pageTranslationState.total;
   const errors = pageTranslationState.errors;
   const runningText = pageTranslationState.running ? '翻譯中' : '待命';
-  const continueText = !pageTranslationState.running && pageTranslationState.canContinue ? '，有新的段落可翻譯' : '';
-  status.textContent = message || `${runningText} ${done}/${total}${errors ? `，失敗 ${errors}` : ''}${continueText}`;
+  const continueText = !pageTranslationState.running && pageTranslationState.canContinue ? '有新段落' : '';
+  if (count) count.textContent = `${done}/${total}`;
+  status.textContent = message || [runningText, errors ? `失敗 ${errors}` : '', continueText].filter(Boolean).join(' · ');
   modeButtons.forEach(btn => btn.classList.toggle('ffb-page-active', btn.dataset.mode === pageTranslationState.mode));
   densityButtons.forEach(btn => btn.classList.toggle('ffb-page-active', btn.dataset.density === pageTranslationState.density));
   if (stopButton) stopButton.disabled = !pageTranslationState.running;
@@ -528,7 +531,7 @@ function restorePageTranslationBeta() {
     selectionBound: pageTranslationState.selectionBound,
     activePairId: null,
     mode: 'bilingual',
-    density: 'comfortable',
+    density: 'compact',
     items: [],
     done: 0,
     errors: 0,

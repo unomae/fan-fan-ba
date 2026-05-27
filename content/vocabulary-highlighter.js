@@ -17,9 +17,7 @@ function getVocabularyHighlightStorageKey() {
 
 async function restoreVocabularyHighlightState() {
   try {
-    const key = getVocabularyHighlightStorageKey();
-    const data = await chrome.storage.local.get(key);
-    vocabularyHighlightEnabled = Boolean(data[key]);
+    vocabularyHighlightEnabled = (await getVocabularyHighlightMode()) === 'auto';
     if (vocabularyHighlightEnabled) await applyVocabularyHighlights();
     updateFloatingBallVocabularyHighlightState?.(vocabularyHighlightEnabled);
   } catch {
@@ -29,12 +27,32 @@ async function restoreVocabularyHighlightState() {
 
 async function toggleVocabularyHighlightForSite() {
   const next = !vocabularyHighlightEnabled;
-  vocabularyHighlightEnabled = next;
-  await chrome.storage.local.set({ [getVocabularyHighlightStorageKey()]: next });
-  if (next) await applyVocabularyHighlights();
+  await setVocabularyHighlightMode(next ? 'auto' : 'off');
+  return vocabularyHighlightEnabled;
+}
+
+async function setVocabularyHighlightMode(mode = 'off') {
+  const normalized = mode === 'auto' ? 'auto' : 'off';
+  vocabularyHighlightEnabled = normalized === 'auto';
+  if (chrome.storage.sync?.set) {
+    await chrome.storage.sync.set({ vocabularyHighlightMode: normalized });
+  } else {
+    await chrome.storage.local.set({ [getVocabularyHighlightStorageKey()]: vocabularyHighlightEnabled });
+  }
+  if (vocabularyHighlightEnabled) await applyVocabularyHighlights();
   else clearVocabularyHighlights();
-  updateFloatingBallVocabularyHighlightState?.(next);
-  return next;
+  updateFloatingBallVocabularyHighlightState?.(vocabularyHighlightEnabled);
+  return vocabularyHighlightEnabled;
+}
+
+async function getVocabularyHighlightMode() {
+  if (chrome.storage.sync?.get) {
+    const { vocabularyHighlightMode = 'off' } = await chrome.storage.sync.get({ vocabularyHighlightMode: 'off' });
+    return vocabularyHighlightMode === 'auto' ? 'auto' : 'off';
+  }
+  const key = getVocabularyHighlightStorageKey();
+  const data = await chrome.storage.local.get(key);
+  return data[key] ? 'auto' : 'off';
 }
 
 async function applyVocabularyHighlights() {

@@ -80,6 +80,32 @@ describe('floating ball menu behavior', () => {
 
     expect(floatingBall.classList.contains('ffb-menu-open')).toBe(false);
   });
+
+  it('opens the floating menu only from the main ball hover target', () => {
+    const floatingBall = document.getElementById('fanfanba-floating');
+
+    floatingBall.dispatchEvent(new window.MouseEvent('mouseenter'));
+    expect(floatingBall.classList.contains('ffb-menu-open')).toBe(false);
+
+    floatingBall
+      .querySelector('.ffb-ball-main')
+      .dispatchEvent(new window.MouseEvent('mouseenter'));
+
+    expect(floatingBall.classList.contains('ffb-menu-open')).toBe(true);
+  });
+
+  it('keeps floating actions minimal without an inline model select', () => {
+    const floatingBall = document.getElementById('fanfanba-floating');
+
+    expect(floatingBall.querySelector('.ffb-page-model-select')).toBeNull();
+    expect(floatingBall.querySelectorAll('.ffb-ball-item')).toHaveLength(2);
+    expect(floatingBall.querySelectorAll('.ffb-ball-menu-top .ffb-ball-item')).toHaveLength(1);
+    expect(floatingBall.querySelectorAll('.ffb-ball-menu-bottom .ffb-ball-item')).toHaveLength(1);
+    expect(floatingBall.querySelector('[data-action="library"] svg')).not.toBeNull();
+    expect(floatingBall.querySelector('[data-action="vocab-highlight"]')).toBeNull();
+    expect(floatingBall.querySelector('.ffb-pause-x')).not.toBeNull();
+    expect(floatingBall.querySelector('[data-action="page-translate"] .ffb-translate-icon')).not.toBeNull();
+  });
 });
 
 describe('floating vocabulary panel', () => {

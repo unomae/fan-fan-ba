@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>翻翻吧｜專案總覽與 Roadmap</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7faf5;
+      --surface: #ffffff;
+      --surface-soft: #fbfcfa;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --green: #5a9e3a;
+      --green-soft: #edf7e8;
+      --blue: #1d4ed8;
+      --orange: #9a3412;
+      --red: #b91c1c;
+      --line: rgba(31, 41, 55, 0.12);
+      --shadow: 0 12px 30px rgba(31, 41, 55, 0.07);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
+      line-height: 1.56;
+    }
+
+    a { color: var(--green); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    aside {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 22px 16px;
+      border-right: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(10px);
+      overflow: auto;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+    }
+
+    .brand strong {
+      display: block;
+      line-height: 1.2;
+    }
+
+    .brand span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    nav {
+      display: grid;
+      gap: 4px;
+    }
+
+    nav a {
+      padding: 8px 10px;
+      border-radius: 8px;
+      color: #374151;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    nav a:hover {
+      background: var(--green-soft);
+      color: #315f22;
+      text-decoration: none;
+    }
+
+    .side-note {
+      margin-top: 18px;
+      padding: 10px;
+      border: 1px solid rgba(90, 158, 58, 0.18);
+      border-radius: 8px;
+      background: #f8fcf5;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    main {
+      max-width: 1120px;
+      width: 100%;
+      padding: 30px 26px 54px;
+    }
+
+    header {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 18px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 32px;
+      line-height: 1.15;
+    }
+
+    .lead {
+      max-width: 760px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 3px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: #374151;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .pill.green { border-color: rgba(90, 158, 58, 0.22); background: var(--green-soft); color: #315f22; }
+    .pill.blue { border-color: rgba(29, 78, 216, 0.18); background: #eff6ff; color: var(--blue); }
+    .pill.orange { border-color: rgba(154, 52, 18, 0.18); background: #fff7ed; color: var(--orange); }
+    .pill.red { border-color: rgba(185, 28, 28, 0.18); background: #fef2f2; color: var(--red); }
+
+    section {
+      margin-top: 16px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      box-shadow: 0 8px 18px rgba(31, 41, 55, 0.04);
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    p { margin: 0 0 10px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-soft);
+    }
+
+    .card p,
+    .card li {
+      color: #4b5563;
+      font-size: 13px;
+    }
+
+    ul, ol { margin: 8px 0 0; padding-left: 20px; }
+    li { margin: 4px 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f6faf3;
+      color: #315f22;
+      font-size: 12px;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #f2f6ef;
+      color: #315f22;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    pre {
+      overflow: auto;
+      margin: 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #111827;
+      color: #e5e7eb;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 10px;
+    }
+
+    .phase {
+      display: grid;
+      grid-template-columns: 130px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-soft);
+    }
+
+    .phase strong { display: block; }
+    .phase p { color: #4b5563; font-size: 13px; }
+
+    .callout {
+      padding: 12px 14px;
+      border: 1px solid rgba(90, 158, 58, 0.22);
+      border-radius: 8px;
+      background: #f8fcf5;
+      color: #315f22;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .danger {
+      border-color: rgba(185, 28, 28, 0.18);
+      background: #fff7f7;
+      color: #7f1d1d;
+    }
+
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      aside { position: static; height: auto; }
+      main { padding: 20px 16px 42px; }
+      .grid,
+      .grid.two,
+      .phase { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <div class="brand">
+        <img src="icons/icon48.png" alt="">
+        <div>
+          <strong>翻翻吧</strong>
+          <span>Project Hub</span>
+        </div>
+      </div>
+      <nav>
+        <a href="#status">現況</a>
+        <a href="#structure">專案結構</a>
+        <a href="#architecture">架構流程</a>
+        <a href="#settings">設定與 Storage</a>
+        <a href="#features">功能清單</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="#cleanup">清理候選</a>
+        <a href="#maintenance">更新規則</a>
+      </nav>
+      <div class="side-note">
+        之後新增功能、調整架構、改設定 key、更新 roadmap，優先更新這份 HTML。
+      </div>
+    </aside>
+
+    <main>
+      <header>
+        <div>
+          <h1>翻翻吧專案總覽與 Roadmap</h1>
+          <p class="lead">這份文件整理目前 Chrome / Edge extension 的架構、設定、功能狀態、測試方式、roadmap 與可清理候選。目標是讓之後每次更新都有一個固定的專案記憶入口。</p>
+        </div>
+        <div class="meta-row">
+          <span class="pill green">版本 1.6.0</span>
+          <span class="pill blue">Manifest V3</span>
+          <span class="pill">最後更新 2026-05-27</span>
+          <span class="pill orange">文件狀態：初版</span>
+        </div>
+      </header>
+
+      <section id="status">
+        <h2>現況</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>產品定位</h3>
+            <p>選取網頁文字後提供翻譯、解釋、優化改寫，也提供右側常駐浮球作為全文翻譯、最近查詢、單字本、暫停網站與設定入口。</p>
+          </div>
+          <div class="card">
+            <h3>主要 Provider</h3>
+            <p>模型 registry 集中在 <code>models.js</code>，支援 Groq、Gemini、OpenRouter。預設模型為 Groq 的 Llama 4 Scout。</p>
+          </div>
+          <div class="card">
+            <h3>目前重點</h3>
+            <p>浮球 UI 收斂、全文翻譯 Beta、單字本/高亮與設定頁整合。近期應把設定 migration 與 UI review 文件維持同步。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="structure">
+        <h2>專案結構</h2>
+        <table>
+          <thead>
+            <tr><th>路徑</th><th>用途</th><th>是否必要</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>manifest.json</code></td><td>Chrome extension manifest，定義權限、content scripts、background、popup、options。</td><td><span class="pill green">必要</span></td></tr>
+            <tr><td><code>background.js</code></td><td>Service worker，負責 AI API 請求、streaming、OpenRouter fallback、安裝事件。</td><td><span class="pill green">必要</span></td></tr>
+            <tr><td><code>models.js</code></td><td>模型、語言、TTS 偏好、migration、provider 判斷與 hash 工具。</td><td><span class="pill green">必要</span></td></tr>
+            <tr><td><code>content/</code></td><td>注入網頁的功能模組，包含工具列、結果卡、浮球、全文翻譯、單字本、高亮、Obsidian、共用狀態。</td><td><span class="pill green">必要</span></td></tr>
+            <tr><td><code>content.css</code></td><td>所有 content script UI 樣式，使用高 specificity 與 <code>!important</code> 隔離宿主頁樣式。</td><td><span class="pill green">必要</span></td></tr>
+            <tr><td><code>popup.html</code> / <code>popup.js</code></td><td>extension toolbar popup，呈現目前模型/API 狀態與快速設定入口。</td><td><span class="pill green">必要</span></td></tr>
+            <tr><td><code>options.html</code> / <code>options.js</code></td><td>完整設定頁，管理模型、API key、語言、TTS、Obsidian、全文翻譯模型。</td><td><span class="pill green">必要</span></td></tr>
+            <tr><td><code>welcome.html</code> / <code>welcome.js</code></td><td>首次安裝 onboarding。</td><td><span class="pill green">必要</span></td></tr>
+            <tr><td><code>privacy-policy.html</code></td><td>隱私權政策，商店上架與使用者信任用。</td><td><span class="pill green">必要</span></td></tr>
+            <tr><td><code>icons/</code></td><td>extension icon 與 source。</td><td><span class="pill green">必要</span></td></tr>
+            <tr><td><code>fonts/</code></td><td>本地 jf-openhuninn 字體，content script 以 web accessible resource 注入。</td><td><span class="pill green">必要</span></td></tr>
+            <tr><td><code>tests/</code></td><td>Jest 測試。</td><td><span class="pill green">必要</span></td></tr>
+            <tr><td><code>screenshots/</code></td><td>README、商店 listing、mockup 與素材產物。</td><td><span class="pill orange">部分可整理</span></td></tr>
+            <tr><td><code>coverage/</code></td><td>測試 coverage 產物，可由 <code>npm test</code> 重新產生。</td><td><span class="pill orange">可刪候選</span></td></tr>
+            <tr><td><code>node_modules/</code></td><td>npm 安裝產物，可由 <code>npm install</code> 重新產生。</td><td><span class="pill orange">可刪候選</span></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="architecture">
+        <h2>架構流程</h2>
+        <div class="grid two">
+          <div class="card">
+            <h3>選字工具流程</h3>
+            <ol>
+              <li><code>content/main.js</code> 偵測 selection。</li>
+              <li><code>content/toolbar.js</code> 顯示翻譯/解釋/優化工具列。</li>
+              <li><code>content/main.js</code> 透過 message 或 port 呼叫 <code>background.js</code>。</li>
+              <li><code>background.js</code> 依模型 provider 呼叫 Groq/Gemini/OpenRouter。</li>
+              <li><code>content/result-card.js</code> 顯示字典卡、段落結果、Obsidian 與收藏操作。</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3>浮球與全文翻譯流程</h3>
+            <ol>
+              <li><code>content/floating-ball.js</code> 建立右側吸附浮球。</li>
+              <li>浮球可開最近查詢、單字本、高亮、全文翻譯、暫停、設定。</li>
+              <li><code>content/page-translator.js</code> 收集可見段落並逐段翻譯。</li>
+              <li>翻譯狀態面板提供雙語/譯文/原文與密度切換。</li>
+              <li>全文模型由設定頁 <code>pageTranslationModel</code> 管理。</li>
+            </ol>
+          </div>
+        </div>
+        <h3 style="margin-top:14px;">Content script 載入順序</h3>
+        <pre>models.js
+content/state.js
+content/utils.js
+content/vocabulary.js
+content/vocabulary-highlighter.js
+content/obsidian.js
+content/toolbar.js
+content/result-card.js
+content/page-translator.js
+content/floating-ball.js
+content/main.js</pre>
+      </section>
+
+      <section id="settings">
+        <h2>設定與 Storage</h2>
+        <table>
+          <thead>
+            <tr><th>Key</th><th>Storage</th><th>用途</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>model</code></td><td><code>chrome.storage.sync</code></td><td>一般選字翻譯/解釋/優化的預設模型。</td></tr>
+            <tr><td><code>pageTranslationModel</code></td><td><code>chrome.storage.sync</code></td><td>右側浮球啟動全文翻譯時使用的模型。</td></tr>
+            <tr><td><code>apiKey</code></td><td><code>chrome.storage.sync</code></td><td>Gemini API Key。</td></tr>
+            <tr><td><code>groqApiKey</code></td><td><code>chrome.storage.sync</code></td><td>Groq API Key。</td></tr>
+            <tr><td><code>openrouterApiKey</code></td><td><code>chrome.storage.sync</code></td><td>OpenRouter API Key。</td></tr>
+            <tr><td><code>targetLanguage</code></td><td><code>chrome.storage.sync</code></td><td>翻譯目標語言。</td></tr>
+            <tr><td><code>explanationLanguage</code></td><td><code>chrome.storage.sync</code></td><td>解釋/優化說明輸出語言。</td></tr>
+            <tr><td><code>ttsLanguageMode</code></td><td><code>chrome.storage.sync</code></td><td>單字卡朗讀語音模式。</td></tr>
+            <tr><td><code>vocabularyHighlightMode</code></td><td><code>chrome.storage.sync</code></td><td>單字高亮全域模式：關閉或自動高亮已收藏單字。</td></tr>
+            <tr><td><code>ttsApiKey</code></td><td><code>chrome.storage.sync</code></td><td>Google Cloud TTS API Key。</td></tr>
+            <tr><td><code>obsidianVault</code></td><td><code>chrome.storage.sync</code></td><td>Obsidian Vault 名稱。</td></tr>
+            <tr><td><code>obsidianDefaultFolder</code></td><td><code>chrome.storage.sync</code></td><td>Obsidian 預設寫入資料夾。</td></tr>
+            <tr><td><code>fanFanBaVocabularyItems</code></td><td><code>chrome.storage.local</code></td><td>本地單字本 keyed object map。</td></tr>
+            <tr><td><code>fanFanBaFloatingPosition</code></td><td><code>chrome.storage.local</code></td><td>每個 host 的浮球 top 與左右吸附位置。</td></tr>
+            <tr><td><code>fanFanBaPaused:&lt;host&gt;</code></td><td><code>chrome.storage.local</code></td><td>每個網站的暫停狀態。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="features">
+        <h2>功能清單</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>已完成</h3>
+            <ul>
+              <li>選字翻譯、解釋、優化。</li>
+              <li>字典卡 JSON 結構化輸出。</li>
+              <li>Streaming 段落結果。</li>
+              <li>Obsidian append 與週記檔。</li>
+              <li>最近查詢、pin、copy、retry。</li>
+              <li>設定頁分頁與 API 測試。</li>
+              <li>右側常駐浮球與每站位置記憶。</li>
+              <li>單字本、本地收藏、篩選、搜尋、刪除。</li>
+              <li>單字高亮與可見區域控制。</li>
+              <li>全文翻譯 Beta 與段落密度模式。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>近期調整</h3>
+            <ul>
+              <li>浮球選單改成 icon button。</li>
+              <li>浮球半收納右側，hover 完整露出並上下展開。</li>
+              <li>浮球主入口收斂為「收藏/紀錄」與「全文翻譯」。</li>
+              <li>單字本、高亮、全文翻譯 icon 統一為 Lucide 風格。</li>
+              <li>單字高亮移到設定頁，改為全域模式。</li>
+              <li>全文翻譯模型從浮球移到設定頁。</li>
+              <li>全文翻譯控制卡改為預設緊湊控制列。</li>
+              <li>新增浮球配置預覽頁。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>技術守則</h3>
+            <ul>
+              <li>Content UI 不污染宿主頁。</li>
+              <li>API Key 只保存在 Chrome storage。</li>
+              <li>模型與語言設定集中在 registry。</li>
+              <li>全文翻譯先做可見段落，避免全頁 DOM 破壞。</li>
+              <li>可重建產物不要混進必要架構。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="roadmap">
+        <h2>Roadmap</h2>
+        <div class="timeline">
+          <div class="phase">
+            <strong>Phase 2A</strong>
+            <p>模型 registry、設定 migration、快取 key 改良、fallback 基礎。來源：<code>project-review-roadmap.html</code></p>
+            <span class="pill green">完成</span>
+          </div>
+          <div class="phase">
+            <strong>Phase 2B</strong>
+            <p>右側常駐浮球、最近查詢、設定入口、暫停網站、位置記憶。近期仍在 UI polishing。</p>
+            <span class="pill green">完成</span>
+          </div>
+          <div class="phase">
+            <strong>Phase 2C</strong>
+            <p>目標語言、解釋語言、TTS 語音偏好與 prompt 串接。</p>
+            <span class="pill green">完成</span>
+          </div>
+          <div class="phase">
+            <strong>P1 單字本</strong>
+            <p>本地單字本、Obsidian 匯出、單字本 UI、review 視圖、頁面高亮。來源：<code>vocabulary-notebook-roadmap.html</code></p>
+            <span class="pill green">完成</span>
+          </div>
+          <div class="phase">
+            <strong>Phase 3</strong>
+            <p>可見區域全文翻譯 Beta、段落翻譯卡、雙語/譯文/原文模式、可繼續翻譯新段落。</p>
+            <span class="pill blue">Beta</span>
+          </div>
+          <div class="phase">
+            <strong>Phase 3.1</strong>
+            <p>譯文卡視覺、pair id、原文/譯文 hover 與 selection 同步。來源：<code>page-translation-ux-review.html</code></p>
+            <span class="pill blue">進行中</span>
+          </div>
+          <div class="phase">
+            <strong>Next</strong>
+            <p>浮球互動最終確認、設定 migration 版本化、單字本 export/import、全文翻譯操作列強化。</p>
+            <span class="pill orange">待排程</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="cleanup">
+        <h2>清理候選</h2>
+        <div class="callout danger">目前只做盤點，不建議自動刪除。刪除前先確認是否要保留商店素材、歷史 mockup 或 release package。</div>
+        <table style="margin-top:12px;">
+          <thead>
+            <tr><th>項目</th><th>判斷</th><th>建議</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>coverage/</code></td><td>Jest coverage 產物，可重建。</td><td><span class="pill orange">可刪</span></td></tr>
+            <tr><td><code>node_modules/</code></td><td>npm install 產物，可由 lockfile 重建；保留可加快本機開發。</td><td><span class="pill orange">需要省空間時可刪</span></td></tr>
+            <tr><td><code>fan-fan-ba-v1.2.3.zip</code></td><td>舊版打包檔，不是目前 1.6.0 執行必要檔。</td><td><span class="pill green">已刪除</span></td></tr>
+            <tr><td><code>screenshots/*.b64</code></td><td>base64 素材，體積較大，PNG 已保留。</td><td><span class="pill green">已刪除</span></td></tr>
+            <tr><td><code>screenshots/mockup-generator.html</code></td><td>大型 mockup 產生器，商店素材 PNG 已保留。</td><td><span class="pill green">已刪除</span></td></tr>
+            <tr><td><code>screenshots/icon-gen-*.html</code> / <code>icon-sq-*.html</code></td><td>圖示產生器中間產物，正式 icons 與 source 已保留於 <code>icons/</code>。</td><td><span class="pill green">已刪除</span></td></tr>
+            <tr><td><code>.claude/</code></td><td>開發工具設定，非 extension runtime 必要，但可能是你的工作流需要。</td><td><span class="pill blue">保留</span></td></tr>
+            <tr><td><code>content.js</code></td><td>已確認內容只是重構後的舊入口說明，manifest 目前沒有載入它。</td><td><span class="pill orange">可刪或保留為註記</span></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="maintenance">
+        <h2>更新規則</h2>
+        <div class="grid two">
+          <div class="card">
+            <h3>每次功能更新時</h3>
+            <ul>
+              <li>更新「功能清單」與「Roadmap」。</li>
+              <li>若新增 storage key，更新「設定與 Storage」。</li>
+              <li>若新增 content script 或調整載入順序，更新「架構流程」。</li>
+              <li>若產生大型素材，更新「清理候選」。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>驗證指令</h3>
+            <ul>
+              <li><code>npx.cmd jest tests/content/floating-ball.test.js tests/options.test.js --runInBand</code></li>
+              <li><code>npm test</code> 會產生 <code>coverage/</code>。</li>
+              <li>若 PowerShell 擋 <code>npx</code>，用 <code>npx.cmd</code>。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

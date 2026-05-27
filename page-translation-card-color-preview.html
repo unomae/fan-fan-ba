@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>翻翻吧｜譯文卡配色方案預覽</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page-bg: #f7faf5;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --line: rgba(31, 41, 55, 0.12);
+      --green: #5a9e3a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--page-bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
+      line-height: 1.62;
+    }
+
+    main {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 32px 22px 48px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 30px;
+      line-height: 1.15;
+    }
+
+    .lead {
+      max-width: 780px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 3px 9px;
+      border: 1px solid rgba(90, 158, 58, 0.22);
+      border-radius: 999px;
+      background: #fff;
+      color: #315f22;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .option {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(31, 41, 55, 0.06);
+    }
+
+    .option-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(250, 252, 248, 0.92);
+    }
+
+    .option h2 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .spec {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .sample {
+      padding: 20px;
+      background:
+        linear-gradient(90deg, rgba(90, 158, 58, 0.06) 0 1px, transparent 1px 100%),
+        #fbfcfa;
+      background-size: 18px 18px;
+    }
+
+    .source {
+      margin-bottom: 8px;
+      padding: 0 2px;
+      color: #202124;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 15px;
+      line-height: 1.72;
+    }
+
+    .source.active {
+      border-radius: 5px;
+      outline: 1px solid rgba(47, 92, 156, 0.18);
+      outline-offset: 2px;
+      background: rgba(47, 92, 156, 0.05);
+    }
+
+    .translation {
+      position: relative;
+      margin: 8px 0 18px;
+      padding: 10px 12px 10px 38px;
+      border-radius: 9px;
+      backdrop-filter: blur(8px) saturate(1.04);
+      -webkit-backdrop-filter: blur(8px) saturate(1.04);
+      font-size: 14px;
+      line-height: 1.62;
+    }
+
+    .translation::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 8px;
+      bottom: 8px;
+      width: 3px;
+      border-radius: 999px;
+    }
+
+    .mark {
+      position: absolute;
+      top: 8px;
+      left: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 850;
+      line-height: 1;
+    }
+
+    .actions {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: flex;
+      gap: 4px;
+      opacity: 0.68;
+    }
+
+    .dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      border: 1px solid currentColor;
+      opacity: 0.45;
+    }
+
+    .translation p {
+      margin: 0;
+      padding-right: 40px;
+    }
+
+    .amber .translation {
+      background: rgba(255, 248, 225, 0.82);
+      color: #6f5100;
+      box-shadow:
+        inset 0 0 0 1px rgba(181, 125, 0, 0.18),
+        0 5px 14px rgba(120, 84, 0, 0.08);
+    }
+    .amber .translation::before { background: rgba(181, 125, 0, 0.68); }
+    .amber .mark { border: 1px solid rgba(181, 125, 0, 0.22); background: rgba(255, 255, 255, 0.58); color: #8a6500; }
+    .amber .actions { color: #8a6500; }
+
+    .olive .translation {
+      background: rgba(245, 250, 232, 0.82);
+      color: #4d6219;
+      box-shadow:
+        inset 0 0 0 1px rgba(110, 146, 35, 0.18),
+        0 5px 14px rgba(63, 92, 24, 0.08);
+    }
+    .olive .translation::before { background: rgba(110, 146, 35, 0.7); }
+    .olive .mark { border: 1px solid rgba(110, 146, 35, 0.22); background: rgba(255, 255, 255, 0.62); color: #5f7d1f; }
+    .olive .actions { color: #5f7d1f; }
+
+    .blue .translation {
+      background: rgba(239, 246, 255, 0.84);
+      color: #234b7a;
+      box-shadow:
+        inset 0 0 0 1px rgba(37, 99, 235, 0.14),
+        0 5px 14px rgba(37, 99, 235, 0.07);
+    }
+    .blue .translation::before { background: rgba(37, 99, 235, 0.48); }
+    .blue .mark { border: 1px solid rgba(37, 99, 235, 0.16); background: rgba(255, 255, 255, 0.64); color: #1d4ed8; }
+    .blue .actions { color: #1d4ed8; }
+
+    .contrast .translation {
+      background: transparent;
+      color: #5f4200;
+      box-shadow: inset 4px 0 0 rgba(181, 125, 0, 0.72);
+    }
+    .contrast .translation::before { display: none; }
+    .contrast .mark { display: none; }
+    .contrast .actions { color: #6f5100; }
+
+    .notes {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .panel {
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    .panel h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .panel ul {
+      margin: 0;
+      padding-left: 20px;
+      color: #4b5563;
+      font-size: 13px;
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #f2f6ef;
+      color: #315f22;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    @media (max-width: 850px) {
+      header { align-items: flex-start; flex-direction: column; }
+      .grid, .notes { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>譯文卡配色方案預覽</h1>
+        <p class="lead">目標是讓譯文和原始文字有明顯區隔，但仍然適合長時間閱讀。已採用「無背景、無左側徽章、內嵌側線」方向。</p>
+      </div>
+      <span class="badge">目前套用 D</span>
+    </header>
+
+    <section class="grid" aria-label="譯文卡配色方案">
+      <article class="option amber">
+        <div class="option-head">
+          <div>
+            <h2>A. Amber Note</h2>
+            <p class="spec">暗黃色文字 · 淡琥珀半透明背景 · 區隔最直覺</p>
+          </div>
+          <span class="badge">推薦</span>
+        </div>
+        <div class="sample">
+          <p class="source">The original paragraph remains visually neutral, so readers can scan the article without feeling that the extension has taken over the page.</p>
+          <div class="translation">
+            <span class="mark">譯</span>
+            <div class="actions"><span class="dot"></span><span class="dot"></span></div>
+            <p>原始段落維持中性視覺，讀者仍能掃讀文章；譯文則以淡琥珀底與暗黃色文字呈現，像閱讀註記一樣明確但不刺眼。</p>
+          </div>
+          <p class="source active">When the user hovers or selects a translated pair, both sides should feel connected without becoming visually noisy.</p>
+          <div class="translation">
+            <span class="mark">譯</span>
+            <div class="actions"><span class="dot"></span><span class="dot"></span></div>
+            <p>當使用者 hover 或選取配對段落時，原文與譯文需要被連起來，但不能讓頁面變得吵雜。</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="option olive">
+        <div class="option-head">
+          <div>
+            <h2>B. Soft Olive</h2>
+            <p class="spec">黃綠文字 · 淡黃綠背景 · 最貼近翻翻吧品牌</p>
+          </div>
+          <span class="badge">品牌一致</span>
+        </div>
+        <div class="sample">
+          <p class="source">The original paragraph remains visually neutral, so readers can scan the article without feeling that the extension has taken over the page.</p>
+          <div class="translation">
+            <span class="mark">譯</span>
+            <div class="actions"><span class="dot"></span><span class="dot"></span></div>
+            <p>原始段落維持中性視覺，讀者仍能掃讀文章；譯文則以淡黃綠底與橄欖色文字呈現，和品牌色更一致。</p>
+          </div>
+          <p class="source active">When the user hovers or selects a translated pair, both sides should feel connected without becoming visually noisy.</p>
+          <div class="translation">
+            <span class="mark">譯</span>
+            <div class="actions"><span class="dot"></span><span class="dot"></span></div>
+            <p>當使用者 hover 或選取配對段落時，原文與譯文需要被連起來，但不能讓頁面變得吵雜。</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="option blue">
+        <div class="option-head">
+          <div>
+            <h2>C. Translation Blue</h2>
+            <p class="spec">藍灰文字 · 淡藍背景 · 最像系統翻譯層</p>
+          </div>
+        </div>
+        <div class="sample">
+          <p class="source">The original paragraph remains visually neutral, so readers can scan the article without feeling that the extension has taken over the page.</p>
+          <div class="translation">
+            <span class="mark">譯</span>
+            <div class="actions"><span class="dot"></span><span class="dot"></span></div>
+            <p>原始段落維持中性視覺，讀者仍能掃讀文章；譯文以淡藍底呈現，和網頁原文區分明顯，也帶有工具層感。</p>
+          </div>
+          <p class="source active">When the user hovers or selects a translated pair, both sides should feel connected without becoming visually noisy.</p>
+          <div class="translation">
+            <span class="mark">譯</span>
+            <div class="actions"><span class="dot"></span><span class="dot"></span></div>
+            <p>當使用者 hover 或選取配對段落時，原文與譯文需要被連起來，但不能讓頁面變得吵雜。</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="option contrast">
+        <div class="option-head">
+          <div>
+            <h2>D. Reading Marker</h2>
+            <p class="spec">無背景 · 無左側徽章 · 暗黃文字 + 內嵌側線</p>
+          </div>
+          <span class="badge">已套用</span>
+        </div>
+        <div class="sample">
+          <p class="source">The original paragraph remains visually neutral, so readers can scan the article without feeling that the extension has taken over the page.</p>
+          <div class="translation">
+            <span class="mark">譯</span>
+            <div class="actions"><span class="dot"></span><span class="dot"></span></div>
+            <p>原始段落維持中性視覺，讀者仍能掃讀文章；譯文不使用背景色，也不放左側徽章，只用暗黃文字與內嵌側線做區分。</p>
+          </div>
+          <p class="source active">When the user hovers or selects a translated pair, both sides should feel connected without becoming visually noisy.</p>
+          <div class="translation">
+            <span class="mark">譯</span>
+            <div class="actions"><span class="dot"></span><span class="dot"></span></div>
+            <p>當使用者 hover 或選取配對段落時，原文與譯文需要被連起來，但不能讓頁面變得吵雜。</p>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="notes">
+      <div class="panel">
+        <h3>我的建議</h3>
+        <ul>
+          <li>目前採用 D：無背景、無左側徽章、暗黃文字、內嵌側線。</li>
+          <li>它比有背景的 A/B 更不干擾原網頁，但仍比純文字譯文更容易辨識。</li>
+          <li>若後續覺得太低調，可以只加深側線或文字，不一定要恢復背景。</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>實作會改的 CSS</h3>
+        <ul>
+          <li><code>.ffb-page-translation-block</code>：背景、內框、陰影。</li>
+          <li><code>.ffb-page-translation-text</code>：文字顏色。</li>
+          <li><code>.ffb-page-translation-block::before</code>：左側識別線。</li>
+          <li><code>.ffb-page-translation-mark</code>：譯文字徽章色。</li>
+          <li><code>.ffb-page-translation-block.ffb-pair-active</code>：hover/選取時的加強狀態。</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

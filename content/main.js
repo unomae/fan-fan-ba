@@ -294,10 +294,10 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey) {
 }
 
 function initContentSettings() {
-  chrome.storage.sync.get({ model: FanFanBaModels.DEFAULT_MODEL, targetLanguage: 'zh-TW', explanationLanguage: 'target', ttsLanguageMode: 'auto' })
+  chrome.storage.sync.get({ model: FanFanBaModels.DEFAULT_MODEL, pageTranslationModel: '', targetLanguage: 'zh-TW', explanationLanguage: 'target', ttsLanguageMode: 'auto' })
     .then(settings => {
       activeModel = FanFanBaModels.normalizeModel(settings.model);
-      renderFloatingPageModelSelect?.();
+      setPageTranslationModel?.(settings.pageTranslationModel || activeModel);
       targetLanguage = FanFanBaModels.normalizeLanguage(settings.targetLanguage, 'zh-TW');
       explanationLanguage = FanFanBaModels.normalizeExplanationLanguage(settings.explanationLanguage, 'target');
       ttsLanguageMode = FanFanBaModels.normalizeTtsLanguageMode(settings.ttsLanguageMode, 'auto');
@@ -314,10 +314,12 @@ function initContentSettings() {
   chrome.storage.onChanged?.addListener((changes, area) => {
     if (area === 'sync') {
       if (changes.model) activeModel = FanFanBaModels.normalizeModel(changes.model.newValue);
-      if (changes.model) renderFloatingPageModelSelect?.();
+      if (changes.model && !changes.pageTranslationModel) setPageTranslationModel?.(activeModel);
+      if (changes.pageTranslationModel) setPageTranslationModel?.(changes.pageTranslationModel.newValue || activeModel);
       if (changes.targetLanguage) targetLanguage = FanFanBaModels.normalizeLanguage(changes.targetLanguage.newValue, 'zh-TW');
       if (changes.explanationLanguage) explanationLanguage = FanFanBaModels.normalizeExplanationLanguage(changes.explanationLanguage.newValue, 'target');
       if (changes.ttsLanguageMode) ttsLanguageMode = FanFanBaModels.normalizeTtsLanguageMode(changes.ttsLanguageMode.newValue, 'auto');
+      if (changes.vocabularyHighlightMode) setVocabularyHighlightMode?.(changes.vocabularyHighlightMode.newValue);
     }
     if (area === 'local' && changes[getPauseStorageKey()]) {
       fanFanBaPaused = !!changes[getPauseStorageKey()].newValue;

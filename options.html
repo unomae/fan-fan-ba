@@ -583,7 +583,7 @@
         </button>
         <button class="settings-tab" type="button" data-panel="language" aria-selected="false">
           語言與朗讀
-          <small>4</small>
+          <small>5</small>
         </button>
         <button class="settings-tab" type="button" data-panel="obsidian" aria-selected="false">
           Obsidian
@@ -612,6 +612,12 @@
           <div class="field full">
             <label for="model">預設模型</label>
             <select id="model"></select>
+          </div>
+
+          <div class="field full">
+            <label for="pageTranslationModel">全文翻譯模型</label>
+            <select id="pageTranslationModel"></select>
+            <p class="field-note">由右側懸浮球啟動的全文翻譯會使用此模型；建議選擇速度快、額度充足的模型。</p>
           </div>
 
           <div class="provider-grid">
@@ -715,6 +721,15 @@
               <label for="ttsLanguageMode">朗讀語音</label>
               <select id="ttsLanguageMode"></select>
               <p class="field-note">單字卡預設依 AI 偵測的原文語言朗讀，也可改為跟隨翻譯語言。</p>
+            </div>
+
+            <div class="field">
+              <label for="vocabularyHighlightMode">單字高亮</label>
+              <select id="vocabularyHighlightMode">
+                <option value="off">關閉</option>
+                <option value="auto">自動高亮已收藏單字</option>
+              </select>
+              <p class="field-note">開啟後會在文章可見文字中淡標已收藏單字；不標示按鈕、表單、程式碼與翻翻吧介面。</p>
             </div>
 
             <div class="field">

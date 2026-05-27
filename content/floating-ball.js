@@ -1,6 +1,9 @@
 'use strict';
 
 const FLOATING_POSITION_KEY = 'fanFanBaFloatingPosition';
+const FFB_ICON_HISTORY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>';
+const FFB_ICON_NOTEBOOK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9.5 8h5"/><path d="M9.5 12H16"/><path d="M9.5 16H14"/></svg>';
+const FFB_ICON_LANGUAGES = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>';
 
 function getPauseStorageKey() {
   const host = location.hostname || 'local-file';
@@ -26,39 +29,25 @@ function createFloatingBall() {
     </button>
     <button class="ffb-continue-tip" type="button" title="直接翻譯新的可見段落">有新的段落可翻譯</button>
     <div class="ffb-ball-menu">
-      <button class="ffb-ball-item" type="button" data-action="history">
-        <span class="ffb-ball-icon">↺</span>
-        <span>最近查詢</span>
-      </button>
-      <button class="ffb-ball-item" type="button" data-action="vocabulary">
-        <span class="ffb-ball-icon">字</span>
-        <span>單字本</span>
-      </button>
-      <button class="ffb-ball-item" type="button" data-action="vocab-highlight">
-        <span class="ffb-ball-icon">標</span>
-        <span class="ffb-vocab-highlight-label">開啟單字高亮</span>
-      </button>
-      <button class="ffb-ball-item" type="button" data-action="page-translate">
-        <span class="ffb-ball-icon">文</span>
-        <span class="ffb-page-translate-label">全文翻譯 Beta</span>
-      </button>
-      <label class="ffb-page-model-row">
-        <span>全文模型</span>
-        <select class="ffb-page-model-select"></select>
-      </label>
-      <button class="ffb-ball-item" type="button" data-action="pause">
-        <span class="ffb-ball-icon">⏸</span>
-        <span class="ffb-pause-label">暫停此網站</span>
-      </button>
-      <button class="ffb-ball-item" type="button" data-action="settings">
-        <span class="ffb-ball-icon">⚙</span>
-        <span>設定</span>
-      </button>
+      <div class="ffb-ball-menu-group ffb-ball-menu-top">
+        <button class="ffb-ball-item" type="button" data-action="library" data-tooltip="收藏 / 紀錄" title="收藏 / 紀錄" aria-label="收藏 / 紀錄">
+          <span class="ffb-ball-icon">${FFB_ICON_NOTEBOOK}</span>
+          <span class="ffb-ball-label">收藏 / 紀錄</span>
+        </button>
+      </div>
+      <div class="ffb-ball-menu-gap" aria-hidden="true"></div>
+      <div class="ffb-ball-menu-group ffb-ball-menu-bottom">
+        <button class="ffb-ball-item" type="button" data-action="page-translate" data-tooltip="全文翻譯 Beta" title="全文翻譯目前可見內容" aria-label="全文翻譯 Beta">
+          <span class="ffb-ball-icon ffb-translate-icon">${FFB_ICON_LANGUAGES}</span>
+          <span class="ffb-ball-label ffb-page-translate-label">全文翻譯 Beta</span>
+        </button>
+      </div>
     </div>
+    <button class="ffb-pause-x" type="button" data-action="pause" title="暫停此網站" aria-label="暫停此網站">×</button>
   `;
 
   const mainBtn = el.querySelector('.ffb-ball-main');
-  renderFloatingPageModelSelect(el);
+  const menu = el.querySelector('.ffb-ball-menu');
   mainBtn.addEventListener('pointerdown', startFloatingBallPointer);
   mainBtn.addEventListener('click', e => {
     // 選單由 hover/focus 與 pointerup 處理；click 僅阻止事件外溢到宿主頁。
@@ -66,11 +55,16 @@ function createFloatingBall() {
     e.stopPropagation();
   });
 
-  el.addEventListener('mouseenter', openFloatingBallMenu);
+  mainBtn.addEventListener('mouseenter', openFloatingBallMenu);
+  mainBtn.addEventListener('mouseleave', scheduleFloatingBallMenuClose);
+  mainBtn.addEventListener('focus', openFloatingBallMenu);
   el.addEventListener('mouseleave', scheduleFloatingBallMenuClose);
-  el.addEventListener('focusin', openFloatingBallMenu);
   el.addEventListener('focusout', scheduleFloatingBallMenuClose);
   el.addEventListener('click', e => e.stopPropagation());
+  menu.addEventListener('mouseenter', () => {
+    if (el.classList.contains('ffb-menu-open')) clearFloatingBallMenuTimer();
+  });
+  menu.addEventListener('mouseleave', scheduleFloatingBallMenuClose);
   el.querySelector('.ffb-continue-tip')?.addEventListener('click', e => {
     e.preventDefault();
     e.stopPropagation();
@@ -78,51 +72,22 @@ function createFloatingBall() {
     el.classList.remove('ffb-menu-open');
     startPageTranslationBeta?.();
   });
-  el.querySelector('.ffb-ball-menu').addEventListener('mousedown', e => e.stopPropagation());
-  el.querySelector('[data-action="history"]').addEventListener('click', e => {
+  menu.addEventListener('mousedown', e => e.stopPropagation());
+  el.querySelector('[data-action="library"]').addEventListener('click', e => {
     e.stopPropagation();
     el.classList.remove('ffb-menu-open');
-    showFloatingHistoryPanel();
-  });
-  el.querySelector('[data-action="vocabulary"]').addEventListener('click', e => {
-    e.stopPropagation();
-    el.classList.remove('ffb-menu-open');
-    showFloatingVocabularyPanel();
-  });
-  el.querySelector('[data-action="vocab-highlight"]').addEventListener('click', e => {
-    e.stopPropagation();
-    globalThis.toggleVocabularyHighlightForSite?.();
+    showFloatingLibraryPanel();
   });
   el.querySelector('[data-action="page-translate"]').addEventListener('click', e => {
     e.stopPropagation();
     el.classList.remove('ffb-menu-open');
     startPageTranslationBeta?.();
   });
-  el.querySelector('.ffb-page-model-select')?.addEventListener('change', e => {
-    e.stopPropagation();
-    setPageTranslationModel?.(e.currentTarget.value);
-  });
   el.querySelector('[data-action="pause"]').addEventListener('click', e => {
     e.stopPropagation();
     toggleFanFanBaPaused();
   });
-  el.querySelector('[data-action="settings"]').addEventListener('click', e => {
-    e.stopPropagation();
-    el.classList.remove('ffb-menu-open');
-    if (chrome.runtime?.id) chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS' });
-  });
-
   return el;
-}
-
-function renderFloatingPageModelSelect(el = floatingBall) {
-  const select = el?.querySelector('.ffb-page-model-select');
-  if (!select || !globalThis.FanFanBaModels) return;
-  select.innerHTML = FanFanBaModels.MODELS
-    .map(model => `<option value="${model.id}">${model.name}</option>`)
-    .join('');
-  select.value = FanFanBaModels.normalizeModel(activeModel);
-  setPageTranslationModel?.(select.value);
 }
 
 function startFloatingBallPointer(e) {
@@ -243,11 +208,11 @@ function setFloatingBallSide(side = 'right') {
   floatingBall.classList.toggle('ffb-side-left', normalized === 'left');
   floatingBall.classList.toggle('ffb-side-right', normalized === 'right');
   if (normalized === 'left') {
-    floatingBall.style.left = '10px';
+    floatingBall.style.left = '0';
     floatingBall.style.right = 'auto';
   } else {
     floatingBall.style.left = 'auto';
-    floatingBall.style.right = '10px';
+    floatingBall.style.right = '0';
   }
 }
 
@@ -263,14 +228,28 @@ function updateFloatingBallPausedState() {
   if (!floatingBall) return;
   floatingBall.classList.toggle('ffb-paused', fanFanBaPaused);
   const label = floatingBall.querySelector('.ffb-pause-label');
-  if (label) label.textContent = fanFanBaPaused ? '恢復此網站' : '暫停此網站';
+  const button = floatingBall.querySelector('[data-action="pause"]');
+  const text = fanFanBaPaused ? '恢復此網站' : '暫停此網站';
+  if (label) label.textContent = text;
+  if (button) {
+    button.dataset.tooltip = text;
+    button.title = text;
+    button.setAttribute('aria-label', text);
+  }
 }
 
 function updateFloatingBallVocabularyHighlightState(enabled = false) {
   if (!floatingBall) return;
   floatingBall.classList.toggle('ffb-vocab-highlight-on', Boolean(enabled));
   const label = floatingBall.querySelector('.ffb-vocab-highlight-label');
-  if (label) label.textContent = enabled ? '關閉單字高亮' : '開啟單字高亮';
+  const button = floatingBall.querySelector('[data-action="vocab-highlight"]');
+  const text = enabled ? '關閉單字高亮' : '開啟單字高亮';
+  if (label) label.textContent = text;
+  if (button) {
+    button.dataset.tooltip = text;
+    button.title = text;
+    button.setAttribute('aria-label', text);
+  }
 }
 
 function hideFloatingBallMenu() {
@@ -294,14 +273,58 @@ function updateFloatingBallPageTranslationState({ running = false, activated = f
     else label.textContent = '全文翻譯 Beta';
   }
   if (button) {
-    button.title = running
+    const title = running
       ? '翻譯中...'
       : canContinue
         ? '有新的段落可翻譯'
         : activated
           ? '目前沒有新段落'
           : '翻譯目前可見內容';
+    button.title = title;
+    button.dataset.tooltip = running
+      ? '翻譯中...'
+      : activated
+        ? '繼續翻譯'
+        : '全文翻譯 Beta';
+    button.setAttribute('aria-label', button.dataset.tooltip);
   }
+}
+
+function showFloatingLibraryPanel() {
+  if (!resultCard || !document.body.contains(resultCard)) resultCard = createResultCard();
+  savedSel = { text: '收藏 / 紀錄', range: null };
+  userDragged = true;
+  resultCard.querySelector('.g-rc-tag').innerHTML = '收藏 / 紀錄';
+  resultCard.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
+  resultCard.querySelector('.g-history-panel')?.classList.remove('g-hist-open');
+  hideAutoSaveToast(resultCard);
+
+  const body = resultCard.querySelector('.g-rc-body');
+  body.innerHTML = `
+    <div class="g-floating-library">
+      <button class="g-floating-library-item" type="button" data-library-action="vocabulary">
+        <span>${FFB_ICON_NOTEBOOK}</span>
+        <strong>單字本</strong>
+        <em>今日新增、複習、搜尋、匯出</em>
+      </button>
+      <button class="g-floating-library-item" type="button" data-library-action="history">
+        <span>${FFB_ICON_HISTORY}</span>
+        <strong>最近查詢</strong>
+        <em>回到最近翻譯、解釋、優化結果</em>
+      </button>
+    </div>
+  `;
+
+  body.querySelector('[data-library-action="vocabulary"]')?.addEventListener('click', e => {
+    e.stopPropagation();
+    showFloatingVocabularyPanel();
+  });
+  body.querySelector('[data-library-action="history"]')?.addEventListener('click', e => {
+    e.stopPropagation();
+    showFloatingHistoryPanel();
+  });
+
+  positionResultCardNearFloatingBall();
 }
 
 async function showFloatingHistoryPanel() {

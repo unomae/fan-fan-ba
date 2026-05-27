@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>翻翻吧設定頁整合方案 Review</title>
+  <style>
+    @font-face {
+      font-family: 'jf-openhuninn';
+      src: url('fonts/jf-openhuninn-2.1.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    * { box-sizing: border-box; }
+
+    :root {
+      --ink: #18212f;
+      --muted: #657083;
+      --line: #dfe5de;
+      --paper: #fffdf8;
+      --surface: #ffffff;
+      --green: #8fcf68;
+      --green-deep: #4c8b2f;
+      --yellow: #f7cf3a;
+      --coral: #e9785f;
+      --blue: #5777c7;
+      --violet: #8067b7;
+      --shadow: 0 18px 44px rgba(27, 38, 49, 0.12);
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, #f7f8f1 0%, #eef4f7 54%, #f9f0eb 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    button, input, select, textarea {
+      font: inherit;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 30px 0 54px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: end;
+      padding: 24px 0 20px;
+    }
+
+    .brand {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .brand img {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      box-shadow: 0 8px 20px rgba(143, 207, 104, 0.34);
+    }
+
+    h1, h2, h3 {
+      font-family: 'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.12;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      max-width: 720px;
+      font-size: 15px;
+    }
+
+    .current-map {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      min-width: 440px;
+    }
+
+    .map-pill {
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid rgba(73, 93, 70, 0.14);
+      border-radius: 8px;
+      padding: 9px 10px;
+      min-height: 58px;
+      box-shadow: 0 8px 22px rgba(25, 38, 50, 0.06);
+    }
+
+    .map-pill b {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+
+    .map-pill span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .toc {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 12px 0;
+      margin-bottom: 12px;
+      background: linear-gradient(180deg, rgba(247, 248, 241, 0.96), rgba(247, 248, 241, 0.72));
+      backdrop-filter: blur(10px);
+    }
+
+    .toc a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 8px 12px;
+      color: #334155;
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid rgba(30, 41, 59, 0.12);
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .toc a:hover {
+      border-color: rgba(76, 139, 47, 0.38);
+      color: var(--green-deep);
+    }
+
+    .option {
+      display: grid;
+      grid-template-columns: 300px minmax(0, 1fr);
+      gap: 20px;
+      align-items: start;
+      padding: 24px 0 32px;
+      border-top: 1px solid rgba(24, 33, 47, 0.1);
+    }
+
+    .option-intro {
+      position: sticky;
+      top: 72px;
+      padding: 2px 0;
+    }
+
+    .option-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 12px;
+      color: var(--green-deep);
+      font-weight: 800;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 4px rgba(143, 207, 104, 0.18);
+    }
+
+    .option h2 {
+      font-size: 27px;
+      line-height: 1.2;
+      margin-bottom: 10px;
+    }
+
+    .option-copy {
+      color: var(--muted);
+      margin: 0 0 14px;
+    }
+
+    .score {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 9px;
+      align-items: center;
+      color: #475569;
+      font-size: 12px;
+    }
+
+    .bar {
+      height: 8px;
+      background: rgba(100, 116, 139, 0.14);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--green), var(--yellow));
+    }
+
+    .review-note {
+      margin-top: 16px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid rgba(30, 41, 59, 0.1);
+      border-radius: 8px;
+      color: #475569;
+      font-size: 12px;
+    }
+
+    .mock-shell {
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(24, 33, 47, 0.12);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .mock-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 16px;
+      background: rgba(255, 255, 255, 0.68);
+      border-bottom: 1px solid rgba(24, 33, 47, 0.08);
+    }
+
+    .window-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .window-dots i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #d8ded8;
+    }
+
+    .mock-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 800;
+    }
+
+    .mock-title img {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 28px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: #f1f7eb;
+      color: #477a2c;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .mock-content {
+      padding: 18px;
+    }
+
+    .layout-tabs {
+      display: grid;
+      grid-template-columns: 170px 1fr;
+      gap: 16px;
+    }
+
+    .side-tabs {
+      display: grid;
+      gap: 7px;
+      align-content: start;
+    }
+
+    .tab-button {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      min-height: 42px;
+      padding: 9px 10px;
+      border: 1px solid rgba(30, 41, 59, 0.1);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.72);
+      color: #475569;
+      text-align: left;
+      font-weight: 750;
+    }
+
+    .tab-button.active {
+      color: #243716;
+      background: #f2f9e8;
+      border-color: rgba(76, 139, 47, 0.36);
+    }
+
+    .tab-count {
+      color: #7c8796;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .settings-panel {
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: flex-start;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(24, 33, 47, 0.08);
+    }
+
+    .panel-head h3 {
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+
+    .panel-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    .field label {
+      color: #3b4656;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid #dce2db;
+      border-radius: 8px;
+      background: #fff;
+      color: #1f2937;
+      padding: 8px 10px;
+    }
+
+    .field small {
+      color: #7a8494;
+      font-size: 11px;
+    }
+
+    .provider-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .provider {
+      min-height: 116px;
+      padding: 12px;
+      border: 1px solid rgba(24, 33, 47, 0.1);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .provider.selected {
+      border-color: rgba(76, 139, 47, 0.42);
+      background: #fbfff6;
+    }
+
+    .provider h4 {
+      margin: 0 0 6px;
+      font-size: 14px;
+    }
+
+    .provider p {
+      margin: 0 0 9px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .tiny-input {
+      height: 32px;
+      border: 1px solid #e1e6df;
+      border-radius: 7px;
+      background: #f8faf7;
+      color: #8590a0;
+      display: flex;
+      align-items: center;
+      padding: 0 9px;
+      font-size: 12px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 9px;
+      justify-content: flex-end;
+      padding-top: 4px;
+    }
+
+    .primary,
+    .secondary,
+    .icon-action {
+      border: 0;
+      border-radius: 8px;
+      font-weight: 850;
+      cursor: default;
+    }
+
+    .primary {
+      min-height: 40px;
+      padding: 9px 16px;
+      background: var(--green);
+      color: #fff;
+    }
+
+    .secondary {
+      min-height: 40px;
+      padding: 9px 14px;
+      color: var(--green-deep);
+      background: #f4faed;
+      border: 1px solid rgba(76, 139, 47, 0.2);
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: 210px minmax(0, 1fr);
+      min-height: 540px;
+    }
+
+    .flow-rail {
+      padding: 18px;
+      background: #213044;
+      color: #fff;
+    }
+
+    .flow-rail h3 {
+      font-size: 19px;
+      margin-bottom: 14px;
+    }
+
+    .steps {
+      display: grid;
+      gap: 11px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 10px;
+      align-items: start;
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    .step b {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.14);
+      font-size: 12px;
+    }
+
+    .step.active {
+      color: #fff;
+    }
+
+    .step.active b {
+      background: var(--yellow);
+      color: #233044;
+    }
+
+    .flow-main {
+      padding: 22px;
+      background: #fffdf8;
+    }
+
+    .choice-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .choice {
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid #e0e5dd;
+      background: #fff;
+      min-height: 138px;
+    }
+
+    .choice.recommended {
+      border-color: rgba(233, 120, 95, 0.42);
+      box-shadow: inset 0 0 0 1px rgba(233, 120, 95, 0.12);
+    }
+
+    .choice h4 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .choice p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .badge {
+      display: inline-flex;
+      min-height: 24px;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 850;
+      margin-bottom: 10px;
+    }
+
+    .badge.coral { color: #9b3d2c; background: #fff0eb; }
+    .badge.blue { color: #3154ad; background: #eef3ff; }
+    .badge.violet { color: #5c4598; background: #f3efff; }
+
+    .compact-form {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      border-radius: 8px;
+      background: #f6f8f3;
+      border: 1px solid #e1e6dc;
+    }
+
+    .flow-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 260px;
+      min-height: 560px;
+      background: #f9faf7;
+    }
+
+    .dashboard-main {
+      padding: 18px;
+    }
+
+    .dash-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .dash-section {
+      padding: 14px;
+      border: 1px solid #e1e7df;
+      border-radius: 8px;
+      background: #fff;
+      min-height: 176px;
+    }
+
+    .dash-section.wide {
+      grid-column: 1 / -1;
+      min-height: 142px;
+    }
+
+    .dash-section h3 {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+
+    .summary-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .summary-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid #edf1eb;
+      color: #425064;
+      font-size: 12px;
+    }
+
+    .summary-line:last-child {
+      border-bottom: 0;
+    }
+
+    .summary-line strong {
+      color: #1f2937;
+    }
+
+    .side-summary {
+      padding: 18px;
+      background: #fff;
+      border-left: 1px solid #e3e8e0;
+    }
+
+    .health {
+      display: grid;
+      gap: 10px;
+      margin: 14px 0 16px;
+    }
+
+    .health-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: #475569;
+      font-size: 12px;
+    }
+
+    .health-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .health-dot.warn { background: var(--yellow); }
+    .health-dot.empty { background: #cbd5e1; }
+
+    .comment-box {
+      width: 100%;
+      min-height: 92px;
+      resize: vertical;
+      border: 1px solid #dfe5de;
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcfa;
+      color: #475569;
+      margin-top: 10px;
+    }
+
+    .mini-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .mini-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: center;
+      margin-top: 18px;
+      padding: 14px 0 0;
+      border-top: 1px solid rgba(24, 33, 47, 0.1);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
+      .hero,
+      .option,
+      .layout-tabs,
+      .flow,
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+
+      .option-intro {
+        position: static;
+      }
+
+      .current-map {
+        min-width: 0;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .side-summary {
+        border-left: 0;
+        border-top: 1px solid #e3e8e0;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .page {
+        width: min(100% - 20px, 1180px);
+        padding-top: 14px;
+      }
+
+      .toc {
+        overflow-x: auto;
+      }
+
+      .form-grid,
+      .provider-grid,
+      .choice-grid,
+      .dash-grid,
+      .current-map {
+        grid-template-columns: 1fr;
+      }
+
+      .mock-topbar,
+      .panel-head,
+      .flow-footer,
+      .footer {
+        align-items: stretch;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div>
+        <div class="brand">
+          <img src="icons/icon128.png" alt="翻翻吧">
+          <div>
+            <h1>設定頁整合方案</h1>
+            <p class="subtitle">目標是把目前單欄長表單收斂成更短、更容易掃描的設定中心，同時保留模型、API Key、語言、朗讀、Obsidian 與隱私資訊。</p>
+          </div>
+        </div>
+      </div>
+      <div class="current-map" aria-label="目前欄位盤點">
+        <div class="map-pill"><b>AI 模型</b><span>預設模型與供應商</span></div>
+        <div class="map-pill"><b>API Keys</b><span>Groq / Gemini / OpenRouter</span></div>
+        <div class="map-pill"><b>語言</b><span>翻譯、解釋、朗讀</span></div>
+        <div class="map-pill"><b>TTS</b><span>瀏覽器語音或 Cloud TTS</span></div>
+        <div class="map-pill"><b>Obsidian</b><span>Vault 與預設資料夾</span></div>
+      </div>
+    </section>
+
+    <nav class="toc">
+      <a href="#idea-a">方案 A：分頁式設定中心</a>
+      <a href="#idea-b">方案 B：初次設定精靈</a>
+      <a href="#idea-c">方案 C：總覽儀表板</a>
+    </nav>
+
+    <section class="option" id="idea-a">
+      <aside class="option-intro">
+        <span class="option-kicker"><span class="dot"></span>Idea A</span>
+        <h2>分頁式設定中心</h2>
+        <p class="option-copy">把目前長表單拆成左側 4 個設定群組。使用者只看當下要改的區塊，API Key 也能集中在「模型與金鑰」。</p>
+        <div class="score">
+          <div class="score-row"><span>縮短感</span><div class="bar"><span style="width:86%"></span></div></div>
+          <div class="score-row"><span>開發量</span><div class="bar"><span style="width:52%"></span></div></div>
+          <div class="score-row"><span>可維護</span><div class="bar"><span style="width:88%"></span></div></div>
+        </div>
+        <div class="review-note">推薦給正式版：不改變現有儲存邏輯，主要是 HTML/CSS 結構調整，最容易落地。</div>
+      </aside>
+
+      <div class="mock-shell">
+        <div class="mock-topbar">
+          <div class="window-dots"><i></i><i></i><i></i></div>
+          <div class="mock-title"><img src="icons/icon128.png" alt="">翻翻吧設定</div>
+          <span class="status-chip">Groq 已設定</span>
+        </div>
+        <div class="mock-content layout-tabs">
+          <div class="side-tabs">
+            <button class="tab-button active">模型與金鑰 <span class="tab-count">3</span></button>
+            <button class="tab-button">語言與朗讀 <span class="tab-count">4</span></button>
+            <button class="tab-button">Obsidian <span class="tab-count">2</span></button>
+            <button class="tab-button">隱私與說明 <span class="tab-count">3</span></button>
+          </div>
+          <div class="settings-panel">
+            <div class="panel-head">
+              <div>
+                <h3>模型與 API Key</h3>
+                <p>先選主要模型，再補上對應金鑰；非使用中的供應商可以收合。</p>
+              </div>
+              <button class="secondary">測試連線</button>
+            </div>
+            <div class="field full">
+              <label>預設模型</label>
+              <select>
+                <option>Groq - Llama 4 Scout（推薦）</option>
+                <option>Gemini 3</option>
+                <option>OpenRouter - DeepSeek</option>
+              </select>
+            </div>
+            <div class="provider-grid">
+              <div class="provider selected">
+                <span class="badge coral">主要</span>
+                <h4>Groq</h4>
+                <p>免費額度較大，預設建議。</p>
+                <div class="tiny-input">gsk_••••••••••</div>
+              </div>
+              <div class="provider">
+                <span class="badge blue">備用</span>
+                <h4>Gemini</h4>
+                <p>Google AI Studio 金鑰。</p>
+                <div class="tiny-input">AIza••••••••</div>
+              </div>
+              <div class="provider">
+                <span class="badge violet">備用</span>
+                <h4>OpenRouter</h4>
+                <p>跨模型供應商。</p>
+                <div class="tiny-input">尚未設定</div>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="secondary">還原</button>
+              <button class="primary">儲存設定</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="option" id="idea-b">
+      <aside class="option-intro">
+        <span class="option-kicker"><span class="dot"></span>Idea B</span>
+        <h2>初次設定精靈</h2>
+        <p class="option-copy">把設定頁設計成任務流程：先選模型與金鑰，再設定語言，最後接 Obsidian。適合新使用者，舊使用者可跳到進階設定。</p>
+        <div class="score">
+          <div class="score-row"><span>縮短感</span><div class="bar"><span style="width:92%"></span></div></div>
+          <div class="score-row"><span>開發量</span><div class="bar"><span style="width:78%"></span></div></div>
+          <div class="score-row"><span>新手友善</span><div class="bar"><span style="width:96%"></span></div></div>
+        </div>
+        <div class="review-note">適合做 onboarding。如果現在目標是快速修設定頁過長，這個可作為第二階段。</div>
+      </aside>
+
+      <div class="mock-shell">
+        <div class="mock-topbar">
+          <div class="window-dots"><i></i><i></i><i></i></div>
+          <div class="mock-title"><img src="icons/icon128.png" alt="">翻翻吧快速設定</div>
+          <span class="status-chip">第 1 / 4 步</span>
+        </div>
+        <div class="flow">
+          <aside class="flow-rail">
+            <h3>設定流程</h3>
+            <div class="steps">
+              <div class="step active"><b>1</b><span>選擇 AI 供應商</span></div>
+              <div class="step"><b>2</b><span>輸入 API Key</span></div>
+              <div class="step"><b>3</b><span>語言與朗讀</span></div>
+              <div class="step"><b>4</b><span>Obsidian 與完成</span></div>
+            </div>
+          </aside>
+          <div class="flow-main">
+            <div class="panel-head">
+              <div>
+                <h3>你想優先使用哪個模型？</h3>
+                <p>先決定主要模型，下一步只顯示對應的 API Key 欄位。</p>
+              </div>
+            </div>
+            <div class="choice-grid">
+              <div class="choice recommended">
+                <span class="badge coral">推薦</span>
+                <h4>Groq</h4>
+                <p>適合翻譯、解釋、快速查詢。免費額度較大，對一般使用最直覺。</p>
+              </div>
+              <div class="choice">
+                <span class="badge blue">Google</span>
+                <h4>Gemini</h4>
+                <p>如果你已經有 Google AI Studio 金鑰，可以選這個。</p>
+              </div>
+              <div class="choice">
+                <span class="badge violet">進階</span>
+                <h4>OpenRouter</h4>
+                <p>適合想切換不同模型或保留備援模型的使用者。</p>
+              </div>
+            </div>
+            <div class="compact-form">
+              <div class="field">
+                <label>Groq API Key</label>
+                <input value="gsk_••••••••••••" aria-label="Groq API Key">
+                <small>下一步可直接測試連線；其他供應商金鑰先隱藏在進階設定。</small>
+              </div>
+            </div>
+            <div class="flow-footer">
+              <button class="secondary">略過，進入進階設定</button>
+              <div class="actions">
+                <button class="secondary">上一步</button>
+                <button class="primary">下一步</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="option" id="idea-c">
+      <aside class="option-intro">
+        <span class="option-kicker"><span class="dot"></span>Idea C</span>
+        <h2>總覽儀表板</h2>
+        <p class="option-copy">首頁先顯示目前設定健康狀態，常用欄位直接改；比較少改的 API Key、安全說明、Obsidian 細節放在可展開區塊。</p>
+        <div class="score">
+          <div class="score-row"><span>縮短感</span><div class="bar"><span style="width:80%"></span></div></div>
+          <div class="score-row"><span>開發量</span><div class="bar"><span style="width:66%"></span></div></div>
+          <div class="score-row"><span>日常效率</span><div class="bar"><span style="width:91%"></span></div></div>
+        </div>
+        <div class="review-note">適合給已設定完成的使用者。每天打開設定頁時，會先看到「是否正常」而不是一整串表單。</div>
+      </aside>
+
+      <div class="mock-shell">
+        <div class="mock-topbar">
+          <div class="window-dots"><i></i><i></i><i></i></div>
+          <div class="mock-title"><img src="icons/icon128.png" alt="">設定總覽</div>
+          <span class="status-chip">可正常使用</span>
+        </div>
+        <div class="dashboard">
+          <div class="dashboard-main">
+            <div class="dash-grid">
+              <section class="dash-section">
+                <h3>常用偏好</h3>
+                <div class="form-grid">
+                  <div class="field">
+                    <label>翻譯目標語言</label>
+                    <select><option>繁體中文</option></select>
+                  </div>
+                  <div class="field">
+                    <label>解釋語言</label>
+                    <select><option>跟隨翻譯語言</option></select>
+                  </div>
+                  <div class="field full">
+                    <label>朗讀語音</label>
+                    <select><option>自動偵測原文語言</option></select>
+                  </div>
+                </div>
+              </section>
+              <section class="dash-section">
+                <h3>模型狀態</h3>
+                <div class="summary-list">
+                  <div class="summary-line"><span>目前模型</span><strong>Groq Llama 4 Scout</strong></div>
+                  <div class="summary-line"><span>Groq Key</span><strong>已設定</strong></div>
+                  <div class="summary-line"><span>備援模型</span><strong>OpenRouter 未設定</strong></div>
+                </div>
+                <div class="mini-row">
+                  <span class="mini-chip">測試連線</span>
+                  <span class="mini-chip">管理金鑰</span>
+                </div>
+              </section>
+              <section class="dash-section wide">
+                <h3>Obsidian 存入</h3>
+                <div class="form-grid">
+                  <div class="field">
+                    <label>Vault 名稱</label>
+                    <input value="My Notes">
+                  </div>
+                  <div class="field">
+                    <label>預設資料夾</label>
+                    <input value="Reading/單字本">
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+          <aside class="side-summary">
+            <h3>設定健康度</h3>
+            <div class="health">
+              <div class="health-item"><span><i class="health-dot"></i> 主要模型</span><strong>OK</strong></div>
+              <div class="health-item"><span><i class="health-dot"></i> 語言</span><strong>OK</strong></div>
+              <div class="health-item"><span><i class="health-dot warn"></i> TTS</span><strong>使用內建</strong></div>
+              <div class="health-item"><span><i class="health-dot empty"></i> OpenRouter</span><strong>未設定</strong></div>
+            </div>
+            <button class="primary" style="width:100%;">儲存全部變更</button>
+            <textarea class="comment-box" placeholder="Review comment：例如偏好哪個方案、要保留哪些區塊、哪些說明太多。"></textarea>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer">
+      <span>建議優先採用：方案 A。它能明顯縮短頁面，同時對現有 options.js 影響最小。</span>
+      <span>Review 後可再把選定方案整理成正式修改清單。</span>
+    </div>
+  </main>
+</body>
+</html>

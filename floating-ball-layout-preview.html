@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>翻翻吧｜浮球尺寸與貼邊方案預覽</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --green: #5a9e3a;
+      --green-soft: #edf7e8;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --line: rgba(31, 41, 55, 0.12);
+      --shadow: 0 10px 28px rgba(35, 53, 28, 0.15);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #f7faf5;
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
+      line-height: 1.55;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 32px 22px 48px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 30px;
+      line-height: 1.15;
+    }
+
+    .lead {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      height: 28px;
+      padding: 0 10px;
+      border: 1px solid rgba(90, 158, 58, 0.22);
+      border-radius: 999px;
+      background: #fff;
+      color: #3f7528;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .variant {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 8px 18px rgba(31, 41, 55, 0.06);
+    }
+
+    .variant-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(250, 252, 248, 0.9);
+    }
+
+    .variant h2 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .spec {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .mock-page {
+      position: relative;
+      height: 430px;
+      background:
+        linear-gradient(90deg, transparent calc(100% - 1px), rgba(90, 158, 58, 0.2) calc(100% - 1px)),
+        #fbfcfa;
+    }
+
+    .article {
+      max-width: calc(100% - 58px);
+      padding: 24px 26px;
+    }
+
+    .article strong {
+      display: block;
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+
+    .line {
+      height: 10px;
+      margin: 10px 0;
+      border-radius: 999px;
+      background: #e8eee4;
+    }
+
+    .line:nth-child(3) { width: 92%; }
+    .line:nth-child(4) { width: 74%; }
+    .line:nth-child(5) { width: 86%; }
+    .line:nth-child(6) { width: 62%; }
+
+    .edge-label {
+      position: absolute;
+      top: 12px;
+      right: 6px;
+      writing-mode: vertical-rl;
+      color: rgba(63, 117, 40, 0.62);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+
+    .floating {
+      --button: 32px;
+      --icon: 16px;
+      --right: 1px;
+      position: absolute;
+      top: 50%;
+      right: var(--right);
+      transform: translateY(-50%);
+      width: 46px;
+      height: 46px;
+      pointer-events: none;
+    }
+
+    .variant.compact .floating { --button: 30px; --icon: 15px; --right: 0px; }
+    .variant.micro .floating { --button: 28px; --icon: 14px; --right: -1px; }
+
+    .main-ball,
+    .action {
+      position: absolute;
+      right: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.76);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.8);
+      box-shadow: var(--shadow);
+      color: var(--green);
+    }
+
+    .main-ball {
+      top: 50%;
+      width: 46px;
+      height: 46px;
+      transform: translateY(-50%);
+    }
+
+    .main-ball img {
+      width: 30px;
+      height: 30px;
+      display: block;
+    }
+
+    .action {
+      width: var(--button);
+      height: var(--button);
+      font-weight: 800;
+    }
+
+    .action svg {
+      width: var(--icon);
+      height: var(--icon);
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .top-3 { bottom: calc(50% + 74px); }
+    .top-2 { bottom: calc(50% + 38px); }
+    .top-1 { bottom: calc(50% + 2px); }
+    .bottom-1 { top: calc(50% + 2px); }
+    .bottom-2 { top: calc(50% + 38px); }
+    .bottom-3 { top: calc(50% + 74px); }
+
+    .variant.compact .top-3 { bottom: calc(50% + 70px); }
+    .variant.compact .top-2 { bottom: calc(50% + 36px); }
+    .variant.compact .top-1 { bottom: calc(50% + 2px); }
+    .variant.compact .bottom-1 { top: calc(50% + 2px); }
+    .variant.compact .bottom-2 { top: calc(50% + 36px); }
+    .variant.compact .bottom-3 { top: calc(50% + 70px); }
+
+    .variant.micro .top-3 { bottom: calc(50% + 66px); }
+    .variant.micro .top-2 { bottom: calc(50% + 34px); }
+    .variant.micro .top-1 { bottom: calc(50% + 2px); }
+    .variant.micro .bottom-1 { top: calc(50% + 2px); }
+    .variant.micro .bottom-2 { top: calc(50% + 34px); }
+    .variant.micro .bottom-3 { top: calc(50% + 66px); }
+
+    .notes {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      padding: 16px;
+      box-shadow: 0 8px 18px rgba(31, 41, 55, 0.05);
+    }
+
+    .panel h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .panel ul {
+      margin: 0;
+      padding-left: 20px;
+      color: #374151;
+      font-size: 13px;
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #f2f6ef;
+      color: #315f22;
+    }
+
+    @media (max-width: 900px) {
+      .preview-grid,
+      .notes {
+        grid-template-columns: 1fr;
+      }
+
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>浮球上下展開方案預覽</h1>
+        <p class="lead">右側吸附時，快捷按鈕以上下兩組貼著主球展開。下列三版都比目前更小、更靠近右側。</p>
+      </div>
+      <span class="badge">目前套用 B</span>
+    </header>
+
+    <section class="preview-grid" aria-label="浮球方案比較">
+      <article class="variant balanced">
+        <div class="variant-head">
+          <div>
+            <h2>A. Balanced</h2>
+            <p class="spec">按鈕 32px · icon 16px · right 1px</p>
+          </div>
+          <span class="badge">備選</span>
+        </div>
+        <div class="mock-page">
+          <div class="article">
+            <strong>閱讀頁面示意</strong>
+            <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
+          </div>
+          <span class="edge-label">右側邊界</span>
+          <div class="floating">
+            <div class="action top-3">↺</div>
+            <div class="action top-2"><svg viewBox="0 0 24 24"><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9.5 8h5"/><path d="M9.5 12H16"/><path d="M9.5 16H14"/></svg></div>
+            <div class="action top-1"><svg viewBox="0 0 24 24"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/><path d="m14 4 8 8"/><path d="m5 19 5-5"/></svg></div>
+            <div class="main-ball"><img src="icons/icon48.png" alt=""></div>
+            <div class="action bottom-1"><svg viewBox="0 0 24 24"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg></div>
+            <div class="action bottom-2">Ⅱ</div>
+            <div class="action bottom-3">⚙</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="variant compact">
+        <div class="variant-head">
+          <div>
+            <h2>B. Compact</h2>
+            <p class="spec">按鈕 30px · icon 15px · right 0px</p>
+          </div>
+          <span class="badge">已套用</span>
+        </div>
+        <div class="mock-page">
+          <div class="article">
+            <strong>閱讀頁面示意</strong>
+            <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
+          </div>
+          <span class="edge-label">右側邊界</span>
+          <div class="floating">
+            <div class="action top-3">↺</div>
+            <div class="action top-2"><svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9.5 8h5"/><path d="M9.5 12H16"/><path d="M9.5 16H14"/></svg></div>
+            <div class="action top-1"><svg viewBox="0 0 24 24"><path d="m9 11-6 6v3h9l3-3"/><path d="m14 4 8 8"/><path d="m5 19 5-5"/></svg></div>
+            <div class="main-ball"><img src="icons/icon48.png" alt=""></div>
+            <div class="action bottom-1"><svg viewBox="0 0 24 24"><path d="m5 8 6 6"/><path d="M2 5h12"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg></div>
+            <div class="action bottom-2">Ⅱ</div>
+            <div class="action bottom-3">⚙</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="variant micro">
+        <div class="variant-head">
+          <div>
+            <h2>C. Micro</h2>
+            <p class="spec">按鈕 28px · icon 14px · right -1px</p>
+          </div>
+        </div>
+        <div class="mock-page">
+          <div class="article">
+            <strong>閱讀頁面示意</strong>
+            <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
+          </div>
+          <span class="edge-label">右側邊界</span>
+          <div class="floating">
+            <div class="action top-3">↺</div>
+            <div class="action top-2"><svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9.5 8h5"/><path d="M9.5 12H16"/></svg></div>
+            <div class="action top-1"><svg viewBox="0 0 24 24"><path d="m9 11-6 6v3h9l3-3"/><path d="m14 4 8 8"/></svg></div>
+            <div class="main-ball"><img src="icons/icon48.png" alt=""></div>
+            <div class="action bottom-1"><svg viewBox="0 0 24 24"><path d="m5 8 6 6"/><path d="M2 5h12"/><path d="m22 22-5-10-5 10"/></svg></div>
+            <div class="action bottom-2">Ⅱ</div>
+            <div class="action bottom-3">⚙</div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="notes">
+      <div class="panel">
+        <h3>我的建議</h3>
+        <ul>
+          <li>目前已套用 B：30px / 15px / right 0px，更貼右側、視覺更安靜。</li>
+          <li>A 可作為回退方案：32px / 16px / right 1px，點擊面積更寬裕。</li>
+          <li>C 視覺最輕，但 28px 對一般使用者偏小，不建議作為預設。</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>對應 CSS 調整</h3>
+        <ul>
+          <li>目前：<code>.ffb-ball-item width/height: 30px</code></li>
+          <li>目前：<code>.ffb-ball-icon svg width/height: 15px</code></li>
+          <li>目前：<code>.ffb-ball-menu right: 0</code></li>
+          <li>如果仍覺得突出，可再評估 C 的 <code>28px / 14px / -1px</code>。</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
