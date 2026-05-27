@@ -329,7 +329,7 @@
         <div class="meta-row">
           <span class="pill green">版本 1.6.0</span>
           <span class="pill blue">Manifest V3</span>
-          <span class="pill">最後更新 2026-05-27</span>
+          <span class="pill">最後更新 2026-05-28</span>
           <span class="pill orange">文件狀態：初版</span>
         </div>
       </header>
@@ -347,7 +347,11 @@
           </div>
           <div class="card">
             <h3>目前重點</h3>
-            <p>浮球 UI 收斂、全文翻譯 Beta、單字本/高亮與設定頁整合。近期應把設定 migration 與 UI review 文件維持同步。</p>
+            <p>浮球 UI 已加入設定入口與一致間距；全文翻譯 Beta 正在補強短標題、重複段落與可見區域收集穩定性。</p>
+          </div>
+          <div class="card">
+            <h3>最新進展</h3>
+            <p>2026-05-28 修正全文翻譯短標題誤走字典 JSON、父子節點重複翻譯，以及浮球停用 icon 位置與 tooltip 文案。</p>
           </div>
         </div>
       </section>
@@ -395,8 +399,10 @@
             <h3>浮球與全文翻譯流程</h3>
             <ol>
               <li><code>content/floating-ball.js</code> 建立右側吸附浮球。</li>
-              <li>浮球可開最近查詢、單字本、高亮、全文翻譯、暫停、設定。</li>
+              <li>浮球可開收藏/紀錄、全文翻譯、設定，並提供「在此網站停用」。</li>
               <li><code>content/page-translator.js</code> 收集可見段落並逐段翻譯。</li>
+              <li>全文翻譯請求帶 <code>pageTranslation: true</code>，短標題不走單字字典 prompt。</li>
+              <li>可見段落收集會避開已翻譯元素、父子節點重複與相同文字重複。</li>
               <li>翻譯狀態面板提供雙語/譯文/原文與密度切換。</li>
               <li>全文模型由設定頁 <code>pageTranslationModel</code> 管理。</li>
             </ol>
@@ -458,6 +464,8 @@ content/main.js</pre>
               <li>單字本、本地收藏、篩選、搜尋、刪除。</li>
               <li>單字高亮與可見區域控制。</li>
               <li>全文翻譯 Beta 與段落密度模式。</li>
+              <li>全文翻譯短標題使用純譯文 prompt，並對字典 JSON 回應做 fallback 清洗。</li>
+              <li>全文翻譯段落收集去除父子節點與相同文字重複。</li>
             </ul>
           </div>
           <div class="card">
@@ -471,6 +479,8 @@ content/main.js</pre>
               <li>全文翻譯模型從浮球移到設定頁。</li>
               <li>全文翻譯控制卡改為預設緊湊控制列。</li>
               <li>新增浮球配置預覽頁。</li>
+              <li>浮球新增設定 icon，放在全文翻譯下方。</li>
+              <li>「在此網站停用」icon 移到浮球 8 點鐘方向，hover 顯示說明文字。</li>
             </ul>
           </div>
           <div class="card">
@@ -511,7 +521,7 @@ content/main.js</pre>
           </div>
           <div class="phase">
             <strong>Phase 3</strong>
-            <p>可見區域全文翻譯 Beta、段落翻譯卡、雙語/譯文/原文模式、可繼續翻譯新段落。</p>
+            <p>可見區域全文翻譯 Beta、段落翻譯卡、雙語/譯文/原文模式、可繼續翻譯新段落；已補短標題 prompt 與重複段落去重。</p>
             <span class="pill blue">Beta</span>
           </div>
           <div class="phase">
@@ -521,7 +531,7 @@ content/main.js</pre>
           </div>
           <div class="phase">
             <strong>Next</strong>
-            <p>浮球互動最終確認、設定 migration 版本化、單字本 export/import、全文翻譯操作列強化。</p>
+            <p>實站回測全文翻譯漏翻案例，必要時調整 selector、minChars、maxBlocks 與 block scoring；再排設定 migration 版本化與單字本 export/import。</p>
             <span class="pill orange">待排程</span>
           </div>
         </div>
@@ -563,6 +573,7 @@ content/main.js</pre>
             <h3>驗證指令</h3>
             <ul>
               <li><code>npx.cmd jest tests/content/floating-ball.test.js tests/options.test.js --runInBand</code></li>
+              <li><code>npm test -- tests/content/page-translator.test.js tests/background.test.js tests/content/floating-ball.test.js --runInBand</code></li>
               <li><code>npm test</code> 會產生 <code>coverage/</code>。</li>
               <li>若 PowerShell 擋 <code>npx</code>，用 <code>npx.cmd</code>。</li>
             </ul>

@@ -4,6 +4,7 @@ const FLOATING_POSITION_KEY = 'fanFanBaFloatingPosition';
 const FFB_ICON_HISTORY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>';
 const FFB_ICON_NOTEBOOK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9.5 8h5"/><path d="M9.5 12H16"/><path d="M9.5 16H14"/></svg>';
 const FFB_ICON_LANGUAGES = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>';
+const FFB_ICON_SETTINGS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.52a2 2 0 0 1-1 1.72l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.52a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg>';
 
 function getPauseStorageKey() {
   const host = location.hostname || 'local-file';
@@ -41,9 +42,13 @@ function createFloatingBall() {
           <span class="ffb-ball-icon ffb-translate-icon">${FFB_ICON_LANGUAGES}</span>
           <span class="ffb-ball-label ffb-page-translate-label">全文翻譯 Beta</span>
         </button>
+        <button class="ffb-ball-item" type="button" data-action="settings" data-tooltip="設定" title="開啟設定" aria-label="設定">
+          <span class="ffb-ball-icon ffb-settings-icon">${FFB_ICON_SETTINGS}</span>
+          <span class="ffb-ball-label">設定</span>
+        </button>
       </div>
     </div>
-    <button class="ffb-pause-x" type="button" data-action="pause" title="暫停此網站" aria-label="暫停此網站">×</button>
+    <button class="ffb-pause-x" type="button" data-action="pause" title="在此網站停用" aria-label="在此網站停用">×</button>
   `;
 
   const mainBtn = el.querySelector('.ffb-ball-main');
@@ -82,6 +87,11 @@ function createFloatingBall() {
     e.stopPropagation();
     el.classList.remove('ffb-menu-open');
     startPageTranslationBeta?.();
+  });
+  el.querySelector('[data-action="settings"]').addEventListener('click', e => {
+    e.stopPropagation();
+    el.classList.remove('ffb-menu-open');
+    chrome.runtime.openOptionsPage?.();
   });
   el.querySelector('[data-action="pause"]').addEventListener('click', e => {
     e.stopPropagation();
@@ -229,7 +239,7 @@ function updateFloatingBallPausedState() {
   floatingBall.classList.toggle('ffb-paused', fanFanBaPaused);
   const label = floatingBall.querySelector('.ffb-pause-label');
   const button = floatingBall.querySelector('[data-action="pause"]');
-  const text = fanFanBaPaused ? '恢復此網站' : '暫停此網站';
+  const text = fanFanBaPaused ? '恢復此網站' : '在此網站停用';
   if (label) label.textContent = text;
   if (button) {
     button.dataset.tooltip = text;

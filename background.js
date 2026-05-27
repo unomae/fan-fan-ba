@@ -128,14 +128,14 @@ chrome.runtime.onConnect.addListener(port => {
 });
 
 // ── 非 streaming：維持原有邏輯（字典 JSON 需要完整回應）──
-async function handleAIRequest({ action, selectedText, context, pageTitle, model, targetLanguage, explanationLanguage, browserLanguage }) {
+async function handleAIRequest({ action, selectedText, context, pageTitle, model, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }) {
   const timeout = new Promise((_, reject) =>
     setTimeout(() => reject(new Error('請求逾時，請稍後重試')), 30000)
   );
-  return Promise.race([_handleAIRequest({ action, selectedText, context, pageTitle, model, targetLanguage, explanationLanguage, browserLanguage }), timeout]);
+  return Promise.race([_handleAIRequest({ action, selectedText, context, pageTitle, model, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }), timeout]);
 }
 
-async function _handleAIRequest({ action, selectedText, context, pageTitle, model: requestedModel, targetLanguage, explanationLanguage, browserLanguage }) {
+async function _handleAIRequest({ action, selectedText, context, pageTitle, model: requestedModel, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }) {
   const { apiKey = '', groqApiKey = '', openrouterApiKey = '', model = DEFAULT_MODEL } =
     await chrome.storage.sync.get({ apiKey: '', groqApiKey: '', openrouterApiKey: '', model: DEFAULT_MODEL });
   const selectedModel = ModelRegistry.normalizeModel(requestedModel || model);
@@ -143,7 +143,7 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle, mode
   if (selectedModel.startsWith('groq:')) {
     if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
     return handleOpenAICompatRequest({
-      action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage,
+      action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage, pageTranslation,
       modelId: ModelRegistry.toApiModelId(selectedModel),
       apiKey:  groqApiKey,
       baseUrl: `${GROQ_API_BASE}/chat/completions`,
@@ -155,7 +155,7 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle, mode
     if (!openrouterApiKey) throw new Error('請先在設定頁面輸入 OpenRouter API Key');
     const modelId = ModelRegistry.toApiModelId(selectedModel);
     return handleOpenRouterRequestWithFallback({
-      action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage,
+      action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage, pageTranslation,
       modelId,
       apiKey:  openrouterApiKey,
       baseUrl: `${OPENROUTER_API_BASE}/chat/completions`,
@@ -166,7 +166,7 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle, mode
 
   if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
 
-  const prompt   = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage });
+  const prompt   = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage, pageTranslation });
   const response = await withRetry(() => checkedFetch(
     `${GEMINI_API_BASE}/${selectedModel}:generateContent?key=${apiKey}`,
     {
@@ -204,8 +204,8 @@ async function handleOpenRouterRequestWithFallback(params) {
   }
 }
 
-async function handleOpenAICompatRequest({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage, modelId, apiKey, baseUrl, label, extraHeaders = {} }) {
-  const prompt   = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage });
+async function handleOpenAICompatRequest({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage, pageTranslation, modelId, apiKey, baseUrl, label, extraHeaders = {} }) {
+  const prompt   = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage, pageTranslation });
   const response = await withRetry(() => checkedFetch(baseUrl, {
     method:  'POST',
     headers: {
@@ -418,7 +418,7 @@ async function handleTtsRequest({ text, lang }) {
 // ── Prompt 建構（依文字長度區分策略）──────────────
 function buildPrompt(action, selectedText, context, pageTitle, settings = {}) {
   const len    = selectedText.length;
-  const isWord = len <= 20;
+  const isWord = len <= 20 && !settings.pageTranslation;
   const isMid  = len > 20 && len <= 150;
   const targetLanguage = ModelRegistry.getPromptLanguageName(settings.targetLanguage || 'zh-TW', settings.browserLanguage || '');
   const explanationLanguage = ModelRegistry.resolveExplanationLanguage(

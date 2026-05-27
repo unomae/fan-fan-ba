@@ -80,16 +80,21 @@ function collectVisibleTranslatableBlocks() {
     'h1', 'h2', 'h3', 'p', 'li', 'blockquote'
   ].join(',');
   const seen = new Set();
+  const seenTexts = new Set();
   const items = [];
   let charCount = 0;
 
   document.querySelectorAll(selector).forEach(el => {
     if (items.length >= PAGE_TRANSLATION_LIMITS.maxBlocks) return;
     if (seen.has(el) || !isPageTranslatableElement(el)) return;
+    if (hasSelectedPageTranslationAncestor(el, items)) return;
     const text = getElementTranslationText(el);
     if (!text) return;
+    const normalizedText = normalizePageTranslationComparableText(text);
+    if (seenTexts.has(normalizedText)) return;
     if (charCount + text.length > PAGE_TRANSLATION_LIMITS.maxChars) return;
     seen.add(el);
+    seenTexts.add(normalizedText);
     charCount += text.length;
     items.push({ el, text, pairId: createPageTranslationPairId(), status: 'pending', translationNode: null, translatedText: '' });
   });
@@ -99,6 +104,10 @@ function collectVisibleTranslatableBlocks() {
 
 function hasVisibleTranslatableBlocks() {
   return collectVisibleTranslatableBlocks().length > 0;
+}
+
+function hasSelectedPageTranslationAncestor(el, items) {
+  return items.some(item => item.el?.contains(el));
 }
 
 function createPageTranslationPairId() {
@@ -228,6 +237,7 @@ function requestPageTranslation(text) {
       context: text,
       pageTitle: document.title,
       model: getPageTranslationModel(),
+      pageTranslation: true,
       targetLanguage,
       explanationLanguage,
       browserLanguage: navigator.language || ''
@@ -254,6 +264,8 @@ function cleanPageTranslationResult(rawResult, sourceText) {
     .replace(/```(?:\w+)?/g, '')
     .replace(/\r\n/g, '\n')
     .trim();
+  const jsonTranslation = extractPageTranslationJsonTranslation(result, sourceText);
+  if (jsonTranslation) return jsonTranslation;
 
   const translationLabel = /(?:^|\n)\s*(?:譯文|译文|翻譯|翻译|translation|translated text)\s*[：:]\s*/i;
   const labelMatch = result.match(translationLabel);
@@ -275,7 +287,35 @@ function cleanPageTranslationResult(rawResult, sourceText) {
 
   result = result.replace(/^(?:譯文|译文|翻譯|翻译|translation|translated text)\s*[：:]\s*/i, '').trim();
   result = stripOuterPageTranslationQuotes(result);
+  const fallbackJsonTranslation = extractPageTranslationJsonTranslation(result, sourceText);
+  if (fallbackJsonTranslation) return fallbackJsonTranslation;
   return result || String(rawResult || '').trim();
+}
+
+function extractPageTranslationJsonTranslation(text, sourceText = '') {
+  const source = normalizePageTranslationComparableText(sourceText);
+  const candidates = [String(text || '').trim()];
+  const objectMatch = candidates[0].match(/\{[\s\S]*\}/);
+  if (objectMatch && objectMatch[0] !== candidates[0]) candidates.push(objectMatch[0]);
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const data = JSON.parse(candidate);
+      const values = [
+        ...(Array.isArray(data.translations) ? data.translations : []),
+        data.translation,
+        data.translatedText,
+        data.zh,
+        data.definition
+      ];
+      const translation = values
+        .map(value => stripOuterPageTranslationQuotes(String(value || '').trim()))
+        .find(value => value && normalizePageTranslationComparableText(value) !== source);
+      if (translation) return translation;
+    } catch { /* 不是 JSON 就交回一般清洗流程 */ }
+  }
+  return '';
 }
 
 function normalizePageTranslationComparableText(text) {
@@ -663,4 +703,14 @@ function setPageTranslationModel(model) {
 
 function getPageTranslationModel() {
   return FanFanBaModels.normalizeModel(pageTranslationModel || activeModel);
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    collectVisibleTranslatableBlocks,
+    cleanPageTranslationResult,
+    extractPageTranslationJsonTranslation,
+    getElementTranslationText,
+    isPageTranslatableElement
+  };
 }

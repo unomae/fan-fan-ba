@@ -64,6 +64,7 @@ describe('floating ball menu behavior', () => {
 
   beforeEach(() => {
     jest.resetModules();
+    chrome.runtime.openOptionsPage.mockClear();
     ({ context } = createContentContext());
     runContentScript('content/state.js', context);
     runContentScript('content/floating-ball.js', context);
@@ -98,13 +99,24 @@ describe('floating ball menu behavior', () => {
     const floatingBall = document.getElementById('fanfanba-floating');
 
     expect(floatingBall.querySelector('.ffb-page-model-select')).toBeNull();
-    expect(floatingBall.querySelectorAll('.ffb-ball-item')).toHaveLength(2);
+    expect(floatingBall.querySelectorAll('.ffb-ball-item')).toHaveLength(3);
     expect(floatingBall.querySelectorAll('.ffb-ball-menu-top .ffb-ball-item')).toHaveLength(1);
-    expect(floatingBall.querySelectorAll('.ffb-ball-menu-bottom .ffb-ball-item')).toHaveLength(1);
+    expect(floatingBall.querySelectorAll('.ffb-ball-menu-bottom .ffb-ball-item')).toHaveLength(2);
     expect(floatingBall.querySelector('[data-action="library"] svg')).not.toBeNull();
     expect(floatingBall.querySelector('[data-action="vocab-highlight"]')).toBeNull();
     expect(floatingBall.querySelector('.ffb-pause-x')).not.toBeNull();
     expect(floatingBall.querySelector('[data-action="page-translate"] .ffb-translate-icon')).not.toBeNull();
+    expect(floatingBall.querySelector('[data-action="settings"] .ffb-settings-icon')).not.toBeNull();
+  });
+
+  it('opens the extension settings from the floating settings action', () => {
+    const floatingBall = document.getElementById('fanfanba-floating');
+    floatingBall.classList.add('ffb-menu-open');
+
+    floatingBall.querySelector('[data-action="settings"]').click();
+
+    expect(chrome.runtime.openOptionsPage).toHaveBeenCalledTimes(1);
+    expect(floatingBall.classList.contains('ffb-menu-open')).toBe(false);
   });
 });
 

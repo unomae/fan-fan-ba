@@ -20,6 +20,14 @@ describe('Background module', () => {
       const prompt = buildPrompt('translate', 'apple', 'I eat an apple.', 'Page Title');
       expect(prompt).toContain('專業多語詞典助手');
     });
+
+    it('uses plain translation prompts for short page-translation headings', () => {
+      const prompt = buildPrompt('translate', 'Most viewed', 'Most viewed', 'Page Title', { pageTranslation: true });
+      expect(prompt).toContain('專業翻譯助手');
+      expect(prompt).toContain('只輸出譯文正文');
+      expect(prompt).not.toContain('專業多語詞典助手');
+      expect(prompt).not.toContain('"phonetic"');
+    });
   });
 
   describe('checkedFetch', () => {
