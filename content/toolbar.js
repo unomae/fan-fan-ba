@@ -55,16 +55,18 @@ function hideToolbar() {
 function positionToolbar() {
   if (!savedSel) return;
   try {
-    const rect   = savedSel.range.getBoundingClientRect();
+    const rects  = Array.from(savedSel.range.getClientRects?.() || []);
+    const rect   = rects[0] || savedSel.range.getBoundingClientRect();
     const margin = 8;
     const th     = toolbar.offsetHeight || 42;
     const tw     = toolbar.offsetWidth  || 120;
 
     let top  = rect.top - th - margin;
-    let left = rect.right - tw;
+    let left = rect.right + margin;
 
     if (rect.top < th + margin) top = rect.bottom + margin;
     if (top + th > window.innerHeight - margin) top = margin;
+    if (left + tw > window.innerWidth - margin) left = rect.right - tw;
 
     left = Math.max(margin, Math.min(left, window.innerWidth - tw - margin));
 

@@ -169,9 +169,18 @@ function triggerAction(action) {
   resultCard.querySelector('.g-rc-body').innerHTML =
     '<div class="g-shimmer-wrap"><div class="g-shimmer-line"></div><div class="g-shimmer-line"></div><div class="g-shimmer-line"></div></div>';
 
+  const toolbarRect = toolbar?.getBoundingClientRect?.();
+  resultCardAnchorRect = toolbarRect && Number.isFinite(toolbarRect.bottom) ? {
+    left: toolbarRect.left,
+    right: toolbarRect.right,
+    top: toolbarRect.top,
+    bottom: toolbarRect.bottom,
+    width: toolbarRect.width,
+    height: toolbarRect.height
+  } : null;
   hideToolbar();
   resultCard.classList.add('g-show');
-  requestAnimationFrame(positionResultCard);
+  requestAnimationFrame(() => positionResultCard(resultCardAnchorRect));
 
   if (!chrome.runtime?.id) {
     setError('擴充功能已更新，請重新整理頁面（F5）');
@@ -193,7 +202,7 @@ function triggerAction(action) {
   // 快取命中：直接渲染，不發 API 請求
   if (responseCache.has(cacheKey)) {
     renderResult(action, responseCache.get(cacheKey), savedSel.text);
-    requestAnimationFrame(positionResultCard);
+    requestAnimationFrame(() => positionResultCard(resultCardAnchorRect));
     return;
   }
 

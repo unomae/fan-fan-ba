@@ -379,7 +379,7 @@ function hideResultCard() {
   resultCard?.classList.remove('g-show');
 }
 
-function positionResultCard() {
+function positionResultCard(anchorRect = resultCardAnchorRect) {
   if (!savedSel || !resultCard) return;
   if (userDragged) return;
   try {
@@ -387,12 +387,28 @@ function positionResultCard() {
     const margin = 8;
     const cardW  = resultCard.offsetWidth || Math.min(500, window.innerWidth - margin * 2);
     const cardH  = resultCard.offsetHeight || 200;
-    const th     = toolbar?.offsetHeight || 40;
+    const toolbarRect = anchorRect || resultCardAnchorRect || toolbar?.getBoundingClientRect?.();
 
-    let top  = rect.bottom + th + margin * 2;
-    let left = rect.left + rect.width / 2 - cardW / 2;
+    let top;
+    let left;
+    if (toolbarRect && Number.isFinite(toolbarRect.bottom)) {
+      top = toolbarRect.bottom + margin;
+      left = toolbarRect.left;
 
-    if (top + cardH > window.innerHeight - margin) top = rect.top - cardH - th - margin * 2;
+      if (top + cardH > window.innerHeight - margin) {
+        top = rect.top;
+        left = rect.right + margin;
+        if (left + cardW > window.innerWidth - margin) {
+          left = rect.left - cardW - margin;
+        }
+      }
+    } else {
+      const th = toolbar?.offsetHeight || 40;
+      top = rect.bottom + th + margin * 2;
+      left = rect.left + rect.width / 2 - cardW / 2;
+    }
+
+    if (top + cardH > window.innerHeight - margin) top = Math.max(margin, window.innerHeight - cardH - margin);
     if (top < margin) top = margin;
 
     left = Math.max(margin, Math.min(left, window.innerWidth - cardW - margin));

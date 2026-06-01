@@ -25,6 +25,12 @@ describe('content CSS UI safeguards', () => {
     expect(css).toContain('flex: 0 1 142px !important;');
   });
 
+  it('keeps the pinned status line inside the result-card header', () => {
+    expect(css).toContain('.g-rc-header::after');
+    expect(css).toContain('#gemini-result-card.g-pinned .g-rc-header::after');
+    expect(css).toContain('margin: 0 0 4px !important;');
+  });
+
   it('respects reduced motion preferences for injected UI', () => {
     expect(css).toContain('@media (prefers-reduced-motion: reduce)');
     expect(css).toContain('animation: none !important;');
