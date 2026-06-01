@@ -20,6 +20,8 @@ let lastDictData  = null;  // 字典模式解析後的 JSON 物件（供 Obsidia
 let lastRawResult = null;  // 一般模式原始 AI 回傳文字
 let isPinned      = false; // 結果卡是否釘住（釘住時點外部不關閉）
 let obsidianSaving = false; // 存入 Obsidian 期間暫時防止 mouseup 關閉結果卡
+let activeRequestId = 0;    // 最新 AI 請求序號，用於忽略舊回應
+let activeStreamPort = null; // 目前 streaming port，新請求會主動斷開舊 port
 
 // 相同文字快取：key = `${action}:${text}`，tab 生命週期內有效
 const responseCache = new Map();

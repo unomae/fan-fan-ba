@@ -382,7 +382,7 @@ function positionResultCard() {
   try {
     const rect   = savedSel.range.getBoundingClientRect();
     const margin = 8;
-    const cardW  = 500;
+    const cardW  = resultCard.offsetWidth || Math.min(500, window.innerWidth - margin * 2);
     const cardH  = resultCard.offsetHeight || 200;
     const th     = toolbar?.offsetHeight || 40;
 

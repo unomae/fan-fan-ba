@@ -149,6 +149,8 @@ function triggerAction(action) {
   if (!savedSel) return;
 
   activeAction = action;
+  const requestId = ++activeRequestId;
+  cancelActiveStream();
   if (!isPinned) userDragged = false; // pin 住時保留位置
 
   toolbar.querySelectorAll('.g-btn').forEach(b =>
@@ -199,18 +201,25 @@ function triggerAction(action) {
   const isDict = action === 'translate' && savedSel.text.length <= 20;
 
   if (isDict) {
-    sendNonStreaming(action, savedSel.text, context, pageTitle, cacheKey);
+    sendNonStreaming(action, savedSel.text, context, pageTitle, cacheKey, requestId);
   } else {
-    startStreaming(action, savedSel.text, context, pageTitle, cacheKey);
+    startStreaming(action, savedSel.text, context, pageTitle, cacheKey, requestId);
   }
 }
 
+function cancelActiveStream() {
+  if (!activeStreamPort) return;
+  try { activeStreamPort.disconnect(); } catch {}
+  activeStreamPort = null;
+}
+
 // ── Non-streaming（字典模式）─────────────────────────
-function sendNonStreaming(action, selectedText, context, pageTitle, cacheKey) {
+function sendNonStreaming(action, selectedText, context, pageTitle, cacheKey, requestId) {
   try {
     chrome.runtime.sendMessage(
       { type: 'GEMINI_REQUEST', action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' },
       response => {
+        if (requestId !== activeRequestId) return;
         if (chrome.runtime.lastError) {
           const msg = chrome.runtime.lastError.message || '';
           // 擴充功能失效需重整頁面，不提供重試；其他連線錯誤可重試
@@ -242,14 +251,16 @@ function sendNonStreaming(action, selectedText, context, pageTitle, cacheKey) {
 }
 
 // ── Streaming（翻譯段落 / 解釋 / 優化）──────────────
-function startStreaming(action, selectedText, context, pageTitle, cacheKey) {
+function startStreaming(action, selectedText, context, pageTitle, cacheKey, requestId) {
   const port        = chrome.runtime.connect({ name: 'ai-stream' });
+  activeStreamPort = port;
   let   accumulated = '';
   const body        = resultCard?.querySelector('.g-rc-body');
   let   portDone    = false;
   let   streamNotice = '';
 
   port.onMessage.addListener(msg => {
+    if (requestId !== activeRequestId || (msg.requestId && msg.requestId !== requestId)) return;
     if (msg.status) {
       streamNotice = msg.status;
       if (body && !accumulated) body.innerHTML = `<div class="g-provider-notice">${escapeHtml(streamNotice)}</div>`;
@@ -257,6 +268,7 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey) {
     }
     if (msg.error) {
       setError(msg.error, () => triggerAction(activeAction)); // streaming 錯誤可重試
+      if (activeStreamPort === port) activeStreamPort = null;
       port.disconnect();
       return;
     }
@@ -267,6 +279,7 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey) {
       if (streamNotice) showResultNotice(streamNotice);
       responseCache.set(cacheKey, accumulated);
       requestAnimationFrame(positionResultCard);
+      if (activeStreamPort === port) activeStreamPort = null;
       port.disconnect();
       return;
     }
@@ -284,13 +297,14 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey) {
   });
 
   port.onDisconnect.addListener(() => {
+    if (activeStreamPort === port) activeStreamPort = null;
     // port 意外斷線（擴充功能更新等）且串流尚未完成
     if (!portDone && chrome.runtime.lastError) {
       setError('連線中斷，請重試', () => triggerAction(activeAction));
     }
   });
 
-  port.postMessage({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' });
+  port.postMessage({ requestId, action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' });
 }
 
 function initContentSettings() {

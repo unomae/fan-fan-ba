@@ -4,40 +4,49 @@
 
 const $ = id => document.getElementById(id);
 const ModelRegistry = globalThis.FanFanBaModels || require('./models');
+const Storage = globalThis.FanFanBaStorage || require('./storage');
 
 renderModelSelect();
 renderPageTranslationModelSelect();
 renderLanguageSelects();
 initSettingsTabs();
 
+loadSettings();
+
 // ── 載入已儲存的設定 ─────────────────────────────────
-chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'model', 'pageTranslationModel', 'targetLanguage', 'explanationLanguage', 'ttsLanguageMode', 'vocabularyHighlightMode', 'obsidianVault', 'ttsApiKey', 'obsidianDefaultFolder'],
-  ({ apiKey, groqApiKey, openrouterApiKey, model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, ttsApiKey, obsidianDefaultFolder }) => {
-    if (apiKey)                 $('apiKey').value                 = apiKey;
-    if (groqApiKey)             $('groqApiKey').value             = groqApiKey;
-    if (openrouterApiKey)       $('openrouterApiKey').value       = openrouterApiKey;
-    // 無儲存紀錄時預設 Groq（免費額度最大方）
-    const currentModel = ModelRegistry.normalizeModel(model);
-    $('model').value = currentModel;
-    if ($('pageTranslationModel')) $('pageTranslationModel').value = ModelRegistry.normalizeModel(pageTranslationModel || currentModel);
-    if (model && currentModel !== model) chrome.storage.sync.set({ model: currentModel });
-    if ($('targetLanguage')) {
-      $('targetLanguage').value = ModelRegistry.normalizeLanguage(targetLanguage, 'zh-TW');
-    }
-    if ($('explanationLanguage')) {
-      $('explanationLanguage').value = ModelRegistry.normalizeExplanationLanguage(explanationLanguage, 'target');
-    }
-    if ($('ttsLanguageMode')) {
-      $('ttsLanguageMode').value = ModelRegistry.normalizeTtsLanguageMode(ttsLanguageMode, 'auto');
-    }
-    if ($('vocabularyHighlightMode')) {
-      $('vocabularyHighlightMode').value = vocabularyHighlightMode === 'auto' ? 'auto' : 'off';
-    }
-    if (obsidianVault)          $('obsidianVault').value          = obsidianVault;
-    if (ttsApiKey)              $('ttsApiKey').value              = ttsApiKey;
-    if (obsidianDefaultFolder)  $('obsidianDefaultFolder').value  = obsidianDefaultFolder;
+async function loadSettings() {
+  const [
+    { model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder },
+    { apiKey, groqApiKey, openrouterApiKey, ttsApiKey }
+  ] = await Promise.all([
+    chrome.storage.sync.get(['model', 'pageTranslationModel', 'targetLanguage', 'explanationLanguage', 'ttsLanguageMode', 'vocabularyHighlightMode', 'obsidianVault', 'obsidianDefaultFolder']),
+    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', ttsApiKey: '' })
+  ]);
+
+  if (apiKey)                 $('apiKey').value                 = apiKey;
+  if (groqApiKey)             $('groqApiKey').value             = groqApiKey;
+  if (openrouterApiKey)       $('openrouterApiKey').value       = openrouterApiKey;
+  // 無儲存紀錄時預設 Groq（免費額度最大方）
+  const currentModel = ModelRegistry.normalizeModel(model);
+  $('model').value = currentModel;
+  if ($('pageTranslationModel')) $('pageTranslationModel').value = ModelRegistry.normalizeModel(pageTranslationModel || currentModel);
+  if (model && currentModel !== model) chrome.storage.sync.set({ model: currentModel });
+  if ($('targetLanguage')) {
+    $('targetLanguage').value = ModelRegistry.normalizeLanguage(targetLanguage, 'zh-TW');
   }
-);
+  if ($('explanationLanguage')) {
+    $('explanationLanguage').value = ModelRegistry.normalizeExplanationLanguage(explanationLanguage, 'target');
+  }
+  if ($('ttsLanguageMode')) {
+    $('ttsLanguageMode').value = ModelRegistry.normalizeTtsLanguageMode(ttsLanguageMode, 'auto');
+  }
+  if ($('vocabularyHighlightMode')) {
+    $('vocabularyHighlightMode').value = vocabularyHighlightMode === 'auto' ? 'auto' : 'off';
+  }
+  if (obsidianVault)          $('obsidianVault').value          = obsidianVault;
+  if (ttsApiKey)              $('ttsApiKey').value              = ttsApiKey;
+  if (obsidianDefaultFolder)  $('obsidianDefaultFolder').value  = obsidianDefaultFolder;
+}
 
 function renderModelSelect() {
   const select = $('model');
@@ -127,7 +136,7 @@ bindToggleVis('toggleOrVis',  'openrouterApiKey',  'or-eye-show',   'or-eye-hide
 bindToggleVis('toggleTtsVis', 'ttsApiKey',         'tts-eye-show',  'tts-eye-hide');
 
 // ── 儲存設定 ─────────────────────────────────────────
-$('btnSave').addEventListener('click', () => {
+$('btnSave').addEventListener('click', async () => {
   const apiKey           = $('apiKey').value.trim();
   const groqApiKey       = $('groqApiKey').value.trim();
   const openrouterApiKey = $('openrouterApiKey').value.trim();
@@ -156,10 +165,11 @@ $('btnSave').addEventListener('click', () => {
   const ttsApiKey             = $('ttsApiKey').value.trim();
   const obsidianDefaultFolder = $('obsidianDefaultFolder').value.trim();
 
-  chrome.storage.sync.set(
-    { apiKey, groqApiKey, openrouterApiKey, model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, ttsApiKey, obsidianDefaultFolder },
-    () => showStatus('ok', '✓ 設定已儲存')
-  );
+  await Promise.all([
+    chrome.storage.sync.set({ model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder }),
+    Storage.setSecrets({ apiKey, groqApiKey, openrouterApiKey, ttsApiKey })
+  ]);
+  showStatus('ok', '✓ 設定已儲存');
 });
 
 // ── 測試連線 ─────────────────────────────────────────
@@ -236,4 +246,4 @@ function buildOpenAICompatTestBody(modelId) {
   return JSON.stringify({ model: modelId, messages: [{ role: 'user', content: '回覆 OK 即可' }], max_tokens: 10 });
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { showStatus, bindToggleVis, renderModelSelect, renderPageTranslationModelSelect, renderLanguageSelects, initSettingsTabs }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { showStatus, bindToggleVis, renderModelSelect, renderPageTranslationModelSelect, renderLanguageSelects, initSettingsTabs, loadSettings }; }

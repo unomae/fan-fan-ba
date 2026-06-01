@@ -595,7 +595,7 @@
         </button>
         <div class="nav-footer">
           <a href="privacy-policy.html" target="_blank">隱私權政策</a><br>
-          API Key 僅儲存在本機 Chrome Storage。
+          API Key 僅儲存在本機，不會同步到 Chrome 帳號。
         </div>
       </nav>
 
@@ -806,7 +806,7 @@
             <div>
               <strong>API Key 安全儲存</strong>
               <ul>
-                <li>僅儲存於本機 Chrome Storage，不會上傳至任何伺服器。</li>
+                <li>API Key 僅儲存於本機 storage，不會同步到 Chrome 帳號，也不會上傳至任何伺服器。</li>
                 <li>只有本擴充功能可讀取，不對外暴露。</li>
                 <li>可隨時在此頁修改或清空刪除。</li>
               </ul>
@@ -842,6 +842,7 @@
   </main>
 
   <script src="models.js"></script>
+  <script src="storage.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

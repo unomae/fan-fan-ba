@@ -91,7 +91,7 @@ function createFloatingBall() {
   el.querySelector('[data-action="settings"]').addEventListener('click', e => {
     e.stopPropagation();
     el.classList.remove('ffb-menu-open');
-    chrome.runtime.openOptionsPage?.();
+    chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS' }).catch(() => {});
   });
   el.querySelector('[data-action="pause"]').addEventListener('click', e => {
     e.stopPropagation();
@@ -585,7 +585,7 @@ async function copyVocabularyPanelText(text, button, successText, fallbackText) 
 function positionResultCardNearFloatingBall() {
   if (!floatingBall || !resultCard) return;
   const ballRect = floatingBall.getBoundingClientRect();
-  const cardW = resultCard.offsetWidth || 500;
+  const cardW = resultCard.offsetWidth || Math.min(500, window.innerWidth - 16);
   const cardH = resultCard.offsetHeight || 180;
   const left = Math.max(8, Math.min(ballRect.left - cardW - 12, window.innerWidth - cardW - 8));
   const top = Math.max(8, Math.min(ballRect.top - 20, window.innerHeight - cardH - 8));

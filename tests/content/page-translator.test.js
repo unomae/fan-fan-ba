@@ -1,6 +1,7 @@
 const {
   cleanPageTranslationResult,
-  collectVisibleTranslatableBlocks
+  collectVisibleTranslatableBlocks,
+  getPageTranslationStatusText
 } = require('../../content/page-translator');
 
 describe('page translator helpers', () => {
@@ -65,5 +66,29 @@ describe('page translator helpers', () => {
       'Europe live - latest updates',
       'Markets responded cautiously as officials prepared a new statement for the afternoon.'
     ]);
+  });
+
+  it('formats page translation panel status with progress and actionable states', () => {
+    expect(getPageTranslationStatusText({
+      running: true,
+      done: 3,
+      total: 8,
+      errors: 1
+    })).toBe('翻譯中 3/8 · 失敗 1');
+
+    expect(getPageTranslationStatusText({
+      stopped: true,
+      done: 2,
+      total: 8,
+      errors: 0
+    })).toBe('已停止 2/8');
+
+    expect(getPageTranslationStatusText({
+      running: false,
+      canContinue: true,
+      done: 8,
+      total: 8,
+      errors: 0
+    })).toBe('有新段落可翻譯 · 已完成 8/8');
   });
 });

@@ -3,8 +3,12 @@
 
 'use strict';
 
-if (typeof importScripts === 'function' && !globalThis.FanFanBaModels) importScripts('models.js');
+if (typeof importScripts === 'function') {
+  if (!globalThis.FanFanBaModels) importScripts('models.js');
+  if (!globalThis.FanFanBaStorage) importScripts('storage.js');
+}
 const ModelRegistry = globalThis.FanFanBaModels || require('./models');
+const Storage = globalThis.FanFanBaStorage || require('./storage');
 
 // ── 首次安裝時開啟 Welcome 頁面 ──────────────────────
 chrome.runtime.onInstalled.addListener(details => {
@@ -45,11 +49,32 @@ async function checkedFetch(url, options, label = '') {
   const res = await fetch(url, options);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    const err  = new Error(body.error?.message || `${label}API 錯誤 (HTTP ${res.status})`);
+    const rawMessage = body.error?.message || '';
+    const err  = new Error(formatApiErrorMessage(res.status, rawMessage, label));
     err.status = res.status;
+    err.rawMessage = rawMessage;
     throw err;
   }
   return res;
+}
+
+function formatApiErrorMessage(status, rawMessage = '', label = '') {
+  const provider = String(label || '').trim() || 'AI 服務';
+  const detail = rawMessage ? `（${rawMessage}）` : '';
+
+  if (status === 401 || status === 403) {
+    return `${provider}驗證失敗，請檢查 API Key 或模型存取權限${detail}`;
+  }
+  if (status === 429) {
+    return `${provider}請求過於頻繁或額度已達上限，請稍後再試${detail}`;
+  }
+  if (status === 500) {
+    return `${provider}暫時無法處理請求，請稍後重試${detail}`;
+  }
+  if (status === 502 || status === 503 || status === 504) {
+    return `${provider}目前忙碌或暫時不可用，請稍後重試${detail}`;
+  }
+  return rawMessage || `${provider}API 錯誤 (HTTP ${status})`;
 }
 
 // ── 訊息監聽（一次性請求，用於字典模式 + TTS）────────
@@ -104,25 +129,40 @@ chrome.runtime.onConnect.addListener(port => {
   if (port.name !== 'ai-stream') return;
 
   port.onMessage.addListener(async (request) => {
-    const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('請求逾時，請稍後重試')), 30000)
-    );
+    const controller = new AbortController();
+    let timedOut = false;
+    let completed = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 30000);
+    const abortOnDisconnect = () => {
+      if (!completed) controller.abort();
+    };
+    port.onDisconnect.addListener(abortOnDisconnect);
+
     try {
-      await Promise.race([
-        _streamAIRequest(
-          request,
-          chunk => {
-            try { port.postMessage({ chunk }); } catch { /* port 已關閉 */ }
-          },
-          status => {
-            try { port.postMessage({ status }); } catch { /* port 已關閉 */ }
-          }
-        ),
-        timeout
-      ]);
-      try { port.postMessage({ done: true }); } catch {}
+      await _streamAIRequest(
+        request,
+        chunk => {
+          try { port.postMessage({ requestId: request.requestId, chunk }); } catch { /* port 已關閉 */ }
+        },
+        status => {
+          try { port.postMessage({ requestId: request.requestId, status }); } catch { /* port 已關閉 */ }
+        },
+        controller.signal
+      );
+      completed = true;
+      try { port.postMessage({ requestId: request.requestId, done: true }); } catch {}
     } catch (err) {
-      try { port.postMessage({ error: err.message }); } catch {}
+      const message = timedOut || err.name === 'AbortError'
+        ? '請求逾時或已取消，請稍後重試'
+        : err.message;
+      try { port.postMessage({ requestId: request.requestId, error: message }); } catch {}
+    } finally {
+      completed = true;
+      clearTimeout(timeoutId);
+      port.onDisconnect.removeListener?.(abortOnDisconnect);
     }
   });
 });
@@ -136,8 +176,10 @@ async function handleAIRequest({ action, selectedText, context, pageTitle, model
 }
 
 async function _handleAIRequest({ action, selectedText, context, pageTitle, model: requestedModel, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }) {
-  const { apiKey = '', groqApiKey = '', openrouterApiKey = '', model = DEFAULT_MODEL } =
-    await chrome.storage.sync.get({ apiKey: '', groqApiKey: '', openrouterApiKey: '', model: DEFAULT_MODEL });
+  const [{ model = DEFAULT_MODEL }, { apiKey = '', groqApiKey = '', openrouterApiKey = '' }] = await Promise.all([
+    chrome.storage.sync.get({ model: DEFAULT_MODEL }),
+    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '' })
+  ]);
   const selectedModel = ModelRegistry.normalizeModel(requestedModel || model);
 
   if (selectedModel.startsWith('groq:')) {
@@ -233,12 +275,14 @@ async function handleOpenAICompatRequest({ action, selectedText, context, pageTi
 }
 
 // ── Streaming 分流 ─────────────────────────────────
-async function _streamAIRequest({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage }, onChunk, onStatus = () => {}) {
-  const { apiKey = '', groqApiKey = '', openrouterApiKey = '', model = DEFAULT_MODEL } =
-    await chrome.storage.sync.get({ apiKey: '', groqApiKey: '', openrouterApiKey: '', model: DEFAULT_MODEL });
-  const selectedModel = ModelRegistry.normalizeModel(model);
+async function _streamAIRequest({ action, selectedText, context, pageTitle, model: requestedModel, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }, onChunk, onStatus = () => {}, signal) {
+  const [{ model = DEFAULT_MODEL }, { apiKey = '', groqApiKey = '', openrouterApiKey = '' }] = await Promise.all([
+    chrome.storage.sync.get({ model: DEFAULT_MODEL }),
+    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '' })
+  ]);
+  const selectedModel = ModelRegistry.normalizeModel(requestedModel || model);
 
-  const prompt = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage });
+  const prompt = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage, pageTranslation });
 
   if (selectedModel.startsWith('groq:')) {
     if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
@@ -248,7 +292,8 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle, targ
       apiKey:    groqApiKey,
       baseUrl:   `${GROQ_API_BASE}/chat/completions`,
       label:     'Groq',
-      onChunk
+      onChunk,
+      signal
     });
   }
 
@@ -263,12 +308,13 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle, targ
       label:        'OpenRouter',
       extraHeaders: { 'X-Title': 'Fan Fan Ba' },
       onChunk,
-      onStatus
+      onStatus,
+      signal
     });
   }
 
   if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
-  return streamGemini({ prompt, apiKey, model: selectedModel, action, onChunk });
+  return streamGemini({ prompt, apiKey, model: selectedModel, action, onChunk, signal });
 }
 
 async function streamOpenRouterWithFallback(params) {
@@ -292,11 +338,12 @@ async function streamOpenRouterWithFallback(params) {
 }
 
 // ── Gemini SSE Streaming（?alt=sse）───────────────
-async function streamGemini({ prompt, apiKey, model, action, onChunk }) {
+async function streamGemini({ prompt, apiKey, model, action, onChunk, signal }) {
   const response = await withRetry(() => checkedFetch(
     `${GEMINI_API_BASE}/${model}:streamGenerateContent?key=${apiKey}&alt=sse`,
     {
       method:  'POST',
+      signal,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
@@ -318,9 +365,10 @@ async function streamGemini({ prompt, apiKey, model, action, onChunk }) {
 }
 
 // ── OpenAI 相容 SSE Streaming（Groq / OpenRouter）─
-async function streamOpenAICompat({ prompt, action, modelId, apiKey, baseUrl, label = '', extraHeaders = {}, onChunk }) {
+async function streamOpenAICompat({ prompt, action, modelId, apiKey, baseUrl, label = '', extraHeaders = {}, onChunk, signal }) {
   const response = await withRetry(() => checkedFetch(baseUrl, {
     method:  'POST',
+    signal,
     headers: {
       'Content-Type':  'application/json',
       'Authorization': `Bearer ${apiKey}`,
@@ -342,8 +390,11 @@ async function streamOpenAICompat({ prompt, action, modelId, apiKey, baseUrl, la
       obj = JSON.parse(line);
     } catch { return; }
     if (obj.error) {
-      const err = new Error(obj.error.message || `${label}串流錯誤`);
-      err.status = obj.error.code;
+      const status = Number(obj.error.code || obj.error.status) || 0;
+      const err = new Error(status
+        ? formatApiErrorMessage(status, obj.error.message, label)
+        : (obj.error.message || `${label}串流錯誤`));
+      err.status = obj.error.code || obj.error.status;
       throw err;
     }
     const text = obj.choices?.[0]?.delta?.content;
@@ -387,7 +438,7 @@ const CHIRP_VOICE_MAP = {
 };
 
 async function handleTtsRequest({ text, lang }) {
-  const { ttsApiKey } = await chrome.storage.sync.get('ttsApiKey');
+  const { ttsApiKey } = await Storage.getSecrets({ ttsApiKey: '' });
   if (!ttsApiKey) return { fallback: true };
 
   const langCode = (lang || 'en').split('-')[0].toLowerCase();
@@ -408,7 +459,7 @@ async function handleTtsRequest({ text, lang }) {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `TTS 錯誤 (HTTP ${res.status})`);
+    throw new Error(formatApiErrorMessage(res.status, err.error?.message, 'Google TTS'));
   }
 
   const data = await res.json();
@@ -539,4 +590,4 @@ function buildPrompt(action, selectedText, context, pageTitle, settings = {}) {
   }
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }

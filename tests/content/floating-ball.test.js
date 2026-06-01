@@ -115,7 +115,7 @@ describe('floating ball menu behavior', () => {
 
     floatingBall.querySelector('[data-action="settings"]').click();
 
-    expect(chrome.runtime.openOptionsPage).toHaveBeenCalledTimes(1);
+    expect(context.chrome.runtime.sendMessage).toHaveBeenCalledWith({ type: 'OPEN_OPTIONS' });
     expect(floatingBall.classList.contains('ffb-menu-open')).toBe(false);
   });
 });

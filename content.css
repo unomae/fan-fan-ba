@@ -399,7 +399,7 @@
 #gemini-result-card {
   position:              fixed !important;
   z-index:               2147483646 !important;
-  width:                 500px !important;
+  width:                 min(500px, calc(100vw - 16px)) !important;
   background:            rgba(255, 255, 255, 0.88) !important;
   backdrop-filter:       blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
@@ -476,6 +476,12 @@
 }
 
 .g-icon-btn:hover  { background: rgba(0, 0, 0, 0.06) !important; color: #333 !important; }
+.g-icon-btn:focus-visible {
+  background: rgba(26, 115, 232, 0.08) !important;
+  color: #1a73e8 !important;
+  outline: 2px solid rgba(26, 115, 232, 0.34) !important;
+  outline-offset: 2px !important;
+}
 .g-icon-btn:active { transform: scale(0.88) !important; }
 .g-copy.g-copied   { color: #34a853 !important; }
 
@@ -569,6 +575,11 @@
 }
 
 .g-speak-btn:hover    { background: #e8f0fe !important; transform: scale(1.1) !important; }
+.g-speak-btn:focus-visible {
+  background: #e8f0fe !important;
+  outline: 2px solid rgba(26, 115, 232, 0.34) !important;
+  outline-offset: 2px !important;
+}
 .g-speak-btn.g-speaking { color: #0d47a1 !important; }
 
 .g-vocab-save-btn {
@@ -607,6 +618,11 @@
   border-color: rgba(90, 158, 58, 0.34) !important;
   color: #2f6d20 !important;
   transform: translateY(-1px) !important;
+}
+
+.g-vocab-save-btn:focus-visible {
+  outline: 2px solid rgba(90, 158, 58, 0.34) !important;
+  outline-offset: 2px !important;
 }
 
 .g-vocab-save-btn:disabled {
@@ -1514,6 +1530,11 @@ del.g-diff-del {
 
 .g-retry-btn:hover {
   background: rgba(248, 113, 113, 0.18) !important;
+}
+
+.g-retry-btn:focus-visible {
+  outline: 2px solid rgba(248, 113, 113, 0.35) !important;
+  outline-offset: 2px !important;
 }
 
 .g-provider-notice {
@@ -2463,4 +2484,21 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
   white-space: nowrap !important;
   font-size: 12.5px !important;
   font-weight: 600 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #gemini-ai-toolbar,
+  #gemini-result-card,
+  #fanfanba-floating,
+  #gemini-ai-toolbar *,
+  #gemini-result-card *,
+  #fanfanba-floating *,
+  .ffb-page-translation-panel,
+  .ffb-page-translation-panel *,
+  .ffb-page-translation-block,
+  .ffb-page-translation-block * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }

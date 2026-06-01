@@ -3,24 +3,24 @@
 'use strict';
 
 const ModelRegistry = globalThis.FanFanBaModels || require('./models');
+const Storage = globalThis.FanFanBaStorage || require('./storage');
 const MODELS = ModelRegistry.MODELS;
 
 // ── 初始化 ────────────────────────────────────────────
-chrome.storage.sync.get([
-  'model',
-  'apiKey',
-  'groqApiKey',
-  'openrouterApiKey',
-  'ttsApiKey',
-  'obsidianVault',
-  'obsidianDefaultFolder'
-]).then(sync => {
+initPopup();
+
+async function initPopup() {
+  const [sync, secrets] = await Promise.all([
+    chrome.storage.sync.get(['model', 'obsidianVault', 'obsidianDefaultFolder']),
+    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', ttsApiKey: '' })
+  ]);
+  const settings = { ...sync, ...secrets };
   const current = ModelRegistry.normalizeModel(sync.model);
   if (sync.model && current !== sync.model) chrome.storage.sync.set({ model: current });
   renderModels(current);
-  renderApiStatus(current, sync);
-  renderPopupOverview(current, sync);
-});
+  renderApiStatus(current, settings);
+  renderPopupOverview(current, settings);
+}
 
 // ── 渲染模型列表 ──────────────────────────────────────
 function renderModels(currentId) {
@@ -49,7 +49,7 @@ function renderModels(currentId) {
 
 // ── 切換模型 ──────────────────────────────────────────
 function selectModel(id, clickedItem) {
-  chrome.storage.sync.set({ model: id }, () => {
+  chrome.storage.sync.set({ model: id }, async () => {
     document.querySelectorAll('.model-item').forEach(el => el.classList.remove('active'));
     clickedItem.classList.add('active');
 
@@ -57,10 +57,13 @@ function selectModel(id, clickedItem) {
     msg.classList.add('show');
     setTimeout(() => msg.classList.remove('show'), 1500);
 
-    chrome.storage.sync.get(['apiKey', 'groqApiKey', 'openrouterApiKey', 'ttsApiKey', 'obsidianVault', 'obsidianDefaultFolder'], s => {
-      renderApiStatus(id, s);
-      renderPopupOverview(id, s);
-    });
+    const [sync, secrets] = await Promise.all([
+      chrome.storage.sync.get(['obsidianVault', 'obsidianDefaultFolder']),
+      Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', ttsApiKey: '' })
+    ]);
+    const settings = { ...sync, ...secrets };
+    renderApiStatus(id, settings);
+    renderPopupOverview(id, settings);
   });
 }
 
@@ -123,4 +126,4 @@ document.getElementById('openOptions').addEventListener('click', () => {
   chrome.runtime.openOptionsPage();
 });
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { renderModels, selectModel, renderApiStatus, renderPopupOverview, getApiKeyStatus, MODELS }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { initPopup, renderModels, selectModel, renderApiStatus, renderPopupOverview, getApiKeyStatus, MODELS }; }

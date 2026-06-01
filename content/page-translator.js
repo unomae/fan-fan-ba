@@ -13,6 +13,8 @@ const PAGE_TRANSLATION_LIMITS = {
 const pageTranslationPairs = new Map();
 let pageTranslationPairCounter = 0;
 let pageTranslationModel = null;
+let pageTranslationRequestCounter = 0;
+let pageTranslationActivePort = null;
 
 let pageTranslationState = {
   running: false,
@@ -69,6 +71,12 @@ function startPageTranslationBeta() {
 
   updatePageTranslationPanel();
   runPageTranslationQueue();
+}
+
+function cancelActivePageTranslationRequest() {
+  if (!pageTranslationActivePort) return;
+  try { pageTranslationActivePort.disconnect(); } catch {}
+  pageTranslationActivePort = null;
 }
 
 function collectVisibleTranslatableBlocks() {
@@ -184,7 +192,7 @@ async function runPageTranslationQueue() {
   }
   pageTranslationState.running = false;
   pageTranslationState.canContinue = hasVisibleTranslatableBlocks();
-  updatePageTranslationPanel(pageTranslationState.stopped ? '已停止' : '可見區域翻譯完成');
+  updatePageTranslationPanel();
   updateFloatingBallPageTranslationState?.(pageTranslationState);
 }
 
@@ -207,6 +215,10 @@ async function translatePageItem(item) {
 
   try {
     const result = cleanPageTranslationResult(await requestPageTranslation(item.text), item.text);
+    if (pageTranslationState.stopped) {
+      clearCancelledPageTranslationItem(item);
+      return;
+    }
     item.status = 'done';
     item.translatedText = result;
     pageTranslationPairs.set(item.pairId, {
@@ -218,6 +230,10 @@ async function translatePageItem(item) {
     pageTranslationState.done += 1;
     renderPageTranslationResult(item, result);
   } catch (error) {
+    if (pageTranslationState.stopped || error.message === 'PAGE_TRANSLATION_CANCELLED') {
+      clearCancelledPageTranslationItem(item);
+      return;
+    }
     item.status = 'error';
     pageTranslationState.errors += 1;
     renderPageTranslationError(item, error.message || '翻譯失敗');
@@ -230,8 +246,45 @@ function requestPageTranslation(text) {
       reject(new Error('擴充功能已更新，請重新整理頁面'));
       return;
     }
-    chrome.runtime.sendMessage({
-      type: 'GEMINI_REQUEST',
+    const requestId = `page-${++pageTranslationRequestCounter}`;
+    const port = chrome.runtime.connect({ name: 'ai-stream' });
+    pageTranslationActivePort = port;
+    let accumulated = '';
+    let settled = false;
+
+    const cleanup = () => {
+      if (pageTranslationActivePort === port) pageTranslationActivePort = null;
+    };
+
+    port.onMessage.addListener(response => {
+      if (response.requestId && response.requestId !== requestId) return;
+      if (response.chunk) {
+        accumulated += response.chunk;
+        return;
+      }
+      if (response.error) {
+        settled = true;
+        cleanup();
+        try { port.disconnect(); } catch {}
+        reject(new Error(response.error));
+        return;
+      }
+      if (response.done) {
+        settled = true;
+        cleanup();
+        try { port.disconnect(); } catch {}
+        resolve(accumulated);
+      }
+    });
+
+    port.onDisconnect.addListener(() => {
+      cleanup();
+      if (settled) return;
+      reject(new Error(pageTranslationState.stopped ? 'PAGE_TRANSLATION_CANCELLED' : '連線中斷'));
+    });
+
+    port.postMessage({
+      requestId,
       action: 'translate',
       selectedText: text,
       context: text,
@@ -241,22 +294,15 @@ function requestPageTranslation(text) {
       targetLanguage,
       explanationLanguage,
       browserLanguage: navigator.language || ''
-    }, response => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message || '連線失敗'));
-        return;
-      }
-      if (!response) {
-        reject(new Error('無回應'));
-        return;
-      }
-      if (response.error) {
-        reject(new Error(response.error));
-        return;
-      }
-      resolve(response.result || '');
     });
   });
+}
+
+function clearCancelledPageTranslationItem(item) {
+  item.status = 'cancelled';
+  item.translationNode?.remove();
+  item.translationNode = null;
+  item.el?.classList.remove('ffb-page-source-translated');
 }
 
 function cleanPageTranslationResult(rawResult, sourceText) {
@@ -507,14 +553,36 @@ function updatePageTranslationPanel(message = '') {
   const stopButton = pageTranslationPanel.querySelector('[data-action="stop"]');
   const done = pageTranslationState.done;
   const total = pageTranslationState.total;
-  const errors = pageTranslationState.errors;
-  const runningText = pageTranslationState.running ? '翻譯中' : '待命';
-  const continueText = !pageTranslationState.running && pageTranslationState.canContinue ? '有新段落' : '';
   if (count) count.textContent = `${done}/${total}`;
-  status.textContent = message || [runningText, errors ? `失敗 ${errors}` : '', continueText].filter(Boolean).join(' · ');
+  status.textContent = getPageTranslationStatusText(pageTranslationState, message);
   modeButtons.forEach(btn => btn.classList.toggle('ffb-page-active', btn.dataset.mode === pageTranslationState.mode));
   densityButtons.forEach(btn => btn.classList.toggle('ffb-page-active', btn.dataset.density === pageTranslationState.density));
   if (stopButton) stopButton.disabled = !pageTranslationState.running;
+}
+
+function getPageTranslationStatusText(state, message = '') {
+  if (message) return message;
+  const done = Number(state?.done || 0);
+  const total = Number(state?.total || 0);
+  const errors = Number(state?.errors || 0);
+  const progress = total ? `${done}/${total}` : '0/0';
+
+  if (state?.running) {
+    return [`翻譯中 ${progress}`, errors ? `失敗 ${errors}` : ''].filter(Boolean).join(' · ');
+  }
+  if (state?.stopped) {
+    return [`已停止 ${progress}`, errors ? `失敗 ${errors}` : ''].filter(Boolean).join(' · ');
+  }
+  if (state?.canContinue) {
+    return `有新段落可翻譯 · 已完成 ${progress}`;
+  }
+  if (total && done >= total && !errors) {
+    return `可見區域翻譯完成 · ${progress}`;
+  }
+  if (total && errors) {
+    return `已完成 ${progress} · 失敗 ${errors}`;
+  }
+  return '待命';
 }
 
 function setPageTranslationMode(mode) {
@@ -539,14 +607,16 @@ function setPageTranslationDensity(density) {
 function stopPageTranslationBeta() {
   pageTranslationState.stopped = true;
   pageTranslationState.running = false;
+  cancelActivePageTranslationRequest();
   pageTranslationState.canContinue = hasVisibleTranslatableBlocks();
-  updatePageTranslationPanel('正在停止...');
+  updatePageTranslationPanel();
   updateFloatingBallPageTranslationState?.(pageTranslationState);
 }
 
 function restorePageTranslationBeta() {
   pageTranslationState.stopped = true;
   pageTranslationState.running = false;
+  cancelActivePageTranslationRequest();
   if (pageTranslationState.scrollTimer) clearTimeout(pageTranslationState.scrollTimer);
   document.querySelectorAll('.ffb-page-translation-block').forEach(node => node.remove());
   document.querySelectorAll('.ffb-page-source-translated').forEach(node => node.classList.remove('ffb-page-source-translated'));
@@ -710,6 +780,7 @@ if (typeof module !== 'undefined' && module.exports) {
     collectVisibleTranslatableBlocks,
     cleanPageTranslationResult,
     extractPageTranslationJsonTranslation,
+    getPageTranslationStatusText,
     getElementTranslationText,
     isPageTranslatableElement
   };
