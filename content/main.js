@@ -327,7 +327,10 @@ function initContentSettings() {
 
   chrome.storage.onChanged?.addListener((changes, area) => {
     if (area === 'sync') {
-      if (changes.model) activeModel = FanFanBaModels.normalizeModel(changes.model.newValue);
+      if (changes.model) {
+        activeModel = FanFanBaModels.normalizeModel(changes.model.newValue);
+        syncResultCardModelSelect?.();
+      }
       if (changes.model && !changes.pageTranslationModel) setPageTranslationModel?.(activeModel);
       if (changes.pageTranslationModel) setPageTranslationModel?.(changes.pageTranslationModel.newValue || activeModel);
       if (changes.targetLanguage) targetLanguage = FanFanBaModels.normalizeLanguage(changes.targetLanguage.newValue, 'zh-TW');

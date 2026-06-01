@@ -60,9 +60,8 @@ function positionToolbar() {
     const th     = toolbar.offsetHeight || 42;
     const tw     = toolbar.offsetWidth  || 120;
 
-    const centerX = rect.left + rect.width / 2;
     let top  = rect.top - th - margin;
-    let left = centerX - tw / 2;
+    let left = rect.right - tw;
 
     if (rect.top < th + margin) top = rect.bottom + margin;
     if (top + th > window.innerHeight - margin) top = margin;

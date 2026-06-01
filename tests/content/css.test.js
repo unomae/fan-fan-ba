@@ -17,6 +17,12 @@ describe('content CSS UI safeguards', () => {
     expect(css).toContain('.g-speak-btn:focus-visible');
     expect(css).toContain('.g-vocab-save-btn:focus-visible');
     expect(css).toContain('.g-retry-btn:focus-visible');
+    expect(css).toContain('.g-rc-model-select:focus-visible');
+  });
+
+  it('keeps the result card model switcher styled inside the compact header', () => {
+    expect(css).toContain('.g-rc-model-select');
+    expect(css).toContain('flex: 0 1 142px !important;');
   });
 
   it('respects reduced motion preferences for injected UI', () => {

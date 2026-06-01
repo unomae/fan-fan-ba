@@ -422,6 +422,18 @@
   pointer-events:        none !important;
 }
 
+#gemini-result-card::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 0 !important;
+  background: #A3D179 !important;
+  z-index: 2 !important;
+  pointer-events: none !important;
+}
+
 #gemini-result-card.g-show {
   opacity:        1 !important;
   transform:      scale(1) translateY(0) !important;
@@ -433,6 +445,7 @@
   display:         flex !important;
   align-items:     center !important;
   justify-content: space-between !important;
+  gap:             8px !important;
   padding:         8px 10px 6px !important;
   border-bottom:   1px solid rgba(0, 0, 0, 0.06) !important;
   background:      rgba(250, 250, 250, 0.6) !important;
@@ -448,6 +461,8 @@
   color:          #1a73e8 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.6px !important;
+  min-width:      0 !important;
+  flex:           1 1 auto !important;
 }
 .g-rc-tag svg {
   flex-shrink: 0 !important;
@@ -457,6 +472,35 @@
 .g-rc-actions {
   display: flex !important;
   gap:     2px !important;
+  flex:    0 0 auto !important;
+}
+
+.g-rc-model-select {
+  flex: 0 1 142px !important;
+  max-width: 142px !important;
+  min-width: 92px !important;
+  height: 26px !important;
+  padding: 3px 24px 3px 8px !important;
+  border: 1px solid rgba(26, 115, 232, 0.14) !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  color: #374151 !important;
+  font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  cursor: pointer !important;
+  outline: none !important;
+}
+
+.g-rc-model-select:hover {
+  border-color: rgba(26, 115, 232, 0.28) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+}
+
+.g-rc-model-select:focus-visible {
+  outline: 2px solid rgba(26, 115, 232, 0.34) !important;
+  outline-offset: 2px !important;
 }
 
 .g-icon-btn {
@@ -1065,9 +1109,13 @@
   background: rgba(26, 115, 232, 0.09) !important;
 }
 
-/* 釘住時頂部顯示藍色細線，作為狀態提示 */
+/* 釘住時頂部顯示綠色細線，絕對定位避免推擠 header */
 #gemini-result-card.g-pinned {
-  border-top: 2px solid rgba(26, 115, 232, 0.45) !important;
+  border-top: 0 !important;
+}
+
+#gemini-result-card.g-pinned::before {
+  height: 3px !important;
 }
 
 /* ════════════════════════════════════════════════

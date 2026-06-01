@@ -6,6 +6,7 @@ function createResultCard() {
   el.innerHTML = `
     <div class="g-rc-header">
       <span class="g-rc-tag"></span>
+      <select class="g-rc-model-select" title="切換模型" aria-label="切換模型"></select>
       <div class="g-rc-actions">
         <button class="g-icon-btn g-pin" title="釘住結果卡">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -75,6 +76,8 @@ function createResultCard() {
       </div>
     </div>
   `;
+
+  initModelSwitcher(el);
 
   // ── Pin 按鈕 ───────────────────────────────────────
   el.querySelector('.g-pin').addEventListener('click', e => {
@@ -268,7 +271,7 @@ function createResultCard() {
 
   // ── 拖曳（按住 header 移動結果卡）────────────────
   el.querySelector('.g-rc-header').addEventListener('mousedown', e => {
-    if (e.target.closest('.g-icon-btn')) return;
+    if (e.target.closest('.g-icon-btn, select, input, button')) return;
     e.preventDefault();
     const rect = el.getBoundingClientRect();
     dragState = {
@@ -448,6 +451,36 @@ function renderResult(action, rawResult, selectedText, { fromHistory = false } =
   body.innerHTML = `<div class="g-text-body">${formatMarkdown(rawResult)}</div>`;
   showResultMeta(getResultLanguage(action));
   if (!fromHistory) saveToHistory(action, selectedText, rawResult, null);
+}
+
+function initModelSwitcher(el) {
+  const select = el.querySelector('.g-rc-model-select');
+  if (!select) return;
+  select.innerHTML = FanFanBaModels.MODELS.map(model =>
+    `<option value="${escapeHtml(model.id)}">${escapeHtml(model.name)}</option>`
+  ).join('');
+  syncResultCardModelSelect(el);
+
+  select.addEventListener('mousedown', e => e.stopPropagation());
+  select.addEventListener('click', e => e.stopPropagation());
+  select.addEventListener('change', async e => {
+    const nextModel = FanFanBaModels.normalizeModel(e.currentTarget.value);
+    if (nextModel === activeModel) return;
+    activeModel = nextModel;
+    responseCache.clear();
+    syncResultCardModelSelect(el);
+    await chrome.storage.sync.set({ model: nextModel });
+    if (activeAction && savedSel) triggerAction(activeAction);
+  });
+}
+
+function syncResultCardModelSelect(el = resultCard) {
+  const select = el?.querySelector('.g-rc-model-select');
+  if (!select) return;
+  const normalized = FanFanBaModels.normalizeModel(activeModel);
+  if ([...select.options].some(option => option.value === normalized)) {
+    select.value = normalized;
+  }
 }
 
 const CHEVRON_SVG = `<svg class="g-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
