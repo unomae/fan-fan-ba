@@ -6,9 +6,12 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   },
-  "permissions": ["storage", "identity"],
+  "permissions": [
+    "storage",
+    "identity"
+  ],
   "oauth2": {
-    "client_id": "REPLACE_WITH_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+    "client_id": "746116206567-g0nf43b660e9022117gvp8p7cme1i82v.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/drive.appdata"
     ]
@@ -25,7 +28,9 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "<all_urls>"
+      ],
       "js": [
         "models.js",
         "content/state.js",
@@ -39,7 +44,9 @@
         "content/floating-ball.js",
         "content/main.js"
       ],
-      "css": ["content.css"],
+      "css": [
+        "content.css"
+      ],
       "run_at": "document_idle"
     }
   ],
@@ -65,8 +72,13 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["fonts/jf-openhuninn-2.1.ttf", "icons/icon48.png"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "fonts/jf-openhuninn-2.1.ttf",
+        "icons/icon48.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

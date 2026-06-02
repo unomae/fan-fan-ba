@@ -484,7 +484,7 @@ options.js</pre>
 
       <section id="cloud-sync-plan">
         <h2>v1.7.0 Cloud Sync</h2>
-        <div class="callout">v1.7.0 只同步一般設定到 Google Drive appData，不同步 API Key。API Key 加密雲端備份排入 <code>v1.7.1 Encrypted Secrets Backup</code>。</div>
+        <div class="callout">v1.7.0 只同步一般設定到 Google Drive appData，不同步 API Key。第一版採 Chrome-only OAuth；API Key 加密雲端備份排入 <code>v1.7.1 Encrypted Secrets Backup</code>，Edge / Chromium 通用登入排入 <code>v1.7.2 Cross-browser OAuth</code>。</div>
         <table style="margin-top:12px;">
           <thead>
             <tr><th>項目</th><th>內容</th><th>狀態</th></tr>
@@ -494,7 +494,8 @@ options.js</pre>
             <tr><td>不納入範圍</td><td>Gemini / Groq / OpenRouter / TTS API Key、單字本資料、查詢歷史。</td><td><span class="pill green">已限制</span></td></tr>
             <tr><td>Google Drive</td><td>使用 <code>drive.appdata</code> scope，將 <code>fan-fan-ba-cloud-settings.json</code> 存到 appDataFolder。</td><td><span class="pill green">已實作 helper</span></td></tr>
             <tr><td>Options UI</td><td>新增「雲端同步」分頁：登入 Google、上傳目前設定、下載雲端設定、登出、同步狀態。</td><td><span class="pill green">已實作</span></td></tr>
-            <tr><td>OAuth Client ID</td><td><code>manifest.json</code> 目前保留 placeholder；正式測試前需換成 Google Cloud OAuth Client ID。</td><td><span class="pill orange">待設定</span></td></tr>
+            <tr><td>OAuth Client ID</td><td><code>manifest.json</code> 已替換為 Google Cloud OAuth Client ID，可先在 Google Chrome 載入未封裝 extension 後手測。</td><td><span class="pill green">已設定</span></td></tr>
+            <tr><td>瀏覽器支援</td><td>目前使用 <code>chrome.identity.getAuthToken</code>，Google Chrome 可測；Microsoft Edge 官方不支援此 API，需改用 <code>identity.launchWebAuthFlow</code> 才能跨瀏覽器通用。</td><td><span class="pill orange">Chrome-only</span></td></tr>
             <tr><td>衝突策略</td><td>第一版採手動操作：使用者明確選擇上傳本機設定或下載雲端設定。</td><td><span class="pill green">已定義</span></td></tr>
           </tbody>
         </table>
@@ -820,8 +821,18 @@ options.js</pre>
           </div>
           <div class="phase">
             <strong>v1.7.0：Cloud Sync</strong>
-            <p>Google Drive appData 同步一般設定，不含 API Key；提供登入、上傳、下載、登出與狀態提示。API Key 加密同步排入 v1.7.1。</p>
+            <p>Google Drive appData 同步一般設定，不含 API Key；提供登入、上傳、下載、登出與狀態提示。第一版使用 <code>chrome.identity.getAuthToken</code>，先以 Google Chrome 手動測試。</p>
             <span class="pill orange">進行中</span>
+          </div>
+          <div class="phase">
+            <strong>v1.7.1：Encrypted Secrets Backup</strong>
+            <p>使用者自訂密碼後，以 Web Crypto 派生金鑰加密 API Key；匯出 / 還原或未來雲端 secrets backup 時，還原端需輸入同一組密碼解密。</p>
+            <span class="pill orange">待排程</span>
+          </div>
+          <div class="phase">
+            <strong>v1.7.2：Cross-browser OAuth</strong>
+            <p>將 Cloud Sync 登入從 <code>getAuthToken</code> 改為 <code>identity.launchWebAuthFlow</code>，支援 Edge / Chrome / Chromium browser 共用 Google Drive appData OAuth 流程。</p>
+            <span class="pill orange">待排程</span>
           </div>
           <div class="phase">
             <strong>v1.8.0+：Vocabulary Pro / Full-page Stable</strong>
@@ -838,6 +849,12 @@ options.js</pre>
             <tr><th>日期</th><th>版本線</th><th>完成事項</th><th>驗證 / 注意</th></tr>
           </thead>
           <tbody>
+            <tr>
+              <td>2026-06-02</td>
+              <td><code>v1.7.0 / v1.7.2</code></td>
+              <td>Cloud Sync OAuth 手測時確認 Microsoft Edge 不支援 <code>chrome.identity.getAuthToken</code>；v1.7.0 保持 Chrome-only，跨瀏覽器 OAuth 改排入 <code>v1.7.2 Cross-browser OAuth</code>。</td>
+              <td>Chrome 仍可用目前 Google Cloud OAuth Client ID 手測；若要 Edge / Chrome 共用，後續需改成 <code>identity.launchWebAuthFlow</code> 並處理各 browser extension ID / redirect URL。</td>
+            </tr>
             <tr>
               <td>2026-06-02</td>
               <td><code>v1.7.0</code></td>
