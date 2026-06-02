@@ -31,6 +31,13 @@ describe('content CSS UI safeguards', () => {
     expect(css).toContain('margin: 0 0 4px !important;');
   });
 
+  it('hides the autosave-bar bottom border until it is shown (no leaked green line)', () => {
+    // 收合狀態 border 寬度必須是 0，避免 max-height:0 時漏出一條綠線
+    expect(css).toContain('border-bottom:   0 solid #bbf7d0 !important;');
+    // 只有 .show 時才補回 1px 分隔線
+    expect(css).toMatch(/\.g-autosave-bar\.show\s*{[^}]*border-bottom-width:\s*1px\s*!important;/);
+  });
+
   it('respects reduced motion preferences for injected UI', () => {
     expect(css).toContain('@media (prefers-reduced-motion: reduce)');
     expect(css).toContain('animation: none !important;');

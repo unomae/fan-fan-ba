@@ -58,7 +58,7 @@ describe('result card positioning', () => {
     expect(context.resultCard.style.left).toBe('268px');
   });
 
-  it('falls back to the right side of the selected word when toolbar-below space is insufficient', () => {
+  it('stays below the toolbar (left-aligned) and clamps vertically when space is tight', () => {
     document.body.innerHTML = '';
     Object.defineProperty(window, 'innerWidth', { value: 900, configurable: true });
     Object.defineProperty(window, 'innerHeight', { value: 320, configurable: true });
@@ -104,7 +104,54 @@ describe('result card positioning', () => {
 
     context.positionResultCard({ left: 268, right: 388, top: 110, bottom: 152 });
 
+    // 即使工具列下方放不下整張卡，也維持左緣對齊工具列，只把 top 夾回視窗內
     expect(context.resultCard.style.top).toBe('92px');
-    expect(context.resultCard.style.left).toBe('208px');
+    expect(context.resultCard.style.left).toBe('268px');
+  });
+
+  it('ignores a non-rect anchor (rAF timestamp) and falls back to the stored anchor', () => {
+    document.body.innerHTML = '';
+    Object.defineProperty(window, 'innerWidth', { value: 900, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 700, configurable: true });
+
+    const context = vm.createContext({
+      window,
+      document,
+      navigator,
+      chrome,
+      console,
+      setTimeout,
+      clearTimeout,
+      FanFanBaModels: {
+        MODELS: [{ id: 'gemini-3', name: 'Gemini 3' }],
+        normalizeModel: model => model || 'gemini-3'
+      },
+      activeModel: 'gemini-3',
+      userDragged: false,
+      // 觸發時已存好的工具列錨點
+      resultCardAnchorRect: { left: 268, right: 388, top: 110, bottom: 152 },
+      responseCache: new Map(),
+      escapeHtml: value => String(value),
+      loadRecentFolders: jest.fn(async () => []),
+      hideAutoSaveToast: jest.fn()
+    });
+    context.globalThis = context;
+
+    runContentScript('content/result-card.js', context);
+    context.resultCard = context.createResultCard();
+    Object.defineProperty(context.resultCard, 'offsetWidth', { value: 500, configurable: true });
+    Object.defineProperty(context.resultCard, 'offsetHeight', { value: 220, configurable: true });
+    context.savedSel = {
+      range: {
+        getBoundingClientRect: () => ({ left: 120, right: 200, top: 180, bottom: 202, width: 80, height: 22 })
+      }
+    };
+
+    // 模擬 requestAnimationFrame(positionResultCard) 會傳進來的 timestamp 數字
+    context.positionResultCard(1234.56);
+
+    // 應沿用 resultCardAnchorRect（工具列下方、左緣對齊），不可掉進選字置中分支
+    expect(context.resultCard.style.top).toBe('160px');
+    expect(context.resultCard.style.left).toBe('268px');
   });
 });

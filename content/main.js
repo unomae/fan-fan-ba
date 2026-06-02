@@ -251,7 +251,8 @@ function sendNonStreaming(action, selectedText, context, pageTitle, cacheKey, re
         responseCache.set(cacheKey, response.result);
         renderResult(action, response.result, selectedText);
         if (response.notice) showResultNotice(response.notice);
-        requestAnimationFrame(positionResultCard);
+        // 用箭頭函式傳入 anchorRect，否則 rAF 會把 timestamp 當 anchorRect → 掉進選字置中分支（卡片亂跑）
+        requestAnimationFrame(() => positionResultCard(resultCardAnchorRect));
       }
     );
   } catch {
@@ -287,7 +288,8 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey, requ
       renderResult(action, accumulated, selectedText);
       if (streamNotice) showResultNotice(streamNotice);
       responseCache.set(cacheKey, accumulated);
-      requestAnimationFrame(positionResultCard);
+      // 同上：箭頭函式傳 anchorRect，避免 rAF timestamp 觸發選字置中分支
+      requestAnimationFrame(() => positionResultCard(resultCardAnchorRect));
       if (activeStreamPort === port) activeStreamPort = null;
       port.disconnect();
       return;

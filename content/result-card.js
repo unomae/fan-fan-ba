@@ -387,21 +387,16 @@ function positionResultCard(anchorRect = resultCardAnchorRect) {
     const margin = 8;
     const cardW  = resultCard.offsetWidth || Math.min(500, window.innerWidth - margin * 2);
     const cardH  = resultCard.offsetHeight || 200;
-    const toolbarRect = anchorRect || resultCardAnchorRect || toolbar?.getBoundingClientRect?.();
+    // 防呆：anchorRect 必須是帶有有限 bottom 的 rect；若被傳成 timestamp 數字等垃圾值就忽略，改用儲存的錨點
+    const validAnchor = anchorRect && Number.isFinite(anchorRect.bottom) ? anchorRect : null;
+    const toolbarRect = validAnchor || resultCardAnchorRect || toolbar?.getBoundingClientRect?.();
 
     let top;
     let left;
     if (toolbarRect && Number.isFinite(toolbarRect.bottom)) {
+      // 固定在工具列正下方、左緣對齊工具列；不再因內容變高溢出就跳到選取文字旁邊
       top = toolbarRect.bottom + margin;
       left = toolbarRect.left;
-
-      if (top + cardH > window.innerHeight - margin) {
-        top = rect.top;
-        left = rect.right + margin;
-        if (left + cardW > window.innerWidth - margin) {
-          left = rect.left - cardW - margin;
-        }
-      }
     } else {
       const th = toolbar?.offsetHeight || 40;
       top = rect.bottom + th + margin * 2;
