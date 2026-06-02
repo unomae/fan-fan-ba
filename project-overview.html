@@ -306,17 +306,25 @@
         </div>
       </div>
       <nav>
+        <a href="#hub-policy">文件入口</a>
         <a href="#status">現況</a>
         <a href="#structure">專案結構</a>
         <a href="#architecture">架構流程</a>
         <a href="#settings">設定與 Storage</a>
+        <a href="#cloud-sync-plan">Cloud Sync</a>
+        <a href="#settings-ui-plan">設定頁方案</a>
         <a href="#features">功能清單</a>
+        <a href="#decisions">決策紀錄</a>
+        <a href="#vocabulary-plan">單字本</a>
+        <a href="#page-translation-ux">全文 UX</a>
+        <a href="#release-qa">v1.6.3 QA</a>
         <a href="#roadmap">Roadmap</a>
+        <a href="#session-log">Session Log</a>
         <a href="#cleanup">清理候選</a>
         <a href="#maintenance">更新規則</a>
       </nav>
       <div class="side-note">
-        之後新增功能、調整架構、改設定 key、更新 roadmap，優先更新這份 HTML。
+        之後新增功能、調整架構、改設定 key、更新 roadmap，只更新這份 HTML。
       </div>
     </aside>
 
@@ -324,15 +332,33 @@
       <header>
         <div>
           <h1>翻翻吧專案總覽與 Roadmap</h1>
-          <p class="lead">這份文件整理目前 Chrome / Edge extension 的架構、設定、功能狀態、測試方式、roadmap 與可清理候選。目標是讓之後每次更新都有一個固定的專案記憶入口。</p>
+          <p class="lead">這份文件是翻翻吧唯一專案記憶入口，已整合原本散落的 review HTML、vocabulary roadmap、全文翻譯 UX review 與 session context。之後專案進度、roadmap、決策與驗證狀態都更新在這裡。</p>
         </div>
         <div class="meta-row">
           <span class="pill green">版本 1.6.0</span>
           <span class="pill blue">Manifest V3</span>
-          <span class="pill">最後更新 2026-05-28</span>
-          <span class="pill orange">文件狀態：初版</span>
+          <span class="pill">最後更新 2026-06-02</span>
+          <span class="pill orange">文件狀態：主入口</span>
         </div>
       </header>
+
+      <section id="hub-policy">
+        <h2>文件入口</h2>
+        <div class="callout">以後專案狀態、phase plan、review 結論、session context、待辦與驗證結果都寫在這份 <code>project-overview.html</code>。舊 review HTML 與 <code>SESSION_CONTEXT.md</code> 已移到 <code>archive/</code>，僅保留為歷史快照，不再作為接手依據。</div>
+        <table style="margin-top:12px;">
+          <thead>
+            <tr><th>舊文件</th><th>已併入主文件的內容</th><th>後續狀態</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>archive/SESSION_CONTEXT.md</code></td><td>近期進度、驗證指令、環境阻塞、Roadmap 編碼對照、開發偏好。</td><td><span class="pill orange">歷史快照</span></td></tr>
+            <tr><td><code>archive/project-review-roadmap.html</code></td><td>產品 / 工程 / UI / 使用者視角 review、Phase 2A/2B/2C/3 決策。</td><td><span class="pill orange">歷史快照</span></td></tr>
+            <tr><td><code>archive/vocabulary-notebook-roadmap.html</code></td><td>單字本資料模型、Obsidian one-way export、P1.1-P1.5 完成狀態、後續 Vocabulary Pro。</td><td><span class="pill orange">歷史快照</span></td></tr>
+            <tr><td><code>archive/page-translation-ux-review.html</code></td><td>全文翻譯段落呈現、pair id、同步高亮、複製譯文 / 雙語、定位原文規劃。</td><td><span class="pill orange">歷史快照</span></td></tr>
+            <tr><td><code>archive/code-review-optimization-suggestions.md</code></td><td>2026-06-01 code review：API Key 隱私一致性、content script 開設定頁、request abort、responsive、a11y、測試與環境風險。</td><td><span class="pill orange">歷史快照</span></td></tr>
+            <tr><td><code>archive/settings-page-integration-ideas.html</code></td><td>設定頁整合方案：分頁式設定中心、初次設定精靈、總覽儀表板；採用方案 A 作為正式版優先方向。</td><td><span class="pill orange">歷史快照</span></td></tr>
+          </tbody>
+        </table>
+      </section>
 
       <section id="status">
         <h2>現況</h2>
@@ -347,11 +373,11 @@
           </div>
           <div class="card">
             <h3>目前重點</h3>
-            <p>浮球 UI 已加入設定入口與一致間距；全文翻譯 Beta 正在補強短標題、重複段落與可見區域收集穩定性。</p>
+            <p>目前版本線是 v1.6.x：設定備份 / 還原、API Key local storage、Obsidian 精準路徑、request abort、responsive 與 a11y hardening 已完成；下一步建議進 v1.6.3 實站 QA。</p>
           </div>
           <div class="card">
             <h3>最新進展</h3>
-            <p>2026-05-28 修正全文翻譯短標題誤走字典 JSON、父子節點重複翻譯，以及浮球停用 icon 位置與 tooltip 文案。</p>
+            <p>2026-06-02 已把舊 Phase 編碼對齊版本里程碑，並整合散落 review / roadmap / session context 到本文件。Jest 仍因 Windows / OneDrive 權限 <code>EPERM</code> 阻塞，依指示暫不修環境。</p>
           </div>
         </div>
       </section>
@@ -366,6 +392,7 @@
             <tr><td><code>manifest.json</code></td><td>Chrome extension manifest，定義權限、content scripts、background、popup、options。</td><td><span class="pill green">必要</span></td></tr>
             <tr><td><code>background.js</code></td><td>Service worker，負責 AI API 請求、streaming、OpenRouter fallback、安裝事件。</td><td><span class="pill green">必要</span></td></tr>
             <tr><td><code>models.js</code></td><td>模型、語言、TTS 偏好、migration、provider 判斷與 hash 工具。</td><td><span class="pill green">必要</span></td></tr>
+            <tr><td><code>cloud-sync.js</code></td><td>Google Drive appData 雲端同步 helper，負責 OAuth 狀態、payload schema、Drive API 上傳 / 下載。</td><td><span class="pill green">必要</span></td></tr>
             <tr><td><code>content/</code></td><td>注入網頁的功能模組，包含工具列、結果卡、浮球、全文翻譯、單字本、高亮、Obsidian、共用狀態。</td><td><span class="pill green">必要</span></td></tr>
             <tr><td><code>content.css</code></td><td>所有 content script UI 樣式，使用高 specificity 與 <code>!important</code> 隔離宿主頁樣式。</td><td><span class="pill green">必要</span></td></tr>
             <tr><td><code>popup.html</code> / <code>popup.js</code></td><td>extension toolbar popup，呈現目前模型/API 狀態與快速設定入口。</td><td><span class="pill green">必要</span></td></tr>
@@ -420,6 +447,11 @@ content/result-card.js
 content/page-translator.js
 content/floating-ball.js
 content/main.js</pre>
+        <h3 style="margin-top:14px;">Options page 額外載入</h3>
+        <pre>models.js
+storage.js
+cloud-sync.js
+options.js</pre>
       </section>
 
       <section id="settings">
@@ -431,21 +463,72 @@ content/main.js</pre>
           <tbody>
             <tr><td><code>model</code></td><td><code>chrome.storage.sync</code></td><td>一般選字翻譯/解釋/優化的預設模型。</td></tr>
             <tr><td><code>pageTranslationModel</code></td><td><code>chrome.storage.sync</code></td><td>右側浮球啟動全文翻譯時使用的模型。</td></tr>
-            <tr><td><code>apiKey</code></td><td><code>chrome.storage.sync</code></td><td>Gemini API Key。</td></tr>
-            <tr><td><code>groqApiKey</code></td><td><code>chrome.storage.sync</code></td><td>Groq API Key。</td></tr>
-            <tr><td><code>openrouterApiKey</code></td><td><code>chrome.storage.sync</code></td><td>OpenRouter API Key。</td></tr>
+            <tr><td><code>apiKey</code></td><td><code>chrome.storage.local</code></td><td>Gemini API Key；啟動時會從舊 sync key migration 到 local。</td></tr>
+            <tr><td><code>groqApiKey</code></td><td><code>chrome.storage.local</code></td><td>Groq API Key；不跟 Chrome 帳號同步。</td></tr>
+            <tr><td><code>openrouterApiKey</code></td><td><code>chrome.storage.local</code></td><td>OpenRouter API Key；不跟 Chrome 帳號同步。</td></tr>
             <tr><td><code>targetLanguage</code></td><td><code>chrome.storage.sync</code></td><td>翻譯目標語言。</td></tr>
             <tr><td><code>explanationLanguage</code></td><td><code>chrome.storage.sync</code></td><td>解釋/優化說明輸出語言。</td></tr>
             <tr><td><code>ttsLanguageMode</code></td><td><code>chrome.storage.sync</code></td><td>單字卡朗讀語音模式。</td></tr>
             <tr><td><code>vocabularyHighlightMode</code></td><td><code>chrome.storage.sync</code></td><td>單字高亮全域模式：關閉或自動高亮已收藏單字。</td></tr>
-            <tr><td><code>ttsApiKey</code></td><td><code>chrome.storage.sync</code></td><td>Google Cloud TTS API Key。</td></tr>
+            <tr><td><code>ttsApiKey</code></td><td><code>chrome.storage.local</code></td><td>Google Cloud TTS API Key；不跟 Chrome 帳號同步。</td></tr>
             <tr><td><code>obsidianVault</code></td><td><code>chrome.storage.sync</code></td><td>Obsidian Vault 名稱。</td></tr>
             <tr><td><code>obsidianDefaultFolder</code></td><td><code>chrome.storage.sync</code></td><td>Obsidian 預設寫入資料夾。</td></tr>
             <tr><td><code>fanFanBaVocabularyItems</code></td><td><code>chrome.storage.local</code></td><td>本地單字本 keyed object map。</td></tr>
             <tr><td><code>fanFanBaFloatingPosition</code></td><td><code>chrome.storage.local</code></td><td>每個 host 的浮球 top 與左右吸附位置。</td></tr>
             <tr><td><code>fanFanBaPaused:&lt;host&gt;</code></td><td><code>chrome.storage.local</code></td><td>每個網站的暫停狀態。</td></tr>
+            <tr><td><code>fanFanBaCloudDeviceId</code></td><td><code>chrome.storage.local</code></td><td>雲端同步用裝置識別碼，不含個資或 API Key。</td></tr>
+            <tr><td><code>fanFanBaCloudSyncMeta</code></td><td><code>chrome.storage.local</code></td><td>最後上傳 / 下載時間、Drive file id 等同步狀態。</td></tr>
           </tbody>
         </table>
+      </section>
+
+      <section id="cloud-sync-plan">
+        <h2>v1.7.0 Cloud Sync</h2>
+        <div class="callout">v1.7.0 只同步一般設定到 Google Drive appData，不同步 API Key。API Key 加密雲端備份排入 <code>v1.7.1 Encrypted Secrets Backup</code>。</div>
+        <table style="margin-top:12px;">
+          <thead>
+            <tr><th>項目</th><th>內容</th><th>狀態</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>同步範圍</td><td>模型、全文翻譯模型、翻譯語言、解釋語言、TTS 模式、單字高亮、Obsidian Vault / folder。</td><td><span class="pill green">已實作</span></td></tr>
+            <tr><td>不納入範圍</td><td>Gemini / Groq / OpenRouter / TTS API Key、單字本資料、查詢歷史。</td><td><span class="pill green">已限制</span></td></tr>
+            <tr><td>Google Drive</td><td>使用 <code>drive.appdata</code> scope，將 <code>fan-fan-ba-cloud-settings.json</code> 存到 appDataFolder。</td><td><span class="pill green">已實作 helper</span></td></tr>
+            <tr><td>Options UI</td><td>新增「雲端同步」分頁：登入 Google、上傳目前設定、下載雲端設定、登出、同步狀態。</td><td><span class="pill green">已實作</span></td></tr>
+            <tr><td>OAuth Client ID</td><td><code>manifest.json</code> 目前保留 placeholder；正式測試前需換成 Google Cloud OAuth Client ID。</td><td><span class="pill orange">待設定</span></td></tr>
+            <tr><td>衝突策略</td><td>第一版採手動操作：使用者明確選擇上傳本機設定或下載雲端設定。</td><td><span class="pill green">已定義</span></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="settings-ui-plan">
+        <h2>設定頁整合方案</h2>
+        <div class="callout">已採用方向：優先使用「方案 A：分頁式設定中心」。它能把單欄長表單收斂成可掃描的設定中心，同時對現有 <code>options.js</code> 與 storage 邏輯影響最小。</div>
+        <div class="grid">
+          <div class="card">
+            <h3>方案 A：分頁式設定中心</h3>
+            <ul>
+              <li>左側分組：模型與金鑰、語言與朗讀、Obsidian、隱私與說明。</li>
+              <li>使用者只看當下要改的區塊，API Key 集中在「模型與金鑰」。</li>
+              <li>推薦給正式版：主要是 HTML / CSS 結構調整，開發量低、可維護性高。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>方案 B：初次設定精靈</h3>
+            <ul>
+              <li>流程化：選 AI 供應商、輸入 API Key、設定語言與朗讀、接 Obsidian。</li>
+              <li>適合 onboarding 或首次安裝導引。</li>
+              <li>若目標是快速修設定頁過長，先不作為第一優先。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>方案 C：總覽儀表板</h3>
+            <ul>
+              <li>首頁顯示設定健康度與常用偏好；少改的 API Key、安全說明、Obsidian 細節放可展開區塊。</li>
+              <li>適合已設定完成的使用者，日常打開時先看「是否正常」。</li>
+              <li>可作為方案 A 穩定後的進一步優化。</li>
+            </ul>
+          </div>
+        </div>
       </section>
 
       <section id="features">
@@ -466,6 +549,9 @@ content/main.js</pre>
               <li>全文翻譯 Beta 與段落密度模式。</li>
               <li>全文翻譯短標題使用純譯文 prompt，並對字典 JSON 回應做 fallback 清洗。</li>
               <li>全文翻譯段落收集去除父子節點與相同文字重複。</li>
+              <li>API Key 改存本機 local storage，設定頁支援 JSON 備份與還原。</li>
+              <li>Streaming / 非 streaming request timeout 會 abort 底層 fetch，停止全文翻譯會取消當前段落請求。</li>
+              <li>結果卡小視窗 header wrapping、主要 icon action aria-label、focus-visible 與 reduced motion 補強。</li>
             </ul>
           </div>
           <div class="card">
@@ -496,45 +582,313 @@ content/main.js</pre>
         </div>
       </section>
 
+      <section id="decisions">
+        <h2>決策紀錄</h2>
+        <div class="grid two">
+          <div class="card">
+            <h3>產品與工程方向</h3>
+            <ul>
+              <li>同意先做模型 registry、設定 migration、快取 key 改良與 provider fallback，再擴充更多產品功能。</li>
+              <li>同意右側常駐浮球作為穩定入口，承接最近查詢、單字本、全文翻譯、暫停網站與設定。</li>
+              <li>同意語言偏好從隱性 prompt 變成明確設定，包含目標語言、解釋語言與 TTS 語音模式。</li>
+              <li>全文翻譯先做可見段落 Beta，不直接做完整全頁替換，避免成本、效能與 DOM 相容性風險。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>近期重要決策</h3>
+            <ul>
+              <li>API Key 存在 <code>chrome.storage.local</code>，不跟 Chrome 帳號同步；設定備份預設不含 API Key。</li>
+              <li>設定匯出 / 匯入先用本機 JSON；Google Drive appData 同步排入 v1.7.0，API Key 上雲前必須先設計加密。</li>
+              <li>Obsidian 單字匯出完全依照使用者填寫資料夾，不再自動追加 <code>/單字本</code>。</li>
+              <li>Roadmap 以版本里程碑為主，不再使用舊文件裡的 Phase 2A / 2B / 2C / Phase 3 / P1 作為目前主線編碼。</li>
+            </ul>
+          </div>
+        </div>
+        <h3 style="margin-top:14px;">Code Review 收斂狀態</h3>
+        <table>
+          <thead>
+            <tr><th>Review 項目</th><th>處理狀態</th><th>版本歸屬 / 後續</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>API Key 儲存方式與隱私文案一致</td><td>API Key 改由 <code>storage.js</code> 統一管理並存 <code>chrome.storage.local</code>；設定備份預設不匯出 key。</td><td><span class="pill green">v1.6.1 完成</span></td></tr>
+            <tr><td>Content script 開設定頁不直接呼叫不穩 API</td><td>浮球透過 <code>OPEN_OPTIONS</code> message 交給 background 開啟 options page。</td><td><span class="pill green">v1.6.1 完成</span></td></tr>
+            <tr><td>Streaming / 全文翻譯 timeout 需 abort 底層 fetch</td><td>Non-streaming、streaming retry sleep、SSE reader 與全文翻譯停止流程已接 abort / stopping state。</td><td><span class="pill green">v1.6.1 / v1.6.2 完成</span></td></tr>
+            <tr><td>結果卡窄視窗 responsive 與定位穩定</td><td>結果卡寬度與 header wrapping 已補強，rAF timestamp 定位 bug 已加防回歸。</td><td><span class="pill green">v1.6.0 / v1.6.2 完成</span></td></tr>
+            <tr><td>鍵盤可及性與 icon action 語意</td><td>主要按鈕補 <code>type="button"</code>、<code>aria-label</code> 與更多 <code>:focus-visible</code>。</td><td><span class="pill green">v1.6.2 完成</span></td></tr>
+            <tr><td>Coverage 偏低、Git / OneDrive 權限風險</td><td>測試檔有持續補，但 Windows 目前受 <code>EPERM</code> 與 git metadata 權限問題影響。</td><td><span class="pill orange">環境待處理；本輪不修</span></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="vocabulary-plan">
+        <h2>單字本規劃</h2>
+        <div class="grid two">
+          <div class="card">
+            <h3>核心邊界</h3>
+            <ul>
+              <li>Extension 本地資料是主資料庫，使用 <code>fanFanBaVocabularyItems</code> keyed object map 管理收藏、查重、來源、熟悉度與高亮狀態。</li>
+              <li>Obsidian 是沉澱出口，只做 one-way export，不從 Markdown 反向同步回 extension。</li>
+              <li>同字去重規則採 <code>lang:normalizedWord</code>；每個單字最多保留近 5 筆來源，避免 local storage 物件過大。</li>
+              <li>高亮預設關閉，由使用者在設定頁開啟，並限制可見區域、文字節點數量與標記數量。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>完成狀態</h3>
+            <ul>
+              <li>P1.1 本地單字本核心：完成。</li>
+              <li>P1.2 Obsidian 匯出：完成；目前路徑完全依設定欄位。</li>
+              <li>P1.3 單字本 UI：完成，含浮球入口、今日新增、全部、搜尋、刪除、單筆複製。</li>
+              <li>P1.4 頁面高亮：Beta 完成，含網站級開關與效能上限。</li>
+              <li>P1.5 輕量複習：完成，含最近遇到、最常遇到、還不熟、已記得與熟悉度切換。</li>
+            </ul>
+          </div>
+        </div>
+        <table style="margin-top:12px;">
+          <thead>
+            <tr><th>後續方向</th><th>價值</th><th>版本歸屬</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>真正 <code>.xlsx</code> 匯出</td><td>保留欄寬、工作表與格式，降低 Excel 使用門檻。</td><td><code>v1.8.0+</code></td></tr>
+            <tr><td>單字本備份 / 匯入</td><td>讓使用者可搬移單字資料，避免移除 extension 後流失。</td><td><code>v1.8.0+</code></td></tr>
+            <tr><td>IndexedDB migration</td><td>單字量接近數千筆時降低單一 storage object 負擔。</td><td><code>v1.8.0+</code></td></tr>
+            <tr><td>高亮斷詞改善</td><td>減少英文詞形、大小寫與多語詞彙漏標 / 誤標。</td><td><code>v1.8.0+</code></td></tr>
+            <tr><td>進階複習 / SRS</td><td>加入每日佇列、間隔提醒、錯題回看。</td><td><code>v1.8.0+</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="page-translation-ux">
+        <h2>全文翻譯 UX</h2>
+        <div class="callout">建議路線：先做好雙語段落卡、pair id 與視覺同步高亮；不要第一版就嘗試真正雙區文字反白，因為 Chromium Selection API 對 multiple ranges 支援不可靠。</div>
+        <div class="grid">
+          <div class="card">
+            <h3>段落呈現</h3>
+            <ul>
+              <li>譯文卡像輕量閱讀註解：淡綠底、左側品牌色線、小型語言 / 模型 label。</li>
+              <li>降低 shadow 與大卡片感，避免長文頁被工具 UI 切碎。</li>
+              <li>長譯文可折疊，並用密度設定控制頁面節奏。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>同步互動</h3>
+            <ul>
+              <li>原文段落與譯文卡綁定相同 <code>data-ffb-pair-id</code>。</li>
+              <li>使用者選取或 hover 原文時，對應譯文卡加上 active 樣式；反向選譯文也同步高亮原文。</li>
+              <li>點譯文卡只設定 pair active，不強制改變瀏覽器原生 selection。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>操作補強</h3>
+            <ul>
+              <li>複製譯文、複製雙語、定位原文、重試此段排入 <code>v1.8.0+</code>。</li>
+              <li>定位原文在只看譯文模式下需先切回雙語或原文可見。</li>
+              <li>Esc 或點空白處取消 pair active。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="release-qa">
+        <h2>v1.6.3 Release QA</h2>
+        <div class="callout">v1.6.3 的範圍是上線前真實網站驗收與低風險修補，不加入 Cloud Sync、xlsx、IndexedDB、SRS 或全文翻譯複製 / 定位大功能。</div>
+        <table style="margin-top:12px;">
+          <thead>
+            <tr><th>QA 面向</th><th>驗收項目</th><th>目前狀態</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>實站矩陣</td><td>Gmail、Notion、Google Docs / 類文件頁、新聞頁、長文章、部落格 / 文件頁、含大量 sidebar / nav / button 的頁面。</td><td><span class="pill orange">待手動實測</span></td></tr>
+            <tr><td>全文翻譯 DOM 干擾</td><td>不翻 toolbar、menu、dialog、status、editable、button/input/form/code/nav/header/footer/aside；不重複翻父子節點與相同文字。</td><td><span class="pill green">本輪補強</span></td></tr>
+            <tr><td>全文翻譯控制</td><td>停止時顯示「正在停止 X/Y」並取消當前 request；完成後顯示「已停止 X/Y」；原文 / 譯文 / 雙語模式切換不殘留壞 DOM。</td><td><span class="pill green">測試補強</span></td></tr>
+            <tr><td>結果卡回歸</td><td>單字翻譯完成後不亂跳、autosave bar 不冒綠線、pin/history/copy/Obsidian/收藏可用、小視窗 header wrapping 正常。</td><td><span class="pill green">已有防回歸</span></td></tr>
+            <tr><td>設定備份 / 還原</td><td>不含 API Key 匯出、含 API Key 二次確認、匯入 schema 白名單、成功回報設定與 key 數量。</td><td><span class="pill green">已有測試</span></td></tr>
+            <tr><td>Obsidian / 單字本</td><td>單字匯出完全依使用者填寫資料夾，不自動加 <code>/單字本</code>；收藏同字不重複 append；高亮不標翻翻吧 UI 與互動區。</td><td><span class="pill green">測試更新</span></td></tr>
+            <tr><td>文件與上線收尾</td><td>更新本文件 Session Log、README / privacy / store listing 文案一致性、記錄 Windows / OneDrive 權限阻塞。</td><td><span class="pill green">本輪更新</span></td></tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin-top:14px;">手動 QA 前置設定</h3>
+        <table>
+          <thead>
+            <tr><th>項目</th><th>確認方式</th><th>結果</th><th>備註</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Extension 已重新載入</td><td>到 <code>chrome://extensions</code> / <code>edge://extensions</code> reload 翻翻吧，並重整測試網頁。</td><td>TODO</td><td>Content script / CSS 修改後必須重整網頁。</td></tr>
+            <tr><td>API Key 可用</td><td>設定頁測試 Groq / Gemini / OpenRouter 至少一個 provider 可成功。</td><td>TODO</td><td>建議先用預設 Groq。</td></tr>
+            <tr><td>Obsidian 設定</td><td>Vault 與資料夾已填；單字本資料夾應完全依欄位值，不自動加 <code>/單字本</code>。</td><td>TODO</td><td>例：<code>30_Knowledge/my-notes/languages/vocabulary</code>。</td></tr>
+            <tr><td>設定備份基準</td><td>先匯出一份不含 API Key 的設定 JSON，必要時可還原。</td><td>TODO</td><td>若測 API Key 匯出，確認有二次確認。</td></tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin-top:14px;">手動實站 QA 矩陣</h3>
+        <table>
+          <thead>
+            <tr><th>站點 / 情境</th><th>測試步驟</th><th>Pass 標準</th><th>結果</th><th>備註 / Issue</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Gmail</td>
+              <td>開一封英文信；選字翻譯；開浮球全文翻譯；按停止；切換雙語 / 譯文 / 原文。</td>
+              <td>不翻 toolbar、button、label；信件正文可翻；停止狀態正確；Gmail 操作不被破壞。</td>
+              <td>TODO</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>Notion</td>
+              <td>開一篇含標題、段落、todo / table 的頁面；測選字、全文翻譯、單字收藏與高亮。</td>
+              <td>不翻 editable block 或 toolbar；正文翻譯不破壞 Notion 編輯；高亮不標到 Notion UI。</td>
+              <td>TODO</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>Google Docs / 類文件頁</td>
+              <td>開文件頁；測浮球位置、暫停此網站、選字結果卡與設定入口。</td>
+              <td>浮球不遮主要編輯區；暫停後工具列 / 浮球狀態合理；設定入口可開 options。</td>
+              <td>TODO</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>新聞頁</td>
+              <td>開英文新聞；全文翻譯目前可見內容；往下捲後確認是否提示有新段落。</td>
+              <td>標題 / 段落可翻；不重複翻父子節點；不翻 nav / ads / sidebar；JSON 字典 fallback 不外露。</td>
+              <td>TODO</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>長文章 / 部落格</td>
+              <td>開長文；測全文翻譯、停止、還原、密度切換、長譯文折疊。</td>
+              <td>最多批次限制合理；停止與還原不殘留壞 DOM；頁面仍可閱讀與捲動。</td>
+              <td>TODO</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>結果卡窄視窗</td>
+              <td>把瀏覽器縮窄或分割視窗；選單字翻譯、段落翻譯、解釋、優化。</td>
+              <td>結果卡不超出視窗；header actions 不擠爆；單字翻譯完成後位置不亂跳。</td>
+              <td>TODO</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>Obsidian / 單字本</td>
+              <td>選英文單字翻譯並收藏；檢查單字本面板與 Obsidian 週記檔。</td>
+              <td>單字已收藏；同字不重複 append；Obsidian 寫入使用者指定資料夾；Markdown 可讀。</td>
+              <td>TODO</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>設定備份 / 還原</td>
+              <td>匯出不含 API Key JSON；匯入；再測含 API Key 匯出二次確認。</td>
+              <td>匯入成功回報數量；錯誤 schema 被拒；API Key 只有勾選後才明文匯出。</td>
+              <td>TODO</td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
       <section id="roadmap">
         <h2>Roadmap</h2>
         <div class="timeline">
           <div class="phase">
-            <strong>Phase 2A</strong>
-            <p>模型 registry、設定 migration、快取 key 改良、fallback 基礎。來源：<code>project-review-roadmap.html</code></p>
+            <strong>v1.2.x：上架前核心能力</strong>
+            <p>Obsidian 存入、錯誤重試、Groq 預設、welcome/privacy、結果卡歷史紀錄與基礎設計系統。</p>
             <span class="pill green">完成</span>
           </div>
           <div class="phase">
-            <strong>Phase 2B</strong>
-            <p>右側常駐浮球、最近查詢、設定入口、暫停網站、位置記憶。近期仍在 UI polishing。</p>
+            <strong>v1.3.x：模型與設定基礎</strong>
+            <p>模型 registry、設定 migration、快取 key 改良、OpenRouter fallback、目標語言 / 解釋語言 / TTS 偏好。</p>
             <span class="pill green">完成</span>
           </div>
           <div class="phase">
-            <strong>Phase 2C</strong>
-            <p>目標語言、解釋語言、TTS 語音偏好與 prompt 串接。</p>
+            <strong>v1.4.x：常駐入口與全文翻譯 Beta</strong>
+            <p>右側常駐浮球、收藏 / 紀錄入口、每站位置記憶、可見區域全文翻譯、雙語 / 譯文 / 原文模式。</p>
             <span class="pill green">完成</span>
           </div>
           <div class="phase">
-            <strong>P1 單字本</strong>
-            <p>本地單字本、Obsidian 匯出、單字本 UI、review 視圖、頁面高亮。來源：<code>vocabulary-notebook-roadmap.html</code></p>
+            <strong>v1.5.x：單字本與閱讀沉澱</strong>
+            <p>本地單字本、Obsidian 單字匯出、單字本 UI、review 視圖、頁面高亮、輕量複習。</p>
             <span class="pill green">完成</span>
           </div>
           <div class="phase">
-            <strong>Phase 3</strong>
-            <p>可見區域全文翻譯 Beta、段落翻譯卡、雙語/譯文/原文模式、可繼續翻譯新段落；已補短標題 prompt 與重複段落去重。</p>
-            <span class="pill blue">Beta</span>
+            <strong>v1.6.x：穩定性、備份與 A11y</strong>
+            <p>API Key local storage、JSON 備份 / 還原、Obsidian 路徑精準寫入、request abort、結果卡 responsive、focus-visible、reduced motion。</p>
+            <span class="pill green">目前版本</span>
           </div>
           <div class="phase">
-            <strong>Phase 3.1</strong>
-            <p>譯文卡視覺、pair id、原文/譯文 hover 與 selection 同步。來源：<code>page-translation-ux-review.html</code></p>
-            <span class="pill blue">進行中</span>
+            <strong>v1.6.3：Release Readiness + Real-site QA</strong>
+            <p>實站回測 Gmail / Notion / 新聞頁 / 長文章全文翻譯，降低 app shell / toolbar / dialog / editable 區誤翻風險，補商店與 README 上線收尾。</p>
+            <span class="pill orange">進行中</span>
           </div>
           <div class="phase">
-            <strong>Next</strong>
-            <p>實站回測全文翻譯漏翻案例，必要時調整 selector、minChars、maxBlocks 與 block scoring；再排設定 migration 版本化與單字本 export/import。</p>
+            <strong>v1.7.0：Cloud Sync</strong>
+            <p>Google Drive appData 同步一般設定，不含 API Key；提供登入、上傳、下載、登出與狀態提示。API Key 加密同步排入 v1.7.1。</p>
+            <span class="pill orange">進行中</span>
+          </div>
+          <div class="phase">
+            <strong>v1.8.0+：Vocabulary Pro / Full-page Stable</strong>
+            <p>單字本 xlsx 匯出、IndexedDB migration、高亮斷詞改善、進階複習、全文翻譯複製譯文 / 複製雙語 / 定位原文。</p>
             <span class="pill orange">待排程</span>
           </div>
         </div>
+      </section>
+
+      <section id="session-log">
+        <h2>Session Log</h2>
+        <table>
+          <thead>
+            <tr><th>日期</th><th>版本線</th><th>完成事項</th><th>驗證 / 注意</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>2026-06-02</td>
+              <td><code>v1.7.0</code></td>
+              <td>新增 <code>cloud-sync.js</code>、Google Drive appData payload schema、Options「雲端同步」分頁、manifest identity / OAuth placeholder、Drive upload / download helper；一般設定可上傳 / 下載，API Key 明確排除。</td>
+              <td><code>node --check cloud-sync.js/options.js/tests/cloud-sync.test.js/tests/options.test.js</code> 與 manifest / package JSON parse 通過；Jest 子集仍因 <code>content/vocabulary-highlighter.js</code> <code>EPERM</code> 在 haste map 階段失敗。正式手動測試前，需將 <code>manifest.json</code> 的 <code>REPLACE_WITH_GOOGLE_OAUTH_CLIENT_ID</code> 換成 Google Cloud OAuth Client ID。</td>
+            </tr>
+            <tr>
+              <td>2026-06-02</td>
+              <td><code>v1.6.3</code></td>
+              <td>新增手動 QA 前置設定與實站 QA 矩陣，方便 Gmail / Notion / Google Docs / 新聞頁 / 長文章 / Obsidian / 設定備份逐項回填。</td>
+              <td>此矩陣需在已載入 extension 且登入真實服務的瀏覽器中手動執行。</td>
+            </tr>
+            <tr>
+              <td>2026-06-02</td>
+              <td><code>v1.6.3</code></td>
+              <td>建立 Release QA 範圍；全文翻譯補強 app shell / toolbar / dialog / editable / 互動控制區排除；更新 Obsidian 單字匯出測試為精準資料夾；修正 privacy policy 與 store listing 的 API Key storage 文案。</td>
+              <td><code>node --check content/page-translator.js</code> 通過；<code>npx.cmd jest tests/content/page-translator.test.js tests/content/vocabulary.test.js --runInBand</code> 仍在 haste map 階段因 <code>content/vocabulary-highlighter.js</code> <code>EPERM</code> 失敗。</td>
+            </tr>
+            <tr>
+              <td>2026-06-02</td>
+              <td><code>v1.6.0</code></td>
+              <td>修正結果卡 header 下方綠線、rAF timestamp 導致結果卡定位亂跳；加入防回歸測試。</td>
+              <td>先前在 macOS 跑過 <code>npx jest</code> 13 suites / 57 tests passed；Windows 目前因 OneDrive 權限問題無法重跑完整 Jest。</td>
+            </tr>
+            <tr>
+              <td>2026-06-02</td>
+              <td><code>v1.6.1</code></td>
+              <td>設定 JSON 備份 / 還原、API Key local storage、Obsidian 單字路徑精準寫入、request abort / timeout。</td>
+              <td><code>node --check</code> 通過相關 JS；Jest 在 Windows / OneDrive 因 <code>content/vocabulary-highlighter.js</code> <code>EPERM</code> 阻塞，依指示不修環境。</td>
+            </tr>
+            <tr>
+              <td>2026-06-02</td>
+              <td><code>v1.6.2</code></td>
+              <td>結果卡小視窗 header wrapping、主要 icon aria-label、更多 focus-visible、reduced motion、全文翻譯 stopping 狀態、匯出 API Key 二次確認。</td>
+              <td><code>node --check background.js/options.js/content/result-card.js/content/page-translator.js</code> 與相關測試檔通過。</td>
+            </tr>
+            <tr>
+              <td>2026-06-02</td>
+              <td>文件整理</td>
+              <td>Roadmap 重新對齊版本里程碑，並把 review HTML、設定頁整合方案、單字本 roadmap、全文翻譯 UX review、code review、session context 統整進本文件。</td>
+              <td><code>archive/settings-page-integration-ideas.html</code> 需要較高權限唯讀才能讀取，已完成內容併入與歸檔。</td>
+            </tr>
+            <tr>
+              <td>2026-05-28</td>
+              <td><code>v1.4.x / v1.6.x</code></td>
+              <td>浮球設定 icon、停用 icon 定位、全文翻譯短標題純譯文 prompt、父子 / 重複段落去重、字典 JSON fallback。</td>
+              <td><code>npm test -- tests/content/page-translator.test.js tests/background.test.js tests/content/floating-ball.test.js --runInBand</code> 曾通過 3 suites / 15 tests。</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="callout danger" style="margin-top:12px;">Content script / CSS 修改後，只 reload 擴充不會重新注入已開啟分頁；必須刷新目標網頁才會看到新程式碼。</div>
       </section>
 
       <section id="cleanup">
@@ -563,8 +917,11 @@ content/main.js</pre>
           <div class="card">
             <h3>每次功能更新時</h3>
             <ul>
+              <li>只更新這份 <code>project-overview.html</code>；<code>archive/</code> 內舊 review HTML 與 <code>SESSION_CONTEXT.md</code> 不再作為目前計畫文件。</li>
               <li>更新「功能清單」與「Roadmap」。</li>
+              <li>更新「Session Log」，記錄完成事項、驗證指令與環境阻塞。</li>
               <li>若新增 storage key，更新「設定與 Storage」。</li>
+              <li>若調整 options page IA / UI，更新「設定頁整合方案」。</li>
               <li>若新增 content script 或調整載入順序，更新「架構流程」。</li>
               <li>若產生大型素材，更新「清理候選」。</li>
             </ul>

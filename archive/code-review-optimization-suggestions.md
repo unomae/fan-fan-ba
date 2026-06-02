@@ -1,5 +1,8 @@
 # 翻翻吧 Code Review 與優化建議
 
+> 狀態：**歷史快照，已併入 `project-overview.html`**。
+> 2026-06-02 起，code review 收斂狀態、後續工程風險與 roadmap 請只更新 `project-overview.html`；本檔保留作為 2026-06-01 review 原始紀錄。
+
 > Review 日期：2026-06-01  
 > 專案：`fan-fan-ba`  
 > 角度：軟體工程師、使用者、UI/UX 設計師

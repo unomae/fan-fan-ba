@@ -58,6 +58,39 @@ describe('result card positioning', () => {
     expect(context.resultCard.style.left).toBe('268px');
   });
 
+  it('adds accessible names to compact result-card actions', () => {
+    document.body.innerHTML = '';
+
+    const context = vm.createContext({
+      window,
+      document,
+      navigator,
+      chrome,
+      console,
+      setTimeout,
+      clearTimeout,
+      FanFanBaModels: {
+        MODELS: [{ id: 'gemini-3', name: 'Gemini 3' }],
+        normalizeModel: model => model || 'gemini-3'
+      },
+      activeModel: 'gemini-3',
+      responseCache: new Map(),
+      escapeHtml: value => String(value),
+      loadRecentFolders: jest.fn(async () => []),
+      hideAutoSaveToast: jest.fn()
+    });
+    context.globalThis = context;
+
+    runContentScript('content/result-card.js', context);
+    const card = context.createResultCard();
+
+    expect(card.querySelector('.g-pin').getAttribute('aria-label')).toBe('釘住結果卡');
+    expect(card.querySelector('.g-save-obs').getAttribute('aria-label')).toBe('存到 Obsidian');
+    expect(card.querySelector('.g-history').getAttribute('aria-label')).toBe('最近查詢紀錄');
+    expect(card.querySelector('.g-copy').getAttribute('aria-label')).toBe('複製結果');
+    expect(card.querySelector('.g-close-rc').getAttribute('aria-label')).toBe('關閉結果卡');
+  });
+
   it('stays below the toolbar (left-aligned) and clamps vertically when space is tight', () => {
     document.body.innerHTML = '';
     Object.defineProperty(window, 'innerWidth', { value: 900, configurable: true });

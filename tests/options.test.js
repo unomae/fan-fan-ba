@@ -10,6 +10,15 @@ describe('Options module', () => {
       <input id="obsidianVault" />
       <input id="ttsApiKey" />
       <input id="obsidianDefaultFolder" />
+      <button id="btnExportSettings"></button>
+      <input id="includeSecretsExport" type="checkbox" />
+      <button id="btnImportSettings"></button>
+      <input id="settingsImportFile" type="file" />
+      <button id="btnCloudSignIn"></button>
+      <button id="btnCloudUpload"></button>
+      <button id="btnCloudDownload"></button>
+      <button id="btnCloudSignOut"></button>
+      <p id="cloudSyncStatus"></p>
       <button id="toggleVis"></button>
       <button id="toggleGroqVis"></button>
       <button id="toggleOrVis"></button>
@@ -51,6 +60,117 @@ describe('Options module', () => {
 
       jest.advanceTimersByTime(3000);
       expect(el.className).toBe('');
+    });
+  });
+
+  describe('settings backup', () => {
+    it('exports whitelisted settings without secrets by default', async () => {
+      chrome.storage.sync.get.mockResolvedValueOnce({
+        model: 'groq:meta-llama/llama-4-scout-17b-16e-instruct',
+        targetLanguage: 'zh-TW',
+        obsidianDefaultFolder: '30_Knowledge/my-notes/languages/vocabulary',
+        unrelated: 'ignored'
+      });
+
+      const payload = await global.optionsModule.buildSettingsBackupPayload(false);
+
+      expect(payload.app).toBe('fan-fan-ba');
+      expect(payload.schemaVersion).toBe(1);
+      expect(payload.settings).toEqual({
+        model: 'groq:meta-llama/llama-4-scout-17b-16e-instruct',
+        targetLanguage: 'zh-TW',
+        obsidianDefaultFolder: '30_Knowledge/my-notes/languages/vocabulary'
+      });
+      expect(payload.secrets).toBeUndefined();
+    });
+
+    it('normalizes imported settings and drops unsupported fields', () => {
+      const settings = global.optionsModule.normalizeImportedSettings({
+        model: 'openrouter/free',
+        targetLanguage: 'xx',
+        explanationLanguage: 'en',
+        ttsLanguageMode: 'invalid',
+        vocabularyHighlightMode: 'auto',
+        obsidianVault: '  0xKAKA-のう  ',
+        unsupported: 'ignored'
+      });
+
+      expect(settings).toEqual({
+        model: 'openrouter:deepseek/deepseek-v4-flash:free',
+        targetLanguage: 'zh-TW',
+        explanationLanguage: 'en',
+        ttsLanguageMode: 'auto',
+        vocabularyHighlightMode: 'auto',
+        obsidianVault: '0xKAKA-のう'
+      });
+    });
+
+    it('imports settings and API keys from a backup file', async () => {
+      chrome.storage.sync.set.mockResolvedValueOnce();
+      chrome.storage.local.set.mockResolvedValueOnce();
+      chrome.storage.sync.remove.mockResolvedValueOnce();
+      const file = {
+        text: jest.fn().mockResolvedValue(JSON.stringify({
+          app: 'fan-fan-ba',
+          schemaVersion: 1,
+          settings: {
+            model: 'gemini-3.5-flash',
+            obsidianDefaultFolder: '30_Knowledge/my-notes/languages/vocabulary'
+          },
+          secrets: {
+            groqApiKey: 'gsk-test',
+            openrouterApiKey: ''
+          }
+        }))
+      };
+
+      const result = await global.optionsModule.importSettingsBackupFile(file);
+
+      expect(chrome.storage.sync.set).toHaveBeenCalledWith({
+        model: 'gemini-3.5-flash',
+        obsidianDefaultFolder: '30_Knowledge/my-notes/languages/vocabulary'
+      });
+      expect(chrome.storage.local.set).toHaveBeenCalledWith({ groqApiKey: 'gsk-test' });
+      expect(result).toEqual({ settingsCount: 2, secretsCount: 1 });
+      expect(global.optionsModule.formatImportSettingsStatus(result)).toBe('✓ 設定檔已匯入：2 個設定、1 個 API Key');
+    });
+
+    it('asks for confirmation before exporting API keys', () => {
+      const originalConfirm = window.confirm;
+      window.confirm = jest.fn(() => false);
+
+      expect(global.optionsModule.confirmSecretsExport()).toBe(false);
+      expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('明文包含 API Keys'));
+
+      window.confirm = originalConfirm;
+    });
+  });
+
+  describe('cloud sync', () => {
+    it('builds a cloud payload from general settings only', async () => {
+      chrome.storage.sync.get.mockResolvedValueOnce({
+        model: 'groq:meta-llama/llama-4-scout-17b-16e-instruct',
+        obsidianDefaultFolder: '30_Knowledge/my-notes/languages/vocabulary'
+      });
+      chrome.storage.local.get.mockResolvedValueOnce({});
+      chrome.storage.local.set.mockResolvedValueOnce();
+
+      const payload = await global.optionsModule.buildCloudSettingsPayload();
+
+      expect(payload.app).toBe('fan-fan-ba');
+      expect(payload.cloudSchemaVersion).toBe(1);
+      expect(payload.appVersion).toBe('1.6.0');
+      expect(payload.settings).toEqual({
+        model: 'groq:meta-llama/llama-4-scout-17b-16e-instruct',
+        obsidianDefaultFolder: '30_Knowledge/my-notes/languages/vocabulary'
+      });
+      expect(payload.secrets).toBeUndefined();
+    });
+
+    it('shows a clear status while OAuth client id is still a placeholder', async () => {
+      await global.optionsModule.renderCloudSyncStatus();
+
+      expect(document.getElementById('cloudSyncStatus').textContent).toContain('尚未設定 Google OAuth Client ID');
     });
   });
 });

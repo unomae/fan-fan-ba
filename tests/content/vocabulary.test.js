@@ -183,7 +183,7 @@ describe('Vocabulary storage helper', () => {
     expect(csv).toContain('Vocabulary Test Page');
   });
 
-  it('appends a configured vocabulary entry to the Obsidian weekly note once', async () => {
+  it('appends a configured vocabulary entry to the exact Obsidian folder once', async () => {
     const { context, runtimeSendMessage } = createVocabularyContext({
       syncStore: {
         obsidianDefaultFolder: 'Learning',
@@ -199,12 +199,12 @@ describe('Vocabulary storage helper', () => {
     const result = await context.exportVocabularyEntryToObsidianIfConfigured(item);
     const updated = (await context.listVocabularyItems())[0];
 
-    expect(result).toEqual({ exported: true, folder: 'Learning/單字本' });
+    expect(result).toEqual({ exported: true, folder: 'Learning' });
     expect(updated.obsidianExportedAt).toBe('2026-05-26T04:00:00.000Z');
     expect(runtimeSendMessage).toHaveBeenCalledTimes(1);
     const url = runtimeSendMessage.mock.calls[0][0].url;
     expect(url).toContain('obsidian://advanced-uri?');
-    expect(decodeURIComponent(url)).toContain('filepath=Learning/單字本/2026-W22.md');
+    expect(decodeURIComponent(url)).toContain('filepath=Learning/2026-W22.md');
     expect(decodeURIComponent(url)).toContain('vault=Main Vault');
     expect(decodeURIComponent(url)).toContain('### Compass');
   });

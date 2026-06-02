@@ -6,12 +6,19 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "identity"],
+  "oauth2": {
+    "client_id": "REPLACE_WITH_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive.appdata"
+    ]
+  },
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*",
     "https://texttospeech.googleapis.com/*",
     "https://api.groq.com/*",
-    "https://openrouter.ai/*"
+    "https://openrouter.ai/*",
+    "https://www.googleapis.com/*"
   ],
   "background": {
     "service_worker": "background.js"

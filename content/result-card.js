@@ -8,32 +8,32 @@ function createResultCard() {
       <span class="g-rc-tag"></span>
       <select class="g-rc-model-select" title="切換模型" aria-label="切換模型"></select>
       <div class="g-rc-actions">
-        <button class="g-icon-btn g-pin" title="釘住結果卡">
+        <button class="g-icon-btn g-pin" type="button" title="釘住結果卡" aria-label="釘住結果卡">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="17" x2="12" y2="22"/>
             <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
           </svg>
         </button>
-        <button class="g-icon-btn g-save-obs" title="存到 Obsidian">
+        <button class="g-icon-btn g-save-obs" type="button" title="存到 Obsidian" aria-label="存到 Obsidian">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M6 3h12l4 6-10 13L2 9Z"/>
             <path d="M11 3 8 9l4 13 4-13-3-6"/>
             <path d="M2 9h20"/>
           </svg>
         </button>
-        <button class="g-icon-btn g-history" title="最近查詢紀錄">
+        <button class="g-icon-btn g-history" type="button" title="最近查詢紀錄" aria-label="最近查詢紀錄">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
             <path d="M3 3v5h5"/>
             <path d="M12 7v5l4 2"/>
           </svg>
         </button>
-        <button class="g-icon-btn g-copy" title="複製">
+        <button class="g-icon-btn g-copy" type="button" title="複製" aria-label="複製結果">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
           </svg>
         </button>
-        <button class="g-icon-btn g-close-rc" title="關閉">
+        <button class="g-icon-btn g-close-rc" type="button" title="關閉" aria-label="關閉結果卡">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 6 6 18M6 6l12 12"/>
           </svg>
@@ -44,7 +44,7 @@ function createResultCard() {
     <!-- 自動存入 Obsidian 成功提示列 -->
     <div class="g-autosave-bar">
       <span class="g-autosave-text"></span>
-      <button class="g-autosave-change">更換資料夾</button>
+      <button class="g-autosave-change" type="button">更換資料夾</button>
     </div>
 
     <!-- 最近查詢紀錄下拉面板 -->
@@ -67,8 +67,8 @@ function createResultCard() {
       <div class="g-obs-dropdown"></div>
       <div class="g-obs-status"></div>
       <div class="g-obs-split-wrap">
-        <button class="g-obs-confirm-btn">新增到 Obsidian</button>
-        <button class="g-obs-chevron-btn" title="最近使用的資料夾">
+        <button class="g-obs-confirm-btn" type="button">新增到 Obsidian</button>
+        <button class="g-obs-chevron-btn" type="button" title="最近使用的資料夾" aria-label="最近使用的資料夾">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="m6 9 6 6 6-6"/>
           </svg>
@@ -525,14 +525,14 @@ function buildDictHTML(d) {
   return `
     <div class="g-dict-word-row">
       <span class="g-dict-word">${escapeHtml(d.word || '')}</span>
-      <button class="g-speak-btn" title="發音">
+      <button class="g-speak-btn" type="button" title="發音" aria-label="播放發音">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
           <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
           <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
         </svg>
       </button>
-      <button class="g-vocab-save-btn" type="button" title="收藏到單字本">
+      <button class="g-vocab-save-btn" type="button" title="收藏到單字本" aria-label="收藏到單字本">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
         </svg>
@@ -643,7 +643,7 @@ function buildOptimizeHTML(raw, original) {
     <div class="g-optimize-block">
       <div class="g-optimize-label-row">
         <span class="g-optimize-label">優化後</span>
-        <button class="g-opt-copy-btn" title="複製優化後文字" data-text="${escapeHtml(optimizedText)}">
+        <button class="g-opt-copy-btn" type="button" title="複製優化後文字" aria-label="複製優化後文字" data-text="${escapeHtml(optimizedText)}">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
           </svg>
@@ -687,7 +687,7 @@ function setError(msg, onRetry) {
   const body = resultCard?.querySelector('.g-rc-body');
   if (!body) return;
   const retryHtml = onRetry
-    ? `<button class="g-retry-btn">↺ 重試</button>`
+    ? `<button class="g-retry-btn" type="button" aria-label="重試">↺ 重試</button>`
     : '';
   body.innerHTML = `<div class="g-error-wrap"><span class="g-error">${escapeHtml(msg)}</span>${retryHtml}</div>`;
   if (onRetry) {

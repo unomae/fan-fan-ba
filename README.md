@@ -21,10 +21,13 @@
 ### 其他功能
 - 🔊 **朗讀** — 優先使用 Google Cloud Chirp HD 高品質語音；未設定則自動 fallback 瀏覽器內建語音
 - 📝 **存入 Obsidian** — 一鍵 append 到週記筆記（`YYYY-W##.md`），存入後自動切回原分頁保留結果卡；字典模式保留完整結構化 markdown；macOS / Windows 跨平台相容
+- 💾 **設定備份 / 還原** — 匯出 JSON 設定檔，重新安裝後可匯入；API Key 預設不匯出，需使用者明確勾選
+- ☁️ **Google Drive 雲端同步（v1.7.0）** — 可同步模型、語言、Obsidian、全文翻譯等一般設定到 Drive appData；API Key 不會雲端同步
 - 🕐 **最近查詢紀錄** — 結果卡 Header 時鐘按鈕展開最近 5 筆紀錄，點擊即可重新載入
 - 📌 **釘住結果卡** — Pin 後選取新文字不關閉卡片，頂部藍線顯示釘住狀態
 - ↔️ **邊緣吸附** — 拖曳至螢幕邊緣自動吸附，含 snap 動畫
 - 🔄 **錯誤重試** — API 錯誤時顯示「↺ 重試」按鈕，一鍵重送請求
+- ⌨️ **鍵盤與動作偏好** — 主要控制支援可見鍵盤焦點，並尊重系統 reduced motion 設定
 - 🎨 **Glassmorphism UI** — 毛玻璃懸浮工具列 + 結果卡，不遮擋頁面內容，可自由拖曳
 
 ---
@@ -68,7 +71,7 @@
 | OpenRouter | `sk-or-...` | [OpenRouter](https://openrouter.ai/keys) | 選填，只有基本免費額度 |
 | Google Cloud TTS | `AIza...` | [Google Cloud Console](https://console.cloud.google.com/apis/credentials) | 選填，高品質朗讀 |
 
-> **Obsidian 整合**：需安裝 [Advanced URI 插件](https://github.com/Vinzent03/obsidian-advanced-uri)，在設定頁填入 Vault 名稱即可。每週自動建立 `YYYY-W##.md` 週記檔。
+> **Obsidian 整合**：需安裝 [Advanced URI 插件](https://github.com/Vinzent03/obsidian-advanced-uri)，在設定頁填入 Vault 名稱與資料夾。每週會依使用者填寫的資料夾階層建立 `YYYY-W##.md` 週記檔。
 
 ---
 
@@ -115,7 +118,8 @@ fan-fan-ba/
 
 **技術特點**
 - **Manifest V3**：Service Worker 架構，API Key 只在 background 層使用，不暴露於頁面
-- **Streaming 回應**：段落翻譯 / 解釋 / 優化使用 `chrome.runtime.connect()` + SSE，字典模式維持完整 JSON 回應
+- **Cloud Sync**：使用 Chrome Identity + Google Drive appDataFolder 同步一般設定；正式使用前需在 `manifest.json` 設定 Google OAuth Client ID
+- **Streaming 回應**：段落翻譯 / 解釋 / 優化使用 `chrome.runtime.connect()` + SSE，字典模式維持完整 JSON 回應；請求逾時與停止會中止底層 fetch
 - **同文字快取**：`Map` 快取相同 action + text 的結果，tab 生命週期內命中直接渲染
 - **模組化架構**：content scripts 按職責拆分為 6 個檔案，透過 manifest 依序載入共用同一 isolated world
 - **CSS 隔離**：`!important` 防止宿主頁樣式干擾，CSS 變數限定在元件 selector 避免污染 `:root`
@@ -156,7 +160,9 @@ fan-fan-ba/
 
 ## 🔒 隱私
 
-- 所有 API Key **僅存於本機** `chrome.storage.sync`，不上傳至任何伺服器
+- 所有 API Key **僅存於本機** `chrome.storage.local`，不上傳至任何伺服器，也不跟 Chrome 帳號同步
+- 設定頁可匯出 / 匯入設定檔；只有勾選「包含 API Keys」時，匯出的 JSON 才會明文包含金鑰
+- Google Drive 雲端同步只同步一般設定，不包含 API Key；API Key 加密雲端備份規劃於 v1.7.1
 - 選取的文字**僅傳送給使用者選擇的 AI 服務商**，用於處理當次請求
 - 本擴充功能不設伺服器，不收集任何使用者資料
 

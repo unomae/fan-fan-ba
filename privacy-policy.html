@@ -245,7 +245,7 @@
             <tr>
               <td>API Key（Gemini / Groq / OpenRouter / TTS）</td>
               <td>呼叫使用者自選的 AI 服務</td>
-              <td>僅存於 <code>chrome.storage.sync</code>（本地裝置）</td>
+              <td>僅存於 <code>chrome.storage.local</code>（本地裝置，不跟 Chrome 帳號同步）</td>
             </tr>
             <tr>
               <td>選取的文字</td>
@@ -262,6 +262,11 @@
               <td>記住使用者設定</td>
               <td>僅存於 <code>chrome.storage.sync</code>（本地裝置）</td>
             </tr>
+            <tr>
+              <td>雲端同步設定檔（選用）</td>
+              <td>讓使用者換裝置或重新安裝後還原一般設定</td>
+              <td>使用者主動登入 Google 後，存於 Google Drive <code>appDataFolder</code>；不包含 API Key</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -275,6 +280,7 @@
           <li><strong>Groq API</strong>（<a href="https://groq.com/privacy-policy/" target="_blank">隱私權政策</a>）</li>
           <li><strong>OpenRouter API</strong>（<a href="https://openrouter.ai/privacy" target="_blank">隱私權政策</a>）</li>
           <li><strong>Google Cloud Text-to-Speech</strong>（<a href="https://policies.google.com/privacy" target="_blank">隱私權政策</a>）— 選填功能</li>
+          <li><strong>Google Drive appData</strong>（<a href="https://policies.google.com/privacy" target="_blank">隱私權政策</a>）— 選填雲端同步功能，僅同步一般設定，不包含 API Key</li>
         </ul>
         <p style="margin-top:10px;">上述服務均由使用者自行申請 API Key 並直接使用，翻翻吧開發者不持有也無法存取任何通訊內容。</p>
       </div>
@@ -283,7 +289,8 @@
       <div class="section">
         <h2>資料安全</h2>
         <ul>
-          <li>API Key 僅儲存於瀏覽器本地端（<code>chrome.storage.sync</code>），不會傳送至任何翻翻吧伺服器（翻翻吧沒有伺服器）</li>
+          <li>API Key 僅儲存於瀏覽器本地端（<code>chrome.storage.local</code>），不跟 Chrome 帳號同步，也不會傳送至任何翻翻吧伺服器（翻翻吧沒有伺服器）</li>
+          <li>Google Drive 雲端同步只同步一般設定，不包含 API Key；API Key 加密雲端備份需另行啟用未來版本功能</li>
           <li>所有 AI API 請求直接從瀏覽器發出，不經任何中間伺服器代理</li>
           <li>擴充功能原始碼公開於 GitHub，可自行稽核</li>
         </ul>

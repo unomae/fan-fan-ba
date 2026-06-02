@@ -23,7 +23,25 @@ const OPENROUTER_API_BASE = 'https://openrouter.ai/api/v1';
 const DEFAULT_MODEL       = ModelRegistry.DEFAULT_MODEL; // 預設 Groq（免費額度最大方）
 
 // ── Exponential Backoff with Full Jitter ──────────
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+function createAbortError() {
+  const err = new Error('AbortError');
+  err.name = 'AbortError';
+  return err;
+}
+
+function sleep(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(createAbortError());
+      return;
+    }
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener('abort', () => {
+      clearTimeout(timer);
+      reject(createAbortError());
+    }, { once: true });
+  }, signal);
+}
 
 function jitteredDelay(attempt) {
   return Math.random() * Math.min(8000, 1000 * (2 ** attempt));
@@ -33,13 +51,14 @@ function isRetryable(err) {
   return err.status === 429 || err.status === 503;
 }
 
-async function withRetry(fn, maxAttempts = 3) {
+async function withRetry(fn, maxAttempts = 3, signal) {
   for (let i = 0; i < maxAttempts; i++) {
     try {
+      if (signal?.aborted) throw createAbortError();
       return await fn();
     } catch (err) {
       if (i === maxAttempts - 1 || !isRetryable(err)) throw err;
-      await sleep(jitteredDelay(i));
+      await sleep(jitteredDelay(i), signal);
     }
   }
 }
@@ -169,13 +188,20 @@ chrome.runtime.onConnect.addListener(port => {
 
 // ── 非 streaming：維持原有邏輯（字典 JSON 需要完整回應）──
 async function handleAIRequest({ action, selectedText, context, pageTitle, model, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }) {
-  const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('請求逾時，請稍後重試')), 30000)
-  );
-  return Promise.race([_handleAIRequest({ action, selectedText, context, pageTitle, model, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }), timeout]);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+  try {
+    return await _handleAIRequest({ action, selectedText, context, pageTitle, model, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }, controller.signal);
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error('請求逾時或已取消，請稍後重試');
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
-async function _handleAIRequest({ action, selectedText, context, pageTitle, model: requestedModel, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }) {
+async function _handleAIRequest({ action, selectedText, context, pageTitle, model: requestedModel, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }, signal) {
   const [{ model = DEFAULT_MODEL }, { apiKey = '', groqApiKey = '', openrouterApiKey = '' }] = await Promise.all([
     chrome.storage.sync.get({ model: DEFAULT_MODEL }),
     Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '' })
@@ -189,7 +215,8 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle, mode
       modelId: ModelRegistry.toApiModelId(selectedModel),
       apiKey:  groqApiKey,
       baseUrl: `${GROQ_API_BASE}/chat/completions`,
-      label:   'Groq'
+      label:   'Groq',
+      signal
     });
   }
 
@@ -202,7 +229,8 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle, mode
       apiKey:  openrouterApiKey,
       baseUrl: `${OPENROUTER_API_BASE}/chat/completions`,
       label:   'OpenRouter',
-      extraHeaders: { 'X-Title': 'Fan Fan Ba' }  // HTTP header 僅允許 ASCII
+      extraHeaders: { 'X-Title': 'Fan Fan Ba' },  // HTTP header 僅允許 ASCII
+      signal
     });
   }
 
@@ -213,6 +241,7 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle, mode
     `${GEMINI_API_BASE}/${selectedModel}:generateContent?key=${apiKey}`,
     {
       method:  'POST',
+      signal,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
@@ -222,7 +251,7 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle, mode
         }
       })
     }
-  ));
+  ), 3, signal);
 
   const data   = await response.json();
   const result = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -246,10 +275,11 @@ async function handleOpenRouterRequestWithFallback(params) {
   }
 }
 
-async function handleOpenAICompatRequest({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage, pageTranslation, modelId, apiKey, baseUrl, label, extraHeaders = {} }) {
+async function handleOpenAICompatRequest({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage, pageTranslation, modelId, apiKey, baseUrl, label, extraHeaders = {}, signal }) {
   const prompt   = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage, pageTranslation });
   const response = await withRetry(() => checkedFetch(baseUrl, {
     method:  'POST',
+    signal,
     headers: {
       'Content-Type':  'application/json',
       'Authorization': `Bearer ${apiKey}`,
@@ -261,7 +291,7 @@ async function handleOpenAICompatRequest({ action, selectedText, context, pageTi
       temperature: action === 'optimize' ? 0.7 : 0.3,
       max_tokens:  1024
     })
-  }, `${label} `));
+  }, `${label} `), 3, signal);
 
   const data   = await response.json();
   if (data.error) {
@@ -353,7 +383,7 @@ async function streamGemini({ prompt, apiKey, model, action, onChunk, signal }) 
         }
       })
     }
-  ));
+  ), 3, signal);
 
   await parseSseStream(response.body, line => {
     try {
@@ -361,7 +391,7 @@ async function streamGemini({ prompt, apiKey, model, action, onChunk, signal }) 
       const text = obj.candidates?.[0]?.content?.parts?.[0]?.text;
       if (text) onChunk(text);
     } catch { /* 忽略非 JSON 行（如空行）*/ }
-  });
+  }, signal);
 }
 
 // ── OpenAI 相容 SSE Streaming（Groq / OpenRouter）─
@@ -381,7 +411,7 @@ async function streamOpenAICompat({ prompt, action, modelId, apiKey, baseUrl, la
       max_tokens:  1024,
       stream:      true
     })
-  }, `${label} `));
+  }, `${label} `), 3, signal);
 
   await parseSseStream(response.body, line => {
     if (line === '[DONE]') return;
@@ -399,30 +429,39 @@ async function streamOpenAICompat({ prompt, action, modelId, apiKey, baseUrl, la
     }
     const text = obj.choices?.[0]?.delta?.content;
     if (text) onChunk(text);
-  });
+  }, signal);
 }
 
 // ── SSE 通用解析器（Gemini + OpenAI 相容格式共用）─
-async function parseSseStream(body, onData) {
+async function parseSseStream(body, onData, signal) {
   const reader  = body.getReader();
   const decoder = new TextDecoder();
   let   buffer  = '';
+  const cancelReader = () => reader.cancel().catch(() => {});
+  signal?.addEventListener('abort', cancelReader, { once: true });
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  try {
+    while (true) {
+      if (signal?.aborted) throw createAbortError();
+      const { done, value } = await reader.read();
+      if (signal?.aborted) throw createAbortError();
+      if (done) break;
 
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop(); // 保留最後一段不完整的行
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // 保留最後一段不完整的行
 
-    for (const line of lines) {
-      if (line.startsWith('data: ')) onData(line.slice(6).trim());
+      for (const line of lines) {
+        if (line.startsWith('data: ')) onData(line.slice(6).trim());
+      }
     }
-  }
 
-  // 處理最後剩餘的 buffer
-  if (buffer.startsWith('data: ')) onData(buffer.slice(6).trim());
+    // 處理最後剩餘的 buffer
+    if (signal?.aborted) throw createAbortError();
+    if (buffer.startsWith('data: ')) onData(buffer.slice(6).trim());
+  } finally {
+    signal?.removeEventListener?.('abort', cancelReader);
+  }
 }
 
 // ── Google Cloud TTS（Chirp HD，依語言自動切換語音）──

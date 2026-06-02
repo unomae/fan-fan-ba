@@ -3,6 +3,7 @@ const {
   buildPrompt,
   checkedFetch,
   formatApiErrorMessage,
+  withRetry,
   streamOpenAICompat
 } = require('../background');
 const { ReadableStream } = require('stream/web');
@@ -51,6 +52,17 @@ describe('Background module', () => {
         json: async () => ({ error: { message: 'Not found' } })
       });
       await expect(checkedFetch('http://test.com', {})).rejects.toThrow('Not found');
+    });
+  });
+
+  describe('withRetry', () => {
+    it('does not start retry work after the signal is aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+      const fn = jest.fn();
+
+      await expect(withRetry(fn, 3, controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
+      expect(fn).not.toHaveBeenCalled();
     });
   });
 

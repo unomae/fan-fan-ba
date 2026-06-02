@@ -5,6 +5,19 @@
 const $ = id => document.getElementById(id);
 const ModelRegistry = globalThis.FanFanBaModels || require('./models');
 const Storage = globalThis.FanFanBaStorage || require('./storage');
+const CloudSync = globalThis.FanFanBaCloudSync || require('./cloud-sync');
+const SETTINGS_BACKUP_APP = 'fan-fan-ba';
+const SETTINGS_BACKUP_SCHEMA_VERSION = 1;
+const SYNC_SETTING_KEYS = [
+  'model',
+  'pageTranslationModel',
+  'targetLanguage',
+  'explanationLanguage',
+  'ttsLanguageMode',
+  'vocabularyHighlightMode',
+  'obsidianVault',
+  'obsidianDefaultFolder'
+];
 
 renderModelSelect();
 renderPageTranslationModelSelect();
@@ -134,6 +147,9 @@ bindToggleVis('toggleVis',    'apiKey',           'eye-show',      'eye-hide');
 bindToggleVis('toggleGroqVis','groqApiKey',        'groq-eye-show', 'groq-eye-hide');
 bindToggleVis('toggleOrVis',  'openrouterApiKey',  'or-eye-show',   'or-eye-hide');
 bindToggleVis('toggleTtsVis', 'ttsApiKey',         'tts-eye-show',  'tts-eye-hide');
+bindBackupControls();
+bindCloudSyncControls();
+renderCloudSyncStatus();
 
 // ── 儲存設定 ─────────────────────────────────────────
 $('btnSave').addEventListener('click', async () => {
@@ -246,4 +262,285 @@ function buildOpenAICompatTestBody(modelId) {
   return JSON.stringify({ model: modelId, messages: [{ role: 'user', content: '回覆 OK 即可' }], max_tokens: 10 });
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { showStatus, bindToggleVis, renderModelSelect, renderPageTranslationModelSelect, renderLanguageSelects, initSettingsTabs, loadSettings }; }
+function bindBackupControls() {
+  const exportButton = $('btnExportSettings');
+  const includeSecretsCheckbox = $('includeSecretsExport');
+  const importButton = $('btnImportSettings');
+  const fileInput = $('settingsImportFile');
+
+  if (exportButton) {
+    exportButton.addEventListener('click', async () => {
+      exportButton.disabled = true;
+      try {
+        const includeSecrets = !!includeSecretsCheckbox?.checked;
+        if (includeSecrets && !confirmSecretsExport()) return;
+        const payload = await buildSettingsBackupPayload(includeSecrets);
+        downloadSettingsBackup(payload);
+        showStatus('ok', includeSecrets ? '✓ 設定與 API Keys 已匯出' : '✓ 設定檔已匯出');
+      } catch (e) {
+        showStatus('err', `匯出失敗：${e.message}`);
+      } finally {
+        exportButton.disabled = false;
+      }
+    });
+  }
+
+  if (importButton && fileInput) {
+    importButton.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+
+      importButton.disabled = true;
+      try {
+        const result = await importSettingsBackupFile(file);
+        showStatus('ok', formatImportSettingsStatus(result));
+      } catch (e) {
+        showStatus('err', `匯入失敗：${e.message}`);
+      } finally {
+        importButton.disabled = false;
+        fileInput.value = '';
+      }
+    });
+  }
+}
+
+function bindCloudSyncControls() {
+  const signInButton = $('btnCloudSignIn');
+  const uploadButton = $('btnCloudUpload');
+  const downloadButton = $('btnCloudDownload');
+  const signOutButton = $('btnCloudSignOut');
+  if (!signInButton && !uploadButton && !downloadButton && !signOutButton) return;
+
+  signInButton?.addEventListener('click', () => runCloudSyncAction(signInButton, async () => {
+    await CloudSync.getAuthToken(true);
+    await renderCloudSyncStatus('已登入 Google，可上傳或下載一般設定。');
+    showStatus('ok', '✓ Google 登入成功');
+  }));
+
+  uploadButton?.addEventListener('click', () => runCloudSyncAction(uploadButton, async () => {
+    const token = await CloudSync.getAuthToken(true);
+    const payload = await buildCloudSettingsPayload();
+    const file = await CloudSync.uploadCloudSettings(token, payload);
+    await renderCloudSyncStatus(`已上傳一般設定：${payload.updatedAt}`);
+    showStatus('ok', `✓ 雲端設定已上傳${file?.id ? `（${file.id}）` : ''}`);
+  }));
+
+  downloadButton?.addEventListener('click', () => runCloudSyncAction(downloadButton, async () => {
+    const token = await CloudSync.getAuthToken(true);
+    const payload = await CloudSync.downloadCloudSettings(token);
+    const settings = normalizeImportedSettings(payload.settings || {});
+    if (!Object.keys(settings).length) throw new Error('雲端設定檔沒有可還原的設定');
+    await chrome.storage.sync.set(settings);
+    await loadSettings();
+    await renderCloudSyncStatus(`已下載雲端設定：${payload.updatedAt || '未知時間'}`);
+    showStatus('ok', `✓ 已還原 ${Object.keys(settings).length} 個一般設定`);
+  }));
+
+  signOutButton?.addEventListener('click', () => runCloudSyncAction(signOutButton, async () => {
+    const token = await CloudSync.getAuthToken(false).catch(() => '');
+    await CloudSync.signOut(token);
+    await renderCloudSyncStatus('已登出 Google。');
+    showStatus('ok', '✓ 已登出 Google');
+  }));
+}
+
+async function runCloudSyncAction(button, action) {
+  const buttons = ['btnCloudSignIn', 'btnCloudUpload', 'btnCloudDownload', 'btnCloudSignOut']
+    .map(id => $(id))
+    .filter(Boolean);
+  buttons.forEach(btn => { btn.disabled = true; });
+  try {
+    await action();
+  } catch (e) {
+    await renderCloudSyncStatus(e.message);
+    showStatus('err', `雲端同步失敗：${e.message}`);
+  } finally {
+    buttons.forEach(btn => { btn.disabled = false; });
+    if (button) button.focus?.();
+  }
+}
+
+async function buildCloudSettingsPayload() {
+  const backup = await buildSettingsBackupPayload(false);
+  return CloudSync.buildCloudSettingsPayload(backup.settings, {
+    appVersion: chrome.runtime?.getManifest?.().version || ''
+  });
+}
+
+async function renderCloudSyncStatus(message = '') {
+  const el = $('cloudSyncStatus');
+  if (!el) return;
+  const config = CloudSync.getOAuthConfig();
+  if (!CloudSync.isOAuthConfigured(config)) {
+    el.textContent = '尚未設定 Google OAuth Client ID。請先在 manifest.json 換成正式 client ID；v1.7.0 不同步 API Key。';
+    return;
+  }
+
+  const meta = await CloudSync.getCloudSyncMeta();
+  const parts = ['Google OAuth 已設定', 'v1.7.0 僅同步一般設定，不含 API Key'];
+  if (meta.lastUploadAt) parts.push(`最後上傳：${meta.lastUploadAt}`);
+  if (meta.lastDownloadAt) parts.push(`最後下載：${meta.lastDownloadAt}`);
+  if (message) parts.push(message);
+  el.textContent = parts.join('｜');
+}
+
+async function buildSettingsBackupPayload(includeSecrets = false) {
+  const syncSettings = await chrome.storage.sync.get(SYNC_SETTING_KEYS);
+  const payload = {
+    app: SETTINGS_BACKUP_APP,
+    schemaVersion: SETTINGS_BACKUP_SCHEMA_VERSION,
+    exportedAt: new Date().toISOString(),
+    settings: pickBackupSettings(syncSettings)
+  };
+
+  if (includeSecrets) {
+    payload.secrets = pickBackupSecrets(await Storage.getSecrets({}));
+  }
+
+  return payload;
+}
+
+function pickBackupSettings(values = {}) {
+  return SYNC_SETTING_KEYS.reduce((acc, key) => {
+    if (Object.prototype.hasOwnProperty.call(values, key)) {
+      acc[key] = values[key] == null ? '' : values[key];
+    }
+    return acc;
+  }, {});
+}
+
+function pickBackupSecrets(values = {}) {
+  return Storage.SECRET_KEYS.reduce((acc, key) => {
+    if (Object.prototype.hasOwnProperty.call(values, key) && values[key]) {
+      acc[key] = values[key];
+    }
+    return acc;
+  }, {});
+}
+
+function downloadSettingsBackup(payload) {
+  const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = buildSettingsBackupFilename();
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function buildSettingsBackupFilename(date = new Date()) {
+  const stamp = date.toISOString().slice(0, 10).replace(/-/g, '');
+  return `fan-fan-ba-settings-${stamp}.json`;
+}
+
+async function importSettingsBackupFile(file) {
+  const payload = parseSettingsBackup(await readTextFile(file));
+  const settings = normalizeImportedSettings(payload.settings || {});
+  const secrets = pickBackupSecrets(payload.secrets || {});
+
+  if (!Object.keys(settings).length && !Object.keys(secrets).length) {
+    throw new Error('設定檔沒有可匯入的設定');
+  }
+
+  const writes = [];
+  if (Object.keys(settings).length) writes.push(chrome.storage.sync.set(settings));
+  if (Object.keys(secrets).length) writes.push(Storage.setSecrets(secrets));
+  await Promise.all(writes);
+  await loadSettings();
+  return { settingsCount: Object.keys(settings).length, secretsCount: Object.keys(secrets).length };
+}
+
+function parseSettingsBackup(text) {
+  let payload;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    throw new Error('JSON 格式不正確');
+  }
+
+  if (!payload || payload.app !== SETTINGS_BACKUP_APP) {
+    throw new Error('不是翻翻吧設定檔');
+  }
+  if (payload.schemaVersion !== SETTINGS_BACKUP_SCHEMA_VERSION) {
+    throw new Error('設定檔版本不支援');
+  }
+  return payload;
+}
+
+function normalizeImportedSettings(values = {}) {
+  const settings = {};
+  SYNC_SETTING_KEYS.forEach(key => {
+    if (!Object.prototype.hasOwnProperty.call(values, key)) return;
+    settings[key] = normalizeImportedSetting(key, values[key]);
+  });
+  return settings;
+}
+
+function normalizeImportedSetting(key, value) {
+  if (key === 'model' || key === 'pageTranslationModel') {
+    return ModelRegistry.normalizeModel(String(value || ''));
+  }
+  if (key === 'targetLanguage') {
+    return ModelRegistry.normalizeLanguage(value, 'zh-TW');
+  }
+  if (key === 'explanationLanguage') {
+    return ModelRegistry.normalizeExplanationLanguage(value, 'target');
+  }
+  if (key === 'ttsLanguageMode') {
+    return ModelRegistry.normalizeTtsLanguageMode(value, 'auto');
+  }
+  if (key === 'vocabularyHighlightMode') {
+    return value === 'auto' ? 'auto' : 'off';
+  }
+  return String(value || '').trim();
+}
+
+async function readTextFile(file) {
+  if (file && typeof file.text === 'function') return file.text();
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('無法讀取設定檔'));
+    reader.readAsText(file);
+  });
+}
+
+function formatImportSettingsStatus({ settingsCount = 0, secretsCount = 0 } = {}) {
+  const parts = [];
+  if (settingsCount) parts.push(`${settingsCount} 個設定`);
+  if (secretsCount) parts.push(`${secretsCount} 個 API Key`);
+  return `✓ 設定檔已匯入${parts.length ? `：${parts.join('、')}` : ''}`;
+}
+
+function confirmSecretsExport() {
+  if (typeof window === 'undefined' || typeof window.confirm !== 'function') return true;
+  return window.confirm('匯出的 JSON 會明文包含 API Keys。請只保存在可信任的位置，且不要分享給他人。確定要匯出嗎？');
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    showStatus,
+    bindToggleVis,
+    renderModelSelect,
+    renderPageTranslationModelSelect,
+    renderLanguageSelects,
+    initSettingsTabs,
+    loadSettings,
+    buildSettingsBackupPayload,
+    pickBackupSettings,
+    pickBackupSecrets,
+    buildSettingsBackupFilename,
+    parseSettingsBackup,
+    normalizeImportedSettings,
+    importSettingsBackupFile,
+    formatImportSettingsStatus,
+    confirmSecretsExport,
+    bindCloudSyncControls,
+    buildCloudSettingsPayload,
+    renderCloudSyncStatus
+  };
+}

@@ -68,6 +68,26 @@ describe('page translator helpers', () => {
     ]);
   });
 
+  it('skips app chrome, controls, and editable regions on complex sites', () => {
+    document.body.innerHTML = `
+      <main>
+        <div role="toolbar"><p>Archive Reply More actions</p></div>
+        <div role="dialog"><p>Share this document with teammates</p></div>
+        <section contenteditable="true"><p>This editable Notion block should not be translated.</p></section>
+        <p><button type="button">Expand</button>Interactive control wrapper should be ignored.</p>
+        <article>
+          <p>The report explains how regional supply chains adjusted after a sudden demand change.</p>
+        </article>
+      </main>
+    `;
+
+    const items = collectVisibleTranslatableBlocks();
+
+    expect(items.map(item => item.text)).toEqual([
+      'The report explains how regional supply chains adjusted after a sudden demand change.'
+    ]);
+  });
+
   it('formats page translation panel status with progress and actionable states', () => {
     expect(getPageTranslationStatusText({
       running: true,
@@ -75,6 +95,13 @@ describe('page translator helpers', () => {
       total: 8,
       errors: 1
     })).toBe('翻譯中 3/8 · 失敗 1');
+
+    expect(getPageTranslationStatusText({
+      stopping: true,
+      done: 2,
+      total: 8,
+      errors: 0
+    })).toBe('正在停止 2/8');
 
     expect(getPageTranslationStatusText({
       stopped: true,

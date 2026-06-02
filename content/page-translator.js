@@ -19,6 +19,7 @@ let pageTranslationActivePort = null;
 let pageTranslationState = {
   running: false,
   stopped: false,
+  stopping: false,
   activated: false,
   canContinue: false,
   scrollBound: false,
@@ -44,6 +45,7 @@ function startPageTranslationBeta() {
   pageTranslationState = {
     running: items.length > 0,
     stopped: false,
+    stopping: false,
     activated: true,
     canContinue: false,
     scrollBound: pageTranslationState.scrollBound,
@@ -126,6 +128,8 @@ function createPageTranslationPairId() {
 function isPageTranslatableElement(el) {
   if (!el || el.closest('#gemini-ai-toolbar, #gemini-result-card, #fanfanba-floating, .ffb-page-translation-panel, .ffb-page-translation-block')) return false;
   if (el.closest('script, style, noscript, svg, canvas, pre, code, kbd, samp, textarea, input, select, button, nav, header, footer, aside, form, [contenteditable="true"], [aria-hidden="true"]')) return false;
+  if (el.closest('[role="button"], [role="link"], [role="menu"], [role="menubar"], [role="menuitem"], [role="toolbar"], [role="tablist"], [role="tab"], [role="dialog"], [role="alert"], [role="status"], [role="navigation"], [role="search"], [role="complementary"], [aria-modal="true"]')) return false;
+  if (el.querySelector('textarea, input, select, button, [contenteditable="true"], [role="button"], [role="menuitem"], [role="tab"]')) return false;
   if (el.classList.contains('ffb-page-source-translated')) return false;
 
   const rect = el.getBoundingClientRect();
@@ -191,6 +195,7 @@ async function runPageTranslationQueue() {
     updatePageTranslationPanel();
   }
   pageTranslationState.running = false;
+  pageTranslationState.stopping = false;
   pageTranslationState.canContinue = hasVisibleTranslatableBlocks();
   updatePageTranslationPanel();
   updateFloatingBallPageTranslationState?.(pageTranslationState);
@@ -490,7 +495,7 @@ function renderPageTranslationError(item, message) {
       <span class="ffb-page-translation-mark ffb-page-translation-mark-error" title="翻譯失敗" aria-label="翻譯失敗">!</span>
     </div>
     <div class="ffb-page-translation-text">${escapeHtml(message)}</div>
-    <button class="ffb-page-retry" type="button">重試此段</button>
+    <button class="ffb-page-retry" type="button" aria-label="重試此段">重試此段</button>
   `;
   bindPageTranslationBlockEvents(item.translationNode);
   item.translationNode.querySelector('.ffb-page-retry')?.addEventListener('click', async e => {
@@ -513,13 +518,13 @@ function ensurePageTranslationPanel() {
     <div class="ffb-page-panel-status"></div>
     <div class="ffb-page-panel-controls">
       <div class="ffb-page-panel-modes" aria-label="全文翻譯顯示模式">
-        <button type="button" data-mode="bilingual" title="雙語">雙</button>
-        <button type="button" data-mode="translation" title="只看譯文">譯</button>
-        <button type="button" data-mode="original" title="只看原文">原</button>
+        <button type="button" data-mode="bilingual" title="雙語" aria-label="顯示雙語">雙</button>
+        <button type="button" data-mode="translation" title="只看譯文" aria-label="只看譯文">譯</button>
+        <button type="button" data-mode="original" title="只看原文" aria-label="只看原文">原</button>
       </div>
       <div class="ffb-page-panel-actions">
-        <button type="button" data-action="stop" title="停止">■</button>
-        <button type="button" data-action="restore" title="還原">↺</button>
+        <button type="button" data-action="stop" title="停止" aria-label="停止全文翻譯">■</button>
+        <button type="button" data-action="restore" title="還原" aria-label="還原全文翻譯">↺</button>
       </div>
     </div>
   `;
@@ -557,7 +562,7 @@ function updatePageTranslationPanel(message = '') {
   status.textContent = getPageTranslationStatusText(pageTranslationState, message);
   modeButtons.forEach(btn => btn.classList.toggle('ffb-page-active', btn.dataset.mode === pageTranslationState.mode));
   densityButtons.forEach(btn => btn.classList.toggle('ffb-page-active', btn.dataset.density === pageTranslationState.density));
-  if (stopButton) stopButton.disabled = !pageTranslationState.running;
+  if (stopButton) stopButton.disabled = !pageTranslationState.running && !pageTranslationState.stopping;
 }
 
 function getPageTranslationStatusText(state, message = '') {
@@ -567,6 +572,9 @@ function getPageTranslationStatusText(state, message = '') {
   const errors = Number(state?.errors || 0);
   const progress = total ? `${done}/${total}` : '0/0';
 
+  if (state?.stopping) {
+    return [`正在停止 ${progress}`, errors ? `失敗 ${errors}` : ''].filter(Boolean).join(' · ');
+  }
   if (state?.running) {
     return [`翻譯中 ${progress}`, errors ? `失敗 ${errors}` : ''].filter(Boolean).join(' · ');
   }
@@ -606,6 +614,7 @@ function setPageTranslationDensity(density) {
 
 function stopPageTranslationBeta() {
   pageTranslationState.stopped = true;
+  pageTranslationState.stopping = true;
   pageTranslationState.running = false;
   cancelActivePageTranslationRequest();
   pageTranslationState.canContinue = hasVisibleTranslatableBlocks();
@@ -615,6 +624,7 @@ function stopPageTranslationBeta() {
 
 function restorePageTranslationBeta() {
   pageTranslationState.stopped = true;
+  pageTranslationState.stopping = false;
   pageTranslationState.running = false;
   cancelActivePageTranslationRequest();
   if (pageTranslationState.scrollTimer) clearTimeout(pageTranslationState.scrollTimer);
@@ -634,6 +644,7 @@ function restorePageTranslationBeta() {
   pageTranslationState = {
     running: false,
     stopped: false,
+    stopping: false,
     activated: false,
     canContinue: false,
     scrollBound: pageTranslationState.scrollBound,

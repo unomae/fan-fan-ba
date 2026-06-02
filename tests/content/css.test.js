@@ -18,6 +18,10 @@ describe('content CSS UI safeguards', () => {
     expect(css).toContain('.g-vocab-save-btn:focus-visible');
     expect(css).toContain('.g-retry-btn:focus-visible');
     expect(css).toContain('.g-rc-model-select:focus-visible');
+    expect(css).toContain('.g-btn:focus-visible');
+    expect(css).toContain('.g-opt-copy-btn:focus-visible');
+    expect(css).toContain('.ffb-page-panel-actions button:focus-visible');
+    expect(css).toContain('.g-obs-confirm-btn:focus-visible');
   });
 
   it('keeps the result card model switcher styled inside the compact header', () => {
@@ -42,5 +46,11 @@ describe('content CSS UI safeguards', () => {
     expect(css).toContain('@media (prefers-reduced-motion: reduce)');
     expect(css).toContain('animation: none !important;');
     expect(css).toContain('transition: none !important;');
+  });
+
+  it('lets the result card header wrap cleanly on small viewports', () => {
+    expect(css).toContain('@media (max-width: 560px)');
+    expect(css).toContain('flex-wrap: wrap !important;');
+    expect(css).toContain('order: 3 !important;');
   });
 });

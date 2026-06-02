@@ -313,6 +313,41 @@
 
     .field-note a:hover { text-decoration: underline; }
 
+    .backup-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .check-row {
+      display: inline-flex;
+      align-items: flex-start;
+      gap: 8px;
+      color: #4b586a;
+      font-size: 13px;
+      line-height: 1.5;
+      cursor: pointer;
+    }
+
+    .check-row input {
+      width: 16px;
+      height: 16px;
+      margin-top: 2px;
+      accent-color: var(--green-deep);
+      flex-shrink: 0;
+    }
+
+    .file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      clip-path: inset(50%);
+    }
+
     code {
       padding: 1px 5px;
       color: #43506a;
@@ -589,6 +624,14 @@
           Obsidian
           <small>2</small>
         </button>
+        <button class="settings-tab" type="button" data-panel="backup" aria-selected="false">
+          備份還原
+          <small>2</small>
+        </button>
+        <button class="settings-tab" type="button" data-panel="cloud" aria-selected="false">
+          雲端同步
+          <small>4</small>
+        </button>
         <button class="settings-tab" type="button" data-panel="privacy" aria-selected="false">
           隱私與說明
           <small>3</small>
@@ -770,8 +813,8 @@
 
             <div class="field">
               <label for="obsidianDefaultFolder">Obsidian 預設存入資料夾 <span class="hint">選填</span></label>
-              <input type="text" id="obsidianDefaultFolder" placeholder="例如：翻翻吧  或  Reading/單字本" autocomplete="off" spellcheck="false">
-              <p class="field-note">設定後，點擊結果卡的寶石圖示會直接存入此資料夾。</p>
+              <input type="text" id="obsidianDefaultFolder" placeholder="例如：30_Knowledge/my-notes/languages/vocabulary" autocomplete="off" spellcheck="false">
+              <p class="field-note">設定後會依照此資料夾階層寫入，不會自動追加子資料夾。</p>
             </div>
 
             <div class="security-note field full">
@@ -784,6 +827,102 @@
                   <li>存入功能使用 <a href="https://github.com/Vinzent03/obsidian-advanced-uri" target="_blank">Advanced URI 插件</a>。</li>
                   <li>每週結果存入 <code>資料夾/YYYY-W##.md</code>，按週自動建檔。</li>
                   <li>若資料夾留空，第一次手動存入後會自動記住。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-panel" data-panel-content="backup" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>備份與還原</h2>
+              <p>匯出目前設定成 JSON 檔，重新安裝或換裝置後可直接匯入還原。</p>
+            </div>
+            <span class="panel-badge">JSON 設定檔</span>
+          </div>
+
+          <div class="form-grid">
+            <div class="field full">
+              <label>匯出設定</label>
+              <div class="backup-actions">
+                <button class="btn-test" id="btnExportSettings" type="button">匯出設定檔</button>
+                <label class="check-row" for="includeSecretsExport">
+                  <input id="includeSecretsExport" type="checkbox">
+                  包含 API Keys
+                </label>
+              </div>
+              <p class="field-note">預設只匯出模型、語言、Obsidian 等一般設定；勾選 API Keys 時會再次確認，請妥善保管匯出的檔案。</p>
+            </div>
+
+            <div class="field full">
+              <label>匯入設定</label>
+              <div class="backup-actions">
+                <button class="btn-test" id="btnImportSettings" type="button">選擇設定檔</button>
+                <input class="file-input" id="settingsImportFile" type="file" accept="application/json,.json">
+              </div>
+              <p class="field-note">只接受翻翻吧設定檔，匯入時會依白名單更新支援的設定與 API Keys。</p>
+            </div>
+
+            <div class="security-note field full">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              <div>
+                <strong>API Key 備份提醒</strong>
+                <ul>
+                  <li>不勾選時，匯出檔不包含任何 API Key。</li>
+                  <li>勾選後匯出的 JSON 會明文包含 API Key，請勿上傳公開空間或分享給他人。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-panel" data-panel-content="cloud" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>雲端同步</h2>
+              <p>使用 Google Drive appData 同步一般設定。v1.7.0 不同步 API Key；API Key 加密備份會排在 v1.7.1。</p>
+            </div>
+            <span class="panel-badge">Google Drive appData</span>
+          </div>
+
+          <div class="form-grid">
+            <div class="field full">
+              <label>Google 登入狀態</label>
+              <div class="backup-actions">
+                <button class="btn-test" id="btnCloudSignIn" type="button">登入 Google</button>
+                <button class="btn-test" id="btnCloudUpload" type="button">上傳目前設定</button>
+                <button class="btn-test" id="btnCloudDownload" type="button">下載雲端設定</button>
+                <button class="btn-test" id="btnCloudSignOut" type="button">登出</button>
+              </div>
+              <p class="field-note" id="cloudSyncStatus">尚未檢查同步狀態。</p>
+            </div>
+
+            <div class="security-note field full">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              <div>
+                <strong>同步範圍</strong>
+                <ul>
+                  <li>會同步：模型、全文翻譯模型、語言、朗讀模式、單字高亮、Obsidian Vault 與資料夾。</li>
+                  <li>不會同步：Gemini / Groq / OpenRouter / TTS API Key。</li>
+                  <li>同步檔只存於 Google Drive appDataFolder，使用者的一般 Drive 檔案列表不會顯示。</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="security-note field full">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              </svg>
+              <div>
+                <strong>OAuth 設定提醒</strong>
+                <ul>
+                  <li>正式使用前，需在 <code>manifest.json</code> 將 placeholder client ID 換成 Google Cloud OAuth Client ID。</li>
+                  <li>若尚未設定，登入與同步按鈕會顯示錯誤，不會產生假同步狀態。</li>
                 </ul>
               </div>
             </div>
@@ -843,6 +982,7 @@
 
   <script src="models.js"></script>
   <script src="storage.js"></script>
+  <script src="cloud-sync.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

@@ -383,6 +383,12 @@
   opacity: 1 !important;
 }
 
+.g-btn:focus-visible {
+  outline: 2px solid rgba(26, 115, 232, 0.38) !important;
+  outline-offset: 3px !important;
+  background: rgba(26, 115, 232, 0.08) !important;
+}
+
 /* 分隔線（淺色主題用淡灰色）*/
 .g-sep {
   display:     block !important;
@@ -1034,6 +1040,12 @@
 
 .g-obs-dd-item:last-child { border-bottom: none !important; }
 .g-obs-dd-item:hover      { background: #edeaf8 !important; color: #6b5daa !important; }
+.g-obs-dd-item:focus-visible {
+  outline: 2px solid rgba(107, 93, 170, 0.34) !important;
+  outline-offset: -2px !important;
+  background: #edeaf8 !important;
+  color: #6b5daa !important;
+}
 
 .g-obs-dd-empty {
   padding:    10px 12px !important;
@@ -1085,6 +1097,10 @@
 }
 
 .g-obs-confirm-btn:hover  { background: #7664b5 !important; }
+.g-obs-confirm-btn:focus-visible {
+  outline: 2px solid rgba(107, 93, 170, 0.38) !important;
+  outline-offset: 2px !important;
+}
 .g-obs-confirm-btn:active { transform: scale(0.97) !important; }
 
 .g-obs-chevron-btn {
@@ -1104,6 +1120,10 @@
 }
 
 .g-obs-chevron-btn:hover { background: #6655a3 !important; }
+.g-obs-chevron-btn:focus-visible {
+  outline: 2px solid rgba(107, 93, 170, 0.38) !important;
+  outline-offset: 2px !important;
+}
 
 /* ════════════════════════════════════════════════
    7. Pin 按鈕 + 釘住狀態
@@ -1164,6 +1184,10 @@
 }
 
 .g-autosave-change:hover { color: #3a7a1e !important; }
+.g-autosave-change:focus-visible {
+  outline: 2px solid rgba(90, 154, 46, 0.34) !important;
+  outline-offset: 2px !important;
+}
 
 /* ════════════════════════════════════════════════
    9. Streaming 游標效果
@@ -1444,6 +1468,12 @@ del.g-diff-del {
   color:        #3a7a1e !important;
 }
 
+.g-opt-copy-btn:focus-visible {
+  outline: 2px solid rgba(90, 158, 58, 0.34) !important;
+  outline-offset: 2px !important;
+  background: rgba(163, 209, 121, 0.15) !important;
+}
+
 /* 複製成功狀態：變綠打勾 */
 .g-opt-copy-btn.g-opt-copied {
   background:   rgba(163, 209, 121, 0.25) !important;
@@ -1505,6 +1535,12 @@ del.g-diff-del {
 
 .g-hist-item:hover {
   background: rgba(163, 209, 121, 0.12) !important;
+}
+
+.g-hist-item:focus-visible {
+  outline: 2px solid rgba(26, 115, 232, 0.34) !important;
+  outline-offset: -2px !important;
+  background: rgba(26, 115, 232, 0.08) !important;
 }
 
 /* 動作 badge */
@@ -2028,6 +2064,16 @@ del.g-diff-del {
   border-color: rgba(90, 158, 58, 0.28) !important;
 }
 
+.ffb-page-panel-modes button:focus-visible,
+.ffb-page-panel-actions button:focus-visible,
+.ffb-page-retry:focus-visible,
+.ffb-page-translation-actions button:focus-visible {
+  outline: 2px solid rgba(90, 158, 58, 0.34) !important;
+  outline-offset: 2px !important;
+  background: rgba(163, 209, 121, 0.14) !important;
+  border-color: rgba(90, 158, 58, 0.28) !important;
+}
+
 .ffb-page-panel-modes button.ffb-page-active,
 .ffb-page-panel-actions button.ffb-page-active {
   background: #edf7e8 !important;
@@ -2281,6 +2327,35 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
   display: none !important;
 }
 
+@media (max-width: 560px) {
+  #gemini-result-card {
+    width: calc(100vw - 16px) !important;
+  }
+
+  .g-rc-header {
+    flex-wrap: wrap !important;
+    align-items: center !important;
+  }
+
+  .g-rc-tag {
+    flex: 1 1 calc(100% - 140px) !important;
+  }
+
+  .g-rc-model-select {
+    flex: 1 1 100% !important;
+    max-width: none !important;
+    order: 3 !important;
+  }
+
+  .g-rc-actions {
+    margin-left: auto !important;
+  }
+
+  .g-vocab-save-btn {
+    max-width: 118px !important;
+  }
+}
+
 #fanfanba-floating.ffb-menu-open .ffb-ball-menu {
   opacity: 1 !important;
   transform: translateY(-50%) scale(1) !important;
@@ -2516,6 +2591,12 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
 
 .g-floating-history-item:hover {
   background: rgba(163, 209, 121, 0.14) !important;
+}
+
+.g-floating-history-item:focus-visible {
+  outline: 2px solid rgba(26, 115, 232, 0.34) !important;
+  outline-offset: 2px !important;
+  background: rgba(26, 115, 232, 0.08) !important;
 }
 
 .g-floating-history-item span {

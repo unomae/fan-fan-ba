@@ -147,16 +147,10 @@ async function exportVocabularyEntryToObsidianIfConfigured(item) {
   const baseFolder = obsidianDefaultFolder?.trim();
   if (!baseFolder) return { exported: false, reason: 'missing-folder' };
 
-  const folder = getVocabularyObsidianFolder(baseFolder);
+  const folder = baseFolder.replace(/\/+$/, '');
   await appendVocabularyEntryToObsidian(item, folder);
   await markVocabularyEntryExported(item.id);
   return { exported: true, folder };
-}
-
-function getVocabularyObsidianFolder(baseFolder) {
-  const clean = String(baseFolder || '').replace(/\/+$/, '');
-  if (!clean) return '單字本';
-  return /(^|\/)單字本$/.test(clean) ? clean : `${clean}/單字本`;
 }
 
 async function markVocabularyEntryExported(id) {
