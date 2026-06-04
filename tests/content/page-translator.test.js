@@ -88,6 +88,32 @@ describe('page translator helpers', () => {
     ]);
   });
 
+  it('allows Notion正文 editable leaves while still skipping generic editable regions', () => {
+    document.body.innerHTML = `
+      <main>
+        <section contenteditable="true">
+          <p>This generic editable draft should still be ignored by page translation.</p>
+        </section>
+        <div class="notion-page-content">
+          <div data-block-id="block-a">
+            <div data-content-editable-leaf="true" contenteditable="true">
+              Notion article paragraphs should be translated when they are visible in the page body.
+            </div>
+          </div>
+          <div role="toolbar">
+            <div data-content-editable-leaf="true" contenteditable="true">Toolbar label should not translate.</div>
+          </div>
+        </div>
+      </main>
+    `;
+
+    const items = collectVisibleTranslatableBlocks();
+
+    expect(items.map(item => item.text)).toEqual([
+      'Notion article paragraphs should be translated when they are visible in the page body.'
+    ]);
+  });
+
   it('formats page translation panel status with progress and actionable states', () => {
     expect(getPageTranslationStatusText({
       running: true,

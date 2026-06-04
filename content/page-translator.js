@@ -15,6 +15,8 @@ let pageTranslationPairCounter = 0;
 let pageTranslationModel = null;
 let pageTranslationRequestCounter = 0;
 let pageTranslationActivePort = null;
+let pageTranslationLocationKey = getPageTranslationLocationKey();
+let pageTranslationNavigationBound = false;
 
 let pageTranslationState = {
   running: false,
@@ -35,6 +37,9 @@ let pageTranslationState = {
 };
 
 function startPageTranslationBeta() {
+  bindPageTranslationNavigationWatcher();
+  pageTranslationLocationKey = getPageTranslationLocationKey();
+
   if (pageTranslationState.running) {
     updatePageTranslationPanel();
     return;
@@ -87,6 +92,9 @@ function collectVisibleTranslatableBlocks() {
     'article h1', 'article h2', 'article h3', 'article p', 'article li',
     '[role="main"] h1', '[role="main"] h2', '[role="main"] h3',
     '[role="main"] p', '[role="main"] li',
+    '.notion-page-content [data-content-editable-leaf="true"]',
+    '.notion-page-content [contenteditable="true"]',
+    '[data-block-id] [data-content-editable-leaf="true"]',
     'h1', 'h2', 'h3', 'p', 'li', 'blockquote'
   ].join(',');
   const seen = new Set();
@@ -127,9 +135,13 @@ function createPageTranslationPairId() {
 
 function isPageTranslatableElement(el) {
   if (!el || el.closest('#gemini-ai-toolbar, #gemini-result-card, #fanfanba-floating, .ffb-page-translation-panel, .ffb-page-translation-block')) return false;
-  if (el.closest('script, style, noscript, svg, canvas, pre, code, kbd, samp, textarea, input, select, button, nav, header, footer, aside, form, [contenteditable="true"], [aria-hidden="true"]')) return false;
+  if (el.closest('script, style, noscript, svg, canvas, pre, code, kbd, samp, textarea, input, select, button, nav, header, footer, aside, form, [aria-hidden="true"]')) return false;
+  const editableAncestor = el.closest('[contenteditable="true"]');
+  if (editableAncestor && !isAllowedEditablePageTranslationElement(el, editableAncestor)) return false;
   if (el.closest('[role="button"], [role="link"], [role="menu"], [role="menubar"], [role="menuitem"], [role="toolbar"], [role="tablist"], [role="tab"], [role="dialog"], [role="alert"], [role="status"], [role="navigation"], [role="search"], [role="complementary"], [aria-modal="true"]')) return false;
-  if (el.querySelector('textarea, input, select, button, [contenteditable="true"], [role="button"], [role="menuitem"], [role="tab"]')) return false;
+  if (el.querySelector('textarea, input, select, button, [role="button"], [role="menuitem"], [role="tab"]')) return false;
+  const editableChild = el.querySelector('[contenteditable="true"]');
+  if (editableChild && !isAllowedEditablePageTranslationElement(editableChild, editableChild)) return false;
   if (el.classList.contains('ffb-page-source-translated')) return false;
 
   const rect = el.getBoundingClientRect();
@@ -137,6 +149,16 @@ function isPageTranslatableElement(el) {
   if (rect.bottom < 0 || rect.top > window.innerHeight) return false;
   const style = window.getComputedStyle(el);
   if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false;
+  return true;
+}
+
+function isAllowedEditablePageTranslationElement(el, editableEl) {
+  const node = el || editableEl;
+  if (!node) return false;
+  if (!node.matches?.('[contenteditable="true"], [data-content-editable-leaf="true"]')) return false;
+  const inNotionContent = Boolean(node.closest('.notion-page-content, [data-block-id]'));
+  if (!inNotionContent) return false;
+  if (node.closest('[role="toolbar"], [role="menu"], [role="menubar"], [role="dialog"], [role="button"], button, form, nav, aside, header, footer')) return false;
   return true;
 }
 
@@ -661,6 +683,46 @@ function restorePageTranslationBeta() {
   updateFloatingBallPageTranslationState?.(pageTranslationState);
 }
 
+function bindPageTranslationNavigationWatcher() {
+  if (pageTranslationNavigationBound) return;
+  pageTranslationNavigationBound = true;
+
+  const originalPushState = history.pushState;
+  const originalReplaceState = history.replaceState;
+  history.pushState = function pushStateWithPageTranslationReset(...args) {
+    const result = originalPushState.apply(this, args);
+    schedulePageTranslationNavigationCheck();
+    return result;
+  };
+  history.replaceState = function replaceStateWithPageTranslationReset(...args) {
+    const result = originalReplaceState.apply(this, args);
+    schedulePageTranslationNavigationCheck();
+    return result;
+  };
+  window.addEventListener('popstate', schedulePageTranslationNavigationCheck);
+  window.addEventListener('hashchange', schedulePageTranslationNavigationCheck);
+}
+
+function schedulePageTranslationNavigationCheck() {
+  setTimeout(resetPageTranslationIfLocationChanged, 0);
+}
+
+function getPageTranslationLocationKey() {
+  return `${location.origin}${location.pathname}${location.search}${location.hash}`;
+}
+
+function resetPageTranslationIfLocationChanged() {
+  const nextKey = getPageTranslationLocationKey();
+  if (nextKey === pageTranslationLocationKey) return;
+  pageTranslationLocationKey = nextKey;
+  if (!pageTranslationState.activated && !pageTranslationState.running && !pageTranslationPanel) {
+    updateFloatingBallPageTranslationState?.(pageTranslationState);
+    return;
+  }
+  restorePageTranslationBeta();
+  pageTranslationLocationKey = nextKey;
+}
+
 function bindPageTranslationScrollWatcher() {
   if (pageTranslationState.scrollBound) return;
   pageTranslationState.scrollBound = true;
@@ -793,6 +855,7 @@ if (typeof module !== 'undefined' && module.exports) {
     extractPageTranslationJsonTranslation,
     getPageTranslationStatusText,
     getElementTranslationText,
-    isPageTranslatableElement
+    isPageTranslatableElement,
+    isAllowedEditablePageTranslationElement
   };
 }

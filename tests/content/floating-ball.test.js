@@ -109,6 +109,18 @@ describe('floating ball menu behavior', () => {
     expect(floatingBall.querySelector('[data-action="settings"] .ffb-settings-icon')).not.toBeNull();
   });
 
+  it('uses one custom tooltip source instead of native browser titles for floating actions', () => {
+    const floatingBall = document.getElementById('fanfanba-floating');
+    const pauseButton = floatingBall.querySelector('[data-action="pause"]');
+    const pageTranslateButton = floatingBall.querySelector('[data-action="page-translate"]');
+
+    expect(pauseButton.getAttribute('title')).toBeNull();
+    expect(pauseButton.dataset.tooltip).toBe('在此網站停用');
+    expect(pauseButton.getAttribute('aria-label')).toBe('在此網站停用');
+    expect(pageTranslateButton.getAttribute('title')).toBeNull();
+    expect(pageTranslateButton.dataset.tooltip).toBe('全文翻譯 Beta');
+  });
+
   it('opens the extension settings from the floating settings action', () => {
     const floatingBall = document.getElementById('fanfanba-floating');
     floatingBall.classList.add('ffb-menu-open');

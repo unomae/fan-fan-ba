@@ -28,27 +28,27 @@ function createFloatingBall() {
     <button class="ffb-ball-main" type="button" title="翻翻吧">
       <img src="${chrome.runtime.getURL('icons/icon48.png')}" alt="">
     </button>
-    <button class="ffb-continue-tip" type="button" title="直接翻譯新的可見段落">有新的段落可翻譯</button>
+    <button class="ffb-continue-tip" type="button" aria-label="直接翻譯新的可見段落">有新的段落可翻譯</button>
     <div class="ffb-ball-menu">
       <div class="ffb-ball-menu-group ffb-ball-menu-top">
-        <button class="ffb-ball-item" type="button" data-action="library" data-tooltip="收藏 / 紀錄" title="收藏 / 紀錄" aria-label="收藏 / 紀錄">
+        <button class="ffb-ball-item" type="button" data-action="library" data-tooltip="收藏 / 紀錄" aria-label="收藏 / 紀錄">
           <span class="ffb-ball-icon">${FFB_ICON_NOTEBOOK}</span>
           <span class="ffb-ball-label">收藏 / 紀錄</span>
         </button>
       </div>
       <div class="ffb-ball-menu-gap" aria-hidden="true"></div>
       <div class="ffb-ball-menu-group ffb-ball-menu-bottom">
-        <button class="ffb-ball-item" type="button" data-action="page-translate" data-tooltip="全文翻譯 Beta" title="全文翻譯目前可見內容" aria-label="全文翻譯 Beta">
+        <button class="ffb-ball-item" type="button" data-action="page-translate" data-tooltip="全文翻譯 Beta" aria-label="全文翻譯 Beta">
           <span class="ffb-ball-icon ffb-translate-icon">${FFB_ICON_LANGUAGES}</span>
           <span class="ffb-ball-label ffb-page-translate-label">全文翻譯 Beta</span>
         </button>
-        <button class="ffb-ball-item" type="button" data-action="settings" data-tooltip="設定" title="開啟設定" aria-label="設定">
+        <button class="ffb-ball-item" type="button" data-action="settings" data-tooltip="設定" aria-label="設定">
           <span class="ffb-ball-icon ffb-settings-icon">${FFB_ICON_SETTINGS}</span>
           <span class="ffb-ball-label">設定</span>
         </button>
       </div>
     </div>
-    <button class="ffb-pause-x" type="button" data-action="pause" title="在此網站停用" aria-label="在此網站停用">×</button>
+    <button class="ffb-pause-x" type="button" data-action="pause" data-tooltip="在此網站停用" aria-label="在此網站停用">×</button>
   `;
 
   const mainBtn = el.querySelector('.ffb-ball-main');
@@ -243,7 +243,6 @@ function updateFloatingBallPausedState() {
   if (label) label.textContent = text;
   if (button) {
     button.dataset.tooltip = text;
-    button.title = text;
     button.setAttribute('aria-label', text);
   }
 }
@@ -257,7 +256,6 @@ function updateFloatingBallVocabularyHighlightState(enabled = false) {
   if (label) label.textContent = text;
   if (button) {
     button.dataset.tooltip = text;
-    button.title = text;
     button.setAttribute('aria-label', text);
   }
 }
@@ -275,7 +273,7 @@ function updateFloatingBallPageTranslationState({ running = false, activated = f
   floatingBall.classList.toggle('ffb-can-continue', !running && canContinue);
   if (continueTip) {
     continueTip.disabled = running || !canContinue;
-    continueTip.title = canContinue ? '直接翻譯新的可見段落' : '目前沒有新的段落';
+    continueTip.setAttribute('aria-label', canContinue ? '直接翻譯新的可見段落' : '目前沒有新的段落');
   }
   if (label) {
     if (running) label.textContent = '翻譯中...';
@@ -290,7 +288,7 @@ function updateFloatingBallPageTranslationState({ running = false, activated = f
         : activated
           ? '目前沒有新段落'
           : '翻譯目前可見內容';
-    button.title = title;
+    button.setAttribute('aria-description', title);
     button.dataset.tooltip = running
       ? '翻譯中...'
       : activated
