@@ -11,7 +11,7 @@
   const DRIVE_FILES_URL = 'https://www.googleapis.com/drive/v3/files';
   const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
   const GOOGLE_OAUTH_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
-  const OAUTH_PLACEHOLDER_PATTERN = /REPLACE_WITH_GOOGLE_OAUTH_CLIENT_ID/i;
+  const OAUTH_PLACEHOLDER_PATTERN = /REPLACE_WITH_GOOGLE(?:_WEB)?_OAUTH_CLIENT_ID|REPLACE_WITH_GOOGLE.*CLIENT_ID/i;
   const NATIVE_AUTH_UNSUPPORTED_PATTERN = /not supported|unsupported|microsoft edge|extensions API documentation/i;
 
   function getManifest() {
@@ -19,24 +19,56 @@
   }
 
   function getOAuthConfig() {
-    const oauth2 = getManifest().oauth2 || {};
+    const manifest = getManifest();
+    const oauth2 = manifest.oauth2 || {};
+    const cloudSyncConfig = manifest.fan_fan_ba?.cloud_sync || manifest.fanFanBaCloudSync || {};
+    const nativeClientId = String(oauth2.client_id || '');
+    const webAuthClientId = String(
+      cloudSyncConfig.web_auth_client_id ||
+      cloudSyncConfig.webAuthClientId ||
+      oauth2.web_auth_client_id ||
+      ''
+    );
     return {
-      clientId: String(oauth2.client_id || ''),
+      clientId: nativeClientId,
+      nativeClientId,
+      webAuthClientId,
       scopes: Array.isArray(oauth2.scopes) ? oauth2.scopes : []
     };
   }
 
+  function isOAuthClientIdConfigured(clientId = '') {
+    return Boolean(clientId && !OAUTH_PLACEHOLDER_PATTERN.test(clientId));
+  }
+
   function isOAuthConfigured(config = getOAuthConfig()) {
-    return Boolean(
-      config.clientId &&
-      !OAUTH_PLACEHOLDER_PATTERN.test(config.clientId) &&
-      config.scopes.includes(DRIVE_APPDATA_SCOPE)
+    return config.scopes.includes(DRIVE_APPDATA_SCOPE) && (
+      isNativeOAuthConfigured(config) ||
+      isWebAuthOAuthConfigured(config)
     );
   }
 
+  function isNativeOAuthConfigured(config = getOAuthConfig()) {
+    return config.scopes.includes(DRIVE_APPDATA_SCOPE) && isOAuthClientIdConfigured(config.nativeClientId || config.clientId);
+  }
+
+  function isWebAuthOAuthConfigured(config = getOAuthConfig()) {
+    return config.scopes.includes(DRIVE_APPDATA_SCOPE) && isOAuthClientIdConfigured(config.webAuthClientId);
+  }
+
+  function getWebAuthConfig(config = getOAuthConfig()) {
+    return {
+      clientId: config.webAuthClientId || '',
+      scopes: Array.isArray(config.scopes) ? config.scopes : []
+    };
+  }
+
   function getOAuthSupport() {
+    const config = getOAuthConfig();
     return {
       configured: isOAuthConfigured(),
+      nativeAuthConfigured: isNativeOAuthConfigured(config),
+      webAuthConfigured: isWebAuthOAuthConfigured(config),
       nativeAuth: Boolean(chrome.identity?.getAuthToken),
       webAuthFlow: Boolean(chrome.identity?.launchWebAuthFlow && chrome.identity?.getRedirectURL)
     };
@@ -51,18 +83,24 @@
   }
 
   function ensureOAuthReady() {
-    if (!isOAuthConfigured()) {
-      throw new Error('尚未設定 Google OAuth Client ID');
-    }
+    const config = getOAuthConfig();
     const support = getOAuthSupport();
     if (!support.nativeAuth && !support.webAuthFlow) {
       throw new Error('此瀏覽器環境不支援 Google 登入');
+    }
+    if (support.nativeAuth && isNativeOAuthConfigured(config)) return;
+    if (support.webAuthFlow && isWebAuthOAuthConfigured(config)) return;
+    if (support.webAuthFlow && !isWebAuthOAuthConfigured(config) && !support.nativeAuth) {
+      throw new Error('尚未設定 Web Auth fallback OAuth Client ID');
+    }
+    if (!isOAuthConfigured(config)) {
+      throw new Error('尚未設定 Google OAuth Client ID');
     }
   }
 
   async function getAuthToken(interactive = true) {
     ensureOAuthReady();
-    if (chrome.identity?.getAuthToken) {
+    if (chrome.identity?.getAuthToken && isNativeOAuthConfigured()) {
       try {
         return await getNativeAuthToken(interactive);
       } catch (error) {
@@ -94,7 +132,10 @@
   }
 
   async function getWebAuthFlowToken(interactive = true) {
-    const config = getOAuthConfig();
+    const config = getWebAuthConfig();
+    if (!isOAuthClientIdConfigured(config.clientId) || !config.scopes.includes(DRIVE_APPDATA_SCOPE)) {
+      throw new Error('尚未設定 Web Auth fallback OAuth Client ID');
+    }
     const cached = await getCachedWebAuthToken(config);
     if (cached) return cached.token;
     if (!interactive) throw new Error('尚未登入 Google');
@@ -110,7 +151,7 @@
     return token.token;
   }
 
-  function buildGoogleOAuthUrl(config = getOAuthConfig(), state = createOAuthState()) {
+  function buildGoogleOAuthUrl(config = getWebAuthConfig(), state = createOAuthState()) {
     const params = new URLSearchParams({
       client_id: config.clientId,
       response_type: 'token',
@@ -330,7 +371,14 @@
       return {
         category: 'oauth_redirect',
         message: 'Google OAuth redirect URL 未被允許',
-        hint: `請到 Google Cloud OAuth 設定加入 redirect URL：${getOAuthRedirectUrl() || '目前瀏覽器未提供 redirect URL'}`
+        hint: `請使用 Web Application OAuth Client ID，並到 Google Cloud OAuth 設定加入 redirect URL：${getOAuthRedirectUrl() || '目前瀏覽器未提供 redirect URL'}`
+      };
+    }
+    if (/web auth fallback oauth client id|web auth client/i.test(text)) {
+      return {
+        category: 'oauth_web_client',
+        message: '尚未設定 Web Auth fallback OAuth Client ID',
+        hint: '請在 manifest.json 的 fan_fan_ba.cloud_sync.web_auth_client_id 填入 Web Application OAuth Client ID。'
       };
     }
     if (/invalid_client|unauthorized_client|client/i.test(raw) && /oauth|google/i.test(raw)) {
@@ -405,7 +453,10 @@
     CLOUD_OAUTH_TOKEN_KEY,
     DRIVE_APPDATA_SCOPE,
     getOAuthConfig,
+    getWebAuthConfig,
     isOAuthConfigured,
+    isNativeOAuthConfigured,
+    isWebAuthOAuthConfigured,
     getOAuthSupport,
     getOAuthRedirectUrl,
     getAuthToken,

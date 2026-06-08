@@ -312,6 +312,7 @@
         <a href="#architecture">架構流程</a>
         <a href="#settings">設定與 Storage</a>
         <a href="#cloud-sync-plan">Cloud Sync</a>
+        <a href="#cloud-sync-google-cloud-setup">Google Cloud 設定</a>
         <a href="#settings-ui-plan">設定頁方案</a>
         <a href="#features">功能清單</a>
         <a href="#decisions">決策紀錄</a>
@@ -496,12 +497,91 @@ options.js</pre>
             <tr><td>不納入範圍</td><td>Gemini / Groq / OpenRouter / TTS API Key、單字本資料、查詢歷史。</td><td><span class="pill green">已限制</span></td></tr>
             <tr><td>Google Drive</td><td>使用 <code>drive.appdata</code> scope，將 <code>fan-fan-ba-cloud-settings.json</code> 存到 appDataFolder。</td><td><span class="pill green">已實作 helper</span></td></tr>
             <tr><td>Options UI</td><td>新增「雲端同步」分頁：登入 Google、上傳目前設定、下載雲端設定、登出、同步狀態。</td><td><span class="pill green">已實作</span></td></tr>
-            <tr><td>OAuth Client ID</td><td><code>manifest.json</code> 已替換為 Google Cloud OAuth Client ID；若走 <code>launchWebAuthFlow</code>，Google Cloud 端需允許 extension redirect URL。</td><td><span class="pill green">已設定</span></td></tr>
-            <tr><td>瀏覽器支援</td><td>Chrome 優先使用 <code>chrome.identity.getAuthToken</code>；Microsoft Edge / Chromium 若不支援 native auth，fallback 到 <code>identity.launchWebAuthFlow</code>。</td><td><span class="pill green">v1.7.2 補強</span></td></tr>
-            <tr><td>v1.7.3 hardening</td><td>補同步前後狀態、最後同步時間、錯誤訊息分類、OAuth redirect URL 提示、同檔覆寫提示與 Edge / Chrome 手動 QA 矩陣。</td><td><span class="pill orange">進行中</span></td></tr>
+            <tr><td>OAuth Client ID</td><td><code>manifest.json</code> 已設定 Chrome native OAuth Client ID；Edge / Chromium Web Auth fallback 需使用 <code>fan_fan_ba.cloud_sync.web_auth_client_id</code> 的 Web Application OAuth Client ID，並在 Google Cloud 允許 extension redirect URL。</td><td><span class="pill orange">Web client 待填</span></td></tr>
+            <tr><td>瀏覽器支援</td><td>Chrome 優先使用 <code>chrome.identity.getAuthToken</code>；Microsoft Edge / Chromium 若不支援 native auth，fallback 到 <code>identity.launchWebAuthFlow</code>，且必須使用 Web Auth 專用 client。</td><td><span class="pill green">v1.7.3 補強</span></td></tr>
+            <tr><td>v1.7.3 hardening</td><td>已補同步前後狀態、最後同步時間、錯誤訊息分類、OAuth redirect URL 提示、上傳覆寫雲端檔案確認、下載覆寫本機設定確認與 Web Auth 專用 client 診斷；Edge / Chrome 手動 QA 矩陣仍需實機回填。</td><td><span class="pill orange">手測待回填</span></td></tr>
             <tr><td>衝突策略</td><td>第一版採手動操作：使用者明確選擇上傳本機設定或下載雲端設定。</td><td><span class="pill green">已定義</span></td></tr>
           </tbody>
         </table>
+      </section>
+
+      <section id="cloud-sync-google-cloud-setup">
+        <h2>Google Cloud 設定手順</h2>
+        <div class="callout">明天接著做這段：Edge / Chromium 的 <code>identity.launchWebAuthFlow</code> fallback 要用 <strong>Web Application</strong> OAuth Client ID，不要沿用 Chrome native auth 的 Chrome Extension client。官方文件路徑是 <code>Google Auth platform &gt; Clients</code>，Web application 需要在 <code>Authorized redirect URIs</code> 加入 extension redirect URL。</div>
+
+        <h3 style="margin-top:14px;">0. 先從 Edge 複製 Redirect URL</h3>
+        <ol>
+          <li>打開 Edge，進入 <code>edge://extensions</code>。</li>
+          <li>確認翻翻吧已重新載入，然後開翻翻吧 Options / 設定頁。</li>
+          <li>切到「雲端同步」分頁。</li>
+          <li>從狀態列複製 <code>Redirect URL：https://xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.chromiumapp.org/</code>。</li>
+          <li>這串要完整複製，包含最後的 <code>/</code>；如果 Edge extension ID 之後改變，Redirect URL 也要重新加入 Google Cloud。</li>
+        </ol>
+
+        <h3 style="margin-top:14px;">1. 建立 / 選用 Web Application OAuth client</h3>
+        <ol>
+          <li>打開 <a href="https://console.cloud.google.com/auth/clients" target="_blank">Google Cloud Console：Google Auth platform &gt; Clients</a>。</li>
+          <li>確認上方 project 是翻翻吧目前使用的同一個 Google Cloud project。</li>
+          <li>如果 Google 要求先設定 Google Auth platform，點 <code>Get Started</code>。</li>
+          <li>在 Branding 填 <code>App name</code>：<code>翻翻吧</code> 或 <code>Fan Fan Ba</code>；<code>User support email</code> 與 developer contact email 填你的信箱。</li>
+          <li>在 Audience 選 <code>External</code>；如果 publishing status 是 <code>Testing</code>，把 <code>TeaKingdom@gmail.com</code> 加進 Test users。</li>
+          <li>回到 <code>Google Auth platform &gt; Clients</code>，點 <code>Create Client</code>。</li>
+          <li><code>Application type</code> 選 <strong>Web application</strong>。</li>
+          <li>Name 建議填 <code>Fan Fan Ba Edge Web Auth</code>。</li>
+          <li><code>Authorized JavaScript origins</code> 留空。</li>
+          <li><code>Authorized redirect URIs</code> 點 <code>Add URI</code>，貼上第 0 步從 Edge 狀態列複製的 Redirect URL。</li>
+          <li>點 <code>Create</code>，建立後複製 <code>Client ID</code>；格式會像 <code>1234567890-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com</code>。</li>
+          <li>不要把 <code>Client secret</code> 放進 extension；翻翻吧 Web Auth fallback 只需要 <code>Client ID</code>。</li>
+        </ol>
+
+        <h3 style="margin-top:14px;">2. 填回 manifest.json</h3>
+        <p>只替換 <code>fan_fan_ba.cloud_sync.web_auth_client_id</code>，不要動上方 <code>oauth2.client_id</code>；上方那個仍是 Chrome native auth 使用。</p>
+        <pre>{
+  "oauth2": {
+    "client_id": "Chrome native OAuth Client ID，保留原值",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive.appdata"
+    ]
+  },
+  "fan_fan_ba": {
+    "cloud_sync": {
+      "web_auth_client_id": "貼上 Web Application OAuth Client ID"
+    }
+  }
+}</pre>
+
+        <h3 style="margin-top:14px;">3. 重新載入 Edge extension 並驗收</h3>
+        <ol>
+          <li>回到 <code>edge://extensions</code>，重新載入翻翻吧。</li>
+          <li>重新打開翻翻吧設定頁 &gt;「雲端同步」。</li>
+          <li>狀態列應看到 <code>Native Client：已設定</code>、<code>Web Auth Client：已設定</code>、<code>Redirect URL：...</code>。</li>
+          <li>點「登入 Google」，選 <code>TeaKingdom@gmail.com</code>。</li>
+          <li>若測試階段看到未驗證 app 提醒，可繼續完成授權。</li>
+          <li>登入成功後，依序測「上傳目前設定」、「下載雲端設定」、「取消覆寫提示」。</li>
+          <li>測完把結果回填到本文件的 v1.7.3 Session Log / QA 矩陣。</li>
+        </ol>
+
+        <h3 style="margin-top:14px;">4. 如果還是 redirect_uri_mismatch</h3>
+        <table>
+          <thead>
+            <tr><th>檢查項目</th><th>處理方式</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>OAuth client 類型</td><td>必須是 <strong>Web application</strong> client，不是 Chrome Extension client。</td></tr>
+            <tr><td>Client ID 貼錯位置</td><td>Web client ID 要貼到 <code>fan_fan_ba.cloud_sync.web_auth_client_id</code>，不要覆蓋 <code>oauth2.client_id</code>。</td></tr>
+            <tr><td>Redirect URL 不一致</td><td>Google Cloud 的 Authorized redirect URIs 必須和設定頁狀態列一字不差，包含最後的 <code>/</code>。</td></tr>
+            <tr><td>Extension ID 改變</td><td>重新載入或換安裝方式後，若 Redirect URL 改變，要把新的 URL 加回 Google Cloud。</td></tr>
+            <tr><td>Project 不一致</td><td>確認 Web client 建在翻翻吧目前使用的同一個 Google Cloud project。</td></tr>
+            <tr><td>Testing 使用者未加入</td><td>如果 app 還在 Testing，確認登入帳號 <code>TeaKingdom@gmail.com</code> 已在 Test users。</td></tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin-top:14px;">官方依據</h3>
+        <ul>
+          <li><a href="https://developers.google.com/workspace/guides/create-credentials" target="_blank">Create access credentials</a>：OAuth client ID 需要依平台分開建立；Web application 在 <code>Google Auth platform &gt; Clients</code> 建立，並設定 <code>Authorized redirect URIs</code>。</li>
+          <li><a href="https://developers.google.com/workspace/guides/configure-oauth-consent" target="_blank">Configure OAuth consent</a>：測試階段需設定 OAuth consent / Audience / test users。</li>
+          <li><a href="https://support.google.com/cloud/answer/15549257" target="_blank">Manage OAuth Clients</a>：Google Cloud 最新 OAuth client 管理入口與 client 管理方式。</li>
+        </ul>
       </section>
 
       <section id="settings-ui-plan">
@@ -1024,7 +1104,7 @@ options.js</pre>
           </div>
           <div class="phase">
             <strong>v1.7.3：Cloud Sync Reliability</strong>
-            <p>同步前後狀態、最後同步 metadata、錯誤分類、OAuth redirect 設定提醒、同檔覆寫 / 下載前提示、Edge / Chrome 手動 QA 矩陣。</p>
+            <p>同步前後狀態、最後同步 metadata、錯誤分類、OAuth redirect 設定提醒、同檔覆寫 / 下載前提示、Web Auth 專用 client 診斷已完成；Edge / Chrome 手動 QA 矩陣仍待實機回填。</p>
             <span class="pill orange">進行中</span>
           </div>
           <div class="phase">
@@ -1053,10 +1133,28 @@ options.js</pre>
           </thead>
           <tbody>
             <tr>
+              <td>2026-06-09</td>
+              <td><code>v1.7.3 / Docs</code></td>
+              <td>新增「Google Cloud 設定手順」章節，逐步記錄 Edge Web Auth fallback 需要建立 Web Application OAuth client、貼入 Authorized redirect URIs、填回 <code>fan_fan_ba.cloud_sync.web_auth_client_id</code>、重新載入 Edge extension 與排查 <code>redirect_uri_mismatch</code> 的流程。</td>
+              <td>依 Google 官方文件整理；明天完成 Google Cloud 設定後，需回填 Edge OAuth / 上傳 / 下載實測結果。</td>
+            </tr>
+            <tr>
+              <td>2026-06-09</td>
+              <td><code>v1.7.3</code></td>
+              <td>Edge Cloud Sync QA 進入 Google 登入頁後回報 <code>400 redirect_uri_mismatch</code>；判定 fallback 已啟動，但不應沿用 Chrome native OAuth client。已拆分 Chrome native client 與 Edge / Chromium Web Auth client，Web Auth fallback 現在會要求 <code>fan_fan_ba.cloud_sync.web_auth_client_id</code> 使用 Web Application OAuth Client ID。</td>
+              <td>需到 Google Cloud 建立 / 選用 Web Application OAuth client，將狀態列 Redirect URL 加到 Authorized redirect URIs，並把 client ID 填回 <code>manifest.json</code> 後重新載入 extension 再測 Edge。</td>
+            </tr>
+            <tr>
+              <td>2026-06-08</td>
+              <td><code>v1.7.3</code></td>
+              <td>Cloud Sync 上傳前會偵測既有雲端設定檔並要求確認覆寫；下載前會要求確認覆寫本機一般設定，取消時不會上傳、下載或寫入 <code>chrome.storage.sync</code>。本機測試環境已確認 extension 版本為 <code>1.7.2</code>。</td>
+              <td><code>./node_modules/.bin/jest tests/options.test.js tests/cloud-sync.test.js --runInBand</code> 通過；仍需在 Chrome / Edge 實機回填 OAuth 與雲端同步 QA。</td>
+            </tr>
+            <tr>
               <td>2026-06-08</td>
               <td><code>v1.7.2 / v1.7.3</code></td>
               <td>版本號升級至 <code>1.7.2</code>；Cloud Sync 狀態列新增 Web Auth Redirect URL、最後錯誤 metadata、錯誤分類與提示，方便判斷 <code>redirect_uri_mismatch</code>、OAuth client、Drive permission、network 等問題。</td>
-              <td>後續 v1.7.3 仍需手測 Edge / Chrome OAuth、同檔覆寫提示與下載前確認流程。</td>
+              <td>後續 v1.7.3 仍需手測 Edge / Chrome OAuth；同檔覆寫提示與下載前確認流程已補單元測試。</td>
             </tr>
             <tr>
               <td>2026-06-08</td>

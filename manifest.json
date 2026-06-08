@@ -16,6 +16,11 @@
       "https://www.googleapis.com/auth/drive.appdata"
     ]
   },
+  "fan_fan_ba": {
+    "cloud_sync": {
+      "web_auth_client_id": "REPLACE_WITH_GOOGLE_WEB_OAUTH_CLIENT_ID.apps.googleusercontent.com"
+    }
+  },
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*",
     "https://texttospeech.googleapis.com/*",

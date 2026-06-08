@@ -1,3 +1,5 @@
+const CloudSync = require('../cloud-sync');
+
 describe('Options module', () => {
   beforeAll(() => {
     document.body.innerHTML = `
@@ -160,7 +162,7 @@ describe('Options module', () => {
 
       expect(payload.app).toBe('fan-fan-ba');
       expect(payload.cloudSchemaVersion).toBe(1);
-      expect(payload.appVersion).toBe('1.6.0');
+      expect(payload.appVersion).toBe('1.7.2');
       expect(payload.settings).toEqual({
         model: 'groq:meta-llama/llama-4-scout-17b-16e-instruct',
         obsidianDefaultFolder: '30_Knowledge/my-notes/languages/vocabulary'
@@ -189,5 +191,86 @@ describe('Options module', () => {
 
       expect(document.getElementById('cloudSyncStatus').textContent).toContain('尚未設定 Google OAuth Client ID');
     });
+
+    it('cancels cloud upload before overwriting an existing cloud file', async () => {
+      jest.useRealTimers();
+      const originalConfirm = window.confirm;
+      window.confirm = jest.fn(() => false);
+      const tokenSpy = jest.spyOn(CloudSync, 'getAuthToken').mockResolvedValue('token-test');
+      const findSpy = jest.spyOn(CloudSync, 'findCloudSettingsFile').mockResolvedValue({
+        id: 'cloud-file-1',
+        modifiedTime: '2026-06-08T12:00:00.000Z'
+      });
+      const uploadSpy = jest.spyOn(CloudSync, 'uploadCloudSettings').mockResolvedValue({ id: 'cloud-file-1' });
+      chrome.runtime.getManifest.mockReturnValue({
+        version: '1.7.2',
+        oauth2: {
+          client_id: '1234567890-example.apps.googleusercontent.com',
+          scopes: ['https://www.googleapis.com/auth/drive.appdata']
+        }
+      });
+      chrome.storage.local.get.mockResolvedValue({});
+
+      try {
+        document.getElementById('btnCloudUpload').click();
+        await flushPromises();
+
+        expect(tokenSpy).toHaveBeenCalledWith(true);
+        expect(findSpy).toHaveBeenCalledWith('token-test');
+        expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('覆寫雲端版本'));
+        expect(uploadSpy).not.toHaveBeenCalled();
+        expect(document.getElementById('cloudSyncStatus').textContent).toContain('已取消上傳');
+      } finally {
+        window.confirm = originalConfirm;
+        tokenSpy.mockRestore();
+        findSpy.mockRestore();
+        uploadSpy.mockRestore();
+      }
+    });
+
+    it('cancels cloud download before overwriting local settings', async () => {
+      jest.useRealTimers();
+      const originalConfirm = window.confirm;
+      window.confirm = jest.fn(() => false);
+      const tokenSpy = jest.spyOn(CloudSync, 'getAuthToken').mockResolvedValue('token-test');
+      const findSpy = jest.spyOn(CloudSync, 'findCloudSettingsFile').mockResolvedValue({
+        id: 'cloud-file-1',
+        modifiedTime: '2026-06-08T12:00:00.000Z'
+      });
+      const downloadSpy = jest.spyOn(CloudSync, 'downloadCloudSettings').mockResolvedValue({
+        settings: { model: 'gemini-3.5-flash' }
+      });
+      chrome.runtime.getManifest.mockReturnValue({
+        version: '1.7.2',
+        oauth2: {
+          client_id: '1234567890-example.apps.googleusercontent.com',
+          scopes: ['https://www.googleapis.com/auth/drive.appdata']
+        }
+      });
+      chrome.storage.local.get.mockResolvedValue({});
+
+      try {
+        document.getElementById('btnCloudDownload').click();
+        await flushPromises();
+
+        expect(tokenSpy).toHaveBeenCalledWith(true);
+        expect(findSpy).toHaveBeenCalledWith('token-test');
+        expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('覆寫這台裝置目前的一般設定'));
+        expect(downloadSpy).not.toHaveBeenCalled();
+        expect(chrome.storage.sync.set).not.toHaveBeenCalledWith({ model: 'gemini-3.5-flash' });
+        expect(document.getElementById('cloudSyncStatus').textContent).toContain('已取消下載');
+      } finally {
+        window.confirm = originalConfirm;
+        tokenSpy.mockRestore();
+        findSpy.mockRestore();
+        downloadSpy.mockRestore();
+      }
+    });
   });
 });
+
+async function flushPromises(times = 8) {
+  for (let i = 0; i < times; i += 1) {
+    await Promise.resolve();
+  }
+}

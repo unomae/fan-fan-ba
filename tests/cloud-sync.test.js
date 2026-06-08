@@ -36,13 +36,18 @@ describe('Cloud Sync helper', () => {
       oauth2: {
         client_id: '1234567890-example.apps.googleusercontent.com',
         scopes: [CloudSync.DRIVE_APPDATA_SCOPE]
+      },
+      fan_fan_ba: {
+        cloud_sync: {
+          web_auth_client_id: 'web-client-example.apps.googleusercontent.com'
+        }
       }
     });
 
     const url = new URL(CloudSync.buildGoogleOAuthUrl(undefined, 'state-test'));
 
     expect(url.origin + url.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth');
-    expect(url.searchParams.get('client_id')).toBe('1234567890-example.apps.googleusercontent.com');
+    expect(url.searchParams.get('client_id')).toBe('web-client-example.apps.googleusercontent.com');
     expect(url.searchParams.get('redirect_uri')).toBe('https://mock-extension-id.chromiumapp.org/');
     expect(url.searchParams.get('scope')).toBe(CloudSync.DRIVE_APPDATA_SCOPE);
     expect(url.searchParams.get('state')).toBe('state-test');
@@ -53,6 +58,11 @@ describe('Cloud Sync helper', () => {
       oauth2: {
         client_id: '1234567890-example.apps.googleusercontent.com',
         scopes: [CloudSync.DRIVE_APPDATA_SCOPE]
+      },
+      fan_fan_ba: {
+        cloud_sync: {
+          web_auth_client_id: 'web-client-example.apps.googleusercontent.com'
+        }
       }
     });
     chrome.identity.getAuthToken.mockImplementation((details, callback) => {
@@ -72,13 +82,13 @@ describe('Cloud Sync helper', () => {
     expect(chrome.storage.local.set).toHaveBeenCalledWith({
       [CloudSync.CLOUD_OAUTH_TOKEN_KEY]: expect.objectContaining({
         token: 'edge-token',
-        clientId: '1234567890-example.apps.googleusercontent.com',
+        clientId: 'web-client-example.apps.googleusercontent.com',
         scope: CloudSync.DRIVE_APPDATA_SCOPE
       })
     });
   });
 
-  it('uses a cached web auth token for non-interactive auth', async () => {
+  it('fails early on Edge when the Web Auth fallback client id is missing', async () => {
     chrome.runtime.getManifest.mockReturnValue({
       oauth2: {
         client_id: '1234567890-example.apps.googleusercontent.com',
@@ -86,11 +96,30 @@ describe('Cloud Sync helper', () => {
       }
     });
     delete chrome.identity.getAuthToken;
+
+    await expect(CloudSync.getAuthToken(true)).rejects.toThrow('尚未設定 Web Auth fallback OAuth Client ID');
+    expect(chrome.identity.launchWebAuthFlow).not.toHaveBeenCalled();
+    chrome.identity.getAuthToken = jest.fn();
+  });
+
+  it('uses a cached web auth token for non-interactive auth', async () => {
+    chrome.runtime.getManifest.mockReturnValue({
+      oauth2: {
+        client_id: '1234567890-example.apps.googleusercontent.com',
+        scopes: [CloudSync.DRIVE_APPDATA_SCOPE]
+      },
+      fan_fan_ba: {
+        cloud_sync: {
+          web_auth_client_id: 'web-client-example.apps.googleusercontent.com'
+        }
+      }
+    });
+    delete chrome.identity.getAuthToken;
     chrome.storage.local.get.mockResolvedValueOnce({
       [CloudSync.CLOUD_OAUTH_TOKEN_KEY]: {
         token: 'cached-token',
         expiresAt: Date.now() + 3600000,
-        clientId: '1234567890-example.apps.googleusercontent.com',
+        clientId: 'web-client-example.apps.googleusercontent.com',
         scope: CloudSync.DRIVE_APPDATA_SCOPE
       }
     });
@@ -105,6 +134,13 @@ describe('Cloud Sync helper', () => {
 
     expect(info.category).toBe('oauth_redirect');
     expect(info.hint).toContain('https://mock-extension-id.chromiumapp.org/');
+  });
+
+  it('classifies missing Web Auth client id errors', () => {
+    const info = CloudSync.classifyCloudSyncError(new Error('尚未設定 Web Auth fallback OAuth Client ID'));
+
+    expect(info.category).toBe('oauth_web_client');
+    expect(info.hint).toContain('fan_fan_ba.cloud_sync.web_auth_client_id');
   });
 
   it('records the last cloud sync error in local metadata', async () => {

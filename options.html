@@ -923,7 +923,8 @@
                 <ul>
                   <li>正式使用前，需在 <code>manifest.json</code> 將 placeholder client ID 換成 Google Cloud OAuth Client ID。</li>
                   <li>Chrome 會優先使用 native auth；Microsoft Edge / Chromium 會 fallback 到 <code>identity.launchWebAuthFlow</code>。</li>
-                  <li>若 Edge 顯示 <code>redirect_uri_mismatch</code>，請將狀態列的 Redirect URL 加入 Google Cloud OAuth Authorized redirect URIs。</li>
+                  <li>Edge / Chromium 需在 <code>manifest.json</code> 的 <code>fan_fan_ba.cloud_sync.web_auth_client_id</code> 填入 Web Application OAuth Client ID。</li>
+                  <li>若 Edge 顯示 <code>redirect_uri_mismatch</code>，請將狀態列的 Redirect URL 加入該 Web client 的 Authorized redirect URIs。</li>
                   <li>若尚未設定，登入與同步按鈕會顯示錯誤，不會產生假同步狀態。</li>
                 </ul>
               </div>

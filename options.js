@@ -320,6 +320,12 @@ function bindCloudSyncControls() {
 
   uploadButton?.addEventListener('click', () => runCloudSyncAction(uploadButton, async () => {
     const token = await CloudSync.getAuthToken(true);
+    const existingFile = await CloudSync.findCloudSettingsFile(token);
+    if (existingFile && !confirmCloudUploadOverwrite(existingFile)) {
+      await renderCloudSyncStatus('已取消上傳，雲端設定未變更。');
+      showStatus('info', '已取消雲端設定上傳');
+      return;
+    }
     const payload = await buildCloudSettingsPayload();
     const file = await CloudSync.uploadCloudSettings(token, payload);
     await renderCloudSyncStatus(`已上傳一般設定：${payload.updatedAt}`);
@@ -328,6 +334,13 @@ function bindCloudSyncControls() {
 
   downloadButton?.addEventListener('click', () => runCloudSyncAction(downloadButton, async () => {
     const token = await CloudSync.getAuthToken(true);
+    const existingFile = await CloudSync.findCloudSettingsFile(token);
+    if (!existingFile) throw new Error('找不到雲端設定檔');
+    if (!confirmCloudDownloadOverwrite(existingFile)) {
+      await renderCloudSyncStatus('已取消下載，本機設定未變更。');
+      showStatus('info', '已取消雲端設定下載');
+      return;
+    }
     const payload = await CloudSync.downloadCloudSettings(token);
     const settings = normalizeImportedSettings(payload.settings || {});
     if (!Object.keys(settings).length) throw new Error('雲端設定檔沒有可還原的設定');
@@ -387,8 +400,15 @@ async function renderCloudSyncStatus(message = '') {
       ? 'cross-browser Web Auth'
       : 'Chrome native auth';
   const parts = ['Google OAuth 已設定', 'v1.7.x 僅同步一般設定，不含 API Key', `登入流程：${authMode}`];
+  parts.push(`Native Client：${support.nativeAuthConfigured ? '已設定' : '未設定'}`);
+  if (support.webAuthFlow) {
+    parts.push(`Web Auth Client：${support.webAuthConfigured ? '已設定' : '未設定'}`);
+  }
   const redirectUrl = CloudSync.getOAuthRedirectUrl?.();
   if (support.webAuthFlow && redirectUrl) parts.push(`Redirect URL：${redirectUrl}`);
+  if (support.webAuthFlow && !support.webAuthConfigured) {
+    parts.push('Edge / Chromium 需設定 Web Auth fallback OAuth Client ID');
+  }
   if (meta.lastUploadAt) parts.push(`最後上傳：${meta.lastUploadAt}`);
   if (meta.lastDownloadAt) parts.push(`最後下載：${meta.lastDownloadAt}`);
   if (meta.lastErrorAt) parts.push(`最後錯誤：${meta.lastErrorCategory || 'unknown'} ${meta.lastErrorAt}`);
@@ -532,6 +552,18 @@ function confirmSecretsExport() {
   return window.confirm('匯出的 JSON 會明文包含 API Keys。請只保存在可信任的位置，且不要分享給他人。確定要匯出嗎？');
 }
 
+function confirmCloudUploadOverwrite(file = {}) {
+  if (typeof window === 'undefined' || typeof window.confirm !== 'function') return true;
+  const modifiedTime = file.modifiedTime ? `\n雲端檔案最後修改：${file.modifiedTime}` : '';
+  return window.confirm(`雲端已經有翻翻吧設定檔。上傳目前設定會覆寫雲端版本，另一台裝置之後下載會拿到這份新設定。${modifiedTime}\n\n確定要上傳並覆寫嗎？`);
+}
+
+function confirmCloudDownloadOverwrite(file = {}) {
+  if (typeof window === 'undefined' || typeof window.confirm !== 'function') return true;
+  const modifiedTime = file.modifiedTime ? `\n雲端檔案最後修改：${file.modifiedTime}` : '';
+  return window.confirm(`下載雲端設定會覆寫這台裝置目前的一般設定，但不會變更任何 API Key。${modifiedTime}\n\n確定要下載並套用嗎？`);
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     showStatus,
@@ -550,6 +582,8 @@ if (typeof module !== 'undefined' && module.exports) {
     importSettingsBackupFile,
     formatImportSettingsStatus,
     confirmSecretsExport,
+    confirmCloudUploadOverwrite,
+    confirmCloudDownloadOverwrite,
     bindCloudSyncControls,
     buildCloudSettingsPayload,
     renderCloudSyncStatus
