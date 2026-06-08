@@ -883,7 +883,7 @@
           <div class="panel-head">
             <div>
               <h2>雲端同步</h2>
-              <p>使用 Google Drive appData 同步一般設定。v1.7.0 不同步 API Key；API Key 加密備份會排在 v1.7.1。</p>
+              <p>使用 Google Drive appData 同步一般設定。v1.7.x 不同步 API Key；API Key 加密備份會排在 v1.7.1。</p>
             </div>
             <span class="panel-badge">Google Drive appData</span>
           </div>
@@ -922,6 +922,8 @@
                 <strong>OAuth 設定提醒</strong>
                 <ul>
                   <li>正式使用前，需在 <code>manifest.json</code> 將 placeholder client ID 換成 Google Cloud OAuth Client ID。</li>
+                  <li>Chrome 會優先使用 native auth；Microsoft Edge / Chromium 會 fallback 到 <code>identity.launchWebAuthFlow</code>。</li>
+                  <li>若 Edge 顯示 <code>redirect_uri_mismatch</code>，請將狀態列的 Redirect URL 加入 Google Cloud OAuth Authorized redirect URIs。</li>
                   <li>若尚未設定，登入與同步按鈕會顯示錯誤，不會產生假同步狀態。</li>
                 </ul>
               </div>

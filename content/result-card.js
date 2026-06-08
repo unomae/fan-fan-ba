@@ -117,11 +117,11 @@ function createResultCard() {
     if (autoFolder) {
       // 自動存入：不展開面板
       hideAutoSaveToast(el); // 先清除上一筆提示
-      await saveToObsidian(autoFolder);
+      const result = await saveToObsidian(autoFolder);
       const gemBtn = el.querySelector('.g-save-obs');
       gemBtn.classList.add('g-saved');
       setTimeout(() => gemBtn.classList.remove('g-saved'), 1800);
-      showAutoSaveToast(el, autoFolder);
+      showAutoSaveToast(el, result?.filePath || autoFolder, result?.ok === false, result?.action);
     } else {
       // 第一次使用：展開面板讓使用者輸入資料夾
       openObsPanel(el);
@@ -247,7 +247,7 @@ function createResultCard() {
       return;
     }
 
-    await saveToObsidian(folder);
+    const result = await saveToObsidian(folder);
 
     const gemBtn = el.querySelector('.g-save-obs');
     gemBtn.classList.add('g-saved');
@@ -262,7 +262,7 @@ function createResultCard() {
       statusEl.classList.remove('g-obs-status-show', 'g-obs-status-ok');
       confirmBtn.textContent = '新增到 Obsidian';
       confirmBtn.disabled    = false;
-      showAutoSaveToast(el, folder);
+      showAutoSaveToast(el, result?.filePath || folder, result?.ok === false, result?.action);
     }, 800);
   });
 
@@ -358,10 +358,11 @@ function formatHistoryTime(ts) {
 }
 
 // ── Autosave Toast 顯示 / 隱藏 ────────────────────────
-function showAutoSaveToast(el, folder) {
+function showAutoSaveToast(el, path, failed = false, action = '') {
   const bar  = el.querySelector('.g-autosave-bar');
   const text = el.querySelector('.g-autosave-text');
-  text.textContent = `✓ 已存入：${folder}`;
+  const verb = action === 'write' ? '已建立並送出到 Obsidian' : '已送出到 Obsidian';
+  text.textContent = failed ? `⚠ Obsidian 送出失敗：${path}` : `✓ ${verb}：${path}`;
   bar.classList.add('show');
   clearTimeout(bar._hideTimer);
   bar._hideTimer = setTimeout(() => bar.classList.remove('show'), 4500);
@@ -383,7 +384,6 @@ function positionResultCard(anchorRect = resultCardAnchorRect) {
   if (!savedSel || !resultCard) return;
   if (userDragged) return;
   try {
-    const rect   = savedSel.range.getBoundingClientRect();
     const margin = 8;
     const cardW  = resultCard.offsetWidth || Math.min(500, window.innerWidth - margin * 2);
     const cardH  = resultCard.offsetHeight || 200;
@@ -398,6 +398,8 @@ function positionResultCard(anchorRect = resultCardAnchorRect) {
       top = toolbarRect.bottom + margin;
       left = toolbarRect.left;
     } else {
+      const rect = getSavedSelectionRect();
+      if (!rect) return;
       const th = toolbar?.offsetHeight || 40;
       top = rect.bottom + th + margin * 2;
       left = rect.left + rect.width / 2 - cardW / 2;
@@ -411,6 +413,23 @@ function positionResultCard(anchorRect = resultCardAnchorRect) {
     resultCard.style.top  = `${top}px`;
     resultCard.style.left = `${left}px`;
   } catch { /* 靜默忽略 */ }
+}
+
+function getSavedSelectionRect() {
+  const rangeRect = savedSel?.range?.getBoundingClientRect?.();
+  if (rangeRect && Number.isFinite(rangeRect.bottom)) return rangeRect;
+  if (savedSel?.rect && Number.isFinite(savedSel.rect.bottom)) return savedSel.rect;
+  if (savedSel?.point && Number.isFinite(savedSel.point.clientX) && Number.isFinite(savedSel.point.clientY)) {
+    return {
+      left: savedSel.point.clientX,
+      right: savedSel.point.clientX,
+      top: savedSel.point.clientY,
+      bottom: savedSel.point.clientY,
+      width: 0,
+      height: 0
+    };
+  }
+  return null;
 }
 
 // fromHistory：true 表示從歷史紀錄還原，不重複寫入 storage
@@ -575,12 +594,7 @@ async function initVocabularySaveButton(body, data, selectedText) {
 
     try {
       const { item } = await saveVocabularyEntry(data, selectedText);
-      let exported = false;
-      if (typeof exportVocabularyEntryToObsidianIfConfigured === 'function' && !item.obsidianExportedAt) {
-        const result = await exportVocabularyEntryToObsidianIfConfigured(item);
-        exported = Boolean(result.exported);
-      }
-      setVocabularyButtonState(button, 'saved', exported);
+      setVocabularyButtonState(button, 'saved');
     } catch {
       setVocabularyButtonState(button, 'error');
     }

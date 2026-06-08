@@ -2011,11 +2011,7 @@ del.g-diff-del {
 }
 
 .ffb-page-panel-status {
-  margin-bottom: 7px !important;
-  color: #6b7280 !important;
-  font-size: 11px !important;
-  font-weight: 650 !important;
-  line-height: 1.35 !important;
+  display: none !important;
 }
 
 .ffb-page-panel-controls {
@@ -2095,8 +2091,8 @@ del.g-diff-del {
   background: transparent !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  box-shadow: inset 4px 0 0 rgba(181, 125, 0, 0.72) !important;
-  color: #5f4200 !important;
+  box-shadow: inset 4px 0 0 var(--ffb-page-translation-accent, rgba(181, 125, 0, 0.72)) !important;
+  color: var(--ffb-page-translation-color, #5f4200) !important;
   font-family: 'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', -apple-system, sans-serif !important;
   text-align: left !important;
   outline: 2px solid transparent !important;
@@ -2161,10 +2157,10 @@ del.g-diff-del {
 }
 
 .ffb-page-translation-actions button {
-  border: 1px solid rgba(181, 125, 0, 0.18) !important;
+  border: 1px solid var(--ffb-page-translation-action-border, rgba(181, 125, 0, 0.18)) !important;
   border-radius: 999px !important;
-  background: rgba(255, 255, 255, 0.70) !important;
-  color: #6f5100 !important;
+  background: var(--ffb-page-translation-action-bg, rgba(255, 255, 255, 0.70)) !important;
+  color: var(--ffb-page-translation-action-color, #6f5100) !important;
   cursor: pointer !important;
   font-size: 0 !important;
   font-weight: 750 !important;
@@ -2198,12 +2194,12 @@ del.g-diff-del {
 .ffb-page-translation-actions button:hover,
 .ffb-page-translation-actions button.ffb-page-copied {
   background: rgba(255, 255, 255, 0.9) !important;
-  border-color: rgba(181, 125, 0, 0.42) !important;
-  color: #5f4200 !important;
+  border-color: var(--ffb-page-translation-accent-soft, rgba(181, 125, 0, 0.42)) !important;
+  color: var(--ffb-page-translation-color, #5f4200) !important;
 }
 
 .ffb-page-translation-text {
-  color: #5f4200 !important;
+  color: var(--ffb-page-translation-color, #5f4200) !important;
   font-family: inherit !important;
   font-size: clamp(12px, var(--ffb-page-source-font-size, 14px), 16px) !important;
   line-height: clamp(1.45, var(--ffb-page-source-line-height, 1.6), 1.68) !important;
@@ -2255,12 +2251,12 @@ del.g-diff-del {
   bottom: 0 !important;
   height: 46px !important;
   border-radius: 0 0 9px 9px !important;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.88)) !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), var(--ffb-page-translation-fade-bg, rgba(255, 255, 255, 0.88))) !important;
   pointer-events: none !important;
 }
 
 .ffb-page-translation-loading .ffb-page-translation-text {
-  color: #6b7280 !important;
+  color: var(--ffb-page-translation-muted-color, #6b7280) !important;
 }
 
 .ffb-page-translation-error {
@@ -2291,9 +2287,9 @@ del.g-diff-del {
 
 .ffb-page-translation-block.ffb-pair-active {
   background: transparent !important;
-  outline-color: rgba(181, 125, 0, 0.22) !important;
-  box-shadow: inset 4px 0 0 rgba(181, 125, 0, 0.92),
-              inset 0 0 0 1px rgba(181, 125, 0, 0.20) !important;
+  outline-color: var(--ffb-page-translation-accent-soft, rgba(181, 125, 0, 0.22)) !important;
+  box-shadow: inset 4px 0 0 var(--ffb-page-translation-accent, rgba(181, 125, 0, 0.92)),
+              inset 0 0 0 1px var(--ffb-page-translation-accent-soft, rgba(181, 125, 0, 0.20)) !important;
 }
 
 .ffb-page-translation-block.ffb-pair-active::before {

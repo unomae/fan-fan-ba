@@ -1,7 +1,7 @@
 # 翻翻吧 Fan Fan Ba
 
 > AI-powered translation, explanation & text optimizer for Chrome / Edge
-> ![version](https://img.shields.io/badge/version-1.6.0-green)
+> ![version](https://img.shields.io/badge/version-1.7.2-green)
 
 看到不懂的一劃就翻譯、解釋，還能順手存進筆記，一氣呵成。  
 選取任意網頁文字，一鍵觸發翻譯、解釋、優化——多家 AI 模型驅動，結果即時浮現，不打斷閱讀流。
@@ -22,7 +22,7 @@
 - 🔊 **朗讀** — 優先使用 Google Cloud Chirp HD 高品質語音；未設定則自動 fallback 瀏覽器內建語音
 - 📝 **存入 Obsidian** — 一鍵 append 到週記筆記（`YYYY-W##.md`），存入後自動切回原分頁保留結果卡；字典模式保留完整結構化 markdown；macOS / Windows 跨平台相容
 - 💾 **設定備份 / 還原** — 匯出 JSON 設定檔，重新安裝後可匯入；API Key 預設不匯出，需使用者明確勾選
-- ☁️ **Google Drive 雲端同步（v1.7.0）** — 可同步模型、語言、Obsidian、全文翻譯等一般設定到 Drive appData；API Key 不會雲端同步
+- ☁️ **Google Drive 雲端同步（v1.7.x）** — 可同步模型、語言、Obsidian、全文翻譯等一般設定到 Drive appData；Chrome / Edge 可用不同 OAuth 流程登入，API Key 不會雲端同步
 - 🕐 **最近查詢紀錄** — 結果卡 Header 時鐘按鈕展開最近 5 筆紀錄，點擊即可重新載入
 - 📌 **釘住結果卡** — Pin 後選取新文字不關閉卡片，頂部藍線顯示釘住狀態
 - ↔️ **邊緣吸附** — 拖曳至螢幕邊緣自動吸附，含 snap 動畫
@@ -162,7 +162,7 @@ fan-fan-ba/
 
 - 所有 API Key **僅存於本機** `chrome.storage.local`，不上傳至任何伺服器，也不跟 Chrome 帳號同步
 - 設定頁可匯出 / 匯入設定檔；只有勾選「包含 API Keys」時，匯出的 JSON 才會明文包含金鑰
-- Google Drive 雲端同步只同步一般設定，不包含 API Key；API Key 加密雲端備份規劃於 v1.7.1
+- Google Drive 雲端同步只同步一般設定，不包含 API Key；API Key 加密雲端備份規劃於 v1.7.1，Edge / Chromium OAuth fallback 自 v1.7.2 起支援
 - 選取的文字**僅傳送給使用者選擇的 AI 服務商**，用於處理當次請求
 - 本擴充功能不設伺服器，不收集任何使用者資料
 

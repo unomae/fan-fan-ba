@@ -5,6 +5,7 @@ const PAGE_TRANSLATION_LIMITS = {
   maxChars: 3200,
   minChars: 24,
   minHeadingChars: 4,
+  minChoiceChars: 2,
   minListChars: 8,
   maxBlockChars: 1200,
   collapseChars: 420
@@ -92,6 +93,17 @@ function collectVisibleTranslatableBlocks() {
     'article h1', 'article h2', 'article h3', 'article p', 'article li',
     '[role="main"] h1', '[role="main"] h2', '[role="main"] h3',
     '[role="main"] p', '[role="main"] li',
+    '[role="main"] [role="heading"]',
+    '[role="main"] [role="radio"] span',
+    '[role="main"] [role="checkbox"] span',
+    '[role="main"] label span',
+    '[role="main"] [class*="question" i] p',
+    '[role="main"] [class*="question" i] span',
+    '[role="main"] [class*="answer" i] span',
+    '[role="main"] [class*="option" i] span',
+    '[role="main"] [class*="choice" i] span',
+    '.mat-radio-label-content',
+    '.mdc-label',
     '.notion-page-content [data-content-editable-leaf="true"]',
     '.notion-page-content [contenteditable="true"]',
     '[data-block-id] [data-content-editable-leaf="true"]',
@@ -135,7 +147,9 @@ function createPageTranslationPairId() {
 
 function isPageTranslatableElement(el) {
   if (!el || el.closest('#gemini-ai-toolbar, #gemini-result-card, #fanfanba-floating, .ffb-page-translation-panel, .ffb-page-translation-block')) return false;
-  if (el.closest('script, style, noscript, svg, canvas, pre, code, kbd, samp, textarea, input, select, button, nav, header, footer, aside, form, [aria-hidden="true"]')) return false;
+  if (el.closest('script, style, noscript, svg, canvas, pre, code, kbd, samp, textarea, input, select, button, nav, header, footer, aside, [aria-hidden="true"]')) return false;
+  if (el.closest('[class*="popup" i], [class*="popover" i], [class*="modal" i], [class*="dialog" i], [class*="toolbar" i], [class*="navigation" i], [class*="navbar" i], [class*="breadcrumb" i], [class*="pagination" i]')) return false;
+  if (el.closest('form') && !isAllowedFormPageTranslationElement(el)) return false;
   const editableAncestor = el.closest('[contenteditable="true"]');
   if (editableAncestor && !isAllowedEditablePageTranslationElement(el, editableAncestor)) return false;
   if (el.closest('[role="button"], [role="link"], [role="menu"], [role="menubar"], [role="menuitem"], [role="toolbar"], [role="tablist"], [role="tab"], [role="dialog"], [role="alert"], [role="status"], [role="navigation"], [role="search"], [role="complementary"], [aria-modal="true"]')) return false;
@@ -191,8 +205,22 @@ function getElementStructuredTranslationText(el) {
 
 function getElementMinTranslationChars(el) {
   if (/^H[1-6]$/.test(el.tagName)) return PAGE_TRANSLATION_LIMITS.minHeadingChars;
+  if (isQuizChoicePageTranslationElement(el)) return PAGE_TRANSLATION_LIMITS.minChoiceChars;
   if (el.tagName === 'LI') return PAGE_TRANSLATION_LIMITS.minListChars;
   return PAGE_TRANSLATION_LIMITS.minChars;
+}
+
+function isAllowedFormPageTranslationElement(el) {
+  if (!el) return false;
+  if (el.closest('button, input, select, textarea, [role="button"], [role="link"], [role="menu"], [role="menubar"], [role="menuitem"], [role="toolbar"], [role="tablist"], [role="tab"], [role="dialog"], [role="alert"], [role="status"], [role="navigation"], [role="search"], [aria-modal="true"]')) return false;
+  return isQuizChoicePageTranslationElement(el)
+    || Boolean(el.closest('[class*="question" i], [class*="answer" i], [class*="option" i], [class*="choice" i], [role="radio"], [role="checkbox"]'));
+}
+
+function isQuizChoicePageTranslationElement(el) {
+  if (!el?.matches) return false;
+  return el.matches('[role="heading"], .mat-radio-label-content, .mdc-label')
+    || Boolean(el.closest('[role="radio"], [role="checkbox"], label, [class*="question" i], [class*="answer" i], [class*="option" i], [class*="choice" i]'));
 }
 
 function getPageTranslationListMarker(el) {
@@ -429,8 +457,10 @@ function applyPageTranslationSourceTypography(sourceEl, block) {
   const style = window.getComputedStyle(sourceEl);
   const fontSize = style.fontSize || '14px';
   const lineHeight = normalizePageTranslationLineHeight(style.lineHeight, fontSize);
+  const contrastTheme = getPageTranslationContrastTheme(sourceEl);
   block.style.setProperty('--ffb-page-source-font-size', fontSize);
   block.style.setProperty('--ffb-page-source-line-height', lineHeight);
+  Object.entries(contrastTheme).forEach(([name, value]) => block.style.setProperty(name, value));
 }
 
 function normalizePageTranslationLineHeight(lineHeight, fontSize) {
@@ -444,6 +474,73 @@ function normalizePageTranslationLineHeight(lineHeight, fontSize) {
     return String(Math.min(Math.max(lineHeightNumber / fontSizeNumber, 1.35), 2.05));
   }
   return lineHeight;
+}
+
+function getPageTranslationContrastTheme(sourceEl) {
+  const background = findEffectivePageTranslationBackground(sourceEl);
+  const isDark = background ? getPageTranslationRelativeLuminance(background) < 0.34 : false;
+  if (!isDark) return {};
+  return {
+    '--ffb-page-translation-color': '#f8fafc',
+    '--ffb-page-translation-muted-color': '#dbeafe',
+    '--ffb-page-translation-accent': 'rgba(250, 204, 21, 0.92)',
+    '--ffb-page-translation-accent-soft': 'rgba(250, 204, 21, 0.32)',
+    '--ffb-page-translation-action-color': '#fff7d6',
+    '--ffb-page-translation-action-bg': 'rgba(255, 255, 255, 0.16)',
+    '--ffb-page-translation-action-border': 'rgba(255, 255, 255, 0.34)',
+    '--ffb-page-translation-fade-bg': 'rgba(2, 6, 23, 0.92)'
+  };
+}
+
+function findEffectivePageTranslationBackground(sourceEl) {
+  let node = sourceEl;
+  while (node && node.nodeType === Node.ELEMENT_NODE) {
+    const color = parsePageTranslationCssColor(window.getComputedStyle(node).backgroundColor);
+    if (color && color.a > 0.05) return color;
+    node = node.parentElement;
+  }
+  const bodyColor = parsePageTranslationCssColor(window.getComputedStyle(document.body).backgroundColor);
+  if (bodyColor && bodyColor.a > 0.05) return bodyColor;
+  return null;
+}
+
+function parsePageTranslationCssColor(value) {
+  const color = String(value || '').trim();
+  if (!color || color === 'transparent') return null;
+  const rgbMatch = color.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i);
+  if (rgbMatch) {
+    return {
+      r: clampPageTranslationColor(Number(rgbMatch[1])),
+      g: clampPageTranslationColor(Number(rgbMatch[2])),
+      b: clampPageTranslationColor(Number(rgbMatch[3])),
+      a: rgbMatch[4] === undefined ? 1 : Math.max(0, Math.min(Number(rgbMatch[4]), 1))
+    };
+  }
+  const hexMatch = color.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!hexMatch) return null;
+  const hex = hexMatch[1].length === 3
+    ? hexMatch[1].split('').map(char => char + char).join('')
+    : hexMatch[1];
+  return {
+    r: Number.parseInt(hex.slice(0, 2), 16),
+    g: Number.parseInt(hex.slice(2, 4), 16),
+    b: Number.parseInt(hex.slice(4, 6), 16),
+    a: 1
+  };
+}
+
+function clampPageTranslationColor(value) {
+  return Math.max(0, Math.min(Math.round(Number(value) || 0), 255));
+}
+
+function getPageTranslationRelativeLuminance({ r, g, b }) {
+  const channels = [r, g, b].map(value => {
+    const normalized = value / 255;
+    return normalized <= 0.03928
+      ? normalized / 12.92
+      : Math.pow((normalized + 0.055) / 1.055, 2.4);
+  });
+  return (0.2126 * channels[0]) + (0.7152 * channels[1]) + (0.0722 * channels[2]);
 }
 
 function renderPageTranslationResult(item, result) {
@@ -853,6 +950,7 @@ if (typeof module !== 'undefined' && module.exports) {
     collectVisibleTranslatableBlocks,
     cleanPageTranslationResult,
     extractPageTranslationJsonTranslation,
+    getPageTranslationContrastTheme,
     getPageTranslationStatusText,
     getElementTranslationText,
     isPageTranslatableElement,

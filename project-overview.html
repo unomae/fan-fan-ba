@@ -317,6 +317,8 @@
         <a href="#decisions">決策紀錄</a>
         <a href="#vocabulary-plan">單字本</a>
         <a href="#page-translation-ux">全文 UX</a>
+        <a href="#readfrog-benchmark">Read Frog 對標</a>
+        <a href="#embedded-translation-roadmap">嵌入翻譯</a>
         <a href="#release-qa">v1.6.3 QA</a>
         <a href="#roadmap">Roadmap</a>
         <a href="#session-log">Session Log</a>
@@ -335,9 +337,9 @@
           <p class="lead">這份文件是翻翻吧唯一專案記憶入口，已整合原本散落的 review HTML、vocabulary roadmap、全文翻譯 UX review 與 session context。之後專案進度、roadmap、決策與驗證狀態都更新在這裡。</p>
         </div>
         <div class="meta-row">
-          <span class="pill green">版本 1.6.0</span>
+          <span class="pill green">版本 1.7.2</span>
           <span class="pill blue">Manifest V3</span>
-          <span class="pill">最後更新 2026-06-02</span>
+          <span class="pill">最後更新 2026-06-08</span>
           <span class="pill orange">文件狀態：主入口</span>
         </div>
       </header>
@@ -377,7 +379,7 @@
           </div>
           <div class="card">
             <h3>最新進展</h3>
-            <p>2026-06-02 已把舊 Phase 編碼對齊版本里程碑，並整合散落 review / roadmap / session context 到本文件。Jest 仍因 Windows / OneDrive 權限 <code>EPERM</code> 阻塞，依指示暫不修環境。</p>
+            <p>2026-06-08 v1.6.3 實站測試先告一段落，主線切到 v1.7.x Cloud Sync；已補 Edge / Chromium OAuth fallback，並開始 v1.7.3 同步錯誤診斷與可靠性補強。</p>
           </div>
         </div>
       </section>
@@ -483,8 +485,8 @@ options.js</pre>
       </section>
 
       <section id="cloud-sync-plan">
-        <h2>v1.7.0 Cloud Sync</h2>
-        <div class="callout">v1.7.0 只同步一般設定到 Google Drive appData，不同步 API Key。第一版採 Chrome-only OAuth；API Key 加密雲端備份排入 <code>v1.7.1 Encrypted Secrets Backup</code>，Edge / Chromium 通用登入排入 <code>v1.7.2 Cross-browser OAuth</code>。</div>
+        <h2>v1.7.x Cloud Sync</h2>
+        <div class="callout">v1.6.3 實站測試先告一段落；目前主線切到 v1.7.0-v1.7.3。v1.7.0 只同步一般設定到 Google Drive appData，不同步 API Key；v1.7.1 規劃 API Key 加密備份；v1.7.2 將 Edge / Chromium 登入改為 <code>identity.launchWebAuthFlow</code> fallback；v1.7.3 收斂同步可靠性、衝突提示與錯誤診斷。</div>
         <table style="margin-top:12px;">
           <thead>
             <tr><th>項目</th><th>內容</th><th>狀態</th></tr>
@@ -494,8 +496,9 @@ options.js</pre>
             <tr><td>不納入範圍</td><td>Gemini / Groq / OpenRouter / TTS API Key、單字本資料、查詢歷史。</td><td><span class="pill green">已限制</span></td></tr>
             <tr><td>Google Drive</td><td>使用 <code>drive.appdata</code> scope，將 <code>fan-fan-ba-cloud-settings.json</code> 存到 appDataFolder。</td><td><span class="pill green">已實作 helper</span></td></tr>
             <tr><td>Options UI</td><td>新增「雲端同步」分頁：登入 Google、上傳目前設定、下載雲端設定、登出、同步狀態。</td><td><span class="pill green">已實作</span></td></tr>
-            <tr><td>OAuth Client ID</td><td><code>manifest.json</code> 已替換為 Google Cloud OAuth Client ID，可先在 Google Chrome 載入未封裝 extension 後手測。</td><td><span class="pill green">已設定</span></td></tr>
-            <tr><td>瀏覽器支援</td><td>目前使用 <code>chrome.identity.getAuthToken</code>，Google Chrome 可測；Microsoft Edge 官方不支援此 API，需改用 <code>identity.launchWebAuthFlow</code> 才能跨瀏覽器通用。</td><td><span class="pill orange">Chrome-only</span></td></tr>
+            <tr><td>OAuth Client ID</td><td><code>manifest.json</code> 已替換為 Google Cloud OAuth Client ID；若走 <code>launchWebAuthFlow</code>，Google Cloud 端需允許 extension redirect URL。</td><td><span class="pill green">已設定</span></td></tr>
+            <tr><td>瀏覽器支援</td><td>Chrome 優先使用 <code>chrome.identity.getAuthToken</code>；Microsoft Edge / Chromium 若不支援 native auth，fallback 到 <code>identity.launchWebAuthFlow</code>。</td><td><span class="pill green">v1.7.2 補強</span></td></tr>
+            <tr><td>v1.7.3 hardening</td><td>補同步前後狀態、最後同步時間、錯誤訊息分類、OAuth redirect URL 提示、同檔覆寫提示與 Edge / Chrome 手動 QA 矩陣。</td><td><span class="pill orange">進行中</span></td></tr>
             <tr><td>衝突策略</td><td>第一版採手動操作：使用者明確選擇上傳本機設定或下載雲端設定。</td><td><span class="pill green">已定義</span></td></tr>
           </tbody>
         </table>
@@ -689,6 +692,191 @@ options.js</pre>
         </div>
       </section>
 
+      <section id="readfrog-benchmark">
+        <h2>Read Frog 對標</h2>
+        <div class="callout">2026-06-08 查核公開資料：Read Frog Chrome Web Store 顯示 Featured、約 50,000 users、v1.33.11、2026-05-29 更新；GitHub 約 7.6k stars、最新 release v1.33.12。它已從「翻譯工具」擴成「語言學習助教」，翻翻吧後續應追「閱讀流不中斷 + 學習沉澱」，不要單純比 provider 數量。</div>
+
+        <table style="margin-top:12px;">
+          <thead>
+            <tr><th>Read Frog 能力</th><th>公開依據</th><th>翻翻吧現況</th><th>建議</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>雙語 / 只看譯文模式</td>
+              <td><a href="https://www.readfrog.app/en/docs/translation">Bilingual Translation docs</a>：可全文翻譯，也可 hover paragraph + Ctrl 翻單段。</td>
+              <td>已有可見區域全文翻譯、雙語 / 譯文 / 原文模式，但仍在 Beta。</td>
+              <td><span class="pill green">優先追</span> 把全文翻譯從「可用」磨成「穩」，補複製譯文 / 複製雙語 / 定位原文。</td>
+            </tr>
+            <tr>
+              <td>Context-aware translation</td>
+              <td>Chrome Web Store 與 README 都強調 AI 會理解文章上下文；GitHub README 說會抽 page title 與 concise Markdown 給 AI。</td>
+              <td>選字已有上下文擷取；全文翻譯多以段落為單位，文章級 context 還薄。</td>
+              <td><span class="pill green">優先追</span> 做「頁面 context digest」：title、主要段落摘要、domain hint、近鄰段落，降低術語翻錯。</td>
+            </tr>
+            <tr>
+              <td>Batch requests</td>
+              <td>Read Frog 宣稱可節省約 70% API cost；2025 recap 寫 20 paragraphs 可從 20 calls 降到 3-4 calls。</td>
+              <td>目前逐段 queue 翻譯，容易慢且打到 rate limit。</td>
+              <td><span class="pill green">優先追</span> v1.8.x 做批次翻譯 schema：多段合併請求、逐段回填、失敗 fallback 單段重試。</td>
+            </tr>
+            <tr>
+              <td>20+ AI providers + free providers</td>
+              <td>Chrome Web Store / GitHub README 列 OpenAI、DeepSeek、Gemini、Ollama 等，另有 Google / Microsoft / DeepLX 免費翻譯選項。</td>
+              <td>已有 Groq / Gemini / OpenRouter / TTS，選項少但設定單純。</td>
+              <td><span class="pill orange">選擇性追</span> 不急著堆 20+；先補 OpenAI-compatible custom endpoint、Ollama local、Microsoft / Google pure translate 作為低成本 fallback。</td>
+            </tr>
+            <tr>
+              <td>Custom prompts / translation styles</td>
+              <td>Chrome Web Store 提到 dynamic tokens；Read Frog docs 有 Custom AI Actions / Custom Translation Styles 入口。</td>
+              <td>目前 prompt 內建，使用者不能自訂領域風格。</td>
+              <td><span class="pill green">優先追</span> 做 3 個安全模板：學習者、技術文件、商務郵件；進階再開 token prompt。</td>
+            </tr>
+            <tr>
+              <td>YouTube subtitle translation</td>
+              <td>Chrome Web Store 列 Subtitle Translation Beta；2025 recap 說 v1.21.0 支援 YouTube subtitles。</td>
+              <td>尚未支援影音字幕。</td>
+              <td><span class="pill orange">後排</span> 等全文翻譯穩定後再做；若做，先支援 YouTube captions，不碰影片 OCR。</td>
+            </tr>
+            <tr>
+              <td>TTS 高階體驗</td>
+              <td>Read Frog README 寫 Edge TTS、150+ voices、rate / pitch / volume、language detection、chunk prefetch。</td>
+              <td>已有 Google Cloud TTS + browser fallback，語音管理較簡單。</td>
+              <td><span class="pill orange">選擇性追</span> 先補語速、語音偏好、長文分句播放；不急著做大型 voice catalog。</td>
+            </tr>
+            <tr>
+              <td>Statistics / usage insight</td>
+              <td>2025 recap 列 Statistics page，追蹤 translation usage。</td>
+              <td>有最近查詢與單字本 count，但沒有使用量儀表板。</td>
+              <td><span class="pill green">優先追</span> 做本地 usage summary：今日查詢、全文翻譯段落、收藏單字、估算 calls；不需上雲。</td>
+            </tr>
+            <tr>
+              <td>PDF / image / comic / input translation</td>
+              <td>Read Frog 官網與 2025 recap 把 PDF、OCR 圖像、input translation、mobile support 列為後續方向。</td>
+              <td>Google Docs / iframe 選字仍需打磨；PDF / OCR 尚未開始。</td>
+              <td><span class="pill red">暫不追大包</span> 先把 Google Docs、Gmail、Notion、Skills 類頁面做穩；PDF / OCR 拆到 v2.x。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="grid two" style="margin-top:12px;">
+          <div class="card">
+            <h3>推薦主線</h3>
+            <ol>
+              <li><strong>v1.6.3</strong>：先完成真實網站 QA，尤其 Google Docs / Gmail / Notion / Google Skills，不讓選字工具列與全文翻譯破壞頁面。</li>
+              <li><strong>v1.7.x</strong>：Cloud Sync / secrets / cross-browser OAuth 收乾淨，解決換機成本。</li>
+              <li><strong>v1.8.x</strong>：Read Frog benchmark 收斂：context digest、batch requests、全文翻譯操作補強、usage summary、prompt templates，並加入 iframe / SVG 嵌入圖表翻譯。</li>
+              <li><strong>v1.9.x</strong>：Learning layer + 進階嵌入內容：單字本 SRS、難字自動高亮、文章級 summary / grammar / sentence breakdown、Shadow DOM、字幕與 OCR 型內容探索。</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3>差異化定位</h3>
+            <ul>
+              <li>Read Frog 是「語言學習助教」；翻翻吧可以定位成「台灣使用者的閱讀 + Obsidian 學習工作流」。</li>
+              <li>不要用 provider 數量硬追；優先把 Groq / Gemini / OpenRouter / custom endpoint 的體驗做穩。</li>
+              <li>保留 Obsidian、週記、單字本、繁中語氣、Google Skills / SCM / 工作文件場景，這些是更貼近 KAKA 工作流的護城河。</li>
+            </ul>
+          </div>
+        </div>
+
+        <h3 style="margin-top:14px;">資料來源</h3>
+        <ul>
+          <li><a href="https://chromewebstore.google.com/detail/read-frog-translate-learn/modkelfkcfjpgbfmnbnllalkiogfofhb">Chrome Web Store：Read Frog - Translate &amp; Learn</a></li>
+          <li><a href="https://github.com/mengxi-ream/read-frog">GitHub：mengxi-ream/read-frog</a></li>
+          <li><a href="https://www.readfrog.app/en/docs/translation">Read Frog docs：Bilingual Translation</a></li>
+          <li><a href="https://www.readfrog.app/en/blog/2025-recap">Read Frog 2025 recap</a></li>
+          <li><a href="https://www.readfrog.app/en/docs/future-plan">Read Frog docs：Future Plan</a></li>
+        </ul>
+      </section>
+
+      <section id="embedded-translation-roadmap">
+        <h2>嵌入元件翻譯 Roadmap</h2>
+        <div class="callout">結論：先做「可偵測、可告知、可嘗試翻譯」的嵌入元件翻譯器。v1 先支援 iframe 圖表與 SVG 文字；canvas、圖片、PDF、字幕與封閉 Shadow DOM 先列入後續，避免為了翻少數頁面破壞全文翻譯穩定性。</div>
+
+        <table style="margin-top:12px;">
+          <thead>
+            <tr><th>型態</th><th>常見網站 / 元件</th><th>目前為何翻不到</th><th>排程建議</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>iframe 圖表 / 互動內容</td>
+              <td>Datawrapper、Flourish、Tableau Public、Observable、Guardian interactive、Google Forms / Slides / Docs embed。</td>
+              <td>文字在 iframe 文件內，主頁全文翻譯只能看到 iframe 外殼；目前浮球只在 top page 顯示。</td>
+              <td><span class="pill green">v1.8.1 優先</span> content script 跑進 iframe，由主頁廣播翻譯命令；先支援同源 / 可注入 iframe，失敗時顯示「此嵌入元件無法存取」。</td>
+            </tr>
+            <tr>
+              <td>SVG 圖表文字</td>
+              <td>D3、Highcharts、ECharts、Datawrapper 內部圖表、新聞互動圖表。</td>
+              <td>目前全文翻譯刻意排除 <code>svg</code>，避免直接改圖表文字造成座標軸與 legend 版面炸掉。</td>
+              <td><span class="pill green">v1.8.2 優先</span> 抓 <code>svg text</code>、<code>title</code>、<code>aria-label</code>，以 overlay / tooltip 顯示譯文，不直接改原 SVG。</td>
+            </tr>
+            <tr>
+              <td>Shadow DOM 元件</td>
+              <td>Web Components、部分學習平台、現代 SaaS UI、設計系統元件。</td>
+              <td>普通 <code>querySelectorAll</code> 不會穿透 shadow root；closed shadow root 完全不可直接讀。</td>
+              <td><span class="pill orange">v1.8.3</span> 遞迴掃 open shadow roots；closed shadow root 顯示限制，改走選取翻譯或未來 OCR。</td>
+            </tr>
+            <tr>
+              <td>canvas / WebGL 圖表</td>
+              <td>金融圖、BI dashboard、地圖、遊戲式互動教學、部分 analytics widget。</td>
+              <td>文字被畫成像素，DOM 裡沒有可翻譯文字；直接覆蓋容易跟 zoom / hover 狀態不同步。</td>
+              <td><span class="pill orange">v1.9.x 探索</span> 先做偵測與提示；正式翻譯需截圖 + OCR + 側邊面板，不做原位替換。</td>
+            </tr>
+            <tr>
+              <td>圖片式資訊圖 / 截圖</td>
+              <td>新聞 infographic、社群圖卡、掃描截圖、漫畫式教學圖。</td>
+              <td>文字在圖片像素內，沒有 DOM text。</td>
+              <td><span class="pill orange">v1.9.x / v2.0</span> 與 canvas 共用 OCR pipeline；第一版輸出「圖中文字翻譯」面板。</td>
+            </tr>
+            <tr>
+              <td>PDF viewer</td>
+              <td>Chrome 內建 PDF、學術論文、公司文件、課程講義。</td>
+              <td>PDF viewer 不是普通文章 DOM，extension 可介入面受限；不同來源檔案權限差異大。</td>
+              <td><span class="pill red">v2.0</span> 拆成 PDF 模式，優先抽文字；掃描型 PDF 再走 OCR。</td>
+            </tr>
+            <tr>
+              <td>影片字幕 / transcript</td>
+              <td>YouTube、Coursera、Udemy、Loom、Google Skills 類課程。</td>
+              <td>字幕可能是 DOM、timed text API、iframe 或影像燒錄字幕，來源不一致。</td>
+              <td><span class="pill orange">v1.9.x</span> 先支援 YouTube transcript / caption DOM；課程平台依實站 QA 結果逐一列入。</td>
+            </tr>
+            <tr>
+              <td>社群留言 / 第三方留言區</td>
+              <td>X / Twitter embed、Reddit embed、Disqus、LinkedIn embed。</td>
+              <td>常見跨 iframe、登入限制、懶載入與虛擬化列表。</td>
+              <td><span class="pill orange">v1.9.x</span> 跟 iframe 掃描共用能力；先翻可見留言，不追無限 scroll 全量。</td>
+            </tr>
+            <tr>
+              <td>地圖 / Dashboard</td>
+              <td>Google Maps、Mapbox、Power BI、Looker Studio、GA / BI dashboard。</td>
+              <td>大量 iframe、canvas、虛擬化 DOM 與互動控制；全文翻譯容易誤翻 UI 控制。</td>
+              <td><span class="pill red">Backlog</span> 先支援選取翻譯；全文翻譯只顯示「偵測到 dashboard，建議使用選取翻譯」。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="grid two" style="margin-top:12px;">
+          <div class="card">
+            <h3>推薦實作順序</h3>
+            <ol>
+              <li><strong>v1.8.0</strong>：先做嵌入元件偵測器，顯示本頁有多少 iframe / SVG / canvas / shadow root 可嘗試。</li>
+              <li><strong>v1.8.1</strong>：主頁浮球廣播到可注入 iframe，支援 Datawrapper / Flourish 類圖表文字翻譯。</li>
+              <li><strong>v1.8.2</strong>：SVG text overlay 翻譯，優先處理座標軸、legend、tooltip label。</li>
+              <li><strong>v1.8.3</strong>：open Shadow DOM 掃描；closed shadow root 只告知限制。</li>
+              <li><strong>v1.9.x+</strong>：字幕、OCR、PDF、canvas 進入探索，不綁在 v1.8 穩定版。</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3>完成定義</h3>
+            <ul>
+              <li>翻不到時要明確告知原因，不讓使用者以為功能壞掉。</li>
+              <li>所有嵌入翻譯都不直接破壞原圖表 DOM；優先使用 overlay、tooltip 或側邊面板。</li>
+              <li>iframe 失敗需區分：跨來源無法注入、CSP 限制、未載入、沒有可翻文字。</li>
+              <li>Guardian / Datawrapper、Flourish demo、D3 SVG demo、Google Docs embed 至少納入手動 QA。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       <section id="release-qa">
         <h2>v1.6.3 Release QA</h2>
         <div class="callout">v1.6.3 的範圍是上線前真實網站驗收與低風險修補，不加入 Cloud Sync、xlsx、IndexedDB、SRS 或全文翻譯複製 / 定位大功能。</div>
@@ -821,7 +1009,7 @@ options.js</pre>
           </div>
           <div class="phase">
             <strong>v1.7.0：Cloud Sync</strong>
-            <p>Google Drive appData 同步一般設定，不含 API Key；提供登入、上傳、下載、登出與狀態提示。第一版使用 <code>chrome.identity.getAuthToken</code>，先以 Google Chrome 手動測試。</p>
+            <p>Google Drive appData 同步一般設定，不含 API Key；提供登入、上傳、下載、登出與狀態提示。Chrome 使用 native auth，Edge / Chromium 由 v1.7.2 Web Auth fallback 補齊。</p>
             <span class="pill orange">進行中</span>
           </div>
           <div class="phase">
@@ -831,12 +1019,27 @@ options.js</pre>
           </div>
           <div class="phase">
             <strong>v1.7.2：Cross-browser OAuth</strong>
-            <p>將 Cloud Sync 登入從 <code>getAuthToken</code> 改為 <code>identity.launchWebAuthFlow</code>，支援 Edge / Chrome / Chromium browser 共用 Google Drive appData OAuth 流程。</p>
+            <p>保留 Chrome <code>getAuthToken</code>；當 Microsoft Edge 回報 API 不支援時，自動 fallback 到 <code>identity.launchWebAuthFlow</code>，並快取短期 access token。</p>
+            <span class="pill green">完成</span>
+          </div>
+          <div class="phase">
+            <strong>v1.7.3：Cloud Sync Reliability</strong>
+            <p>同步前後狀態、最後同步 metadata、錯誤分類、OAuth redirect 設定提醒、同檔覆寫 / 下載前提示、Edge / Chrome 手動 QA 矩陣。</p>
+            <span class="pill orange">進行中</span>
+          </div>
+          <div class="phase">
+            <strong>v1.8.x：Read Frog Benchmark / Embedded Translation v1</strong>
+            <p>Context digest、batch requests、全文翻譯複製譯文 / 複製雙語 / 定位原文、usage summary、prompt templates；新增嵌入元件偵測器、iframe 圖表翻譯、SVG text overlay 翻譯。</p>
             <span class="pill orange">待排程</span>
           </div>
           <div class="phase">
-            <strong>v1.8.0+：Vocabulary Pro / Full-page Stable</strong>
-            <p>單字本 xlsx 匯出、IndexedDB migration、高亮斷詞改善、進階複習、全文翻譯複製譯文 / 複製雙語 / 定位原文。</p>
+            <strong>v1.9.x：Learning Layer / Embedded Advanced</strong>
+            <p>文章級 summary、句子拆解、文法 / 詞彙講解、SRS 複習佇列、難字自動高亮；同步探索 open Shadow DOM、YouTube 字幕、社群 iframe 留言、canvas / 圖片 OCR 側邊翻譯。</p>
+            <span class="pill orange">待排程</span>
+          </div>
+          <div class="phase">
+            <strong>v2.0.x：PDF / OCR Mode</strong>
+            <p>PDF viewer、掃描型 PDF、圖片式資訊圖與 canvas / WebGL 圖表統一走抽文字或 OCR pipeline；第一版以側邊翻譯面板為主，不做原位替換。</p>
             <span class="pill orange">待排程</span>
           </div>
         </div>
@@ -849,6 +1052,30 @@ options.js</pre>
             <tr><th>日期</th><th>版本線</th><th>完成事項</th><th>驗證 / 注意</th></tr>
           </thead>
           <tbody>
+            <tr>
+              <td>2026-06-08</td>
+              <td><code>v1.7.2 / v1.7.3</code></td>
+              <td>版本號升級至 <code>1.7.2</code>；Cloud Sync 狀態列新增 Web Auth Redirect URL、最後錯誤 metadata、錯誤分類與提示，方便判斷 <code>redirect_uri_mismatch</code>、OAuth client、Drive permission、network 等問題。</td>
+              <td>後續 v1.7.3 仍需手測 Edge / Chrome OAuth、同檔覆寫提示與下載前確認流程。</td>
+            </tr>
+            <tr>
+              <td>2026-06-08</td>
+              <td><code>v1.7.2</code></td>
+              <td>手測雲端同步時在 Microsoft Edge 遇到 <code>This API is not supported on Microsoft Edge</code>；確認原因是 <code>chrome.identity.getAuthToken</code> 不支援 Edge，而非 Google Drive appData payload 問題。</td>
+              <td>已將 Cloud Sync OAuth 改為 Chrome native auth 優先、Edge / Chromium fallback 到 <code>identity.launchWebAuthFlow</code>；後續 v1.7.3 需補 redirect 設定提醒、同步錯誤分類與 Edge / Chrome QA。</td>
+            </tr>
+            <tr>
+              <td>2026-06-08</td>
+              <td><code>v1.8.x / v1.9.x / v2.0</code></td>
+              <td>新增「嵌入元件翻譯 Roadmap」，盤點 iframe 圖表、SVG 文字、Shadow DOM、canvas / WebGL、圖片資訊圖、PDF viewer、影片字幕、社群留言與 dashboard 類型。</td>
+              <td>排程建議：v1.8.0 先做偵測器，v1.8.1 做 iframe，v1.8.2 做 SVG overlay，v1.8.3 做 open Shadow DOM；OCR / PDF 延後到 v1.9.x 探索或 v2.0 模式。</td>
+            </tr>
+            <tr>
+              <td>2026-06-08</td>
+              <td><code>Benchmark / v1.8.x+</code></td>
+              <td>對標 Read Frog 公開資料，新增「Read Frog 對標」章節，整理雙語模式、context-aware、batch requests、custom prompts、provider、YouTube 字幕、TTS、usage statistics、PDF / OCR / input translation 等能力差距。</td>
+              <td>建議翻翻吧先追 v1.6.3 實站穩定與 v1.7.x Cloud Sync，再於 v1.8.x 收斂 context digest、batch requests、全文翻譯操作、usage summary、prompt templates；v1.9.x 再做文章級 learning layer。</td>
+            </tr>
             <tr>
               <td>2026-06-02</td>
               <td><code>v1.7.0 / v1.7.2</code></td>
@@ -918,7 +1145,7 @@ options.js</pre>
           <tbody>
             <tr><td><code>coverage/</code></td><td>Jest coverage 產物，可重建。</td><td><span class="pill orange">可刪</span></td></tr>
             <tr><td><code>node_modules/</code></td><td>npm install 產物，可由 lockfile 重建；保留可加快本機開發。</td><td><span class="pill orange">需要省空間時可刪</span></td></tr>
-            <tr><td><code>fan-fan-ba-v1.2.3.zip</code></td><td>舊版打包檔，不是目前 1.6.0 執行必要檔。</td><td><span class="pill green">已刪除</span></td></tr>
+            <tr><td><code>fan-fan-ba-v1.2.3.zip</code></td><td>舊版打包檔，不是目前 1.7.2 執行必要檔。</td><td><span class="pill green">已刪除</span></td></tr>
             <tr><td><code>screenshots/*.b64</code></td><td>base64 素材，體積較大，PNG 已保留。</td><td><span class="pill green">已刪除</span></td></tr>
             <tr><td><code>screenshots/mockup-generator.html</code></td><td>大型 mockup 產生器，商店素材 PNG 已保留。</td><td><span class="pill green">已刪除</span></td></tr>
             <tr><td><code>screenshots/icon-gen-*.html</code> / <code>icon-sq-*.html</code></td><td>圖示產生器中間產物，正式 icons 與 source 已保留於 <code>icons/</code>。</td><td><span class="pill green">已刪除</span></td></tr>

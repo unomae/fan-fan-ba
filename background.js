@@ -125,23 +125,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
         const originalTabId = activeTab?.id;
         const winId         = activeTab?.windowId;
-        // active:true 才能觸發 URI scheme handler
-        const newTab = await chrome.tabs.create({ url: request.url, active: true });
-        // macOS 上 Chrome 需顯示「開啟外部應用程式」確認對話框，
-        // OS 路由 URI 到 Obsidian 需要更長時間；Windows 幾乎即時
-        const isMac = /Mac/.test(navigator.userAgent);
-        setTimeout(() => {
-          chrome.tabs.remove(newTab.id).catch(() => {});
-          // 明確切回原始分頁，避免 Chrome 自動切到旁邊的分頁
-          if (originalTabId) chrome.tabs.update(originalTabId, { active: true }).catch(() => {});
-          if (winId) chrome.windows.update(winId, { focused: true }).catch(() => {});
-        }, isMac ? 3000 : 500);
-      } catch {}
-      reply({ ok: true });
+        const urls = Array.isArray(request.urls) ? request.urls : [request.url];
+        await openObsidianUris(urls.filter(Boolean));
+        // 明確切回原始分頁，避免 Chrome 自動切到旁邊的分頁
+        if (originalTabId) chrome.tabs.update(originalTabId, { active: true }).catch(() => {});
+        if (winId) chrome.windows.update(winId, { focused: true }).catch(() => {});
+        reply({ ok: true, count: urls.length });
+      } catch (error) {
+        reply({ ok: false, error: error?.message || '無法開啟 Obsidian URI' });
+      }
     })();
     return true;
   }
 });
+
+async function openObsidianUris(urls) {
+  if (!urls.length) throw new Error('沒有可開啟的 Obsidian URI');
+  const isMac = /Mac/.test(navigator.userAgent);
+  const dispatchDelay = isMac ? 3000 : 1800;
+  for (const url of urls) {
+    // active:true 才能觸發 URI scheme handler
+    const newTab = await chrome.tabs.create({ url, active: true });
+    await delay(dispatchDelay);
+    if (newTab?.id) await chrome.tabs.remove(newTab.id).catch(() => {});
+    await delay(250);
+  }
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 // ── Port 監聽（長連線 streaming，用於段落翻譯 / 解釋 / 優化）──
 chrome.runtime.onConnect.addListener(port => {

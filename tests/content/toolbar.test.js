@@ -102,4 +102,36 @@ describe('selection toolbar positioning', () => {
 
     expect(context.toolbar.style.left).toBe('180px');
   });
+
+  it('uses the mouse point fallback when a DOM range has no usable rect', () => {
+    document.body.innerHTML = '<main>Selected text lives here</main>';
+    Object.defineProperty(window, 'innerWidth', { value: 360, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 700, configurable: true });
+
+    const context = vm.createContext({
+      window,
+      document,
+      chrome,
+      triggerAction: jest.fn(),
+      requestAnimationFrame: cb => cb(),
+      setTimeout,
+      clearTimeout,
+      console
+    });
+    context.globalThis = context;
+
+    runContentScript('content/toolbar.js', context);
+    context.toolbar = context.createToolbar();
+    Object.defineProperty(context.toolbar, 'offsetWidth', { value: 120, configurable: true });
+    Object.defineProperty(context.toolbar, 'offsetHeight', { value: 42, configurable: true });
+    context.savedSel = {
+      range: null,
+      point: { clientX: 220, clientY: 180 }
+    };
+
+    context.positionToolbar();
+
+    expect(context.toolbar.style.left).toBe('228px');
+    expect(context.toolbar.style.top).toBe('130px');
+  });
 });

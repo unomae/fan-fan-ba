@@ -2,6 +2,15 @@ const CloudSync = require('../cloud-sync');
 
 describe('Cloud Sync helper', () => {
   beforeEach(() => {
+    delete chrome.runtime.lastError;
+    if (!chrome.identity.getAuthToken) chrome.identity.getAuthToken = jest.fn();
+    if (!chrome.identity.launchWebAuthFlow) chrome.identity.launchWebAuthFlow = jest.fn();
+    chrome.identity.getAuthToken.mockReset();
+    chrome.identity.launchWebAuthFlow.mockReset();
+    chrome.identity.getRedirectURL.mockReturnValue('https://mock-extension-id.chromiumapp.org/');
+    chrome.storage.local.get.mockResolvedValue({});
+    chrome.storage.local.set.mockResolvedValue();
+    chrome.storage.local.remove.mockResolvedValue();
     chrome.runtime.getManifest.mockReturnValue({
       version: '1.6.0',
       oauth2: {
@@ -20,6 +29,101 @@ describe('Cloud Sync helper', () => {
       clientId: '1234567890-example.apps.googleusercontent.com',
       scopes: [CloudSync.DRIVE_APPDATA_SCOPE]
     })).toBe(true);
+  });
+
+  it('builds a Google OAuth URL for launchWebAuthFlow', () => {
+    chrome.runtime.getManifest.mockReturnValue({
+      oauth2: {
+        client_id: '1234567890-example.apps.googleusercontent.com',
+        scopes: [CloudSync.DRIVE_APPDATA_SCOPE]
+      }
+    });
+
+    const url = new URL(CloudSync.buildGoogleOAuthUrl(undefined, 'state-test'));
+
+    expect(url.origin + url.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth');
+    expect(url.searchParams.get('client_id')).toBe('1234567890-example.apps.googleusercontent.com');
+    expect(url.searchParams.get('redirect_uri')).toBe('https://mock-extension-id.chromiumapp.org/');
+    expect(url.searchParams.get('scope')).toBe(CloudSync.DRIVE_APPDATA_SCOPE);
+    expect(url.searchParams.get('state')).toBe('state-test');
+  });
+
+  it('falls back to launchWebAuthFlow when native auth is unsupported', async () => {
+    chrome.runtime.getManifest.mockReturnValue({
+      oauth2: {
+        client_id: '1234567890-example.apps.googleusercontent.com',
+        scopes: [CloudSync.DRIVE_APPDATA_SCOPE]
+      }
+    });
+    chrome.identity.getAuthToken.mockImplementation((details, callback) => {
+      chrome.runtime.lastError = { message: 'This API is not supported on Microsoft Edge' };
+      callback();
+      delete chrome.runtime.lastError;
+    });
+    chrome.identity.launchWebAuthFlow.mockImplementation((details, callback) => {
+      const state = new URL(details.url).searchParams.get('state');
+      callback(`https://mock-extension-id.chromiumapp.org/#access_token=edge-token&expires_in=3600&state=${state}`);
+    });
+
+    await expect(CloudSync.getAuthToken(true)).resolves.toBe('edge-token');
+    expect(chrome.identity.launchWebAuthFlow).toHaveBeenCalledWith(expect.objectContaining({
+      interactive: true
+    }), expect.any(Function));
+    expect(chrome.storage.local.set).toHaveBeenCalledWith({
+      [CloudSync.CLOUD_OAUTH_TOKEN_KEY]: expect.objectContaining({
+        token: 'edge-token',
+        clientId: '1234567890-example.apps.googleusercontent.com',
+        scope: CloudSync.DRIVE_APPDATA_SCOPE
+      })
+    });
+  });
+
+  it('uses a cached web auth token for non-interactive auth', async () => {
+    chrome.runtime.getManifest.mockReturnValue({
+      oauth2: {
+        client_id: '1234567890-example.apps.googleusercontent.com',
+        scopes: [CloudSync.DRIVE_APPDATA_SCOPE]
+      }
+    });
+    delete chrome.identity.getAuthToken;
+    chrome.storage.local.get.mockResolvedValueOnce({
+      [CloudSync.CLOUD_OAUTH_TOKEN_KEY]: {
+        token: 'cached-token',
+        expiresAt: Date.now() + 3600000,
+        clientId: '1234567890-example.apps.googleusercontent.com',
+        scope: CloudSync.DRIVE_APPDATA_SCOPE
+      }
+    });
+
+    await expect(CloudSync.getAuthToken(false)).resolves.toBe('cached-token');
+    expect(chrome.identity.launchWebAuthFlow).not.toHaveBeenCalled();
+    chrome.identity.getAuthToken = jest.fn();
+  });
+
+  it('classifies redirect mismatch errors with the current redirect URL', () => {
+    const info = CloudSync.classifyCloudSyncError(new Error('redirect_uri_mismatch'));
+
+    expect(info.category).toBe('oauth_redirect');
+    expect(info.hint).toContain('https://mock-extension-id.chromiumapp.org/');
+  });
+
+  it('records the last cloud sync error in local metadata', async () => {
+    chrome.storage.local.get.mockResolvedValueOnce({
+      [CloudSync.CLOUD_SYNC_META_KEY]: {
+        lastUploadAt: '2026-06-08T00:00:00.000Z'
+      }
+    });
+
+    await CloudSync.recordCloudSyncError(new Error('redirect_uri_mismatch'), 'btnCloudSignIn');
+
+    expect(chrome.storage.local.set).toHaveBeenCalledWith({
+      [CloudSync.CLOUD_SYNC_META_KEY]: expect.objectContaining({
+        lastUploadAt: '2026-06-08T00:00:00.000Z',
+        lastErrorContext: 'btnCloudSignIn',
+        lastErrorCategory: 'oauth_redirect',
+        lastErrorMessage: 'Google OAuth redirect URL 未被允許'
+      })
+    });
   });
 
   it('builds a cloud settings payload without secrets', async () => {

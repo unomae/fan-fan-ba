@@ -1,5 +1,7 @@
 'use strict';
 
+const OBSIDIAN_KNOWN_FILES_KEY = 'fanFanBaObsidianKnownFiles';
+
 // 讀取最近使用的資料夾（最多 5 個）
 async function loadRecentFolders() {
   const { obsidianFolders } = await chrome.storage.local.get('obsidianFolders');
@@ -91,22 +93,64 @@ async function saveToObsidian(folderPath) {
   const block = buildObsidianBlock({ tag, hm, date, preview });
 
   const { obsidianVault } = await chrome.storage.sync.get('obsidianVault');
+  const knownFile = await isKnownObsidianFile(filePath, obsidianVault);
 
-  // 必須用 encodeURIComponent，URLSearchParams 的 + 號 Obsidian 不認
-  const encParts = [
-    `filepath=${encodeURIComponent(filePath)}`,
-    `data=${encodeURIComponent(block)}`,
-    `mode=append`,
-    `newline=true`
-  ];
-  if (obsidianVault?.trim()) encParts.push(`vault=${encodeURIComponent(obsidianVault.trim())}`);
+  const uri = buildObsidianAdvancedUri({
+    filePath,
+    block,
+    mode: knownFile ? 'append' : '',
+    newline: knownFile,
+    vault: obsidianVault
+  });
 
   // 交給 background 觸發，避免 click 事件冒泡關掉結果卡
-  const uri = `obsidian://advanced-uri?${encParts.join('&')}`;
   // 設旗標防止 tab 切換時的合成 mouseup 關閉結果卡（macOS 尤其需要）
   obsidianSaving = true;
-  chrome.runtime.sendMessage({ type: 'OBSIDIAN_URI', url: uri }).catch(() => {});
+  const response = await chrome.runtime.sendMessage({ type: 'OBSIDIAN_URI', url: uri }).catch(error => ({ ok: false, error: error?.message || 'sendMessage failed' }));
   setTimeout(() => { obsidianSaving = false; }, 4000);
 
   await saveRecentFolder(folderPath);
+  if (response?.ok !== false) await markKnownObsidianFile(filePath, obsidianVault);
+  return { ...response, filePath, action: knownFile ? 'append' : 'write' };
+}
+
+async function isKnownObsidianFile(filePath, vault = '') {
+  const files = await loadKnownObsidianFiles();
+  return Boolean(files[getKnownObsidianFileKey(filePath, vault)]);
+}
+
+async function markKnownObsidianFile(filePath, vault = '') {
+  const files = await loadKnownObsidianFiles();
+  const key = getKnownObsidianFileKey(filePath, vault);
+  await chrome.storage.local.set({
+    [OBSIDIAN_KNOWN_FILES_KEY]: {
+      ...files,
+      [key]: {
+        filePath,
+        vault: String(vault || '').trim(),
+        usedAt: new Date().toISOString()
+      }
+    }
+  });
+}
+
+async function loadKnownObsidianFiles() {
+  const { [OBSIDIAN_KNOWN_FILES_KEY]: files = {} } = await chrome.storage.local.get(OBSIDIAN_KNOWN_FILES_KEY);
+  return files && typeof files === 'object' && !Array.isArray(files) ? files : {};
+}
+
+function getKnownObsidianFileKey(filePath, vault = '') {
+  return `${String(vault || '').trim()}::${String(filePath || '').trim()}`;
+}
+
+function buildObsidianAdvancedUri({ filePath, data, block, mode = '', newline = false, vault = '' }) {
+  // 必須用 encodeURIComponent，URLSearchParams 的 + 號 Obsidian 不認
+  const encParts = [
+    `filepath=${encodeURIComponent(filePath)}`,
+    `data=${encodeURIComponent(data ?? block ?? '')}`
+  ];
+  if (mode) encParts.push(`mode=${encodeURIComponent(mode)}`);
+  if (newline) encParts.push('newline=true');
+  if (vault?.trim()) encParts.push(`vault=${encodeURIComponent(vault.trim())}`);
+  return `obsidian://advanced-uri?${encParts.join('&')}`;
 }

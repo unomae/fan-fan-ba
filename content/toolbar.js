@@ -55,8 +55,8 @@ function hideToolbar() {
 function positionToolbar() {
   if (!savedSel) return;
   try {
-    const rects  = Array.from(savedSel.range.getClientRects?.() || []);
-    const rect   = rects[0] || savedSel.range.getBoundingClientRect();
+    const rect   = getToolbarAnchorRect(savedSel);
+    if (!rect) return;
     const margin = 8;
     const th     = toolbar.offsetHeight || 42;
     const tw     = toolbar.offsetWidth  || 120;
@@ -65,7 +65,7 @@ function positionToolbar() {
     let left = rect.right + margin;
 
     if (rect.top < th + margin) top = rect.bottom + margin;
-    if (top + th > window.innerHeight - margin) top = margin;
+    if (top + th > window.innerHeight - margin) top = Math.max(margin, rect.top - th - margin);
     if (left + tw > window.innerWidth - margin) left = rect.right - tw;
 
     left = Math.max(margin, Math.min(left, window.innerWidth - tw - margin));
@@ -73,4 +73,69 @@ function positionToolbar() {
     toolbar.style.top  = `${top}px`;
     toolbar.style.left = `${left}px`;
   } catch { /* 靜默忽略（跨 iframe 等情境）*/ }
+}
+
+function getToolbarAnchorRect(selectionState) {
+  if (!selectionState) return null;
+  const rangeRect = getRangeViewportRect(selectionState.range);
+  if (rangeRect) return rangeRect;
+  if (selectionState.rect && isUsableToolbarRect(selectionState.rect)) return normalizeToolbarRect(selectionState.rect);
+  if (selectionState.point) {
+    return {
+      left: selectionState.point.clientX,
+      right: selectionState.point.clientX,
+      top: selectionState.point.clientY,
+      bottom: selectionState.point.clientY,
+      width: 0,
+      height: 0
+    };
+  }
+  return null;
+}
+
+function getRangeViewportRect(range) {
+  if (!range) return null;
+  const rects = Array.from(range.getClientRects?.() || [])
+    .map(normalizeToolbarRect)
+    .filter(isUsableToolbarRect)
+    .filter(rect => rect.bottom >= 0 && rect.top <= window.innerHeight && rect.right >= 0 && rect.left <= window.innerWidth);
+
+  if (rects.length) return mergeToolbarRects(rects);
+
+  const rect = normalizeToolbarRect(range.getBoundingClientRect?.());
+  return isUsableToolbarRect(rect) ? rect : null;
+}
+
+function normalizeToolbarRect(rect) {
+  if (!rect) return null;
+  const left = Number(rect.left);
+  const right = Number(rect.right);
+  const top = Number(rect.top);
+  const bottom = Number(rect.bottom);
+  const width = Number.isFinite(Number(rect.width)) ? Number(rect.width) : right - left;
+  const height = Number.isFinite(Number(rect.height)) ? Number(rect.height) : bottom - top;
+  return { left, right, top, bottom, width, height };
+}
+
+function isUsableToolbarRect(rect) {
+  return Boolean(rect)
+    && [rect.left, rect.right, rect.top, rect.bottom].every(Number.isFinite)
+    && rect.width >= 0
+    && rect.height >= 0
+    && (rect.width > 0 || rect.height > 0);
+}
+
+function mergeToolbarRects(rects) {
+  const left = Math.min(...rects.map(rect => rect.left));
+  const right = Math.max(...rects.map(rect => rect.right));
+  const top = Math.min(...rects.map(rect => rect.top));
+  const bottom = Math.max(...rects.map(rect => rect.bottom));
+  return {
+    left,
+    right,
+    top,
+    bottom,
+    width: right - left,
+    height: bottom - top
+  };
 }

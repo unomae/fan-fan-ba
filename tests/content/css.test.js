@@ -53,4 +53,8 @@ describe('content CSS UI safeguards', () => {
     expect(css).toContain('flex-wrap: wrap !important;');
     expect(css).toContain('order: 3 !important;');
   });
+
+  it('keeps page translation progress notes hidden from users', () => {
+    expect(css).toMatch(/\.ffb-page-panel-status\s*{[^}]*display:\s*none\s*!important;/);
+  });
 });

@@ -12,6 +12,7 @@ function getPauseStorageKey() {
 }
 
 function initFloatingBall() {
+  if (window.top !== window.self) return null;
   if (floatingBall && document.body.contains(floatingBall)) return floatingBall;
   floatingBall = createFloatingBall();
   document.body.appendChild(floatingBall);

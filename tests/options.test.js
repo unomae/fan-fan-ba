@@ -61,6 +61,7 @@ describe('Options module', () => {
       jest.advanceTimersByTime(3000);
       expect(el.className).toBe('');
     });
+
   });
 
   describe('settings backup', () => {
@@ -165,6 +166,22 @@ describe('Options module', () => {
         obsidianDefaultFolder: '30_Knowledge/my-notes/languages/vocabulary'
       });
       expect(payload.secrets).toBeUndefined();
+    });
+
+    it('shows the cross-browser auth fallback when OAuth is configured', async () => {
+      chrome.runtime.getManifest.mockReturnValueOnce({
+        version: '1.7.2',
+        oauth2: {
+          client_id: '1234567890-example.apps.googleusercontent.com',
+          scopes: ['https://www.googleapis.com/auth/drive.appdata']
+        }
+      });
+      chrome.storage.local.get.mockResolvedValueOnce({});
+
+      await global.optionsModule.renderCloudSyncStatus();
+
+      expect(document.getElementById('cloudSyncStatus').textContent).toContain('cross-browser Web Auth fallback');
+      expect(document.getElementById('cloudSyncStatus').textContent).toContain('Redirect URL');
     });
 
     it('shows a clear status while OAuth client id is still a placeholder', async () => {

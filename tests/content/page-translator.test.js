@@ -1,6 +1,7 @@
 const {
   cleanPageTranslationResult,
   collectVisibleTranslatableBlocks,
+  getPageTranslationContrastTheme,
   getPageTranslationStatusText
 } = require('../../content/page-translator');
 
@@ -13,12 +14,13 @@ describe('page translator helpers', () => {
     Object.defineProperty(window, 'innerHeight', { value: 900, configurable: true });
     originalGetComputedStyle = window.getComputedStyle;
     originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
-    window.getComputedStyle = jest.fn(() => ({
+    window.getComputedStyle = jest.fn(el => ({
       display: 'block',
       visibility: 'visible',
       opacity: '1',
       fontSize: '16px',
-      lineHeight: 'normal'
+      lineHeight: 'normal',
+      backgroundColor: el?.dataset?.bg || 'rgba(0, 0, 0, 0)'
     }));
     HTMLElement.prototype.getBoundingClientRect = function getBoundingClientRect() {
       return {
@@ -112,6 +114,59 @@ describe('page translator helpers', () => {
     expect(items.map(item => item.text)).toEqual([
       'Notion article paragraphs should be translated when they are visible in the page body.'
     ]);
+  });
+
+  it('detects quiz question and choice text while skipping quiz navigation chrome', () => {
+    document.body.innerHTML = `
+      <main role="main">
+        <div class="quiz-popup-navigation">
+          <span>Previous question</span>
+          <span>Next question</span>
+        </div>
+        <form class="skills-quiz">
+          <section class="question-card">
+            <p>Which command creates a new branch in Git?</p>
+            <mat-radio-button role="radio">
+              <span class="mat-radio-label-content">git checkout -b feature/login</span>
+            </mat-radio-button>
+            <mat-radio-button role="radio">
+              <span class="mat-radio-label-content">git status --short</span>
+            </mat-radio-button>
+          </section>
+        </form>
+      </main>
+    `;
+
+    const items = collectVisibleTranslatableBlocks();
+
+    expect(items.map(item => item.text)).toEqual([
+      'Which command creates a new branch in Git?',
+      'git checkout -b feature/login',
+      'git status --short'
+    ]);
+  });
+
+  it('uses high-contrast translation colors on dark source backgrounds', () => {
+    document.body.innerHTML = `
+      <section data-bg="rgb(2, 32, 52)">
+        <h1 id="hero-title">Gen AI: Navigate the Landscape</h1>
+      </section>
+    `;
+
+    const theme = getPageTranslationContrastTheme(document.getElementById('hero-title'));
+
+    expect(theme['--ffb-page-translation-color']).toBe('#f8fafc');
+    expect(theme['--ffb-page-translation-accent']).toBe('rgba(250, 204, 21, 0.92)');
+  });
+
+  it('keeps the default translation colors on light source backgrounds', () => {
+    document.body.innerHTML = `
+      <section data-bg="rgb(255, 255, 255)">
+        <p id="article-copy">Markets responded cautiously after the announcement.</p>
+      </section>
+    `;
+
+    expect(getPageTranslationContrastTheme(document.getElementById('article-copy'))).toEqual({});
   });
 
   it('formats page translation panel status with progress and actionable states', () => {

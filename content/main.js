@@ -5,8 +5,10 @@
   const url = chrome.runtime.getURL('fonts/jf-openhuninn-2.1.ttf');
   const style = document.createElement('style');
   style.textContent = `@font-face{font-family:'jf-openhuninn';src:url('${url}')format('truetype');font-display:block;}`;
-  document.head.appendChild(style);
+  (document.head || document.documentElement).appendChild(style);
 })();
+
+let lastSelectionPointerDown = null;
 
 // ── 事件監聽 ─────────────────────────────────────────
 document.addEventListener('mouseup',   (e) => { onDragEnd(e); onMouseUp(e); });
@@ -79,7 +81,9 @@ function onMouseUp(e) {
   if (fanFanBaPaused) return;
   if (isInOurUI(e.target)) return;
   if (obsidianSaving) return; // 存入 Obsidian 期間 tab 切換可能觸發合成事件
-  setTimeout(checkSelection, 20);
+  const point = { clientX: e.clientX, clientY: e.clientY };
+  const allowGoogleDocsFallback = isLikelySelectionDrag(point);
+  setTimeout(() => checkSelection(point, { allowGoogleDocsFallback }), 20);
 }
 
 function onKeyUp(e) {
@@ -90,6 +94,7 @@ function onKeyUp(e) {
 }
 
 function onMouseDown(e) {
+  lastSelectionPointerDown = { clientX: e.clientX, clientY: e.clientY };
   if (isInOurUI(e.target)) return;
   hideFloatingBallMenu?.();
   if (fanFanBaPaused) return;
@@ -108,18 +113,192 @@ function isInOurUI(el) {
       || (pageTranslationPanel && pageTranslationPanel.contains(el));
 }
 
-function checkSelection() {
-  const sel  = window.getSelection();
-  const text = sel?.toString().trim();
-  if (text && text.length > 0) {
+function checkSelection(point = null, options = {}) {
+  const selectionData = getCurrentSelectionData(point);
+  if (selectionData?.text) {
     try {
-      savedSel = { text, range: sel.getRangeAt(0).cloneRange() };
+      savedSel = selectionData;
       showToolbar();
     } catch { /* 跨 iframe 等情況靜默忽略 */ }
+  } else if (options.allowGoogleDocsFallback && isGoogleDocsDocumentPage()) {
+    savedSel = {
+      text: '',
+      range: null,
+      point,
+      pendingGoogleDocsSelection: true
+    };
+    showToolbar();
   } else {
     // pin 住時只收工具列，結果卡保留
     if (isPinned) hideToolbar();
     else          hideAll();
+  }
+}
+
+function getCurrentSelectionData(point = null) {
+  return getWindowSelectionData(point) || getEditableSelectionData(point) || getNestedFrameSelectionData(point);
+}
+
+function getWindowSelectionData(point = null) {
+  return getWindowSelectionDataFromWindow(window, point);
+}
+
+function getEditableSelectionData(point = null) {
+  return getEditableSelectionDataFromDocument(document, point);
+}
+
+function getEditableSelectionDataFromDocument(doc, point = null) {
+  const el = doc?.activeElement;
+  if (!el || isInOurUI(el)) return null;
+  if (!isTextSelectionControl(el)) return null;
+  const start = Number(el.selectionStart);
+  const end = Number(el.selectionEnd);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start === end) return null;
+  const text = String(el.value || '').slice(Math.min(start, end), Math.max(start, end)).trim();
+  if (!text) return null;
+  return {
+    text,
+    range: null,
+    rect: getEditableSelectionFallbackRect(el, point),
+    point
+  };
+}
+
+function isTextSelectionControl(el) {
+  if (!el) return false;
+  if (el.tagName === 'TEXTAREA') return true;
+  if (el.tagName !== 'INPUT') return false;
+  return /^(?:text|search|url|tel|email|password|number)?$/i.test(el.type || 'text');
+}
+
+function getEditableSelectionFallbackRect(el, point = null) {
+  if (point && Number.isFinite(point.clientX) && Number.isFinite(point.clientY)) {
+    return {
+      left: point.clientX,
+      right: point.clientX,
+      top: point.clientY,
+      bottom: point.clientY,
+      width: 0,
+      height: 0
+    };
+  }
+  const rect = el.getBoundingClientRect?.();
+  if (!rect) return null;
+  return {
+    left: rect.left,
+    right: rect.right,
+    top: rect.top,
+    bottom: rect.bottom,
+    width: rect.width,
+    height: rect.height
+  };
+}
+
+function getNestedFrameSelectionData(point = null) {
+  const frames = getSelectionCandidateFrames();
+  for (const frame of frames) {
+    const data = getFrameSelectionData(frame, point);
+    if (data) return data;
+  }
+  return null;
+}
+
+function getSelectionCandidateFrames() {
+  const frames = [];
+  const active = document.activeElement;
+  if (active && ['IFRAME', 'FRAME'].includes(active.tagName)) frames.push(active);
+  document
+    .querySelectorAll('iframe.docs-texteventtarget-iframe, iframe[name*="docs-texteventtarget" i], iframe[id*="docs-texteventtarget" i]')
+    .forEach(frame => {
+      if (!frames.includes(frame)) frames.push(frame);
+    });
+  return frames;
+}
+
+function getFrameSelectionData(frame, point = null) {
+  try {
+    const frameWindow = frame.contentWindow;
+    const frameDocument = frame.contentDocument || frameWindow?.document;
+    const frameRect = frame.getBoundingClientRect();
+    const childPoint = point && Number.isFinite(point.clientX) && Number.isFinite(point.clientY)
+      ? { clientX: point.clientX - frameRect.left, clientY: point.clientY - frameRect.top }
+      : null;
+    const data = getWindowSelectionDataFromWindow(frameWindow, childPoint)
+      || getEditableSelectionDataFromDocument(frameDocument, childPoint);
+    if (!data) return null;
+    const rect = data.rect || getRangeSelectionRect(data.range);
+    data.range = null;
+    if (rect) data.rect = offsetRect(rect, frameRect.left, frameRect.top);
+    if (data.point) data.point = { clientX: data.point.clientX + frameRect.left, clientY: data.point.clientY + frameRect.top };
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function getWindowSelectionDataFromWindow(win, point = null) {
+  const sel = win?.getSelection?.();
+  const text = sel?.toString().trim();
+  if (!text || !sel.rangeCount) return null;
+  try {
+    return {
+      text,
+      range: sel.getRangeAt(0).cloneRange(),
+      point
+    };
+  } catch {
+    return { text, range: null, point };
+  }
+}
+
+function offsetRect(rect, leftOffset, topOffset) {
+  return {
+    left: rect.left + leftOffset,
+    right: rect.right + leftOffset,
+    top: rect.top + topOffset,
+    bottom: rect.bottom + topOffset,
+    width: rect.width,
+    height: rect.height
+  };
+}
+
+function getRangeSelectionRect(range) {
+  if (!range) return null;
+  const rects = Array.from(range.getClientRects?.() || []);
+  const rect = rects.find(item => Number(item.width) > 0 || Number(item.height) > 0)
+    || range.getBoundingClientRect?.();
+  if (!rect) return null;
+  return {
+    left: rect.left,
+    right: rect.right,
+    top: rect.top,
+    bottom: rect.bottom,
+    width: rect.width,
+    height: rect.height
+  };
+}
+
+function isLikelySelectionDrag(point) {
+  if (!point || !lastSelectionPointerDown) return false;
+  return Math.max(
+    Math.abs(point.clientX - lastSelectionPointerDown.clientX),
+    Math.abs(point.clientY - lastSelectionPointerDown.clientY)
+  ) >= 4;
+}
+
+function isGoogleDocsDocumentPage() {
+  const loc = getCurrentLocationParts();
+  return loc?.hostname === 'docs.google.com' && loc?.pathname?.startsWith('/document/');
+}
+
+function getCurrentLocationParts() {
+  try {
+    return {
+      hostname: location.hostname || '',
+      pathname: location.pathname || ''
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -147,6 +326,10 @@ const ACTION_META = {
 
 function triggerAction(action) {
   if (!savedSel) return;
+  if (savedSel.pendingGoogleDocsSelection) {
+    resolvePendingGoogleDocsSelection(action);
+    return;
+  }
 
   activeAction = action;
   const requestId = ++activeRequestId;
@@ -214,6 +397,54 @@ function triggerAction(action) {
   } else {
     startStreaming(action, savedSel.text, context, pageTitle, cacheKey, requestId);
   }
+}
+
+async function resolvePendingGoogleDocsSelection(action) {
+  const pendingSel = savedSel;
+  const text = await readGoogleDocsSelectionFromCopyEvent();
+  if (!text) {
+    if (!resultCard || !document.body.contains(resultCard)) resultCard = createResultCard();
+    activeAction = action;
+    resultCard.querySelector('.g-rc-tag').textContent = 'Google Docs';
+    resultCard.classList.add('g-show');
+    hideToolbar();
+    requestAnimationFrame(() => positionResultCard(pendingSel?.rect || pendingSel?.point || null));
+    setError('Google Docs 沒有提供可讀取的選取文字。請確認已拖曳選取文字後再按一次，或先用 Ctrl+C 複製選取文字。');
+    return;
+  }
+  savedSel = {
+    text,
+    range: null,
+    rect: pendingSel?.rect || null,
+    point: pendingSel?.point || null
+  };
+  triggerAction(action);
+}
+
+function readGoogleDocsSelectionFromCopyEvent() {
+  return new Promise(resolve => {
+    let resolved = false;
+    let captured = '';
+    const finish = value => {
+      if (resolved) return;
+      resolved = true;
+      document.removeEventListener('copy', onCopy, false);
+      resolve(String(value || '').trim());
+    };
+    const onCopy = event => {
+      captured = event.clipboardData?.getData('text/plain') || captured;
+      setTimeout(() => finish(event.clipboardData?.getData('text/plain') || captured), 0);
+    };
+
+    document.addEventListener('copy', onCopy, false);
+    try {
+      const copied = document.execCommand?.('copy');
+      if (!copied) setTimeout(() => finish(captured), 60);
+      else setTimeout(() => finish(captured), 160);
+    } catch {
+      finish('');
+    }
+  });
 }
 
 function cancelActiveStream() {

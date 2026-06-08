@@ -353,8 +353,10 @@ async function runCloudSyncAction(button, action) {
   try {
     await action();
   } catch (e) {
-    await renderCloudSyncStatus(e.message);
-    showStatus('err', `雲端同步失敗：${e.message}`);
+    const info = CloudSync.classifyCloudSyncError?.(e) || { message: e.message, hint: '' };
+    await CloudSync.recordCloudSyncError?.(e, button?.id || '');
+    await renderCloudSyncStatus(`${info.message}${info.hint ? `｜${info.hint}` : ''}`);
+    showStatus('err', `雲端同步失敗：${info.message}`);
   } finally {
     buttons.forEach(btn => { btn.disabled = false; });
     if (button) button.focus?.();
@@ -378,9 +380,18 @@ async function renderCloudSyncStatus(message = '') {
   }
 
   const meta = await CloudSync.getCloudSyncMeta();
-  const parts = ['Google OAuth 已設定', 'v1.7.0 僅同步一般設定，不含 API Key'];
+  const support = CloudSync.getOAuthSupport?.() || {};
+  const authMode = support.nativeAuth && support.webAuthFlow
+    ? 'Chrome native auth / cross-browser Web Auth fallback'
+    : support.webAuthFlow
+      ? 'cross-browser Web Auth'
+      : 'Chrome native auth';
+  const parts = ['Google OAuth 已設定', 'v1.7.x 僅同步一般設定，不含 API Key', `登入流程：${authMode}`];
+  const redirectUrl = CloudSync.getOAuthRedirectUrl?.();
+  if (support.webAuthFlow && redirectUrl) parts.push(`Redirect URL：${redirectUrl}`);
   if (meta.lastUploadAt) parts.push(`最後上傳：${meta.lastUploadAt}`);
   if (meta.lastDownloadAt) parts.push(`最後下載：${meta.lastDownloadAt}`);
+  if (meta.lastErrorAt) parts.push(`最後錯誤：${meta.lastErrorCategory || 'unknown'} ${meta.lastErrorAt}`);
   if (message) parts.push(message);
   el.textContent = parts.join('｜');
 }
