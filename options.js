@@ -8,6 +8,8 @@ const Storage = globalThis.FanFanBaStorage || require('./storage');
 const CloudSync = globalThis.FanFanBaCloudSync || require('./cloud-sync');
 const SETTINGS_BACKUP_APP = 'fan-fan-ba';
 const SETTINGS_BACKUP_SCHEMA_VERSION = 1;
+const SECRET_BACKUP_CRYPTO_VERSION = 1;
+const SECRET_BACKUP_KDF_ITERATIONS = 210000;
 const SYNC_SETTING_KEYS = [
   'model',
   'pageTranslationModel',
@@ -268,6 +270,7 @@ function bindBackupControls() {
   const includeSecretsCheckbox = $('includeSecretsExport');
   const importButton = $('btnImportSettings');
   const fileInput = $('settingsImportFile');
+  const passwordInput = $('backupPassword');
 
   if (exportButton) {
     exportButton.addEventListener('click', async () => {
@@ -275,9 +278,11 @@ function bindBackupControls() {
       try {
         const includeSecrets = !!includeSecretsCheckbox?.checked;
         if (includeSecrets && !confirmSecretsExport()) return;
-        const payload = await buildSettingsBackupPayload(includeSecrets);
+        const payload = await buildSettingsBackupPayload(includeSecrets, {
+          password: includeSecrets ? passwordInput?.value || '' : ''
+        });
         downloadSettingsBackup(payload);
-        showStatus('ok', includeSecrets ? '✓ 設定與 API Keys 已匯出' : '✓ 設定檔已匯出');
+        showStatus('ok', includeSecrets ? '✓ 設定與加密 API Keys 已匯出' : '✓ 設定檔已匯出');
       } catch (e) {
         showStatus('err', `匯出失敗：${e.message}`);
       } finally {
@@ -294,7 +299,7 @@ function bindBackupControls() {
 
       importButton.disabled = true;
       try {
-        const result = await importSettingsBackupFile(file);
+        const result = await importSettingsBackupFile(file, { password: passwordInput?.value || '' });
         showStatus('ok', formatImportSettingsStatus(result));
       } catch (e) {
         showStatus('err', `匯入失敗：${e.message}`);
@@ -513,7 +518,7 @@ async function loadCloudWebAuthClientId() {
   return clientId;
 }
 
-async function buildSettingsBackupPayload(includeSecrets = false) {
+async function buildSettingsBackupPayload(includeSecrets = false, options = {}) {
   const syncSettings = await chrome.storage.sync.get(SYNC_SETTING_KEYS);
   const payload = {
     app: SETTINGS_BACKUP_APP,
@@ -523,10 +528,109 @@ async function buildSettingsBackupPayload(includeSecrets = false) {
   };
 
   if (includeSecrets) {
-    payload.secrets = pickBackupSecrets(await Storage.getSecrets({}));
+    payload.secretsEncrypted = await encryptBackupSecrets(pickBackupSecrets(await Storage.getSecrets({})), options.password || '');
   }
 
   return payload;
+}
+
+async function encryptBackupSecrets(secrets = {}, password = '') {
+  const pickedSecrets = pickBackupSecrets(secrets);
+  if (!Object.keys(pickedSecrets).length) return null;
+  assertBackupPassword(password);
+  const cryptoImpl = getCryptoImpl();
+  const salt = cryptoImpl.getRandomValues(new Uint8Array(16));
+  const iv = cryptoImpl.getRandomValues(new Uint8Array(12));
+  const key = await deriveBackupSecretKey(password, salt);
+  const encoded = new TextEncoder().encode(JSON.stringify(pickedSecrets));
+  const encrypted = await cryptoImpl.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+  return {
+    version: SECRET_BACKUP_CRYPTO_VERSION,
+    algorithm: 'AES-GCM',
+    kdf: 'PBKDF2-SHA-256',
+    iterations: SECRET_BACKUP_KDF_ITERATIONS,
+    salt: bytesToBase64(salt),
+    iv: bytesToBase64(iv),
+    data: bytesToBase64(new Uint8Array(encrypted))
+  };
+}
+
+async function decryptBackupSecrets(encrypted = {}, password = '') {
+  if (!encrypted) return {};
+  assertBackupPassword(password);
+  if (encrypted.version !== SECRET_BACKUP_CRYPTO_VERSION || encrypted.algorithm !== 'AES-GCM') {
+    throw new Error('API Key 加密備份格式不支援');
+  }
+  try {
+    const cryptoImpl = getCryptoImpl();
+    const salt = base64ToBytes(encrypted.salt);
+    const iv = base64ToBytes(encrypted.iv);
+    const key = await deriveBackupSecretKey(password, salt, encrypted.iterations || SECRET_BACKUP_KDF_ITERATIONS);
+    const decrypted = await cryptoImpl.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      base64ToBytes(encrypted.data)
+    );
+    return pickBackupSecrets(JSON.parse(new TextDecoder().decode(decrypted)));
+  } catch (error) {
+    if (/API Key 加密備份格式不支援|API Key 備份密碼/.test(String(error?.message || error))) throw error;
+    throw new Error('API Key 備份密碼不正確或檔案已損壞');
+  }
+}
+
+async function deriveBackupSecretKey(password, salt, iterations = SECRET_BACKUP_KDF_ITERATIONS) {
+  const cryptoImpl = getCryptoImpl();
+  const baseKey = await cryptoImpl.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+  return cryptoImpl.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt,
+      iterations,
+      hash: 'SHA-256'
+    },
+    baseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+function assertBackupPassword(password = '') {
+  if (String(password).length < 8) {
+    throw new Error('API Key 備份密碼至少需要 8 個字元');
+  }
+}
+
+function getCryptoImpl() {
+  const cryptoImpl = globalThis.crypto?.subtle
+    ? globalThis.crypto
+    : typeof require === 'function'
+      ? require('crypto').webcrypto
+      : null;
+  if (!cryptoImpl?.subtle || typeof cryptoImpl.getRandomValues !== 'function') {
+    throw new Error('此環境不支援 API Key 加密備份');
+  }
+  return cryptoImpl;
+}
+
+function bytesToBase64(bytes) {
+  if (typeof btoa === 'function') {
+    return btoa(String.fromCharCode(...bytes));
+  }
+  return Buffer.from(bytes).toString('base64');
+}
+
+function base64ToBytes(value = '') {
+  if (typeof atob === 'function') {
+    return Uint8Array.from(atob(value), char => char.charCodeAt(0));
+  }
+  return Uint8Array.from(Buffer.from(value, 'base64'));
 }
 
 function pickBackupSettings(values = {}) {
@@ -564,10 +668,10 @@ function buildSettingsBackupFilename(date = new Date()) {
   return `fan-fan-ba-settings-${stamp}.json`;
 }
 
-async function importSettingsBackupFile(file) {
+async function importSettingsBackupFile(file, options = {}) {
   const payload = parseSettingsBackup(await readTextFile(file));
   const settings = normalizeImportedSettings(payload.settings || {});
-  const secrets = pickBackupSecrets(payload.secrets || {});
+  const secrets = await resolveImportedBackupSecrets(payload, options.password || '');
 
   if (!Object.keys(settings).length && !Object.keys(secrets).length) {
     throw new Error('設定檔沒有可匯入的設定');
@@ -579,6 +683,13 @@ async function importSettingsBackupFile(file) {
   await Promise.all(writes);
   await loadSettings();
   return { settingsCount: Object.keys(settings).length, secretsCount: Object.keys(secrets).length };
+}
+
+async function resolveImportedBackupSecrets(payload = {}, password = '') {
+  if (payload.secretsEncrypted) {
+    return decryptBackupSecrets(payload.secretsEncrypted, password);
+  }
+  return pickBackupSecrets(payload.secrets || {});
 }
 
 function parseSettingsBackup(text) {
@@ -646,7 +757,7 @@ function formatImportSettingsStatus({ settingsCount = 0, secretsCount = 0 } = {}
 
 function confirmSecretsExport() {
   if (typeof window === 'undefined' || typeof window.confirm !== 'function') return true;
-  return window.confirm('匯出的 JSON 會明文包含 API Keys。請只保存在可信任的位置，且不要分享給他人。確定要匯出嗎？');
+  return window.confirm('API Keys 會用你輸入的密碼加密後匯出。請記住密碼，忘記後無法還原。確定要匯出嗎？');
 }
 
 function confirmCloudUploadOverwrite(file = {}) {
@@ -671,12 +782,15 @@ if (typeof module !== 'undefined' && module.exports) {
     initSettingsTabs,
     loadSettings,
     buildSettingsBackupPayload,
+    encryptBackupSecrets,
+    decryptBackupSecrets,
     pickBackupSettings,
     pickBackupSecrets,
     buildSettingsBackupFilename,
     parseSettingsBackup,
     normalizeImportedSettings,
     importSettingsBackupFile,
+    resolveImportedBackupSecrets,
     formatImportSettingsStatus,
     confirmSecretsExport,
     confirmCloudUploadOverwrite,

@@ -14,6 +14,7 @@ describe('Options module', () => {
       <input id="obsidianDefaultFolder" />
       <button id="btnExportSettings"></button>
       <input id="includeSecretsExport" type="checkbox" />
+      <input id="backupPassword" type="password" />
       <button id="btnImportSettings"></button>
       <input id="settingsImportFile" type="file" />
       <input id="cloudWebAuthClientId" />
@@ -47,10 +48,13 @@ describe('Options module', () => {
     document.getElementById('cloudWebAuthClientId').value = '';
     await CloudSync.setWebAuthClientId('');
     chrome.storage.local.get.mockResolvedValue({});
+    chrome.storage.sync.get.mockResolvedValue({});
+    chrome.storage.sync.set.mockClear();
+    chrome.storage.sync.remove.mockClear();
     chrome.storage.local.set.mockClear();
     chrome.storage.local.remove.mockClear();
     chrome.runtime.getManifest.mockReturnValue({
-      version: '1.7.4',
+      version: '1.7.5',
       oauth2: {
         client_id: 'REPLACE_WITH_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com',
         scopes: ['https://www.googleapis.com/auth/drive.appdata']
@@ -122,7 +126,85 @@ describe('Options module', () => {
       });
     });
 
-    it('imports settings and API keys from a backup file', async () => {
+    it('exports API keys as encrypted secrets when a backup password is provided', async () => {
+      chrome.storage.sync.get.mockResolvedValueOnce({ model: 'gemini-3.5-flash' });
+      chrome.storage.local.get.mockResolvedValueOnce({
+        groqApiKey: 'gsk-test',
+        openrouterApiKey: ''
+      });
+
+      const payload = await global.optionsModule.buildSettingsBackupPayload(true, {
+        password: 'safe-passphrase'
+      });
+
+      expect(payload.secrets).toBeUndefined();
+      expect(payload.secretsEncrypted).toEqual(expect.objectContaining({
+        version: 1,
+        algorithm: 'AES-GCM',
+        kdf: 'PBKDF2-SHA-256',
+        data: expect.any(String)
+      }));
+
+      const decrypted = await global.optionsModule.decryptBackupSecrets(payload.secretsEncrypted, 'safe-passphrase');
+      expect(decrypted).toEqual({ groqApiKey: 'gsk-test' });
+    });
+
+    it('requires a password before exporting API keys', async () => {
+      chrome.storage.sync.get.mockResolvedValueOnce({});
+      chrome.storage.local.get.mockResolvedValueOnce({ groqApiKey: 'gsk-test' });
+
+      await expect(global.optionsModule.buildSettingsBackupPayload(true, {
+        password: 'short'
+      })).rejects.toThrow('API Key 備份密碼至少需要 8 個字元');
+    });
+
+    it('imports encrypted API keys from a backup file', async () => {
+      chrome.storage.sync.set.mockResolvedValueOnce();
+      chrome.storage.local.set.mockResolvedValueOnce();
+      chrome.storage.sync.remove.mockResolvedValueOnce();
+      const encrypted = await global.optionsModule.encryptBackupSecrets({
+        groqApiKey: 'gsk-test',
+        openrouterApiKey: ''
+      }, 'safe-passphrase');
+      const file = {
+        text: jest.fn().mockResolvedValue(JSON.stringify({
+          app: 'fan-fan-ba',
+          schemaVersion: 1,
+          settings: {
+            model: 'gemini-3.5-flash'
+          },
+          secretsEncrypted: encrypted
+        }))
+      };
+
+      const result = await global.optionsModule.importSettingsBackupFile(file, {
+        password: 'safe-passphrase'
+      });
+
+      expect(chrome.storage.sync.set).toHaveBeenCalledWith({ model: 'gemini-3.5-flash' });
+      expect(chrome.storage.local.set).toHaveBeenCalledWith({ groqApiKey: 'gsk-test' });
+      expect(result).toEqual({ settingsCount: 1, secretsCount: 1 });
+    });
+
+    it('rejects encrypted API key backups with a wrong password', async () => {
+      const encrypted = await global.optionsModule.encryptBackupSecrets({
+        groqApiKey: 'gsk-test'
+      }, 'safe-passphrase');
+      const file = {
+        text: jest.fn().mockResolvedValue(JSON.stringify({
+          app: 'fan-fan-ba',
+          schemaVersion: 1,
+          settings: {},
+          secretsEncrypted: encrypted
+        }))
+      };
+
+      await expect(global.optionsModule.importSettingsBackupFile(file, {
+        password: 'wrong-password'
+      })).rejects.toThrow('API Key 備份密碼不正確或檔案已損壞');
+    });
+
+    it('imports legacy plaintext API keys from a backup file', async () => {
       chrome.storage.sync.set.mockResolvedValueOnce();
       chrome.storage.local.set.mockResolvedValueOnce();
       chrome.storage.sync.remove.mockResolvedValueOnce();
@@ -157,7 +239,7 @@ describe('Options module', () => {
       window.confirm = jest.fn(() => false);
 
       expect(global.optionsModule.confirmSecretsExport()).toBe(false);
-      expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('明文包含 API Keys'));
+      expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('密碼加密'));
 
       window.confirm = originalConfirm;
     });
@@ -176,7 +258,7 @@ describe('Options module', () => {
 
       expect(payload.app).toBe('fan-fan-ba');
       expect(payload.cloudSchemaVersion).toBe(1);
-      expect(payload.appVersion).toBe('1.7.4');
+      expect(payload.appVersion).toBe('1.7.5');
       expect(payload.settings).toEqual({
         model: 'groq:meta-llama/llama-4-scout-17b-16e-instruct',
         obsidianDefaultFolder: '30_Knowledge/my-notes/languages/vocabulary'
@@ -186,7 +268,7 @@ describe('Options module', () => {
 
     it('shows the cross-browser auth fallback when OAuth is configured', async () => {
       chrome.runtime.getManifest.mockReturnValueOnce({
-        version: '1.7.4',
+        version: '1.7.5',
         oauth2: {
           client_id: '1234567890-example.apps.googleusercontent.com',
           scopes: ['https://www.googleapis.com/auth/drive.appdata']
@@ -209,7 +291,7 @@ describe('Options module', () => {
       jest.useRealTimers();
       document.getElementById('cloudWebAuthClientId').value = 'web-client-example.apps.googleusercontent.com';
       chrome.runtime.getManifest.mockReturnValue({
-        version: '1.7.4',
+        version: '1.7.5',
         oauth2: {
           client_id: '1234567890-example.apps.googleusercontent.com',
           scopes: ['https://www.googleapis.com/auth/drive.appdata']
@@ -238,7 +320,7 @@ describe('Options module', () => {
 
     it('summarizes the last cloud sync action for public users', async () => {
       chrome.runtime.getManifest.mockReturnValue({
-        version: '1.7.4',
+        version: '1.7.5',
         oauth2: {
           client_id: '1234567890-example.apps.googleusercontent.com',
           scopes: ['https://www.googleapis.com/auth/drive.appdata']
@@ -273,7 +355,7 @@ describe('Options module', () => {
       });
       const uploadSpy = jest.spyOn(CloudSync, 'uploadCloudSettings').mockResolvedValue({ id: 'cloud-file-1' });
       chrome.runtime.getManifest.mockReturnValue({
-        version: '1.7.4',
+        version: '1.7.5',
         oauth2: {
           client_id: '1234567890-example.apps.googleusercontent.com',
           scopes: ['https://www.googleapis.com/auth/drive.appdata']
@@ -311,7 +393,7 @@ describe('Options module', () => {
         settings: { model: 'gemini-3.5-flash' }
       });
       chrome.runtime.getManifest.mockReturnValue({
-        version: '1.7.4',
+        version: '1.7.5',
         oauth2: {
           client_id: '1234567890-example.apps.googleusercontent.com',
           scopes: ['https://www.googleapis.com/auth/drive.appdata']

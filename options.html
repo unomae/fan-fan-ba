@@ -899,10 +899,14 @@
                 <button class="btn-test" id="btnExportSettings" type="button">匯出設定檔</button>
                 <label class="check-row" for="includeSecretsExport">
                   <input id="includeSecretsExport" type="checkbox">
-                  包含 API Keys
+                  加密包含 API Keys
                 </label>
               </div>
-              <p class="field-note">預設只匯出模型、語言、Obsidian 等一般設定；勾選 API Keys 時會再次確認，請妥善保管匯出的檔案。</p>
+              <div class="field" style="margin-top:10px;">
+                <label for="backupPassword">API Key 備份密碼 <span class="hint">加密匯出 / 匯入時使用</span></label>
+                <input type="password" id="backupPassword" placeholder="至少 8 個字元，請自行保存" autocomplete="off" spellcheck="false">
+              </div>
+              <p class="field-note">預設只匯出模型、語言、Obsidian 等一般設定；勾選 API Keys 時會用此密碼加密，忘記密碼就無法還原 API Key。</p>
             </div>
 
             <div class="field full">
@@ -922,7 +926,8 @@
                 <strong>API Key 備份提醒</strong>
                 <ul>
                   <li>不勾選時，匯出檔不包含任何 API Key。</li>
-                  <li>勾選後匯出的 JSON 會明文包含 API Key，請勿上傳公開空間或分享給他人。</li>
+                  <li>勾選後 API Key 會以密碼加密後寫入 JSON；密碼不會被儲存，也無法找回。</li>
+                  <li>舊版明文 API Key 備份仍可匯入，但建議重新匯出成加密備份。</li>
                 </ul>
               </div>
             </div>
