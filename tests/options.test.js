@@ -50,7 +50,7 @@ describe('Options module', () => {
     chrome.storage.local.set.mockClear();
     chrome.storage.local.remove.mockClear();
     chrome.runtime.getManifest.mockReturnValue({
-      version: '1.7.2',
+      version: '1.7.3',
       oauth2: {
         client_id: 'REPLACE_WITH_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com',
         scopes: ['https://www.googleapis.com/auth/drive.appdata']
@@ -176,7 +176,7 @@ describe('Options module', () => {
 
       expect(payload.app).toBe('fan-fan-ba');
       expect(payload.cloudSchemaVersion).toBe(1);
-      expect(payload.appVersion).toBe('1.7.2');
+      expect(payload.appVersion).toBe('1.7.3');
       expect(payload.settings).toEqual({
         model: 'groq:meta-llama/llama-4-scout-17b-16e-instruct',
         obsidianDefaultFolder: '30_Knowledge/my-notes/languages/vocabulary'
@@ -186,7 +186,7 @@ describe('Options module', () => {
 
     it('shows the cross-browser auth fallback when OAuth is configured', async () => {
       chrome.runtime.getManifest.mockReturnValueOnce({
-        version: '1.7.2',
+        version: '1.7.3',
         oauth2: {
           client_id: '1234567890-example.apps.googleusercontent.com',
           scopes: ['https://www.googleapis.com/auth/drive.appdata']
@@ -206,7 +206,7 @@ describe('Options module', () => {
       jest.useRealTimers();
       document.getElementById('cloudWebAuthClientId').value = 'web-client-example.apps.googleusercontent.com';
       chrome.runtime.getManifest.mockReturnValue({
-        version: '1.7.2',
+        version: '1.7.3',
         oauth2: {
           client_id: '1234567890-example.apps.googleusercontent.com',
           scopes: ['https://www.googleapis.com/auth/drive.appdata']
@@ -244,7 +244,7 @@ describe('Options module', () => {
       });
       const uploadSpy = jest.spyOn(CloudSync, 'uploadCloudSettings').mockResolvedValue({ id: 'cloud-file-1' });
       chrome.runtime.getManifest.mockReturnValue({
-        version: '1.7.2',
+        version: '1.7.3',
         oauth2: {
           client_id: '1234567890-example.apps.googleusercontent.com',
           scopes: ['https://www.googleapis.com/auth/drive.appdata']
@@ -282,7 +282,7 @@ describe('Options module', () => {
         settings: { model: 'gemini-3.5-flash' }
       });
       chrome.runtime.getManifest.mockReturnValue({
-        version: '1.7.2',
+        version: '1.7.3',
         oauth2: {
           client_id: '1234567890-example.apps.googleusercontent.com',
           scopes: ['https://www.googleapis.com/auth/drive.appdata']
