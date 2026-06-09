@@ -338,7 +338,7 @@
           <p class="lead">這份文件是翻翻吧唯一專案記憶入口，已整合原本散落的 review HTML、vocabulary roadmap、全文翻譯 UX review 與 session context。之後專案進度、roadmap、決策與驗證狀態都更新在這裡。</p>
         </div>
         <div class="meta-row">
-          <span class="pill green">版本 1.7.3</span>
+          <span class="pill green">版本 1.7.4</span>
           <span class="pill blue">Manifest V3</span>
           <span class="pill">最後更新 2026-06-08</span>
           <span class="pill orange">文件狀態：主入口</span>
@@ -487,7 +487,7 @@ options.js</pre>
 
       <section id="cloud-sync-plan">
         <h2>v1.7.x Cloud Sync</h2>
-        <div class="callout">v1.6.3 實站測試先告一段落；目前主線切到 v1.7.0-v1.7.3。v1.7.0 只同步一般設定到 Google Drive appData，不同步 API Key；v1.7.1 規劃 API Key 加密備份；v1.7.2 將 Edge / Chromium 登入改為 <code>identity.launchWebAuthFlow</code> fallback；v1.7.3 收斂同步可靠性、衝突提示與錯誤診斷。</div>
+        <div class="callout">v1.6.3 實站測試先告一段落；目前主線切到 v1.7.0-v1.7.4。v1.7.0 只同步一般設定到 Google Drive appData，不同步 API Key；v1.7.1 規劃 API Key 加密備份；v1.7.2 將 Edge / Chromium 登入改為 <code>identity.launchWebAuthFlow</code> fallback；v1.7.3 收斂同步可靠性、衝突提示與錯誤診斷；v1.7.4 做公開使用者 Cloud Sync 頁面打磨。</div>
         <table style="margin-top:12px;">
           <thead>
             <tr><th>項目</th><th>內容</th><th>狀態</th></tr>
@@ -500,6 +500,7 @@ options.js</pre>
             <tr><td>OAuth Client ID</td><td><code>manifest.json</code> 已設定 Chrome native OAuth Client ID；Edge / Chromium Web Auth fallback 改由設定頁「Edge / Chromium Web Auth Client ID」欄位儲存 Web Application OAuth Client ID，並在 Google Cloud 允許 extension redirect URL。</td><td><span class="pill green">Edge 已驗證</span></td></tr>
             <tr><td>瀏覽器支援</td><td>Chrome 優先使用 <code>chrome.identity.getAuthToken</code>；Microsoft Edge / Chromium 若不支援 native auth，fallback 到 <code>identity.launchWebAuthFlow</code>，且必須使用 Web Auth 專用 client。</td><td><span class="pill green">v1.7.3 補強</span></td></tr>
             <tr><td>v1.7.3 hardening</td><td>已補同步前後狀態、最後同步時間、錯誤訊息分類、OAuth redirect URL 提示、上傳覆寫雲端檔案確認、下載覆寫本機設定確認與 Web Auth 專用 client 診斷；Edge 登入與上傳已實機通過。</td><td><span class="pill green">完成</span></td></tr>
+            <tr><td>v1.7.4 polish</td><td>狀態列新增同步摘要、同步範圍、Google Drive appDataFolder 位置、操作方向與設定數量；按鈕文案改為更清楚的「上傳這台設定」。</td><td><span class="pill green">完成</span></td></tr>
             <tr><td>衝突策略</td><td>第一版採手動操作：使用者明確選擇上傳本機設定或下載雲端設定。</td><td><span class="pill green">已定義</span></td></tr>
           </tbody>
         </table>
@@ -1104,6 +1105,11 @@ options.js</pre>
             <span class="pill green">完成</span>
           </div>
           <div class="phase">
+            <strong>v1.7.4：Public Cloud Sync Polish</strong>
+            <p>雲端同步頁面改成一般使用者優先：狀態摘要直接顯示最近上傳 / 下載、設定數量、同步範圍、Google Drive 隱藏儲存位置與操作方向。</p>
+            <span class="pill green">完成</span>
+          </div>
+          <div class="phase">
             <strong>v1.8.x：Read Frog Benchmark / Embedded Translation v1</strong>
             <p>Context digest、batch requests、全文翻譯複製譯文 / 複製雙語 / 定位原文、usage summary、prompt templates；新增嵌入元件偵測器、iframe 圖表翻譯、SVG text overlay 翻譯。</p>
             <span class="pill orange">待排程</span>
@@ -1128,6 +1134,12 @@ options.js</pre>
             <tr><th>日期</th><th>版本線</th><th>完成事項</th><th>驗證 / 注意</th></tr>
           </thead>
           <tbody>
+            <tr>
+              <td>2026-06-09</td>
+              <td><code>v1.7.4</code></td>
+              <td>完成 v1.7.4 Public Cloud Sync Polish：版本號升到 <code>1.7.4</code>；雲端同步狀態列新增同步摘要、同步範圍、儲存位置、操作方向與最後上傳 / 下載設定數量，讓一般使用者不用讀 Google Cloud 說明也能判斷現在狀態。</td>
+              <td><code>manifest.json</code> parse 通過；<code>npm test -- --runInBand</code> 通過，14 suites / 93 tests。Browser 以 localhost 檢查靜態 layout 正常；動態 <code>chrome.storage</code> 狀態需在 extension 環境驗證。</td>
+            </tr>
             <tr>
               <td>2026-06-09</td>
               <td><code>v1.7.3 / Closeout</code></td>

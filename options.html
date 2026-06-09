@@ -336,6 +336,13 @@
       min-width: 78px;
     }
 
+    .cloud-sync-hint {
+      margin: 0;
+      color: #4b586a;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
     .advanced-settings {
       padding: 10px 12px;
       border: 1px solid #dce3db;
@@ -937,11 +944,11 @@
               <div class="cloud-status-list" id="cloudSyncStatus">尚未檢查同步狀態。</div>
               <div class="backup-actions">
                 <button class="btn-test" id="btnCloudSignIn" type="button">登入 Google</button>
-                <button class="btn-test" id="btnCloudUpload" type="button">上傳目前設定</button>
+                <button class="btn-test" id="btnCloudUpload" type="button">上傳這台設定</button>
                 <button class="btn-test" id="btnCloudDownload" type="button">下載雲端設定</button>
                 <button class="btn-test" id="btnCloudSignOut" type="button">登出</button>
               </div>
-              <p class="field-note">同步檔只存於 Google Drive appDataFolder，不會出現在一般 Drive 檔案列表。</p>
+              <p class="cloud-sync-hint">上傳會用這台設定覆蓋雲端；下載會用雲端設定覆蓋這台。API Key、單字本與查詢歷史不會同步。</p>
               <details class="advanced-settings">
                 <summary>進階設定</summary>
                 <div class="advanced-settings-body">

@@ -341,6 +341,7 @@
       signedIn: true,
       lastUploadAt: payload.updatedAt,
       lastUploadAppVersion: payload.appVersion || '',
+      lastUploadSettingsCount: Object.keys(payload.settings || {}).length,
       lastFileId: file.id || existing?.id || '',
       lastDeviceId: payload.deviceId || ''
     });
@@ -357,6 +358,7 @@
       lastDownloadAt: new Date().toISOString(),
       lastCloudUpdatedAt: payload.updatedAt || '',
       lastCloudAppVersion: payload.appVersion || '',
+      lastDownloadSettingsCount: Object.keys(payload.settings || {}).length,
       lastFileId: file.id
     });
     return payload;

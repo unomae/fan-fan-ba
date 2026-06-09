@@ -339,7 +339,7 @@ function bindCloudSyncControls() {
     }
     const payload = await buildCloudSettingsPayload();
     const file = await CloudSync.uploadCloudSettings(token, payload);
-    await renderCloudSyncStatus(`已上傳一般設定：版本 ${payload.appVersion || '未知'}，${formatCloudSyncTime(payload.updatedAt)}`);
+    await renderCloudSyncStatus(`已上傳 ${Object.keys(payload.settings || {}).length} 個一般設定：版本 ${payload.appVersion || '未知'}，${formatCloudSyncTime(payload.updatedAt)}`);
     showStatus('ok', `✓ 雲端設定已上傳${file?.id ? `（${file.id}）` : ''}`);
   }));
 
@@ -418,8 +418,12 @@ async function renderCloudSyncStatus(message = '') {
       ? 'cross-browser Web Auth'
       : 'Chrome native auth';
   const rows = [
+    ['同步摘要', formatCloudSyncSummary(meta)],
     ['登入狀態', formatCloudSignedInStatus(meta)],
     ['目前版本', getCurrentAppVersion()],
+    ['同步範圍', '一般設定，不含 API Key、單字本、查詢歷史'],
+    ['儲存位置', 'Google Drive 隱藏 appDataFolder'],
+    ['操作方向', '上傳：這台覆蓋雲端；下載：雲端覆蓋這台'],
     ['登入流程', authMode],
     ['Native Client', support.nativeAuthConfigured ? '已設定' : '未設定']
   ];
@@ -429,8 +433,8 @@ async function renderCloudSyncStatus(message = '') {
   if (support.webAuthFlow && !support.webAuthConfigured) {
     rows.push(['提醒', 'Edge / Chromium 需設定 Web Auth fallback OAuth Client ID']);
   }
-  if (meta.lastUploadAt) rows.push(['最後上傳', `${formatCloudSyncTime(meta.lastUploadAt)}${meta.lastUploadAppVersion ? `，版本 ${meta.lastUploadAppVersion}` : ''}`]);
-  if (meta.lastDownloadAt) rows.push(['最後下載', `${formatCloudSyncTime(meta.lastDownloadAt)}${meta.lastCloudAppVersion ? `，雲端版本 ${meta.lastCloudAppVersion}` : ''}`]);
+  if (meta.lastUploadAt) rows.push(['最後上傳', `${formatCloudSyncTime(meta.lastUploadAt)}${formatCloudSettingsCount(meta.lastUploadSettingsCount)}${meta.lastUploadAppVersion ? `，版本 ${meta.lastUploadAppVersion}` : ''}`]);
+  if (meta.lastDownloadAt) rows.push(['最後下載', `${formatCloudSyncTime(meta.lastDownloadAt)}${formatCloudSettingsCount(meta.lastDownloadSettingsCount)}${meta.lastCloudAppVersion ? `，雲端版本 ${meta.lastCloudAppVersion}` : ''}`]);
   if (meta.lastErrorAt) rows.push(['最後錯誤', `${meta.lastErrorCategory || 'unknown'}，${formatCloudSyncTime(meta.lastErrorAt)}`]);
   if (message) rows.push(['最新訊息', message]);
   renderCloudSyncStatusRows(el, rows);
@@ -453,12 +457,37 @@ function getCurrentAppVersion() {
   return chrome.runtime?.getManifest?.().version || '未知';
 }
 
+function formatCloudSyncSummary(meta = {}) {
+  const uploadAt = parseCloudSyncTime(meta.lastUploadAt);
+  const downloadAt = parseCloudSyncTime(meta.lastDownloadAt);
+  if (uploadAt && (!downloadAt || uploadAt >= downloadAt)) {
+    return `最近上傳：${formatCloudSyncTime(meta.lastUploadAt)}${formatCloudSettingsCount(meta.lastUploadSettingsCount)}`;
+  }
+  if (downloadAt) {
+    return `最近下載：${formatCloudSyncTime(meta.lastDownloadAt)}${formatCloudSettingsCount(meta.lastDownloadSettingsCount)}`;
+  }
+  if (meta.signedIn) return '已登入，尚未上傳或下載設定';
+  if (meta.lastSignOutAt) return '已登出，雲端同步暫停';
+  return '尚未開始雲端同步';
+}
+
 function formatCloudSignedInStatus(meta = {}) {
   if (meta.signedIn) {
     return meta.lastSignInAt ? `已登入，${formatCloudSyncTime(meta.lastSignInAt)}` : '已登入';
   }
   if (meta.lastSignOutAt) return `已登出，${formatCloudSyncTime(meta.lastSignOutAt)}`;
   return '尚未登入';
+}
+
+function parseCloudSyncTime(value = '') {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatCloudSettingsCount(value) {
+  const count = Number(value);
+  return Number.isFinite(count) ? `，${count} 個設定` : '';
 }
 
 function formatCloudSyncTime(value = '') {

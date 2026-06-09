@@ -174,6 +174,76 @@ describe('Cloud Sync helper', () => {
     expect(payload.secrets).toBeUndefined();
   });
 
+  it('records the uploaded settings count in cloud sync metadata', async () => {
+    fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ files: [] })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ id: 'cloud-file-1' })
+      });
+
+    await CloudSync.uploadCloudSettings('token-test', {
+      app: 'fan-fan-ba',
+      cloudSchemaVersion: 1,
+      updatedAt: '2026-06-09T14:20:30.000Z',
+      appVersion: '1.7.4',
+      deviceId: 'device-test',
+      settings: {
+        model: 'gemini-3.5-flash',
+        targetLanguage: 'zh-TW'
+      }
+    });
+
+    expect(chrome.storage.local.set).toHaveBeenCalledWith({
+      [CloudSync.CLOUD_SYNC_META_KEY]: expect.objectContaining({
+        signedIn: true,
+        lastUploadAt: '2026-06-09T14:20:30.000Z',
+        lastUploadAppVersion: '1.7.4',
+        lastUploadSettingsCount: 2,
+        lastFileId: 'cloud-file-1',
+        lastDeviceId: 'device-test'
+      })
+    });
+  });
+
+  it('records the downloaded settings count in cloud sync metadata', async () => {
+    fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          files: [{ id: 'cloud-file-1', name: 'fan-fan-ba-cloud-settings.json' }]
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          app: 'fan-fan-ba',
+          cloudSchemaVersion: 1,
+          updatedAt: '2026-06-09T14:20:30.000Z',
+          appVersion: '1.7.4',
+          settings: {
+            model: 'gemini-3.5-flash',
+            targetLanguage: 'zh-TW'
+          }
+        })
+      });
+
+    await CloudSync.downloadCloudSettings('token-test');
+
+    expect(chrome.storage.local.set).toHaveBeenCalledWith({
+      [CloudSync.CLOUD_SYNC_META_KEY]: expect.objectContaining({
+        signedIn: true,
+        lastCloudUpdatedAt: '2026-06-09T14:20:30.000Z',
+        lastCloudAppVersion: '1.7.4',
+        lastDownloadSettingsCount: 2,
+        lastFileId: 'cloud-file-1'
+      })
+    });
+  });
+
   it('rejects cloud payloads that include API key data', () => {
     expect(() => CloudSync.validateCloudSettingsPayload({
       app: 'fan-fan-ba',
