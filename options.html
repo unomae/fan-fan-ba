@@ -313,6 +313,49 @@
 
     .field-note a:hover { text-decoration: underline; }
 
+    .cloud-status-list {
+      display: grid;
+      gap: 6px;
+      padding: 12px;
+      background: #f9fdf5;
+      border: 1px solid #d4edbc;
+      border-radius: 8px;
+      color: #3f4b5f;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .cloud-status-list div {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .cloud-status-list strong {
+      color: #3a7a1a;
+      min-width: 78px;
+    }
+
+    .advanced-settings {
+      padding: 10px 12px;
+      border: 1px solid #dce3db;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .advanced-settings summary {
+      color: #3f4b5f;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .advanced-settings-body {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
     .backup-actions {
       display: flex;
       flex-wrap: wrap;
@@ -883,51 +926,33 @@
           <div class="panel-head">
             <div>
               <h2>雲端同步</h2>
-              <p>使用 Google Drive appData 同步一般設定。v1.7.x 不同步 API Key；API Key 加密備份會排在 v1.7.1。</p>
+              <p>同步模型、語言、朗讀與 Obsidian 等一般設定。API Key 不會同步。</p>
             </div>
             <span class="panel-badge">Google Drive appData</span>
           </div>
 
           <div class="form-grid">
             <div class="field full">
-              <label>Google 登入狀態</label>
+              <label>同步狀態</label>
+              <div class="cloud-status-list" id="cloudSyncStatus">尚未檢查同步狀態。</div>
               <div class="backup-actions">
                 <button class="btn-test" id="btnCloudSignIn" type="button">登入 Google</button>
                 <button class="btn-test" id="btnCloudUpload" type="button">上傳目前設定</button>
                 <button class="btn-test" id="btnCloudDownload" type="button">下載雲端設定</button>
                 <button class="btn-test" id="btnCloudSignOut" type="button">登出</button>
               </div>
-              <p class="field-note" id="cloudSyncStatus">尚未檢查同步狀態。</p>
-            </div>
-
-            <div class="security-note field full">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-              <div>
-                <strong>同步範圍</strong>
-                <ul>
-                  <li>會同步：模型、全文翻譯模型、語言、朗讀模式、單字高亮、Obsidian Vault 與資料夾。</li>
-                  <li>不會同步：Gemini / Groq / OpenRouter / TTS API Key。</li>
-                  <li>同步檔只存於 Google Drive appDataFolder，使用者的一般 Drive 檔案列表不會顯示。</li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="security-note field full">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              </svg>
-              <div>
-                <strong>OAuth 設定提醒</strong>
-                <ul>
-                  <li>正式使用前，需在 <code>manifest.json</code> 將 placeholder client ID 換成 Google Cloud OAuth Client ID。</li>
-                  <li>Chrome 會優先使用 native auth；Microsoft Edge / Chromium 會 fallback 到 <code>identity.launchWebAuthFlow</code>。</li>
-                  <li>Edge / Chromium 需在 <code>manifest.json</code> 的 <code>fan_fan_ba.cloud_sync.web_auth_client_id</code> 填入 Web Application OAuth Client ID。</li>
-                  <li>若 Edge 顯示 <code>redirect_uri_mismatch</code>，請將狀態列的 Redirect URL 加入該 Web client 的 Authorized redirect URIs。</li>
-                  <li>若尚未設定，登入與同步按鈕會顯示錯誤，不會產生假同步狀態。</li>
-                </ul>
-              </div>
+              <p class="field-note">同步檔只存於 Google Drive appDataFolder，不會出現在一般 Drive 檔案列表。</p>
+              <details class="advanced-settings">
+                <summary>進階設定</summary>
+                <div class="advanced-settings-body">
+                  <label for="cloudWebAuthClientId">Edge / Chromium Web Auth Client ID</label>
+                  <input id="cloudWebAuthClientId" type="text" placeholder="1234567890-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false">
+                  <p class="field-note">只有開發或手動載入 extension 時需要設定；一般使用者不需要處理 Google Cloud。</p>
+                  <div class="backup-actions">
+                    <button class="btn-test" id="btnCloudSaveWebAuthClientId" type="button">儲存 Web Auth Client ID</button>
+                  </div>
+                </div>
+              </details>
             </div>
           </div>
         </section>

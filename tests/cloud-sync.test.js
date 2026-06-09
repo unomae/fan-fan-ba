@@ -1,7 +1,7 @@
 const CloudSync = require('../cloud-sync');
 
 describe('Cloud Sync helper', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     delete chrome.runtime.lastError;
     if (!chrome.identity.getAuthToken) chrome.identity.getAuthToken = jest.fn();
     if (!chrome.identity.launchWebAuthFlow) chrome.identity.launchWebAuthFlow = jest.fn();
@@ -18,6 +18,9 @@ describe('Cloud Sync helper', () => {
         scopes: [CloudSync.DRIVE_APPDATA_SCOPE]
       }
     });
+    await CloudSync.setWebAuthClientId('');
+    chrome.storage.local.set.mockClear();
+    chrome.storage.local.remove.mockClear();
   });
 
   it('treats the placeholder OAuth client id as not configured', () => {
@@ -31,18 +34,8 @@ describe('Cloud Sync helper', () => {
     })).toBe(true);
   });
 
-  it('builds a Google OAuth URL for launchWebAuthFlow', () => {
-    chrome.runtime.getManifest.mockReturnValue({
-      oauth2: {
-        client_id: '1234567890-example.apps.googleusercontent.com',
-        scopes: [CloudSync.DRIVE_APPDATA_SCOPE]
-      },
-      fan_fan_ba: {
-        cloud_sync: {
-          web_auth_client_id: 'web-client-example.apps.googleusercontent.com'
-        }
-      }
-    });
+  it('builds a Google OAuth URL for launchWebAuthFlow', async () => {
+    await CloudSync.setWebAuthClientId('web-client-example.apps.googleusercontent.com');
 
     const url = new URL(CloudSync.buildGoogleOAuthUrl(undefined, 'state-test'));
 
@@ -59,12 +52,9 @@ describe('Cloud Sync helper', () => {
         client_id: '1234567890-example.apps.googleusercontent.com',
         scopes: [CloudSync.DRIVE_APPDATA_SCOPE]
       },
-      fan_fan_ba: {
-        cloud_sync: {
-          web_auth_client_id: 'web-client-example.apps.googleusercontent.com'
-        }
-      }
     });
+    await CloudSync.setWebAuthClientId('web-client-example.apps.googleusercontent.com');
+    chrome.storage.local.set.mockClear();
     chrome.identity.getAuthToken.mockImplementation((details, callback) => {
       chrome.runtime.lastError = { message: 'This API is not supported on Microsoft Edge' };
       callback();
@@ -107,14 +97,11 @@ describe('Cloud Sync helper', () => {
       oauth2: {
         client_id: '1234567890-example.apps.googleusercontent.com',
         scopes: [CloudSync.DRIVE_APPDATA_SCOPE]
-      },
-      fan_fan_ba: {
-        cloud_sync: {
-          web_auth_client_id: 'web-client-example.apps.googleusercontent.com'
-        }
       }
     });
     delete chrome.identity.getAuthToken;
+    await CloudSync.setWebAuthClientId('web-client-example.apps.googleusercontent.com');
+    chrome.storage.local.set.mockClear();
     chrome.storage.local.get.mockResolvedValueOnce({
       [CloudSync.CLOUD_OAUTH_TOKEN_KEY]: {
         token: 'cached-token',
@@ -140,7 +127,7 @@ describe('Cloud Sync helper', () => {
     const info = CloudSync.classifyCloudSyncError(new Error('尚未設定 Web Auth fallback OAuth Client ID'));
 
     expect(info.category).toBe('oauth_web_client');
-    expect(info.hint).toContain('fan_fan_ba.cloud_sync.web_auth_client_id');
+    expect(info.hint).toContain('Edge / Chromium Web Auth Client ID');
   });
 
   it('records the last cloud sync error in local metadata', async () => {

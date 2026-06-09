@@ -16,6 +16,8 @@ describe('Options module', () => {
       <input id="includeSecretsExport" type="checkbox" />
       <button id="btnImportSettings"></button>
       <input id="settingsImportFile" type="file" />
+      <input id="cloudWebAuthClientId" />
+      <button id="btnCloudSaveWebAuthClientId"></button>
       <button id="btnCloudSignIn"></button>
       <button id="btnCloudUpload"></button>
       <button id="btnCloudDownload"></button>
@@ -40,8 +42,20 @@ describe('Options module', () => {
     global.optionsModule = require('../options');
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.useFakeTimers();
+    document.getElementById('cloudWebAuthClientId').value = '';
+    await CloudSync.setWebAuthClientId('');
+    chrome.storage.local.get.mockResolvedValue({});
+    chrome.storage.local.set.mockClear();
+    chrome.storage.local.remove.mockClear();
+    chrome.runtime.getManifest.mockReturnValue({
+      version: '1.7.2',
+      oauth2: {
+        client_id: 'REPLACE_WITH_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com',
+        scopes: ['https://www.googleapis.com/auth/drive.appdata']
+      }
+    });
   });
   afterEach(() => {
     jest.useRealTimers();
@@ -183,13 +197,40 @@ describe('Options module', () => {
       await global.optionsModule.renderCloudSyncStatus();
 
       expect(document.getElementById('cloudSyncStatus').textContent).toContain('cross-browser Web Auth fallback');
+      expect(document.getElementById('cloudSyncStatus').textContent).toContain('Web Auth Client');
+      expect(document.getElementById('cloudSyncStatus').textContent).toContain('未設定');
       expect(document.getElementById('cloudSyncStatus').textContent).toContain('Redirect URL');
+    });
+
+    it('saves the Web Auth client id from the cloud sync panel', async () => {
+      jest.useRealTimers();
+      document.getElementById('cloudWebAuthClientId').value = 'web-client-example.apps.googleusercontent.com';
+      chrome.runtime.getManifest.mockReturnValue({
+        version: '1.7.2',
+        oauth2: {
+          client_id: '1234567890-example.apps.googleusercontent.com',
+          scopes: ['https://www.googleapis.com/auth/drive.appdata']
+        }
+      });
+      chrome.storage.local.get.mockResolvedValue({
+        [CloudSync.CLOUD_WEB_AUTH_CLIENT_ID_KEY]: 'web-client-example.apps.googleusercontent.com'
+      });
+
+      document.getElementById('btnCloudSaveWebAuthClientId').click();
+      await flushPromises();
+
+      expect(chrome.storage.local.set).toHaveBeenCalledWith({
+        [CloudSync.CLOUD_WEB_AUTH_CLIENT_ID_KEY]: 'web-client-example.apps.googleusercontent.com'
+      });
+      expect(chrome.storage.local.remove).toHaveBeenCalledWith(CloudSync.CLOUD_OAUTH_TOKEN_KEY);
+      expect(document.getElementById('cloudSyncStatus').textContent).toContain('Web Auth Client ID 已儲存');
     });
 
     it('shows a clear status while OAuth client id is still a placeholder', async () => {
       await global.optionsModule.renderCloudSyncStatus();
 
-      expect(document.getElementById('cloudSyncStatus').textContent).toContain('尚未設定 Google OAuth Client ID');
+      expect(document.getElementById('cloudSyncStatus').textContent).toContain('尚未完成 OAuth 設定');
+      expect(document.getElementById('cloudSyncStatus').textContent).toContain('目前版本');
     });
 
     it('cancels cloud upload before overwriting an existing cloud file', async () => {
@@ -213,7 +254,7 @@ describe('Options module', () => {
 
       try {
         document.getElementById('btnCloudUpload').click();
-        await flushPromises();
+        await flushPromises(20);
 
         expect(tokenSpy).toHaveBeenCalledWith(true);
         expect(findSpy).toHaveBeenCalledWith('token-test');
@@ -251,7 +292,7 @@ describe('Options module', () => {
 
       try {
         document.getElementById('btnCloudDownload').click();
-        await flushPromises();
+        await flushPromises(20);
 
         expect(tokenSpy).toHaveBeenCalledWith(true);
         expect(findSpy).toHaveBeenCalledWith('token-test');

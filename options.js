@@ -149,6 +149,7 @@ bindToggleVis('toggleOrVis',  'openrouterApiKey',  'or-eye-show',   'or-eye-hide
 bindToggleVis('toggleTtsVis', 'ttsApiKey',         'tts-eye-show',  'tts-eye-hide');
 bindBackupControls();
 bindCloudSyncControls();
+loadCloudWebAuthClientId();
 renderCloudSyncStatus();
 
 // ── 儲存設定 ─────────────────────────────────────────
@@ -306,20 +307,30 @@ function bindBackupControls() {
 }
 
 function bindCloudSyncControls() {
+  const webAuthClientInput = $('cloudWebAuthClientId');
+  const saveWebAuthClientButton = $('btnCloudSaveWebAuthClientId');
   const signInButton = $('btnCloudSignIn');
   const uploadButton = $('btnCloudUpload');
   const downloadButton = $('btnCloudDownload');
   const signOutButton = $('btnCloudSignOut');
-  if (!signInButton && !uploadButton && !downloadButton && !signOutButton) return;
+  if (!saveWebAuthClientButton && !signInButton && !uploadButton && !downloadButton && !signOutButton) return;
+
+  saveWebAuthClientButton?.addEventListener('click', () => runCloudSyncAction(saveWebAuthClientButton, async () => {
+    const savedClientId = await CloudSync.setWebAuthClientId(webAuthClientInput?.value || '');
+    await renderCloudSyncStatus(savedClientId ? 'Web Auth Client ID 已儲存。' : 'Web Auth Client ID 已清除。');
+    showStatus('ok', savedClientId ? '✓ Web Auth Client ID 已儲存' : '✓ Web Auth Client ID 已清除');
+  }));
 
   signInButton?.addEventListener('click', () => runCloudSyncAction(signInButton, async () => {
     await CloudSync.getAuthToken(true);
+    await CloudSync.recordCloudSyncSignIn?.();
     await renderCloudSyncStatus('已登入 Google，可上傳或下載一般設定。');
     showStatus('ok', '✓ Google 登入成功');
   }));
 
   uploadButton?.addEventListener('click', () => runCloudSyncAction(uploadButton, async () => {
     const token = await CloudSync.getAuthToken(true);
+    await CloudSync.recordCloudSyncSignIn?.();
     const existingFile = await CloudSync.findCloudSettingsFile(token);
     if (existingFile && !confirmCloudUploadOverwrite(existingFile)) {
       await renderCloudSyncStatus('已取消上傳，雲端設定未變更。');
@@ -328,12 +339,13 @@ function bindCloudSyncControls() {
     }
     const payload = await buildCloudSettingsPayload();
     const file = await CloudSync.uploadCloudSettings(token, payload);
-    await renderCloudSyncStatus(`已上傳一般設定：${payload.updatedAt}`);
+    await renderCloudSyncStatus(`已上傳一般設定：版本 ${payload.appVersion || '未知'}，${formatCloudSyncTime(payload.updatedAt)}`);
     showStatus('ok', `✓ 雲端設定已上傳${file?.id ? `（${file.id}）` : ''}`);
   }));
 
   downloadButton?.addEventListener('click', () => runCloudSyncAction(downloadButton, async () => {
     const token = await CloudSync.getAuthToken(true);
+    await CloudSync.recordCloudSyncSignIn?.();
     const existingFile = await CloudSync.findCloudSettingsFile(token);
     if (!existingFile) throw new Error('找不到雲端設定檔');
     if (!confirmCloudDownloadOverwrite(existingFile)) {
@@ -353,13 +365,14 @@ function bindCloudSyncControls() {
   signOutButton?.addEventListener('click', () => runCloudSyncAction(signOutButton, async () => {
     const token = await CloudSync.getAuthToken(false).catch(() => '');
     await CloudSync.signOut(token);
+    await CloudSync.recordCloudSyncSignOut?.();
     await renderCloudSyncStatus('已登出 Google。');
     showStatus('ok', '✓ 已登出 Google');
   }));
 }
 
 async function runCloudSyncAction(button, action) {
-  const buttons = ['btnCloudSignIn', 'btnCloudUpload', 'btnCloudDownload', 'btnCloudSignOut']
+  const buttons = ['btnCloudSaveWebAuthClientId', 'btnCloudSignIn', 'btnCloudUpload', 'btnCloudDownload', 'btnCloudSignOut']
     .map(id => $(id))
     .filter(Boolean);
   buttons.forEach(btn => { btn.disabled = true; });
@@ -386,9 +399,14 @@ async function buildCloudSettingsPayload() {
 async function renderCloudSyncStatus(message = '') {
   const el = $('cloudSyncStatus');
   if (!el) return;
+  await CloudSync.loadWebAuthClientId?.();
   const config = CloudSync.getOAuthConfig();
   if (!CloudSync.isOAuthConfigured(config)) {
-    el.textContent = '尚未設定 Google OAuth Client ID。請先在 manifest.json 換成正式 client ID；v1.7.0 不同步 API Key。';
+    renderCloudSyncStatusRows(el, [
+      ['登入狀態', '尚未完成 OAuth 設定'],
+      ['目前版本', getCurrentAppVersion()],
+      ['注意', '請先完成 Google OAuth Client ID 設定；API Key 不會同步。']
+    ]);
     return;
   }
 
@@ -399,21 +417,71 @@ async function renderCloudSyncStatus(message = '') {
     : support.webAuthFlow
       ? 'cross-browser Web Auth'
       : 'Chrome native auth';
-  const parts = ['Google OAuth 已設定', 'v1.7.x 僅同步一般設定，不含 API Key', `登入流程：${authMode}`];
-  parts.push(`Native Client：${support.nativeAuthConfigured ? '已設定' : '未設定'}`);
-  if (support.webAuthFlow) {
-    parts.push(`Web Auth Client：${support.webAuthConfigured ? '已設定' : '未設定'}`);
-  }
+  const rows = [
+    ['登入狀態', formatCloudSignedInStatus(meta)],
+    ['目前版本', getCurrentAppVersion()],
+    ['登入流程', authMode],
+    ['Native Client', support.nativeAuthConfigured ? '已設定' : '未設定']
+  ];
+  if (support.webAuthFlow) rows.push(['Web Auth Client', support.webAuthConfigured ? '已設定' : '未設定']);
   const redirectUrl = CloudSync.getOAuthRedirectUrl?.();
-  if (support.webAuthFlow && redirectUrl) parts.push(`Redirect URL：${redirectUrl}`);
+  if (support.webAuthFlow && redirectUrl) rows.push(['Redirect URL', redirectUrl]);
   if (support.webAuthFlow && !support.webAuthConfigured) {
-    parts.push('Edge / Chromium 需設定 Web Auth fallback OAuth Client ID');
+    rows.push(['提醒', 'Edge / Chromium 需設定 Web Auth fallback OAuth Client ID']);
   }
-  if (meta.lastUploadAt) parts.push(`最後上傳：${meta.lastUploadAt}`);
-  if (meta.lastDownloadAt) parts.push(`最後下載：${meta.lastDownloadAt}`);
-  if (meta.lastErrorAt) parts.push(`最後錯誤：${meta.lastErrorCategory || 'unknown'} ${meta.lastErrorAt}`);
-  if (message) parts.push(message);
-  el.textContent = parts.join('｜');
+  if (meta.lastUploadAt) rows.push(['最後上傳', `${formatCloudSyncTime(meta.lastUploadAt)}${meta.lastUploadAppVersion ? `，版本 ${meta.lastUploadAppVersion}` : ''}`]);
+  if (meta.lastDownloadAt) rows.push(['最後下載', `${formatCloudSyncTime(meta.lastDownloadAt)}${meta.lastCloudAppVersion ? `，雲端版本 ${meta.lastCloudAppVersion}` : ''}`]);
+  if (meta.lastErrorAt) rows.push(['最後錯誤', `${meta.lastErrorCategory || 'unknown'}，${formatCloudSyncTime(meta.lastErrorAt)}`]);
+  if (message) rows.push(['最新訊息', message]);
+  renderCloudSyncStatusRows(el, rows);
+}
+
+function renderCloudSyncStatusRows(el, rows = []) {
+  el.textContent = '';
+  rows.forEach(([label, value]) => {
+    const row = document.createElement('div');
+    const strong = document.createElement('strong');
+    const span = document.createElement('span');
+    strong.textContent = label;
+    span.textContent = value || '-';
+    row.append(strong, span);
+    el.appendChild(row);
+  });
+}
+
+function getCurrentAppVersion() {
+  return chrome.runtime?.getManifest?.().version || '未知';
+}
+
+function formatCloudSignedInStatus(meta = {}) {
+  if (meta.signedIn) {
+    return meta.lastSignInAt ? `已登入，${formatCloudSyncTime(meta.lastSignInAt)}` : '已登入';
+  }
+  if (meta.lastSignOutAt) return `已登出，${formatCloudSyncTime(meta.lastSignOutAt)}`;
+  return '尚未登入';
+}
+
+function formatCloudSyncTime(value = '') {
+  if (!value) return '未知時間';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+}
+
+async function loadCloudWebAuthClientId() {
+  const input = $('cloudWebAuthClientId');
+  if (!input) return '';
+  const clientId = await CloudSync.loadWebAuthClientId?.() || '';
+  input.value = clientId;
+  return clientId;
 }
 
 async function buildSettingsBackupPayload(includeSecrets = false) {
@@ -585,7 +653,9 @@ if (typeof module !== 'undefined' && module.exports) {
     confirmCloudUploadOverwrite,
     confirmCloudDownloadOverwrite,
     bindCloudSyncControls,
+    loadCloudWebAuthClientId,
     buildCloudSettingsPayload,
-    renderCloudSyncStatus
+    renderCloudSyncStatus,
+    formatCloudSyncTime
   };
 }

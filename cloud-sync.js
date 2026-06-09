@@ -7,12 +7,15 @@
   const CLOUD_SYNC_DEVICE_KEY = 'fanFanBaCloudDeviceId';
   const CLOUD_SYNC_META_KEY = 'fanFanBaCloudSyncMeta';
   const CLOUD_OAUTH_TOKEN_KEY = 'fanFanBaCloudOAuthToken';
+  const CLOUD_WEB_AUTH_CLIENT_ID_KEY = 'fanFanBaCloudWebAuthClientId';
   const DRIVE_APPDATA_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
   const DRIVE_FILES_URL = 'https://www.googleapis.com/drive/v3/files';
   const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
   const GOOGLE_OAUTH_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
   const OAUTH_PLACEHOLDER_PATTERN = /REPLACE_WITH_GOOGLE(?:_WEB)?_OAUTH_CLIENT_ID|REPLACE_WITH_GOOGLE.*CLIENT_ID/i;
   const NATIVE_AUTH_UNSUPPORTED_PATTERN = /not supported|unsupported|microsoft edge|extensions API documentation/i;
+  let cachedWebAuthClientId = '';
+  let webAuthClientIdLoaded = false;
 
   function getManifest() {
     return chrome.runtime?.getManifest?.() || {};
@@ -21,20 +24,32 @@
   function getOAuthConfig() {
     const manifest = getManifest();
     const oauth2 = manifest.oauth2 || {};
-    const cloudSyncConfig = manifest.fan_fan_ba?.cloud_sync || manifest.fanFanBaCloudSync || {};
     const nativeClientId = String(oauth2.client_id || '');
-    const webAuthClientId = String(
-      cloudSyncConfig.web_auth_client_id ||
-      cloudSyncConfig.webAuthClientId ||
-      oauth2.web_auth_client_id ||
-      ''
-    );
     return {
       clientId: nativeClientId,
       nativeClientId,
-      webAuthClientId,
+      webAuthClientId: cachedWebAuthClientId,
       scopes: Array.isArray(oauth2.scopes) ? oauth2.scopes : []
     };
+  }
+
+  async function loadWebAuthClientId() {
+    const data = await chrome.storage.local.get(CLOUD_WEB_AUTH_CLIENT_ID_KEY);
+    cachedWebAuthClientId = String(data?.[CLOUD_WEB_AUTH_CLIENT_ID_KEY] || '').trim();
+    webAuthClientIdLoaded = true;
+    return cachedWebAuthClientId;
+  }
+
+  async function setWebAuthClientId(clientId = '') {
+    cachedWebAuthClientId = String(clientId || '').trim();
+    webAuthClientIdLoaded = true;
+    if (cachedWebAuthClientId) {
+      await chrome.storage.local.set({ [CLOUD_WEB_AUTH_CLIENT_ID_KEY]: cachedWebAuthClientId });
+    } else {
+      await chrome.storage.local.remove(CLOUD_WEB_AUTH_CLIENT_ID_KEY);
+    }
+    await chrome.storage.local.remove(CLOUD_OAUTH_TOKEN_KEY);
+    return cachedWebAuthClientId;
   }
 
   function isOAuthClientIdConfigured(clientId = '') {
@@ -99,6 +114,7 @@
   }
 
   async function getAuthToken(interactive = true) {
+    if (!webAuthClientIdLoaded) await loadWebAuthClientId();
     ensureOAuthReady();
     if (chrome.identity?.getAuthToken && isNativeOAuthConfigured()) {
       try {
@@ -132,6 +148,7 @@
   }
 
   async function getWebAuthFlowToken(interactive = true) {
+    if (!webAuthClientIdLoaded) await loadWebAuthClientId();
     const config = getWebAuthConfig();
     if (!isOAuthClientIdConfigured(config.clientId) || !config.scopes.includes(DRIVE_APPDATA_SCOPE)) {
       throw new Error('尚未設定 Web Auth fallback OAuth Client ID');
@@ -320,12 +337,12 @@
       body
     });
     const file = await res.json();
-    await chrome.storage.local.set({
-      [CLOUD_SYNC_META_KEY]: {
-        lastUploadAt: payload.updatedAt,
-        lastFileId: file.id || existing?.id || '',
-        lastDeviceId: payload.deviceId || ''
-      }
+    await updateCloudSyncMeta({
+      signedIn: true,
+      lastUploadAt: payload.updatedAt,
+      lastUploadAppVersion: payload.appVersion || '',
+      lastFileId: file.id || existing?.id || '',
+      lastDeviceId: payload.deviceId || ''
     });
     return file;
   }
@@ -335,12 +352,12 @@
     if (!file) throw new Error('找不到雲端設定檔');
     const res = await driveFetch(token, `${DRIVE_FILES_URL}/${file.id}?alt=media`);
     const payload = validateCloudSettingsPayload(await res.json());
-    await chrome.storage.local.set({
-      [CLOUD_SYNC_META_KEY]: {
-        lastDownloadAt: new Date().toISOString(),
-        lastCloudUpdatedAt: payload.updatedAt || '',
-        lastFileId: file.id
-      }
+    await updateCloudSyncMeta({
+      signedIn: true,
+      lastDownloadAt: new Date().toISOString(),
+      lastCloudUpdatedAt: payload.updatedAt || '',
+      lastCloudAppVersion: payload.appVersion || '',
+      lastFileId: file.id
     });
     return payload;
   }
@@ -350,17 +367,35 @@
     return data?.[CLOUD_SYNC_META_KEY] || {};
   }
 
+  async function updateCloudSyncMeta(patch = {}) {
+    const meta = await getCloudSyncMeta();
+    const nextMeta = { ...meta, ...patch };
+    await chrome.storage.local.set({ [CLOUD_SYNC_META_KEY]: nextMeta });
+    return nextMeta;
+  }
+
+  function recordCloudSyncSignIn() {
+    return updateCloudSyncMeta({
+      signedIn: true,
+      lastSignInAt: new Date().toISOString()
+    });
+  }
+
+  function recordCloudSyncSignOut() {
+    return updateCloudSyncMeta({
+      signedIn: false,
+      lastSignOutAt: new Date().toISOString()
+    });
+  }
+
   async function recordCloudSyncError(error, context = '') {
     const info = classifyCloudSyncError(error);
-    const meta = await getCloudSyncMeta();
-    const nextMeta = {
-      ...meta,
+    const nextMeta = await updateCloudSyncMeta({
       lastErrorAt: new Date().toISOString(),
       lastErrorContext: context,
       lastErrorCategory: info.category,
       lastErrorMessage: info.message
-    };
-    await chrome.storage.local.set({ [CLOUD_SYNC_META_KEY]: nextMeta });
+    });
     return nextMeta;
   }
 
@@ -378,7 +413,7 @@
       return {
         category: 'oauth_web_client',
         message: '尚未設定 Web Auth fallback OAuth Client ID',
-        hint: '請在 manifest.json 的 fan_fan_ba.cloud_sync.web_auth_client_id 填入 Web Application OAuth Client ID。'
+        hint: '請在設定頁的 Edge / Chromium Web Auth Client ID 欄位填入 Web Application OAuth Client ID。'
       };
     }
     if (/invalid_client|unauthorized_client|client/i.test(raw) && /oauth|google/i.test(raw)) {
@@ -451,9 +486,12 @@
     CLOUD_SYNC_DEVICE_KEY,
     CLOUD_SYNC_META_KEY,
     CLOUD_OAUTH_TOKEN_KEY,
+    CLOUD_WEB_AUTH_CLIENT_ID_KEY,
     DRIVE_APPDATA_SCOPE,
     getOAuthConfig,
     getWebAuthConfig,
+    loadWebAuthClientId,
+    setWebAuthClientId,
     isOAuthConfigured,
     isNativeOAuthConfigured,
     isWebAuthOAuthConfigured,
@@ -470,6 +508,9 @@
     uploadCloudSettings,
     downloadCloudSettings,
     getCloudSyncMeta,
+    updateCloudSyncMeta,
+    recordCloudSyncSignIn,
+    recordCloudSyncSignOut,
     recordCloudSyncError,
     classifyCloudSyncError
   };
