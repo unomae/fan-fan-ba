@@ -67,4 +67,10 @@ describe('content CSS UI safeguards', () => {
     expect(css).toContain('.ffb-page-usage-summary');
     expect(css).toMatch(/\.ffb-page-usage-summary\[hidden\]\s*{[^}]*display:\s*none\s*!important;/);
   });
+
+  it('keeps page translation text one step smaller with a short accent bar', () => {
+    expect(css).toContain('--ffb-page-translation-font-size: clamp(11px, calc(var(--ffb-page-source-font-size, 14px) - 1px), 15px)');
+    expect(css).toMatch(/\.ffb-page-translation-block::before\s*{[^}]*height:\s*1\.35em\s*!important;/);
+    expect(css).toMatch(/\.ffb-page-translation-block\s*{[^}]*box-shadow:\s*none\s*!important;/);
+  });
 });
