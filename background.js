@@ -250,6 +250,7 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle, mode
   if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
 
   const prompt   = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage, pageTranslation });
+  const maxOutputTokens = getPromptMaxOutputTokens(action, pageTranslation);
   const response = await withRetry(() => checkedFetch(
     `${GEMINI_API_BASE}/${selectedModel}:generateContent?key=${apiKey}`,
     {
@@ -260,7 +261,7 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle, mode
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature:     action === 'optimize' ? 0.7 : 0.3,
-          maxOutputTokens: 1024
+          maxOutputTokens
         }
       })
     }
@@ -290,6 +291,7 @@ async function handleOpenRouterRequestWithFallback(params) {
 
 async function handleOpenAICompatRequest({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage, pageTranslation, modelId, apiKey, baseUrl, label, extraHeaders = {}, signal }) {
   const prompt   = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage, pageTranslation });
+  const maxOutputTokens = getPromptMaxOutputTokens(action, pageTranslation);
   const response = await withRetry(() => checkedFetch(baseUrl, {
     method:  'POST',
     signal,
@@ -302,7 +304,7 @@ async function handleOpenAICompatRequest({ action, selectedText, context, pageTi
       model:       modelId,
       messages:    [{ role: 'user', content: prompt }],
       temperature: action === 'optimize' ? 0.7 : 0.3,
-      max_tokens:  1024
+      max_tokens:  maxOutputTokens
     })
   }, `${label} `), 3, signal);
 
@@ -335,6 +337,7 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle, mode
       apiKey:    groqApiKey,
       baseUrl:   `${GROQ_API_BASE}/chat/completions`,
       label:     'Groq',
+      pageTranslation,
       onChunk,
       signal
     });
@@ -350,6 +353,7 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle, mode
       baseUrl:      `${OPENROUTER_API_BASE}/chat/completions`,
       label:        'OpenRouter',
       extraHeaders: { 'X-Title': 'Fan Fan Ba' },
+      pageTranslation,
       onChunk,
       onStatus,
       signal
@@ -357,7 +361,7 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle, mode
   }
 
   if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
-  return streamGemini({ prompt, apiKey, model: selectedModel, action, onChunk, signal });
+  return streamGemini({ prompt, apiKey, model: selectedModel, action, pageTranslation, onChunk, signal });
 }
 
 async function streamOpenRouterWithFallback(params) {
@@ -381,7 +385,8 @@ async function streamOpenRouterWithFallback(params) {
 }
 
 // ── Gemini SSE Streaming（?alt=sse）───────────────
-async function streamGemini({ prompt, apiKey, model, action, onChunk, signal }) {
+async function streamGemini({ prompt, apiKey, model, action, pageTranslation, onChunk, signal }) {
+  const maxOutputTokens = getPromptMaxOutputTokens(action, pageTranslation);
   const response = await withRetry(() => checkedFetch(
     `${GEMINI_API_BASE}/${model}:streamGenerateContent?key=${apiKey}&alt=sse`,
     {
@@ -392,7 +397,7 @@ async function streamGemini({ prompt, apiKey, model, action, onChunk, signal }) 
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature:     action === 'optimize' ? 0.7 : 0.3,
-          maxOutputTokens: 1024
+          maxOutputTokens
         }
       })
     }
@@ -408,7 +413,8 @@ async function streamGemini({ prompt, apiKey, model, action, onChunk, signal }) 
 }
 
 // ── OpenAI 相容 SSE Streaming（Groq / OpenRouter）─
-async function streamOpenAICompat({ prompt, action, modelId, apiKey, baseUrl, label = '', extraHeaders = {}, onChunk, signal }) {
+async function streamOpenAICompat({ prompt, action, pageTranslation, modelId, apiKey, baseUrl, label = '', extraHeaders = {}, onChunk, signal }) {
+  const maxOutputTokens = getPromptMaxOutputTokens(action, pageTranslation);
   const response = await withRetry(() => checkedFetch(baseUrl, {
     method:  'POST',
     signal,
@@ -421,7 +427,7 @@ async function streamOpenAICompat({ prompt, action, modelId, apiKey, baseUrl, la
       model:       modelId,
       messages:    [{ role: 'user', content: prompt }],
       temperature: action === 'optimize' ? 0.7 : 0.3,
-      max_tokens:  1024,
+      max_tokens:  maxOutputTokens,
       stream:      true
     })
   }, `${label} `), 3, signal);
@@ -519,6 +525,11 @@ async function handleTtsRequest({ text, lang }) {
 }
 
 // ── Prompt 建構（依文字長度區分策略）──────────────
+function getPromptMaxOutputTokens(action, pageTranslation) {
+  if (action === 'translate' && pageTranslation?.batch) return 2048;
+  return 1024;
+}
+
 function buildPrompt(action, selectedText, context, pageTitle, settings = {}) {
   const len    = selectedText.length;
   const isWord = len <= 20 && !settings.pageTranslation;
@@ -533,6 +544,19 @@ function buildPrompt(action, selectedText, context, pageTitle, settings = {}) {
   switch (action) {
 
     case 'translate':
+      if (settings.pageTranslation?.batch) {
+        return `你是專業翻譯助手，請將下方 JSON 陣列中每個 text 翻譯成${targetLanguage}。
+必須嚴格輸出 JSON，不要 markdown，不要加說明。
+輸出格式必須是：{"translations":[{"id":1,"translation":"譯文"}]}
+id 與輸入相同，順序不要改變，translation 只放譯文正文。
+請保留可見格式：標題維持為標題文字，條列項目保留項目符號或編號，不要任意合併段落。
+
+網頁標題：${pageTitle}
+上下文 digest：${context}
+
+待翻譯 JSON：
+${selectedText}`;
+      }
       if (isWord) {
         return `你是專業多語詞典助手。請針對以下單字或片語提供完整詞典條目，自動判斷輸入語言。
 所有翻譯、釋義、用法說明、近義詞差異與例句翻譯，請使用：${targetLanguage}。

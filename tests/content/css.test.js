@@ -62,4 +62,9 @@ describe('content CSS UI safeguards', () => {
     expect(css).toContain('.ffb-page-embedded-summary');
     expect(css).toMatch(/\.ffb-page-embedded-summary\[hidden\]\s*{[^}]*display:\s*none\s*!important;/);
   });
+
+  it('keeps local usage summary available in the page translation panel', () => {
+    expect(css).toContain('.ffb-page-usage-summary');
+    expect(css).toMatch(/\.ffb-page-usage-summary\[hidden\]\s*{[^}]*display:\s*none\s*!important;/);
+  });
 });

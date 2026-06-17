@@ -8,6 +8,10 @@ const PAGE_TRANSLATION_LIMITS = {
   minChoiceChars: 2,
   minListChars: 8,
   maxBlockChars: 1200,
+  batchMaxItems: 3,
+  batchMaxChars: 1800,
+  contextMaxChars: 900,
+  contextHeadingMaxChars: 280,
   collapseChars: 420
 };
 
@@ -33,6 +37,7 @@ let pageTranslationState = {
   density: 'compact',
   items: [],
   embeddedSummary: null,
+  usage: createPageTranslationUsageSummary(0),
   done: 0,
   errors: 0,
   total: 0
@@ -64,6 +69,7 @@ function startPageTranslationBeta() {
     density: pageTranslationState.density || 'compact',
     items,
     embeddedSummary,
+    usage: createPageTranslationUsageSummary(items.length),
     done: 0,
     errors: 0,
     total: items.length
@@ -242,9 +248,14 @@ function isPageTranslationListLine(text) {
 
 async function runPageTranslationQueue() {
   updateFloatingBallPageTranslationState?.(pageTranslationState);
-  for (const item of pageTranslationState.items) {
+  const batches = createPageTranslationBatches(pageTranslationState.items);
+  for (const batch of batches) {
     if (pageTranslationState.stopped) break;
-    await translatePageItem(item);
+    if (batch.length > 1) {
+      await translatePageBatch(batch);
+    } else {
+      await translatePageItem(batch[0]);
+    }
     updatePageTranslationPanel();
   }
   pageTranslationState.running = false;
@@ -254,7 +265,7 @@ async function runPageTranslationQueue() {
   updateFloatingBallPageTranslationState?.(pageTranslationState);
 }
 
-async function translatePageItem(item) {
+async function translatePageItem(item, options = {}) {
   if (!item.el.isConnected) return;
   item.status = 'loading';
   item.el.classList.add('ffb-page-source-translated');
@@ -272,7 +283,10 @@ async function translatePageItem(item) {
   });
 
   try {
-    const result = cleanPageTranslationResult(await requestPageTranslation(item.text), item.text);
+    const result = cleanPageTranslationResult(await requestPageTranslation(item.text, {
+      context: options.context || buildPageTranslationContextDigest(item, pageTranslationState.items),
+      requestKind: options.requestKind || 'single'
+    }), item.text);
     if (pageTranslationState.stopped) {
       clearCancelledPageTranslationItem(item);
       return;
@@ -286,6 +300,7 @@ async function translatePageItem(item) {
       translatedText: result
     });
     pageTranslationState.done += 1;
+    pageTranslationState.usage.succeeded += 1;
     renderPageTranslationResult(item, result);
   } catch (error) {
     if (pageTranslationState.stopped || error.message === 'PAGE_TRANSLATION_CANCELLED') {
@@ -294,11 +309,12 @@ async function translatePageItem(item) {
     }
     item.status = 'error';
     pageTranslationState.errors += 1;
+    pageTranslationState.usage.failed += 1;
     renderPageTranslationError(item, error.message || '翻譯失敗');
   }
 }
 
-function requestPageTranslation(text) {
+function requestPageTranslation(text, options = {}) {
   return new Promise((resolve, reject) => {
     if (!chrome.runtime?.id) {
       reject(new Error('擴充功能已更新，請重新整理頁面'));
@@ -341,19 +357,221 @@ function requestPageTranslation(text) {
       reject(new Error(pageTranslationState.stopped ? 'PAGE_TRANSLATION_CANCELLED' : '連線中斷'));
     });
 
+    recordPageTranslationRequest(options.requestKind || 'single');
     port.postMessage({
       requestId,
       action: 'translate',
       selectedText: text,
-      context: text,
+      context: options.context || text,
       pageTitle: document.title,
       model: getPageTranslationModel(),
-      pageTranslation: true,
+      pageTranslation: options.pageTranslation || true,
       targetLanguage,
       explanationLanguage,
       browserLanguage: navigator.language || ''
     });
   });
+}
+
+function requestPageTranslationBatch(items, options = {}) {
+  return requestPageTranslation(buildPageTranslationBatchSourceText(items), {
+    context: options.context || buildPageTranslationContextDigest(items[0], pageTranslationState.items),
+    requestKind: 'batch',
+    pageTranslation: {
+      batch: true,
+      count: items.length
+    }
+  });
+}
+
+async function translatePageBatch(items) {
+  const batchItems = items.filter(item => preparePageTranslationBatchItem(item));
+  if (!batchItems.length) return;
+
+  try {
+    const rawResult = await requestPageTranslationBatch(batchItems, {
+      context: buildPageTranslationContextDigest(batchItems[0], pageTranslationState.items)
+    });
+    const results = parsePageTranslationBatchResult(rawResult, batchItems);
+    if (pageTranslationState.stopped) {
+      batchItems.forEach(clearCancelledPageTranslationItem);
+      return;
+    }
+    batchItems.forEach((item, index) => completePageTranslationBatchItem(item, results[index]));
+  } catch (error) {
+    if (pageTranslationState.stopped || error.message === 'PAGE_TRANSLATION_CANCELLED') {
+      batchItems.forEach(clearCancelledPageTranslationItem);
+      return;
+    }
+    for (const item of batchItems) {
+      if (pageTranslationState.stopped) {
+        clearCancelledPageTranslationItem(item);
+        break;
+      }
+      await translatePageItem(item, { requestKind: 'fallback' });
+    }
+  }
+}
+
+function preparePageTranslationBatchItem(item) {
+  if (!item.el.isConnected) return false;
+  item.status = 'loading';
+  item.el.classList.add('ffb-page-source-translated');
+  item.el.dataset.ffbPairId = item.pairId;
+  bindPageTranslationSourceEvents(item.el);
+  item.translationNode?.remove();
+  item.translationNode = createPageTranslationBlock(item);
+  applyPageTranslationSourceTypography(item.el, item.translationNode);
+  item.el.insertAdjacentElement('afterend', item.translationNode);
+  pageTranslationPairs.set(item.pairId, {
+    sourceEl: item.el,
+    translationEl: item.translationNode,
+    sourceText: item.text,
+    translatedText: ''
+  });
+  return true;
+}
+
+function completePageTranslationBatchItem(item, result) {
+  item.status = 'done';
+  item.translatedText = result;
+  pageTranslationPairs.set(item.pairId, {
+    sourceEl: item.el,
+    translationEl: item.translationNode,
+    sourceText: item.text,
+    translatedText: result
+  });
+  pageTranslationState.done += 1;
+  pageTranslationState.usage.succeeded += 1;
+  renderPageTranslationResult(item, result);
+}
+
+function createPageTranslationBatches(items = []) {
+  const batches = [];
+  let current = [];
+  let currentChars = 0;
+
+  items.forEach(item => {
+    const textLength = String(item?.text || '').length;
+    const wouldOverflow = current.length
+      && (current.length >= PAGE_TRANSLATION_LIMITS.batchMaxItems
+        || currentChars + textLength > PAGE_TRANSLATION_LIMITS.batchMaxChars);
+    if (wouldOverflow) {
+      batches.push(current);
+      current = [];
+      currentChars = 0;
+    }
+    current.push(item);
+    currentChars += textLength;
+  });
+
+  if (current.length) batches.push(current);
+  return batches;
+}
+
+function buildPageTranslationBatchSourceText(items = []) {
+  return JSON.stringify(items.map((item, index) => ({
+    id: index + 1,
+    text: String(item?.text || '')
+  })));
+}
+
+function parsePageTranslationBatchResult(rawResult, items = []) {
+  const cleaned = String(rawResult || '').replace(/```(?:json)?/gi, '').trim();
+  const candidates = [cleaned];
+  const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+  const objectMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (arrayMatch && arrayMatch[0] !== cleaned) candidates.push(arrayMatch[0]);
+  if (objectMatch && objectMatch[0] !== cleaned) candidates.push(objectMatch[0]);
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      const values = Array.isArray(parsed)
+        ? parsed
+        : (Array.isArray(parsed.translations) ? parsed.translations : []);
+      const translations = values.map(value => {
+        if (typeof value === 'string') return value;
+        return value?.translation || value?.translatedText || value?.zh || '';
+      });
+      if (translations.length === items.length && translations.every(value => String(value || '').trim())) {
+        return translations.map((value, index) => cleanPageTranslationResult(value, items[index]?.text || ''));
+      }
+    } catch { /* Try the next candidate. */ }
+  }
+
+  throw new Error('BATCH_TRANSLATION_PARSE_FAILED');
+}
+
+function buildPageTranslationContextDigest(item, items = pageTranslationState.items, options = {}) {
+  const allItems = Array.isArray(items) ? items : [];
+  const index = Math.max(0, allItems.indexOf(item));
+  const nearby = allItems
+    .map((candidate, candidateIndex) => ({ candidate, candidateIndex }))
+    .filter(({ candidateIndex }) => candidateIndex !== index && Math.abs(candidateIndex - index) <= 2)
+    .map(({ candidateIndex, candidate }) => `${candidateIndex < index ? 'Before' : 'After'}: ${truncatePageTranslationContextText(candidate.text, 220)}`)
+    .filter(Boolean);
+  const headings = collectPageTranslationHeadingSummary(options.root || document);
+  const lines = [
+    `Page title: ${document.title || ''}`,
+    `Hostname: ${location.hostname || ''}`,
+    headings ? `Main headings: ${headings}` : '',
+    nearby.length ? `Nearby paragraphs:\n${nearby.join('\n')}` : ''
+  ].filter(Boolean);
+
+  return truncatePageTranslationContextText(lines.join('\n'), PAGE_TRANSLATION_LIMITS.contextMaxChars);
+}
+
+function collectPageTranslationHeadingSummary(root = document) {
+  const headings = Array.from(root.querySelectorAll?.('main h1, main h2, main h3, article h1, article h2, article h3, h1, h2, h3') || [])
+    .map(el => getElementStructuredTranslationText(el))
+    .map(text => text.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  return truncatePageTranslationContextText([...new Set(headings)].slice(0, 5).join(' / '), PAGE_TRANSLATION_LIMITS.contextHeadingMaxChars);
+}
+
+function truncatePageTranslationContextText(text, maxChars) {
+  const value = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!maxChars || value.length <= maxChars) return value;
+  return `${value.slice(0, Math.max(0, maxChars - 1)).trim()}…`;
+}
+
+function createPageTranslationUsageSummary(total = 0) {
+  return {
+    paragraphs: Number(total || 0),
+    succeeded: 0,
+    failed: 0,
+    requests: 0,
+    batchRequests: 0,
+    singleRequests: 0,
+    fallbackRequests: 0
+  };
+}
+
+function recordPageTranslationRequest(kind = 'single') {
+  if (!pageTranslationState.usage) {
+    pageTranslationState.usage = createPageTranslationUsageSummary(pageTranslationState.total);
+  }
+  pageTranslationState.usage.requests += 1;
+  if (kind === 'batch') pageTranslationState.usage.batchRequests += 1;
+  else if (kind === 'fallback') pageTranslationState.usage.fallbackRequests += 1;
+  else pageTranslationState.usage.singleRequests += 1;
+}
+
+function buildPageTranslationUsageSummaryText(summary = pageTranslationState.usage) {
+  if (!summary?.paragraphs) return '';
+  const requestParts = [
+    summary.batchRequests ? `批次 ${summary.batchRequests}` : '',
+    summary.singleRequests ? `單段 ${summary.singleRequests}` : '',
+    summary.fallbackRequests ? `重試 ${summary.fallbackRequests}` : ''
+  ].filter(Boolean);
+  return [
+    `本次全文翻譯：段落 ${summary.paragraphs}`,
+    `成功 ${summary.succeeded}`,
+    `失敗 ${summary.failed}`,
+    `request 約 ${summary.requests}`,
+    requestParts.length ? `(${requestParts.join('、')})` : ''
+  ].filter(Boolean).join(' · ');
 }
 
 function clearCancelledPageTranslationItem(item) {
@@ -624,6 +842,7 @@ function renderPageTranslationError(item, message) {
   item.translationNode.querySelector('.ffb-page-retry')?.addEventListener('click', async e => {
     e.stopPropagation();
     pageTranslationState.errors = Math.max(0, pageTranslationState.errors - 1);
+    pageTranslationState.usage.failed = Math.max(0, pageTranslationState.usage.failed - 1);
     await translatePageItem(item);
     updatePageTranslationPanel();
   });
@@ -640,6 +859,7 @@ function ensurePageTranslationPanel() {
     </div>
     <div class="ffb-page-panel-status"></div>
     <div class="ffb-page-embedded-summary" hidden></div>
+    <div class="ffb-page-usage-summary" hidden></div>
     <div class="ffb-page-panel-controls">
       <div class="ffb-page-panel-modes" aria-label="全文翻譯顯示模式">
         <button type="button" data-mode="bilingual" title="雙語" aria-label="顯示雙語">雙</button>
@@ -683,6 +903,7 @@ function updatePageTranslationPanel(message = '') {
   if (!pageTranslationPanel) return;
   const status = pageTranslationPanel.querySelector('.ffb-page-panel-status');
   const embedded = pageTranslationPanel.querySelector('.ffb-page-embedded-summary');
+  const usage = pageTranslationPanel.querySelector('.ffb-page-usage-summary');
   const count = pageTranslationPanel.querySelector('.ffb-page-panel-count');
   const modeButtons = pageTranslationPanel.querySelectorAll('[data-mode]');
   const densityButtons = pageTranslationPanel.querySelectorAll('[data-density]');
@@ -697,6 +918,12 @@ function updatePageTranslationPanel(message = '') {
     embedded.hidden = !embeddedText;
     embedded.textContent = embeddedText;
     embedded.title = embeddedText;
+  }
+  if (usage) {
+    const usageText = buildPageTranslationUsageSummaryText(pageTranslationState.usage);
+    usage.hidden = !usageText;
+    usage.textContent = usageText;
+    usage.title = usageText;
   }
   modeButtons.forEach(btn => btn.classList.toggle('ffb-page-active', btn.dataset.mode === pageTranslationState.mode));
   densityButtons.forEach(btn => btn.classList.toggle('ffb-page-active', btn.dataset.density === pageTranslationState.density));
@@ -898,6 +1125,7 @@ function restorePageTranslationBeta() {
     density: 'compact',
     items: [],
     embeddedSummary: null,
+    usage: createPageTranslationUsageSummary(0),
     done: 0,
     errors: 0,
     total: 0
@@ -1102,6 +1330,14 @@ if (typeof module !== 'undefined' && module.exports) {
     getPageTranslationContrastTheme,
     getPageTranslationStatusText,
     buildPageTranslationCopyText,
+    createPageTranslationBatches,
+    buildPageTranslationBatchSourceText,
+    parsePageTranslationBatchResult,
+    buildPageTranslationContextDigest,
+    collectPageTranslationHeadingSummary,
+    createPageTranslationUsageSummary,
+    recordPageTranslationRequest,
+    buildPageTranslationUsageSummaryText,
     detectEmbeddedTranslationTargets,
     buildEmbeddedTranslationSummaryText,
     locatePageTranslationSource,

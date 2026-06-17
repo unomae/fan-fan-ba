@@ -2,6 +2,13 @@ const {
   cleanPageTranslationResult,
   collectVisibleTranslatableBlocks,
   buildPageTranslationCopyText,
+  createPageTranslationBatches,
+  buildPageTranslationBatchSourceText,
+  parsePageTranslationBatchResult,
+  buildPageTranslationContextDigest,
+  collectPageTranslationHeadingSummary,
+  createPageTranslationUsageSummary,
+  buildPageTranslationUsageSummaryText,
   detectEmbeddedTranslationTargets,
   buildEmbeddedTranslationSummaryText,
   locatePageTranslationSource,
@@ -229,6 +236,81 @@ describe('page translator helpers', () => {
       '原文：Markets responded cautiously after the announcement.\n譯文：公告後，市場反應謹慎。',
       '原文：Analysts expect demand to recover next quarter.\n譯文：分析師預期需求會在下季復甦。'
     ].join('\n\n---\n\n'));
+  });
+
+  it('builds a local context digest from title, hostname, headings, and nearby paragraphs', () => {
+    document.title = 'Supply chain outlook';
+    document.body.innerHTML = `
+      <main>
+        <h1>Quarterly demand planning</h1>
+        <h2>Automotive backlog</h2>
+        <p>Opening paragraph explains the market background and supplier risk.</p>
+        <p id="target">Analysts expect demand to recover next quarter.</p>
+        <p>Closing paragraph mentions inventory discipline and allocation policy.</p>
+      </main>
+    `;
+    const items = collectVisibleTranslatableBlocks();
+    const target = items.find(item => item.el.id === 'target');
+
+    const digest = buildPageTranslationContextDigest(target, items);
+
+    expect(digest).toContain('Page title: Supply chain outlook');
+    expect(digest).toContain('Hostname: localhost');
+    expect(digest).toContain('Quarterly demand planning');
+    expect(digest).toContain('Automotive backlog');
+    expect(digest).toContain('Before: Opening paragraph');
+    expect(digest).toContain('After: Closing paragraph');
+    expect(collectPageTranslationHeadingSummary()).toContain('Quarterly demand planning');
+  });
+
+  it('creates bounded page translation batches and serializes source text as JSON', () => {
+    const items = [
+      { text: 'A'.repeat(600) },
+      { text: 'B'.repeat(600) },
+      { text: 'C'.repeat(600) },
+      { text: 'D'.repeat(600) }
+    ];
+
+    const batches = createPageTranslationBatches(items);
+
+    expect(batches.map(batch => batch.length)).toEqual([3, 1]);
+    expect(JSON.parse(buildPageTranslationBatchSourceText(batches[0]))).toEqual([
+      { id: 1, text: 'A'.repeat(600) },
+      { id: 2, text: 'B'.repeat(600) },
+      { id: 3, text: 'C'.repeat(600) }
+    ]);
+  });
+
+  it('parses batch translation JSON and cleans each segment result', () => {
+    const items = [
+      { text: 'Markets responded cautiously after the announcement.' },
+      { text: 'Analysts expect demand to recover next quarter.' }
+    ];
+    const raw = JSON.stringify({
+      translations: [
+        { id: 1, translation: '公告後，市場反應謹慎。' },
+        { id: 2, translation: '分析師預期需求會在下季復甦。' }
+      ]
+    });
+
+    expect(parsePageTranslationBatchResult(raw, items)).toEqual([
+      '公告後，市場反應謹慎。',
+      '分析師預期需求會在下季復甦。'
+    ]);
+  });
+
+  it('summarizes local page translation usage without uploading data', () => {
+    const summary = createPageTranslationUsageSummary(5);
+    summary.succeeded = 4;
+    summary.failed = 1;
+    summary.requests = 3;
+    summary.batchRequests = 1;
+    summary.singleRequests = 1;
+    summary.fallbackRequests = 1;
+
+    expect(buildPageTranslationUsageSummaryText(summary)).toBe(
+      '本次全文翻譯：段落 5 · 成功 4 · 失敗 1 · request 約 3 · (批次 1、單段 1、重試 1)'
+    );
   });
 
   it('locates the source paragraph and switches translation-only mode back to bilingual', () => {

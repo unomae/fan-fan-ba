@@ -376,11 +376,11 @@
           </div>
           <div class="card">
             <h3>目前重點</h3>
-            <p>目前版本線是 v1.8.6：v1.8.x 主線聚焦全文翻譯穩定化；v1.8.5 Prompt Templates 取消，已直接完成嵌入元件偵測器。</p>
+            <p>目前版本線是 v1.8.6：v1.8.x 全文翻譯穩定化已補完 v1.8.2 Context Digest、v1.8.3 Batch Requests、v1.8.4 Usage Summary；v1.8.5 Prompt Templates 取消，v1.8.6 Embedded Detector 保持已完成。</p>
           </div>
           <div class="card">
             <h3>最新進展</h3>
-            <p>2026-06-17 v1.8.6 已補 iframe / SVG / Shadow DOM / canvas 偵測摘要；下一步回到 v1.8.2 context digest 或 v1.8.3 batch requests。</p>
+            <p>2026-06-17 已回補 v1.8.2～v1.8.4：全文翻譯 request 會帶本地 context digest，多段可批次請求並於失敗時 fallback 單段重試，面板顯示本次段落 / 成功 / 失敗 / request 摘要。</p>
           </div>
         </div>
       </section>
@@ -842,7 +842,7 @@ options.js</pre>
             <ol>
               <li><strong>v1.6.3</strong>：先完成真實網站 QA，尤其 Google Docs / Gmail / Notion / Google Skills，不讓選字工具列與全文翻譯破壞頁面。</li>
               <li><strong>v1.7.x</strong>：Cloud Sync / secrets / cross-browser OAuth 收乾淨，解決換機成本。</li>
-              <li><strong>v1.8.x</strong>：全文翻譯穩定化：定位原文、context digest、batch requests、usage summary；取消 prompt templates，最後只做嵌入元件偵測。</li>
+              <li><strong>v1.8.x</strong>：全文翻譯穩定化：定位原文、context digest、batch requests、usage summary 已完成；取消 prompt templates，最後只做嵌入元件偵測。</li>
               <li><strong>v1.9.x</strong>：Learning layer + 嵌入元件 v1：單字本 SRS、難字自動高亮、iframe / SVG / open Shadow DOM。</li>
             </ol>
           </div>
@@ -1112,8 +1112,8 @@ options.js</pre>
           </div>
           <div class="phase">
             <strong>v1.8.x：全文翻譯穩定化</strong>
-            <p>定位原文、context digest、batch requests、usage summary；取消 v1.8.5 prompt templates，直接完成嵌入元件偵測器，但不在 v1.8 做 iframe / SVG / Shadow DOM 翻譯。</p>
-            <span class="pill orange">下一步</span>
+            <p>定位原文、context digest、batch requests、usage summary 已完成；取消 v1.8.5 prompt templates，直接完成嵌入元件偵測器，但不在 v1.8 做 iframe / SVG / Shadow DOM 翻譯。</p>
+            <span class="pill green">完成</span>
           </div>
           <div class="phase">
             <strong>v1.9.x：Learning Layer / Embedded Translation v1</strong>
@@ -1135,6 +1135,12 @@ options.js</pre>
             <tr><th>日期</th><th>版本線</th><th>完成事項</th><th>驗證 / 注意</th></tr>
           </thead>
           <tbody>
+            <tr>
+              <td>2026-06-17</td>
+              <td><code>v1.8.2 / v1.8.3 / v1.8.4</code></td>
+              <td>回補全文翻譯穩定化：每段 request 帶入本地 context digest（page title、hostname、主要 heading、附近段落）；多段全文翻譯改為小批次請求，批次解析失敗時 fallback 單段重試；面板新增本次 usage summary，顯示段落數、成功數、失敗數與 request 估算，不上雲。</td>
+              <td><code>node --check content/page-translator.js</code> 通過；<code>node --check background.js</code> 通過；<code>npm test -- tests/content/page-translator.test.js tests/content/css.test.js tests/background.test.js --runInBand</code> 通過，3 suites / 36 tests；<code>npm test -- --runInBand</code> 通過，14 suites / 107 tests。</td>
+            </tr>
             <tr>
               <td>2026-06-17</td>
               <td><code>v1.8.6</code></td>

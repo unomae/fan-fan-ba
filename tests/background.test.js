@@ -34,6 +34,23 @@ describe('Background module', () => {
     });
   });
 
+  describe('buildPrompt batch mode', () => {
+    it('uses strict JSON prompts for page translation batches', () => {
+      const prompt = buildPrompt(
+        'translate',
+        '[{"id":1,"text":"First paragraph."},{"id":2,"text":"Second paragraph."}]',
+        'Page title: Page Title\nHostname: example.com\nMain headings: Report',
+        'Page Title',
+        { pageTranslation: { batch: true, count: 2 } }
+      );
+
+      expect(prompt).toContain('{"translations":[{"id":1,"translation":"');
+      expect(prompt).toContain('Hostname: example.com');
+      expect(prompt).toContain('"text":"First paragraph."');
+      expect(prompt).not.toContain('"phonetic"');
+    });
+  });
+
   describe('checkedFetch', () => {
     beforeEach(() => {
       global.fetch = jest.fn();
