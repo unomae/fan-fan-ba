@@ -338,7 +338,7 @@
           <p class="lead">這份文件是翻翻吧唯一專案記憶入口，已整合原本散落的 review HTML、vocabulary roadmap、全文翻譯 UX review 與 session context。之後專案進度、roadmap、決策與驗證狀態都更新在這裡。</p>
         </div>
         <div class="meta-row">
-          <span class="pill green">版本 1.7.5</span>
+          <span class="pill green">版本 1.8.0</span>
           <span class="pill blue">Manifest V3</span>
           <span class="pill">最後更新 2026-06-17</span>
           <span class="pill orange">文件狀態：主入口</span>
@@ -376,7 +376,7 @@
           </div>
           <div class="card">
             <h3>目前重點</h3>
-            <p>目前版本線是 v1.7.5 closeout：Cloud Sync、Edge / Chromium OAuth fallback、公開同步頁面打磨與 API Key 密碼加密備份已完成；下一步可開 v1.8.0 Read Frog Benchmark / Embedded Translation v1。</p>
+            <p>目前版本線是 v1.8.0：已開始 Read Frog Benchmark / Embedded Translation v1，第一刀補全文翻譯複製譯文 / 複製雙語；v1.7.x Cloud Sync 與 API Key 密碼加密備份已 closeout。</p>
           </div>
           <div class="card">
             <h3>最新進展</h3>
@@ -1135,6 +1135,12 @@ options.js</pre>
             <tr><th>日期</th><th>版本線</th><th>完成事項</th><th>驗證 / 注意</th></tr>
           </thead>
           <tbody>
+            <tr>
+              <td>2026-06-17</td>
+              <td><code>v1.8.0</code></td>
+              <td>開 v1.8.0 Read Frog Benchmark / Embedded Translation v1：全文翻譯面板新增「複製譯文」與「複製雙語」操作，僅複製已完成段落；雙語輸出保留原文 / 譯文對照，方便貼到筆記或分享。</td>
+              <td><code>node --check content/page-translator.js</code> 通過；<code>npm test -- tests/content/page-translator.test.js --runInBand</code> 通過，9 tests；<code>npm test -- --runInBand</code> 通過，14 suites / 98 tests。</td>
+            </tr>
             <tr>
               <td>2026-06-17</td>
               <td><code>v1.7.5 / Release hygiene</code></td>

@@ -1,6 +1,7 @@
 const {
   cleanPageTranslationResult,
   collectVisibleTranslatableBlocks,
+  buildPageTranslationCopyText,
   getPageTranslationContrastTheme,
   getPageTranslationStatusText
 } = require('../../content/page-translator');
@@ -198,5 +199,32 @@ describe('page translator helpers', () => {
       total: 8,
       errors: 0
     })).toBe('有新段落可翻譯 · 已完成 8/8');
+  });
+
+  it('builds copy text for translated and bilingual page translation results', () => {
+    const items = [
+      {
+        text: 'Markets responded cautiously after the announcement.',
+        translatedText: '公告後，市場反應謹慎。'
+      },
+      {
+        text: 'Analysts expect demand to recover next quarter.',
+        translatedText: '分析師預期需求會在下季復甦。'
+      },
+      {
+        text: 'Pending paragraph',
+        translatedText: ''
+      }
+    ];
+
+    expect(buildPageTranslationCopyText('translation', items)).toBe([
+      '公告後，市場反應謹慎。',
+      '分析師預期需求會在下季復甦。'
+    ].join('\n\n'));
+
+    expect(buildPageTranslationCopyText('bilingual', items)).toBe([
+      '原文：Markets responded cautiously after the announcement.\n譯文：公告後，市場反應謹慎。',
+      '原文：Analysts expect demand to recover next quarter.\n譯文：分析師預期需求會在下季復甦。'
+    ].join('\n\n---\n\n'));
   });
 });

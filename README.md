@@ -1,7 +1,7 @@
 # 翻翻吧 Fan Fan Ba
 
 > AI-powered translation, explanation & text optimizer for Chrome / Edge
-> ![version](https://img.shields.io/badge/version-1.7.5-green)
+> ![version](https://img.shields.io/badge/version-1.8.0-green)
 
 看到不懂的一劃就翻譯、解釋，還能順手存進筆記，一氣呵成。  
 選取任意網頁文字，一鍵觸發翻譯、解釋、優化——多家 AI 模型驅動，結果即時浮現，不打斷閱讀流。

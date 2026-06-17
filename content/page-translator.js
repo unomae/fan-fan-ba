@@ -642,6 +642,8 @@ function ensurePageTranslationPanel() {
         <button type="button" data-mode="original" title="只看原文" aria-label="只看原文">原</button>
       </div>
       <div class="ffb-page-panel-actions">
+        <button type="button" data-action="copy-translation" title="複製譯文" aria-label="複製全文翻譯譯文">譯</button>
+        <button type="button" data-action="copy-bilingual" title="複製雙語" aria-label="複製全文翻譯雙語對照">雙</button>
         <button type="button" data-action="stop" title="停止" aria-label="停止全文翻譯">■</button>
         <button type="button" data-action="restore" title="還原" aria-label="還原全文翻譯">↺</button>
       </div>
@@ -662,6 +664,10 @@ function ensurePageTranslationPanel() {
       stopPageTranslationBeta();
     } else if (button.dataset.action === 'restore') {
       restorePageTranslationBeta();
+    } else if (button.dataset.action === 'copy-translation') {
+      copyPageTranslationText('translation', button);
+    } else if (button.dataset.action === 'copy-bilingual') {
+      copyPageTranslationText('bilingual', button);
     }
   });
   document.body.appendChild(pageTranslationPanel);
@@ -675,6 +681,7 @@ function updatePageTranslationPanel(message = '') {
   const modeButtons = pageTranslationPanel.querySelectorAll('[data-mode]');
   const densityButtons = pageTranslationPanel.querySelectorAll('[data-density]');
   const stopButton = pageTranslationPanel.querySelector('[data-action="stop"]');
+  const copyButtons = pageTranslationPanel.querySelectorAll('[data-action="copy-translation"], [data-action="copy-bilingual"]');
   const done = pageTranslationState.done;
   const total = pageTranslationState.total;
   if (count) count.textContent = `${done}/${total}`;
@@ -682,6 +689,7 @@ function updatePageTranslationPanel(message = '') {
   modeButtons.forEach(btn => btn.classList.toggle('ffb-page-active', btn.dataset.mode === pageTranslationState.mode));
   densityButtons.forEach(btn => btn.classList.toggle('ffb-page-active', btn.dataset.density === pageTranslationState.density));
   if (stopButton) stopButton.disabled = !pageTranslationState.running && !pageTranslationState.stopping;
+  copyButtons.forEach(btn => { btn.disabled = !hasCompletedPageTranslationItems(); });
 }
 
 function getPageTranslationStatusText(state, message = '') {
@@ -729,6 +737,68 @@ function setPageTranslationDensity(density) {
     'ffb-page-translation-density-compact'
   );
   document.documentElement.classList.add(`ffb-page-translation-density-${pageTranslationState.density}`);
+}
+
+function hasCompletedPageTranslationItems(items = pageTranslationState.items) {
+  return getCompletedPageTranslationItems(items).length > 0;
+}
+
+function getCompletedPageTranslationItems(items = pageTranslationState.items) {
+  return (items || []).filter(item => String(item?.translatedText || '').trim());
+}
+
+function buildPageTranslationCopyText(format = 'translation', items = pageTranslationState.items) {
+  const completedItems = getCompletedPageTranslationItems(items);
+  if (!completedItems.length) return '';
+  if (format === 'bilingual') {
+    return completedItems.map(item => [
+      `原文：${String(item.text || '').trim()}`,
+      `譯文：${String(item.translatedText || '').trim()}`
+    ].join('\n')).join('\n\n---\n\n');
+  }
+  return completedItems.map(item => String(item.translatedText || '').trim()).join('\n\n');
+}
+
+async function copyPageTranslationText(format, button) {
+  const text = buildPageTranslationCopyText(format);
+  if (!text) {
+    updatePageTranslationPanel('沒有可複製的譯文');
+    return;
+  }
+
+  const originalText = button?.textContent || '';
+  try {
+    await writePageTranslationClipboardText(text);
+    if (button) {
+      button.textContent = '✓';
+      button.classList.add('ffb-page-copied');
+      setTimeout(() => {
+        button.textContent = originalText;
+        button.classList.remove('ffb-page-copied');
+      }, 1400);
+    }
+    updatePageTranslationPanel(format === 'bilingual' ? '已複製雙語對照' : '已複製譯文');
+  } catch {
+    updatePageTranslationPanel('複製失敗，請再試一次');
+  }
+}
+
+async function writePageTranslationClipboardText(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand?.('copy');
+  textarea.remove();
+  if (!copied) throw new Error('COPY_FAILED');
 }
 
 function stopPageTranslationBeta() {
@@ -952,6 +1022,7 @@ if (typeof module !== 'undefined' && module.exports) {
     extractPageTranslationJsonTranslation,
     getPageTranslationContrastTheme,
     getPageTranslationStatusText,
+    buildPageTranslationCopyText,
     getElementTranslationText,
     isPageTranslatableElement,
     isAllowedEditablePageTranslationElement
