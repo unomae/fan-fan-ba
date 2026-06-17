@@ -340,7 +340,7 @@
         <div class="meta-row">
           <span class="pill green">版本 1.7.5</span>
           <span class="pill blue">Manifest V3</span>
-          <span class="pill">最後更新 2026-06-08</span>
+          <span class="pill">最後更新 2026-06-17</span>
           <span class="pill orange">文件狀態：主入口</span>
         </div>
       </header>
@@ -376,7 +376,7 @@
           </div>
           <div class="card">
             <h3>目前重點</h3>
-            <p>目前版本線是 v1.6.x：設定備份 / 還原、API Key local storage、Obsidian 精準路徑、request abort、responsive 與 a11y hardening 已完成；下一步建議進 v1.6.3 實站 QA。</p>
+            <p>目前版本線是 v1.7.5 closeout：Cloud Sync、Edge / Chromium OAuth fallback、公開同步頁面打磨與 API Key 密碼加密備份已完成；下一步可開 v1.8.0 Read Frog Benchmark / Embedded Translation v1。</p>
           </div>
           <div class="card">
             <h3>最新進展</h3>
@@ -680,7 +680,7 @@ options.js</pre>
             <h3>近期重要決策</h3>
             <ul>
               <li>API Key 存在 <code>chrome.storage.local</code>，不跟 Chrome 帳號同步；設定備份預設不含 API Key。</li>
-              <li>設定匯出 / 匯入先用本機 JSON；Google Drive appData 同步排入 v1.7.0，API Key 上雲前必須先設計加密。</li>
+              <li>設定匯出 / 匯入支援本機 JSON；Google Drive appData 同步一般設定，API Key 則透過密碼加密備份處理，不進雲端同步 payload。</li>
               <li>Obsidian 單字匯出完全依照使用者填寫資料夾，不再自動追加 <code>/單字本</code>。</li>
               <li>Roadmap 以版本里程碑為主，不再使用舊文件裡的 Phase 2A / 2B / 2C / Phase 3 / P1 作為目前主線編碼。</li>
             </ul>
@@ -1044,7 +1044,7 @@ options.js</pre>
             <tr>
               <td>設定備份 / 還原</td>
               <td>匯出不含 API Key JSON；匯入；再測含 API Key 匯出二次確認。</td>
-              <td>匯入成功回報數量；錯誤 schema 被拒；API Key 只有勾選後才明文匯出。</td>
+              <td>匯入成功回報數量；錯誤 schema 被拒；API Key 只有勾選並輸入密碼後才會加密匯出。</td>
               <td>TODO</td>
               <td></td>
             </tr>
@@ -1083,16 +1083,16 @@ options.js</pre>
           <div class="phase">
             <strong>v1.6.3：Release Readiness + Real-site QA</strong>
             <p>實站回測 Gmail / Notion / 新聞頁 / 長文章全文翻譯，降低 app shell / toolbar / dialog / editable 區誤翻風險，補商店與 README 上線收尾。</p>
-            <span class="pill orange">進行中</span>
+            <span class="pill green">完成</span>
           </div>
           <div class="phase">
             <strong>v1.7.0：Cloud Sync</strong>
             <p>Google Drive appData 同步一般設定，不含 API Key；提供登入、上傳、下載、登出與狀態提示。Chrome 使用 native auth，Edge / Chromium 由 v1.7.2 Web Auth fallback 補齊。</p>
-            <span class="pill orange">進行中</span>
+            <span class="pill green">完成</span>
           </div>
           <div class="phase">
             <strong>v1.7.5：Encrypted Secrets Backup</strong>
-            <p>使用者自訂密碼後，以 Web Crypto 派生金鑰加密 API Key；匯出 / 還原或未來雲端 secrets backup 時，還原端需輸入同一組密碼解密。</p>
+            <p>使用者自訂密碼後，以 Web Crypto 派生金鑰加密 API Key；匯出 / 還原時，還原端需輸入同一組密碼解密。</p>
             <span class="pill green">完成</span>
           </div>
           <div class="phase">
@@ -1113,7 +1113,7 @@ options.js</pre>
           <div class="phase">
             <strong>v1.8.x：Read Frog Benchmark / Embedded Translation v1</strong>
             <p>Context digest、batch requests、全文翻譯複製譯文 / 複製雙語 / 定位原文、usage summary、prompt templates；新增嵌入元件偵測器、iframe 圖表翻譯、SVG text overlay 翻譯。</p>
-            <span class="pill orange">待排程</span>
+            <span class="pill orange">下一步</span>
           </div>
           <div class="phase">
             <strong>v1.9.x：Learning Layer / Embedded Advanced</strong>
@@ -1135,6 +1135,12 @@ options.js</pre>
             <tr><th>日期</th><th>版本線</th><th>完成事項</th><th>驗證 / 注意</th></tr>
           </thead>
           <tbody>
+            <tr>
+              <td>2026-06-17</td>
+              <td><code>v1.7.5 / Release hygiene</code></td>
+              <td>收尾 v1.7.5 版本一致性：同步 <code>package.json</code>、<code>package-lock.json</code> 與 README badge 到 <code>1.7.5</code>；README / privacy policy 隱私段落改為反映 API Key 設定備份已在 v1.7.5 支援密碼加密；將 2026-06-10 code review 收進 <code>archive/</code> 作為歷史快照。</td>
+              <td><code>npm test -- --runInBand</code> 通過，14 suites / 97 tests；<code>package.json</code> 與 <code>package-lock.json</code> 目前仍依現有 <code>.gitignore</code> 規則作為本機檔，不納入 git diff。</td>
+            </tr>
             <tr>
               <td>2026-06-09</td>
               <td><code>v1.7.5</code></td>
@@ -1276,7 +1282,7 @@ options.js</pre>
           <tbody>
             <tr><td><code>coverage/</code></td><td>Jest coverage 產物，可重建。</td><td><span class="pill orange">可刪</span></td></tr>
             <tr><td><code>node_modules/</code></td><td>npm install 產物，可由 lockfile 重建；保留可加快本機開發。</td><td><span class="pill orange">需要省空間時可刪</span></td></tr>
-            <tr><td><code>fan-fan-ba-v1.2.3.zip</code></td><td>舊版打包檔，不是目前 1.7.2 執行必要檔。</td><td><span class="pill green">已刪除</span></td></tr>
+            <tr><td><code>fan-fan-ba-v1.2.3.zip</code></td><td>舊版打包檔，不是目前 1.7.5 執行必要檔。</td><td><span class="pill green">已刪除</span></td></tr>
             <tr><td><code>screenshots/*.b64</code></td><td>base64 素材，體積較大，PNG 已保留。</td><td><span class="pill green">已刪除</span></td></tr>
             <tr><td><code>screenshots/mockup-generator.html</code></td><td>大型 mockup 產生器，商店素材 PNG 已保留。</td><td><span class="pill green">已刪除</span></td></tr>
             <tr><td><code>screenshots/icon-gen-*.html</code> / <code>icon-sq-*.html</code></td><td>圖示產生器中間產物，正式 icons 與 source 已保留於 <code>icons/</code>。</td><td><span class="pill green">已刪除</span></td></tr>

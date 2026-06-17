@@ -274,7 +274,7 @@
       throw new Error('雲端設定檔沒有可還原的設定');
     }
     if (payload.secrets || payload.secretsEncrypted) {
-      throw new Error('v1.7.0 不支援雲端同步 API Key');
+      throw new Error('雲端同步不支援 API Key；請改用設定備份的密碼加密匯出');
     }
     return payload;
   }
@@ -464,7 +464,7 @@
       return {
         category: 'payload_secret',
         message: '雲端同步檔包含不允許的 API Key 資料',
-        hint: 'v1.7.x 只同步一般設定，API Key 加密備份排在 v1.7.1。'
+        hint: '雲端同步只同步一般設定；API Key 請使用設定備份的密碼加密匯出 / 匯入。'
       };
     }
     if (/找不到|not found|沒有可還原|settings/.test(text)) {

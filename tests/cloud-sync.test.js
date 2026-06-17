@@ -250,6 +250,6 @@ describe('Cloud Sync helper', () => {
       cloudSchemaVersion: 1,
       settings: {},
       secrets: { groqApiKey: 'gsk-test' }
-    })).toThrow('v1.7.0 不支援雲端同步 API Key');
+    })).toThrow('雲端同步不支援 API Key；請改用設定備份的密碼加密匯出');
   });
 });
