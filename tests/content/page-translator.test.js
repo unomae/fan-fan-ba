@@ -2,6 +2,7 @@ const {
   cleanPageTranslationResult,
   collectVisibleTranslatableBlocks,
   buildPageTranslationCopyText,
+  locatePageTranslationSource,
   getPageTranslationContrastTheme,
   getPageTranslationStatusText
 } = require('../../content/page-translator');
@@ -226,5 +227,37 @@ describe('page translator helpers', () => {
       '原文：Markets responded cautiously after the announcement.\n譯文：公告後，市場反應謹慎。',
       '原文：Analysts expect demand to recover next quarter.\n譯文：分析師預期需求會在下季復甦。'
     ].join('\n\n---\n\n'));
+  });
+
+  it('locates the source paragraph and switches translation-only mode back to bilingual', () => {
+    document.body.innerHTML = `
+      <article>
+        <p id="source" data-ffb-pair-id="pair-1">Markets responded cautiously after the announcement.</p>
+        <div id="translation" data-ffb-pair-id="pair-1">公告後，市場反應謹慎。</div>
+      </article>
+    `;
+    const sourceEl = document.getElementById('source');
+    const translationEl = document.getElementById('translation');
+    const scrollIntoView = jest.fn();
+    sourceEl.scrollIntoView = scrollIntoView;
+    const state = { mode: 'translation' };
+    const setActive = jest.fn();
+
+    const located = locatePageTranslationSource('pair-1', {
+      pairs: new Map([['pair-1', { sourceEl, translationEl }]]),
+      state,
+      setMode: mode => { state.mode = mode; },
+      setActive,
+      behavior: 'auto'
+    });
+
+    expect(located).toBe(true);
+    expect(state.mode).toBe('bilingual');
+    expect(setActive).toHaveBeenCalledWith('pair-1');
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'auto',
+      block: 'center',
+      inline: 'nearest'
+    });
   });
 });

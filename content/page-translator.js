@@ -554,6 +554,7 @@ function renderPageTranslationResult(item, result) {
     <div class="ffb-page-translation-head">
       <span class="ffb-page-translation-mark" title="翻翻吧譯文" aria-label="翻翻吧譯文">文</span>
       <div class="ffb-page-translation-actions">
+        <button class="ffb-page-locate-btn" type="button" data-ffb-action="locate-source" title="定位原文" aria-label="定位到對應原文">原</button>
         ${shouldCollapse ? '<button class="ffb-page-expand-btn" type="button" data-ffb-action="toggle-collapse" title="展開全文" aria-label="展開全文">⌄</button>' : ''}
       </div>
     </div>
@@ -994,7 +995,31 @@ function handlePageTranslationAction(action, pairId, button) {
   if (!pair) return;
   if (action === 'toggle-collapse') {
     togglePageTranslationCollapse(pair.translationEl, button);
+  } else if (action === 'locate-source') {
+    locatePageTranslationSource(pairId);
   }
+}
+
+function locatePageTranslationSource(pairId, options = {}) {
+  const pairs = options.pairs || pageTranslationPairs;
+  const state = options.state || pageTranslationState;
+  const pair = pairs.get(pairId);
+  if (!pair?.sourceEl?.isConnected || !pair?.translationEl?.isConnected) return false;
+
+  if (state.mode === 'translation') {
+    const setMode = options.setMode || setPageTranslationMode;
+    setMode('bilingual');
+  }
+
+  const setActive = options.setActive || setActivePageTranslationPair;
+  setActive(pairId);
+  pair.sourceEl.scrollIntoView?.({
+    behavior: options.behavior || 'smooth',
+    block: 'center',
+    inline: 'nearest'
+  });
+  if (typeof pageTranslationPanel !== 'undefined') updatePageTranslationPanel('已定位原文');
+  return true;
 }
 
 function togglePageTranslationCollapse(block, button) {
@@ -1023,6 +1048,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getPageTranslationContrastTheme,
     getPageTranslationStatusText,
     buildPageTranslationCopyText,
+    locatePageTranslationSource,
     getElementTranslationText,
     isPageTranslatableElement,
     isAllowedEditablePageTranslationElement

@@ -338,7 +338,7 @@
           <p class="lead">這份文件是翻翻吧唯一專案記憶入口，已整合原本散落的 review HTML、vocabulary roadmap、全文翻譯 UX review 與 session context。之後專案進度、roadmap、決策與驗證狀態都更新在這裡。</p>
         </div>
         <div class="meta-row">
-          <span class="pill green">版本 1.8.0</span>
+          <span class="pill green">版本 1.8.1</span>
           <span class="pill blue">Manifest V3</span>
           <span class="pill">最後更新 2026-06-17</span>
           <span class="pill orange">文件狀態：主入口</span>
@@ -376,11 +376,11 @@
           </div>
           <div class="card">
             <h3>目前重點</h3>
-            <p>目前版本線是 v1.8.0：已開始 Read Frog Benchmark / Embedded Translation v1，第一刀補全文翻譯複製譯文 / 複製雙語；v1.7.x Cloud Sync 與 API Key 密碼加密備份已 closeout。</p>
+            <p>目前版本線是 v1.8.1：v1.8.x 主線改為全文翻譯穩定化，已完成複製譯文 / 複製雙語與定位原文；嵌入元件翻譯延後到 v1.9.x。</p>
           </div>
           <div class="card">
             <h3>最新進展</h3>
-            <p>2026-06-08 v1.6.3 實站測試先告一段落，主線切到 v1.7.x Cloud Sync；已補 Edge / Chromium OAuth fallback，並開始 v1.7.3 同步錯誤診斷與可靠性補強。</p>
+            <p>2026-06-17 v1.8.1 已補全文翻譯「定位原文」操作；下一步按 v1.8.x 順序做 context digest、batch requests、usage summary 與 prompt templates。</p>
           </div>
         </div>
       </section>
@@ -730,11 +730,11 @@ options.js</pre>
             <tr><th>後續方向</th><th>價值</th><th>版本歸屬</th></tr>
           </thead>
           <tbody>
-            <tr><td>真正 <code>.xlsx</code> 匯出</td><td>保留欄寬、工作表與格式，降低 Excel 使用門檻。</td><td><code>v1.8.0+</code></td></tr>
-            <tr><td>單字本備份 / 匯入</td><td>讓使用者可搬移單字資料，避免移除 extension 後流失。</td><td><code>v1.8.0+</code></td></tr>
-            <tr><td>IndexedDB migration</td><td>單字量接近數千筆時降低單一 storage object 負擔。</td><td><code>v1.8.0+</code></td></tr>
-            <tr><td>高亮斷詞改善</td><td>減少英文詞形、大小寫與多語詞彙漏標 / 誤標。</td><td><code>v1.8.0+</code></td></tr>
-            <tr><td>進階複習 / SRS</td><td>加入每日佇列、間隔提醒、錯題回看。</td><td><code>v1.8.0+</code></td></tr>
+            <tr><td>真正 <code>.xlsx</code> 匯出</td><td>保留欄寬、工作表與格式，降低 Excel 使用門檻。</td><td><code>v1.9.x+</code></td></tr>
+            <tr><td>單字本備份 / 匯入</td><td>讓使用者可搬移單字資料，避免移除 extension 後流失。</td><td><code>v1.9.x+</code></td></tr>
+            <tr><td>IndexedDB migration</td><td>單字量接近數千筆時降低單一 storage object 負擔。</td><td><code>v1.9.x+</code></td></tr>
+            <tr><td>高亮斷詞改善</td><td>減少英文詞形、大小寫與多語詞彙漏標 / 誤標。</td><td><code>v1.9.x+</code></td></tr>
+            <tr><td>進階複習 / SRS</td><td>加入每日佇列、間隔提醒、錯題回看。</td><td><code>v1.9.x+</code></td></tr>
           </tbody>
         </table>
       </section>
@@ -762,8 +762,8 @@ options.js</pre>
           <div class="card">
             <h3>操作補強</h3>
             <ul>
-              <li>複製譯文、複製雙語、定位原文、重試此段排入 <code>v1.8.0+</code>。</li>
-              <li>定位原文在只看譯文模式下需先切回雙語或原文可見。</li>
+              <li>複製譯文、複製雙語與定位原文已完成；重試此段保留在 <code>v1.8.x</code> 收斂。</li>
+              <li>定位原文在只看譯文模式下會先切回雙語，並同步 active pair。</li>
               <li>Esc 或點空白處取消 pair active。</li>
             </ul>
           </div>
@@ -842,8 +842,8 @@ options.js</pre>
             <ol>
               <li><strong>v1.6.3</strong>：先完成真實網站 QA，尤其 Google Docs / Gmail / Notion / Google Skills，不讓選字工具列與全文翻譯破壞頁面。</li>
               <li><strong>v1.7.x</strong>：Cloud Sync / secrets / cross-browser OAuth 收乾淨，解決換機成本。</li>
-              <li><strong>v1.8.x</strong>：Read Frog benchmark 收斂：context digest、batch requests、全文翻譯操作補強、usage summary、prompt templates，並加入 iframe / SVG 嵌入圖表翻譯。</li>
-              <li><strong>v1.9.x</strong>：Learning layer + 進階嵌入內容：單字本 SRS、難字自動高亮、文章級 summary / grammar / sentence breakdown、Shadow DOM、字幕與 OCR 型內容探索。</li>
+              <li><strong>v1.8.x</strong>：全文翻譯穩定化：定位原文、context digest、batch requests、usage summary、prompt templates，最後只做嵌入元件偵測。</li>
+              <li><strong>v1.9.x</strong>：Learning layer + 嵌入元件 v1：單字本 SRS、難字自動高亮、iframe / SVG / open Shadow DOM。</li>
             </ol>
           </div>
           <div class="card">
@@ -868,7 +868,7 @@ options.js</pre>
 
       <section id="embedded-translation-roadmap">
         <h2>嵌入元件翻譯 Roadmap</h2>
-        <div class="callout">結論：先做「可偵測、可告知、可嘗試翻譯」的嵌入元件翻譯器。v1 先支援 iframe 圖表與 SVG 文字；canvas、圖片、PDF、字幕與封閉 Shadow DOM 先列入後續，避免為了翻少數頁面破壞全文翻譯穩定性。</div>
+        <div class="callout">結論：v1.8 只做「可偵測、可告知」的嵌入元件偵測器；iframe / SVG / open Shadow DOM 翻譯移到 v1.9.x。canvas、圖片、PDF、字幕與封閉 Shadow DOM 延後，避免為了少數頁面破壞一般全文翻譯穩定性。</div>
 
         <table style="margin-top:12px;">
           <thead>
@@ -879,19 +879,19 @@ options.js</pre>
               <td>iframe 圖表 / 互動內容</td>
               <td>Datawrapper、Flourish、Tableau Public、Observable、Guardian interactive、Google Forms / Slides / Docs embed。</td>
               <td>文字在 iframe 文件內，主頁全文翻譯只能看到 iframe 外殼；目前浮球只在 top page 顯示。</td>
-              <td><span class="pill green">v1.8.1 優先</span> content script 跑進 iframe，由主頁廣播翻譯命令；先支援同源 / 可注入 iframe，失敗時顯示「此嵌入元件無法存取」。</td>
+              <td><span class="pill orange">v1.9.x</span> 先由偵測器標記；正式翻譯再讓 content script 跑進 iframe，由主頁廣播翻譯命令。</td>
             </tr>
             <tr>
               <td>SVG 圖表文字</td>
               <td>D3、Highcharts、ECharts、Datawrapper 內部圖表、新聞互動圖表。</td>
               <td>目前全文翻譯刻意排除 <code>svg</code>，避免直接改圖表文字造成座標軸與 legend 版面炸掉。</td>
-              <td><span class="pill green">v1.8.2 優先</span> 抓 <code>svg text</code>、<code>title</code>、<code>aria-label</code>，以 overlay / tooltip 顯示譯文，不直接改原 SVG。</td>
+              <td><span class="pill orange">v1.9.x</span> 抓 <code>svg text</code>、<code>title</code>、<code>aria-label</code>，以 overlay / tooltip 顯示譯文，不直接改原 SVG。</td>
             </tr>
             <tr>
               <td>Shadow DOM 元件</td>
               <td>Web Components、部分學習平台、現代 SaaS UI、設計系統元件。</td>
               <td>普通 <code>querySelectorAll</code> 不會穿透 shadow root；closed shadow root 完全不可直接讀。</td>
-              <td><span class="pill orange">v1.8.3</span> 遞迴掃 open shadow roots；closed shadow root 顯示限制，改走選取翻譯或未來 OCR。</td>
+              <td><span class="pill orange">v1.9.x</span> 遞迴掃 open shadow roots；closed shadow root 顯示限制，改走選取翻譯或未來 OCR。</td>
             </tr>
             <tr>
               <td>canvas / WebGL 圖表</td>
@@ -936,11 +936,11 @@ options.js</pre>
           <div class="card">
             <h3>推薦實作順序</h3>
             <ol>
-              <li><strong>v1.8.0</strong>：先做嵌入元件偵測器，顯示本頁有多少 iframe / SVG / canvas / shadow root 可嘗試。</li>
-              <li><strong>v1.8.1</strong>：主頁浮球廣播到可注入 iframe，支援 Datawrapper / Flourish 類圖表文字翻譯。</li>
-              <li><strong>v1.8.2</strong>：SVG text overlay 翻譯，優先處理座標軸、legend、tooltip label。</li>
-              <li><strong>v1.8.3</strong>：open Shadow DOM 掃描；closed shadow root 只告知限制。</li>
-              <li><strong>v1.9.x+</strong>：字幕、OCR、PDF、canvas 進入探索，不綁在 v1.8 穩定版。</li>
+              <li><strong>v1.8.6</strong>：先做嵌入元件偵測器，顯示本頁有多少 iframe / SVG / canvas / shadow root。</li>
+              <li><strong>v1.9.x</strong>：主頁浮球廣播到可注入 iframe，支援 Datawrapper / Flourish 類圖表文字翻譯。</li>
+              <li><strong>v1.9.x</strong>：SVG text overlay 翻譯，優先處理座標軸、legend、tooltip label。</li>
+              <li><strong>v1.9.x</strong>：open Shadow DOM 掃描；closed shadow root 只告知限制。</li>
+              <li><strong>v2.0.x</strong>：字幕、OCR、PDF、canvas 進入探索，不綁在 v1.8 穩定版。</li>
             </ol>
           </div>
           <div class="card">
@@ -1111,13 +1111,13 @@ options.js</pre>
             <span class="pill green">完成</span>
           </div>
           <div class="phase">
-            <strong>v1.8.x：Read Frog Benchmark / Embedded Translation v1</strong>
-            <p>Context digest、batch requests、全文翻譯複製譯文 / 複製雙語 / 定位原文、usage summary、prompt templates；新增嵌入元件偵測器、iframe 圖表翻譯、SVG text overlay 翻譯。</p>
+            <strong>v1.8.x：全文翻譯穩定化</strong>
+            <p>定位原文、context digest、batch requests、usage summary、prompt templates；最後新增嵌入元件偵測器，但不在 v1.8 做 iframe / SVG / Shadow DOM 翻譯。</p>
             <span class="pill orange">下一步</span>
           </div>
           <div class="phase">
-            <strong>v1.9.x：Learning Layer / Embedded Advanced</strong>
-            <p>文章級 summary、句子拆解、文法 / 詞彙講解、SRS 複習佇列、難字自動高亮；同步探索 open Shadow DOM、YouTube 字幕、社群 iframe 留言、canvas / 圖片 OCR 側邊翻譯。</p>
+            <strong>v1.9.x：Learning Layer / Embedded Translation v1</strong>
+            <p>文章級 summary、句子拆解、文法 / 詞彙講解、SRS 複習佇列、難字自動高亮；同步開始 iframe、SVG overlay 與 open Shadow DOM。</p>
             <span class="pill orange">待排程</span>
           </div>
           <div class="phase">
@@ -1135,6 +1135,12 @@ options.js</pre>
             <tr><th>日期</th><th>版本線</th><th>完成事項</th><th>驗證 / 注意</th></tr>
           </thead>
           <tbody>
+            <tr>
+              <td>2026-06-17</td>
+              <td><code>v1.8.1</code></td>
+              <td>完成全文翻譯定位原文：每個譯文區塊新增「定位原文」操作；點擊後切回雙語模式、同步 active pair，並捲動到對應原文。同步重排 roadmap：v1.8.x 聚焦全文翻譯穩定化，iframe / SVG / Shadow DOM 移到 v1.9.x。</td>
+              <td><code>node --check content/page-translator.js</code> 通過；<code>npm test -- tests/content/page-translator.test.js tests/options.test.js --runInBand</code> 通過，2 suites / 27 tests；<code>npm test -- --runInBand</code> 通過，14 suites / 99 tests。</td>
+            </tr>
             <tr>
               <td>2026-06-17</td>
               <td><code>v1.8.0</code></td>
