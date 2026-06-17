@@ -366,7 +366,17 @@ describe('page translator helpers', () => {
       total: 5
     });
     expect(buildEmbeddedTranslationSummaryText(summary)).toBe(
-      '偵測到嵌入內容：iframe 1、SVG 文字 2、Shadow DOM 1、canvas 1。目前不做原位翻譯，建議先用選取翻譯。'
+      '本頁有部分圖表或互動內容目前無法全文翻譯，可改用選取翻譯。'
     );
+  });
+
+  it('does not show technical embedded warnings for shadow-dom-only pages', () => {
+    expect(buildEmbeddedTranslationSummaryText({
+      iframeCount: 0,
+      svgTextCount: 0,
+      openShadowRootCount: 12,
+      canvasCount: 0,
+      total: 12
+    })).toBe('');
   });
 });

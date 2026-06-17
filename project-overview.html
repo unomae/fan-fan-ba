@@ -1137,6 +1137,12 @@ options.js</pre>
           <tbody>
             <tr>
               <td>2026-06-17</td>
+              <td><code>v1.8.6 UX follow-up</code></td>
+              <td>依手動測試回饋調整嵌入內容提示：不再對一般使用者顯示 iframe / SVG / Shadow DOM / canvas 等技術術語；Shadow DOM-only 的現代網站不顯示警告，只有明顯圖表或互動嵌入內容時才提示「本頁有部分圖表或互動內容目前無法全文翻譯，可改用選取翻譯」。</td>
+              <td>補 <code>tests/content/page-translator.test.js</code> 覆蓋 Shadow DOM-only 不提示與使用者文案。</td>
+            </tr>
+            <tr>
+              <td>2026-06-17</td>
               <td><code>v1.8.2 / v1.8.3 / v1.8.4</code></td>
               <td>回補全文翻譯穩定化：每段 request 帶入本地 context digest（page title、hostname、主要 heading、附近段落）；多段全文翻譯改為小批次請求，批次解析失敗時 fallback 單段重試；面板新增本次 usage summary，顯示段落數、成功數、失敗數與 request 估算，不上雲。</td>
               <td><code>node --check content/page-translator.js</code> 通過；<code>node --check background.js</code> 通過；<code>npm test -- tests/content/page-translator.test.js tests/content/css.test.js tests/background.test.js --runInBand</code> 通過，3 suites / 36 tests；<code>npm test -- --runInBand</code> 通過，14 suites / 107 tests。</td>

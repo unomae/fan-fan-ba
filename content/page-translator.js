@@ -1030,14 +1030,12 @@ function detectEmbeddedTranslationTargets(root = document) {
 }
 
 function buildEmbeddedTranslationSummaryText(summary) {
-  if (!summary?.total) return '';
-  const parts = [
-    summary.iframeCount ? `iframe ${summary.iframeCount}` : '',
-    summary.svgTextCount ? `SVG 文字 ${summary.svgTextCount}` : '',
-    summary.openShadowRootCount ? `Shadow DOM ${summary.openShadowRootCount}` : '',
-    summary.canvasCount ? `canvas ${summary.canvasCount}` : ''
-  ].filter(Boolean);
-  return `偵測到嵌入內容：${parts.join('、')}。目前不做原位翻譯，建議先用選取翻譯。`;
+  if (!summary) return '';
+  const userVisibleEmbeddedCount = Number(summary.iframeCount || 0)
+    + Number(summary.svgTextCount || 0)
+    + Number(summary.canvasCount || 0);
+  if (!userVisibleEmbeddedCount) return '';
+  return '本頁有部分圖表或互動內容目前無法全文翻譯，可改用選取翻譯。';
 }
 
 async function copyPageTranslationText(format, button) {
