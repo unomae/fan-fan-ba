@@ -2,6 +2,8 @@ const {
   cleanPageTranslationResult,
   collectVisibleTranslatableBlocks,
   buildPageTranslationCopyText,
+  detectEmbeddedTranslationTargets,
+  buildEmbeddedTranslationSummaryText,
   locatePageTranslationSource,
   getPageTranslationContrastTheme,
   getPageTranslationStatusText
@@ -259,5 +261,30 @@ describe('page translator helpers', () => {
       block: 'center',
       inline: 'nearest'
     });
+  });
+
+  it('detects embedded translation targets without translating them in place', () => {
+    document.body.innerHTML = `
+      <main>
+        <iframe title="interactive chart"></iframe>
+        <svg><text>Revenue</text><g aria-label="Profit margin"></g></svg>
+        <canvas></canvas>
+        <div id="shadow-host"></div>
+      </main>
+    `;
+    document.getElementById('shadow-host').attachShadow({ mode: 'open' });
+
+    const summary = detectEmbeddedTranslationTargets();
+
+    expect(summary).toEqual({
+      iframeCount: 1,
+      svgTextCount: 2,
+      openShadowRootCount: 1,
+      canvasCount: 1,
+      total: 5
+    });
+    expect(buildEmbeddedTranslationSummaryText(summary)).toBe(
+      '偵測到嵌入內容：iframe 1、SVG 文字 2、Shadow DOM 1、canvas 1。目前不做原位翻譯，建議先用選取翻譯。'
+    );
   });
 });

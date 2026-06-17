@@ -57,4 +57,9 @@ describe('content CSS UI safeguards', () => {
   it('keeps page translation progress notes hidden from users', () => {
     expect(css).toMatch(/\.ffb-page-panel-status\s*{[^}]*display:\s*none\s*!important;/);
   });
+
+  it('keeps embedded content detector notes available in the page translation panel', () => {
+    expect(css).toContain('.ffb-page-embedded-summary');
+    expect(css).toMatch(/\.ffb-page-embedded-summary\[hidden\]\s*{[^}]*display:\s*none\s*!important;/);
+  });
 });

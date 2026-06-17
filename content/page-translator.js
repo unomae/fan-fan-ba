@@ -32,6 +32,7 @@ let pageTranslationState = {
   mode: 'bilingual',
   density: 'compact',
   items: [],
+  embeddedSummary: null,
   done: 0,
   errors: 0,
   total: 0
@@ -47,6 +48,7 @@ function startPageTranslationBeta() {
   }
 
   const items = collectVisibleTranslatableBlocks();
+  const embeddedSummary = detectEmbeddedTranslationTargets();
   ensurePageTranslationPanel();
   pageTranslationState = {
     running: items.length > 0,
@@ -61,6 +63,7 @@ function startPageTranslationBeta() {
     mode: pageTranslationState.mode || 'bilingual',
     density: pageTranslationState.density || 'compact',
     items,
+    embeddedSummary,
     done: 0,
     errors: 0,
     total: items.length
@@ -636,6 +639,7 @@ function ensurePageTranslationPanel() {
       <div class="ffb-page-panel-count">0/0</div>
     </div>
     <div class="ffb-page-panel-status"></div>
+    <div class="ffb-page-embedded-summary" hidden></div>
     <div class="ffb-page-panel-controls">
       <div class="ffb-page-panel-modes" aria-label="全文翻譯顯示模式">
         <button type="button" data-mode="bilingual" title="雙語" aria-label="顯示雙語">雙</button>
@@ -678,6 +682,7 @@ function ensurePageTranslationPanel() {
 function updatePageTranslationPanel(message = '') {
   if (!pageTranslationPanel) return;
   const status = pageTranslationPanel.querySelector('.ffb-page-panel-status');
+  const embedded = pageTranslationPanel.querySelector('.ffb-page-embedded-summary');
   const count = pageTranslationPanel.querySelector('.ffb-page-panel-count');
   const modeButtons = pageTranslationPanel.querySelectorAll('[data-mode]');
   const densityButtons = pageTranslationPanel.querySelectorAll('[data-density]');
@@ -687,6 +692,12 @@ function updatePageTranslationPanel(message = '') {
   const total = pageTranslationState.total;
   if (count) count.textContent = `${done}/${total}`;
   status.textContent = getPageTranslationStatusText(pageTranslationState, message);
+  if (embedded) {
+    const embeddedText = buildEmbeddedTranslationSummaryText(pageTranslationState.embeddedSummary);
+    embedded.hidden = !embeddedText;
+    embedded.textContent = embeddedText;
+    embedded.title = embeddedText;
+  }
   modeButtons.forEach(btn => btn.classList.toggle('ffb-page-active', btn.dataset.mode === pageTranslationState.mode));
   densityButtons.forEach(btn => btn.classList.toggle('ffb-page-active', btn.dataset.density === pageTranslationState.density));
   if (stopButton) stopButton.disabled = !pageTranslationState.running && !pageTranslationState.stopping;
@@ -758,6 +769,48 @@ function buildPageTranslationCopyText(format = 'translation', items = pageTransl
     ].join('\n')).join('\n\n---\n\n');
   }
   return completedItems.map(item => String(item.translatedText || '').trim()).join('\n\n');
+}
+
+function detectEmbeddedTranslationTargets(root = document) {
+  const queryAll = selector => Array.from(root.querySelectorAll?.(selector) || []);
+  const isVisibleNode = node => {
+    const rect = node.getBoundingClientRect?.();
+    if (rect && (rect.width <= 0 || rect.height <= 0)) return false;
+    return isVisibleByStyle(node);
+  };
+
+  const isVisibleByStyle = node => {
+    const style = window.getComputedStyle?.(node);
+    return !(style && (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0'));
+  };
+
+  const iframeCount = queryAll('iframe').filter(isVisibleNode).length;
+  const canvasCount = queryAll('canvas').filter(isVisibleNode).length;
+  const svgTextCount = queryAll('svg text, svg title, svg [aria-label]')
+    .filter(node => isVisibleByStyle(node.closest?.('svg') || node) && isVisibleByStyle(node))
+    .filter(node => (node.getAttribute?.('aria-label') || node.textContent || '').trim())
+    .length;
+  const openShadowRootCount = queryAll('*').filter(node => node.shadowRoot).length;
+
+  const total = iframeCount + canvasCount + svgTextCount + openShadowRootCount;
+  return {
+    iframeCount,
+    svgTextCount,
+    openShadowRootCount,
+    canvasCount,
+    total
+  };
+}
+
+function buildEmbeddedTranslationSummaryText(summary) {
+  if (!summary?.total) return '';
+  const parts = [
+    summary.iframeCount ? `iframe ${summary.iframeCount}` : '',
+    summary.svgTextCount ? `SVG 文字 ${summary.svgTextCount}` : '',
+    summary.openShadowRootCount ? `Shadow DOM ${summary.openShadowRootCount}` : '',
+    summary.canvasCount ? `canvas ${summary.canvasCount}` : ''
+  ].filter(Boolean);
+  return `偵測到嵌入內容：${parts.join('、')}。目前不做原位翻譯，建議先用選取翻譯。`;
 }
 
 async function copyPageTranslationText(format, button) {
@@ -844,6 +897,7 @@ function restorePageTranslationBeta() {
     mode: 'bilingual',
     density: 'compact',
     items: [],
+    embeddedSummary: null,
     done: 0,
     errors: 0,
     total: 0
@@ -1048,6 +1102,8 @@ if (typeof module !== 'undefined' && module.exports) {
     getPageTranslationContrastTheme,
     getPageTranslationStatusText,
     buildPageTranslationCopyText,
+    detectEmbeddedTranslationTargets,
+    buildEmbeddedTranslationSummaryText,
     locatePageTranslationSource,
     getElementTranslationText,
     isPageTranslatableElement,

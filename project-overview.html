@@ -338,7 +338,7 @@
           <p class="lead">這份文件是翻翻吧唯一專案記憶入口，已整合原本散落的 review HTML、vocabulary roadmap、全文翻譯 UX review 與 session context。之後專案進度、roadmap、決策與驗證狀態都更新在這裡。</p>
         </div>
         <div class="meta-row">
-          <span class="pill green">版本 1.8.1</span>
+          <span class="pill green">版本 1.8.6</span>
           <span class="pill blue">Manifest V3</span>
           <span class="pill">最後更新 2026-06-17</span>
           <span class="pill orange">文件狀態：主入口</span>
@@ -376,11 +376,11 @@
           </div>
           <div class="card">
             <h3>目前重點</h3>
-            <p>目前版本線是 v1.8.1：v1.8.x 主線改為全文翻譯穩定化，已完成複製譯文 / 複製雙語與定位原文；嵌入元件翻譯延後到 v1.9.x。</p>
+            <p>目前版本線是 v1.8.6：v1.8.x 主線聚焦全文翻譯穩定化；v1.8.5 Prompt Templates 取消，已直接完成嵌入元件偵測器。</p>
           </div>
           <div class="card">
             <h3>最新進展</h3>
-            <p>2026-06-17 v1.8.1 已補全文翻譯「定位原文」操作；下一步按 v1.8.x 順序做 context digest、batch requests、usage summary 與 prompt templates。</p>
+            <p>2026-06-17 v1.8.6 已補 iframe / SVG / Shadow DOM / canvas 偵測摘要；下一步回到 v1.8.2 context digest 或 v1.8.3 batch requests。</p>
           </div>
         </div>
       </section>
@@ -807,7 +807,7 @@ options.js</pre>
               <td>Custom prompts / translation styles</td>
               <td>Chrome Web Store 提到 dynamic tokens；Read Frog docs 有 Custom AI Actions / Custom Translation Styles 入口。</td>
               <td>目前 prompt 內建，使用者不能自訂領域風格。</td>
-              <td><span class="pill green">優先追</span> 做 3 個安全模板：學習者、技術文件、商務郵件；進階再開 token prompt。</td>
+              <td><span class="pill orange">取消 v1.8.5</span> 暫不做 prompt templates；避免在全文翻譯穩定前增加設定複雜度。</td>
             </tr>
             <tr>
               <td>YouTube subtitle translation</td>
@@ -842,7 +842,7 @@ options.js</pre>
             <ol>
               <li><strong>v1.6.3</strong>：先完成真實網站 QA，尤其 Google Docs / Gmail / Notion / Google Skills，不讓選字工具列與全文翻譯破壞頁面。</li>
               <li><strong>v1.7.x</strong>：Cloud Sync / secrets / cross-browser OAuth 收乾淨，解決換機成本。</li>
-              <li><strong>v1.8.x</strong>：全文翻譯穩定化：定位原文、context digest、batch requests、usage summary、prompt templates，最後只做嵌入元件偵測。</li>
+              <li><strong>v1.8.x</strong>：全文翻譯穩定化：定位原文、context digest、batch requests、usage summary；取消 prompt templates，最後只做嵌入元件偵測。</li>
               <li><strong>v1.9.x</strong>：Learning layer + 嵌入元件 v1：單字本 SRS、難字自動高亮、iframe / SVG / open Shadow DOM。</li>
             </ol>
           </div>
@@ -936,7 +936,7 @@ options.js</pre>
           <div class="card">
             <h3>推薦實作順序</h3>
             <ol>
-              <li><strong>v1.8.6</strong>：先做嵌入元件偵測器，顯示本頁有多少 iframe / SVG / canvas / shadow root。</li>
+              <li><strong>v1.8.6</strong>：嵌入元件偵測器已完成，顯示本頁有多少 iframe / SVG / canvas / shadow root。</li>
               <li><strong>v1.9.x</strong>：主頁浮球廣播到可注入 iframe，支援 Datawrapper / Flourish 類圖表文字翻譯。</li>
               <li><strong>v1.9.x</strong>：SVG text overlay 翻譯，優先處理座標軸、legend、tooltip label。</li>
               <li><strong>v1.9.x</strong>：open Shadow DOM 掃描；closed shadow root 只告知限制。</li>
@@ -1112,7 +1112,7 @@ options.js</pre>
           </div>
           <div class="phase">
             <strong>v1.8.x：全文翻譯穩定化</strong>
-            <p>定位原文、context digest、batch requests、usage summary、prompt templates；最後新增嵌入元件偵測器，但不在 v1.8 做 iframe / SVG / Shadow DOM 翻譯。</p>
+            <p>定位原文、context digest、batch requests、usage summary；取消 v1.8.5 prompt templates，直接完成嵌入元件偵測器，但不在 v1.8 做 iframe / SVG / Shadow DOM 翻譯。</p>
             <span class="pill orange">下一步</span>
           </div>
           <div class="phase">
@@ -1135,6 +1135,12 @@ options.js</pre>
             <tr><th>日期</th><th>版本線</th><th>完成事項</th><th>驗證 / 注意</th></tr>
           </thead>
           <tbody>
+            <tr>
+              <td>2026-06-17</td>
+              <td><code>v1.8.6</code></td>
+              <td>取消 v1.8.5 Prompt Templates，直接完成 v1.8.6 Embedded Detector：全文翻譯面板會偵測本頁 iframe、SVG 文字、open Shadow DOM 與 canvas，顯示「目前不做原位翻譯，建議先用選取翻譯」的摘要；不進行 iframe / SVG / Shadow DOM 實際翻譯。</td>
+              <td><code>node --check content/page-translator.js</code> 通過；<code>npm test -- tests/content/page-translator.test.js tests/content/css.test.js tests/options.test.js --runInBand</code> 通過，3 suites / 37 tests；<code>npm test -- --runInBand</code> 通過，14 suites / 101 tests。</td>
+            </tr>
             <tr>
               <td>2026-06-17</td>
               <td><code>v1.8.1</code></td>
