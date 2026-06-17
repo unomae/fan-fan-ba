@@ -141,8 +141,48 @@ describe('Vocabulary storage helper', () => {
 
     expect(known).toMatchObject({ id: item.id, status: 'known' });
     expect(known.reviewedAt).toBe('2026-05-26T04:00:00.000Z');
+    expect(known.nextReviewAt).toBe('2026-06-02T04:00:00.000Z');
     expect(learning).toMatchObject({ id: item.id, status: 'learning' });
+    expect(learning.nextReviewAt).toBe('2026-05-27T04:00:00.000Z');
     expect((await context.listVocabularyItems())[0].id).toBe(item.id);
+  });
+
+  it('builds a due-first SRS review queue for v1.9.4', () => {
+    const { context } = createVocabularyContext();
+    const queue = context.buildVocabularyReviewQueue([
+      {
+        id: 'en:anchor',
+        word: 'Anchor',
+        status: 'known',
+        nextReviewAt: '2026-05-20T00:00:00.000Z',
+        createdAt: '2026-05-01T00:00:00.000Z'
+      },
+      {
+        id: 'en:beacon',
+        word: 'Beacon',
+        status: 'learning',
+        nextReviewAt: '2026-05-28T00:00:00.000Z',
+        createdAt: '2026-05-02T00:00:00.000Z'
+      },
+      {
+        id: 'en:compass',
+        word: 'Compass',
+        status: 'learning',
+        createdAt: '2026-05-26T00:00:00.000Z'
+      }
+    ], {
+      now: '2026-05-26T12:00:00.000Z'
+    });
+
+    expect(queue.map(item => ({
+      id: item.id,
+      due: item.due,
+      reviewReason: item.reviewReason
+    }))).toEqual([
+      { id: 'en:compass', due: true, reviewReason: 'due' },
+      { id: 'en:anchor', due: true, reviewReason: 'due' },
+      { id: 'en:beacon', due: false, reviewReason: 'scheduled' }
+    ]);
   });
 
   it('builds Markdown export blocks for saved vocabulary', async () => {

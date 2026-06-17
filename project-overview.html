@@ -376,11 +376,11 @@
           </div>
           <div class="card">
             <h3>目前重點</h3>
-            <p>目前版本線是 v1.8.6：v1.8.x 全文翻譯穩定化已補完 v1.8.2 Context Digest、v1.8.3 Batch Requests、v1.8.4 Usage Summary；v1.8.5 Prompt Templates 取消，v1.8.6 Embedded Detector 保持已完成。</p>
+            <p>目前版本線仍是 v1.8.6，但 v1.9.x 已開工：先建立 iframe bridge 分類、SVG overlay target、open Shadow DOM block 收集、Learning Summary seed 與 SRS review queue。</p>
           </div>
           <div class="card">
             <h3>最新進展</h3>
-            <p>2026-06-17 已回補 v1.8.2～v1.8.4：全文翻譯 request 會帶本地 context digest，多段可批次請求並於失敗時 fallback 單段重試，面板顯示本次段落 / 成功 / 失敗 / request 摘要。</p>
+            <p>2026-06-18 已開 v1.9.0～v1.9.4 foundation：嵌入翻譯先補可測資料結構，Learning Layer 與 Vocabulary Pro 先補本地 helper，完整測試通過 14 suites / 114 tests。</p>
           </div>
         </div>
       </section>
@@ -1078,12 +1078,12 @@ options.js</pre>
           <div class="phase">
             <strong>v1.6.x：穩定性、備份與 A11y</strong>
             <p>API Key local storage、JSON 備份 / 還原、Obsidian 路徑精準寫入、request abort、結果卡 responsive、focus-visible、reduced motion。</p>
-            <span class="pill green">目前版本</span>
+            <span class="pill green">完成</span>
           </div>
           <div class="phase">
             <strong>v1.6.3：Release Readiness + Real-site QA</strong>
             <p>實站回測 Gmail / Notion / 新聞頁 / 長文章全文翻譯，降低 app shell / toolbar / dialog / editable 區誤翻風險，補商店與 README 上線收尾。</p>
-            <span class="pill green">完成</span>
+            <span class="pill orange">手動 QA 測試中</span>
           </div>
           <div class="phase">
             <strong>v1.7.0：Cloud Sync</strong>
@@ -1118,7 +1118,7 @@ options.js</pre>
           <div class="phase">
             <strong>v1.9.x：Learning Layer / Embedded Translation v1</strong>
             <p>文章級 summary、句子拆解、文法 / 詞彙講解、SRS 複習佇列、難字自動高亮；同步開始 iframe、SVG overlay 與 open Shadow DOM。</p>
-            <span class="pill orange">待排程</span>
+            <span class="pill orange">已開工</span>
           </div>
           <div class="phase">
             <strong>v2.0.x：PDF / OCR Mode</strong>
@@ -1135,6 +1135,18 @@ options.js</pre>
             <tr><th>日期</th><th>版本線</th><th>完成事項</th><th>驗證 / 注意</th></tr>
           </thead>
           <tbody>
+            <tr>
+              <td>2026-06-18</td>
+              <td><code>v1.9.0-v1.9.4 foundation</code></td>
+              <td>開工 v1.9.x 五條線：<code>v1.9.0</code> 新增 iframe 翻譯 target 分類，區分 same-origin、cross-origin frame-script 與 blocked；<code>v1.9.1</code> 新增 SVG text / title / aria-label overlay target helper；<code>v1.9.2</code> 新增 open Shadow DOM 可翻 block 收集；<code>v1.9.3</code> 新增本地 Learning Summary seed；<code>v1.9.4</code> 新增 SRS review queue，單字狀態更新會寫入 <code>nextReviewAt</code>。</td>
+              <td><code>node --check content/page-translator.js</code> 通過；<code>node --check content/vocabulary.js</code> 通過；<code>npm test -- tests/content/page-translator.test.js tests/content/vocabulary.test.js --runInBand</code> 通過，2 suites / 28 tests；<code>npm test -- --runInBand</code> 通過，14 suites / 114 tests。</td>
+            </tr>
+            <tr>
+              <td>2026-06-18</td>
+              <td><code>Test reproducibility</code></td>
+              <td>修正 roadmap 狀態標籤：<code>v1.6.x</code> 改為完成，<code>v1.6.3 Release QA</code> 標為手動 QA 測試中；同時移除 <code>.gitignore</code> 對 <code>package.json</code> / <code>package-lock.json</code> 的忽略，新增最小 npm / Jest 設定與共用 Chrome extension mock，讓新機器可重建測試環境。</td>
+              <td><code>npm install --package-lock-only</code> 已產生 lock 檔；<code>npm install</code> 完成本機 dev dependencies；<code>npm test -- --runInBand</code> 通過，14 suites / 109 tests。npm audit 仍回報 17 個 moderate dev dependency warnings，本輪未自動修正。</td>
+            </tr>
             <tr>
               <td>2026-06-17</td>
               <td><code>v1.8.6 UX follow-up</code></td>

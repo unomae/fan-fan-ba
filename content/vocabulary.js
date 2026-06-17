@@ -3,6 +3,11 @@
 const VOCABULARY_STORAGE_KEY = 'fanFanBaVocabularyItems';
 const VOCABULARY_MAX_SOURCES = 5;
 const VOCABULARY_MAX_CONTEXT_CHARS = 180;
+const VOCABULARY_SRS_INTERVAL_DAYS = {
+  new: 0,
+  learning: 1,
+  known: 7
+};
 
 function getVocabularyId(word, lang) {
   const normalizedWord = String(word || '')
@@ -55,6 +60,7 @@ async function updateVocabularyEntryStatus(id, status) {
     status: normalizedStatus,
     reviewedAt: new Date().toISOString()
   };
+  items[id].nextReviewAt = getVocabularyNextReviewAt(items[id], items[id].reviewedAt);
   await chrome.storage.local.set({ [VOCABULARY_STORAGE_KEY]: items });
   return items[id];
 }
@@ -247,6 +253,47 @@ function buildVocabularyCsvExport(items) {
   });
 
   return `\ufeff${[header, ...rows].map(row => row.map(escapeVocabularyCsvCell).join(',')).join('\r\n')}`;
+}
+
+function buildVocabularyReviewQueue(items = [], options = {}) {
+  const now = options.now ? new Date(options.now) : new Date();
+  const limit = Number(options.limit || 20);
+  return (Array.isArray(items) ? items : [])
+    .map(item => buildVocabularyReviewQueueItem(item, now))
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (a.due !== b.due) return a.due ? -1 : 1;
+      const aPriority = a.status === 'learning' ? 0 : 1;
+      const bPriority = b.status === 'learning' ? 0 : 1;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      const aTime = Date.parse(a.nextReviewAt || a.lastSeenAt || a.createdAt || 0) || 0;
+      const bTime = Date.parse(b.nextReviewAt || b.lastSeenAt || b.createdAt || 0) || 0;
+      if (aTime !== bTime) return aTime - bTime;
+      return String(a.word || '').localeCompare(String(b.word || ''));
+    })
+    .slice(0, limit);
+}
+
+function buildVocabularyReviewQueueItem(item, now) {
+  if (!item?.id) return null;
+  const nextReviewAt = item.nextReviewAt || getVocabularyNextReviewAt(item, item.reviewedAt || item.createdAt || item.lastSeenAt);
+  const due = !nextReviewAt || Date.parse(nextReviewAt) <= now.getTime();
+  return {
+    ...item,
+    nextReviewAt,
+    due,
+    reviewReason: due ? 'due' : 'scheduled'
+  };
+}
+
+function getVocabularyNextReviewAt(item, reviewedAt = new Date().toISOString()) {
+  const reviewedTime = Date.parse(reviewedAt || '');
+  if (!Number.isFinite(reviewedTime)) return '';
+  const status = item?.status === 'known' ? 'known' : 'learning';
+  const intervalDays = item?.reviewedAt
+    ? VOCABULARY_SRS_INTERVAL_DAYS[status]
+    : VOCABULARY_SRS_INTERVAL_DAYS.new;
+  return new Date(reviewedTime + intervalDays * 24 * 60 * 60 * 1000).toISOString();
 }
 
 function escapeVocabularyCsvCell(value) {

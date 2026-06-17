@@ -11,6 +11,10 @@ const {
   buildPageTranslationUsageSummaryText,
   detectEmbeddedTranslationTargets,
   buildEmbeddedTranslationSummaryText,
+  collectEmbeddedFrameTranslationTargets,
+  collectSvgTextTranslationTargets,
+  collectOpenShadowDomTranslationBlocks,
+  buildPageLearningSummary,
   locatePageTranslationSource,
   getPageTranslationContrastTheme,
   getPageTranslationStatusText
@@ -378,5 +382,127 @@ describe('page translator helpers', () => {
       canvasCount: 0,
       total: 12
     })).toBe('');
+  });
+
+  it('classifies iframe targets for the v1.9.0 frame bridge', () => {
+    document.body.innerHTML = `
+      <main>
+        <iframe title="same origin chart" src="/chart.html"></iframe>
+        <iframe title="cross origin chart" src="https://charts.example.com/embed"></iframe>
+        <iframe title="unsupported widget" src="chrome://extensions"></iframe>
+      </main>
+    `;
+
+    const targets = collectEmbeddedFrameTranslationTargets(document, {
+      currentOrigin: 'http://localhost'
+    });
+
+    expect(targets.map(target => ({
+      title: target.title,
+      status: target.status,
+      bridgeMode: target.bridgeMode,
+      reason: target.reason
+    }))).toEqual([
+      {
+        title: 'same origin chart',
+        status: 'ready',
+        bridgeMode: 'same-origin',
+        reason: 'same-origin'
+      },
+      {
+        title: 'cross origin chart',
+        status: 'ready',
+        bridgeMode: 'frame-script',
+        reason: 'cross-origin-frame-script'
+      },
+      {
+        title: 'unsupported widget',
+        status: 'blocked',
+        bridgeMode: 'none',
+        reason: 'unsupported-scheme'
+      }
+    ]);
+  });
+
+  it('collects SVG text overlay targets for v1.9.1 without mutating the chart', () => {
+    document.body.innerHTML = `
+      <main>
+        <svg>
+          <text>Revenue</text>
+          <title>Quarterly profit</title>
+          <g aria-label="Gross margin"></g>
+        </svg>
+      </main>
+    `;
+
+    const targets = collectSvgTextTranslationTargets();
+
+    expect(targets.map(target => ({
+      text: target.text,
+      kind: target.kind,
+      overlayMode: target.overlayMode
+    }))).toEqual([
+      { text: 'Revenue', kind: 'text', overlayMode: 'tooltip' },
+      { text: 'Quarterly profit', kind: 'title', overlayMode: 'tooltip' },
+      { text: 'Gross margin', kind: 'aria-label', overlayMode: 'tooltip' }
+    ]);
+    expect(document.querySelector('svg').textContent).toContain('Revenue');
+  });
+
+  it('collects readable open Shadow DOM blocks for v1.9.2', () => {
+    document.body.innerHTML = '<main><custom-card id="host"></custom-card></main>';
+    const host = document.getElementById('host');
+    host.attachShadow({ mode: 'open' });
+    host.shadowRoot.innerHTML = `
+      <article>
+        <h2>Inventory planning inside a web component</h2>
+        <p>Regional teams adjusted allocation rules after demand shifted quickly.</p>
+      </article>
+    `;
+
+    const items = collectOpenShadowDomTranslationBlocks();
+
+    expect(items.map(item => ({
+      host: item.host.id,
+      text: item.text,
+      source: item.source
+    }))).toEqual([
+      {
+        host: 'host',
+        text: 'Inventory planning inside a web component',
+        source: 'open-shadow-dom'
+      },
+      {
+        host: 'host',
+        text: 'Regional teams adjusted allocation rules after demand shifted quickly.',
+        source: 'open-shadow-dom'
+      }
+    ]);
+  });
+
+  it('builds a local learning summary seed for v1.9.3', () => {
+    const summary = buildPageLearningSummary([
+      { text: 'Supply planners reduced allocation risk after volatility increased.' },
+      { translatedText: 'Teams reviewed procurement scenarios and inventory discipline.' },
+      { text: 'Allocation planning improved after repeated scenario reviews.' }
+    ], {
+      title: 'Learning article',
+      maxSentences: 2,
+      maxVocabulary: 3
+    });
+
+    expect(summary).toMatchObject({
+      title: 'Learning article',
+      sourceCount: 3,
+      keySentences: [
+        'Supply planners reduced allocation risk after volatility increased.',
+        'Teams reviewed procurement scenarios and inventory discipline.'
+      ]
+    });
+    expect(summary.vocabularyCandidates).toEqual([
+      { word: 'allocation', count: 2 },
+      { word: 'discipline', count: 1 },
+      { word: 'improved', count: 1 }
+    ]);
   });
 });

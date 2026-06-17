@@ -14,8 +14,6 @@ __tests__/
 jest.config.js
 jest.setup.js
 vitest.config.js
-package.json
-package-lock.json
 TESTING.md
 
 # Claude Code 工作目錄

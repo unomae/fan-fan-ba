@@ -1000,21 +1000,10 @@ function buildPageTranslationCopyText(format = 'translation', items = pageTransl
 
 function detectEmbeddedTranslationTargets(root = document) {
   const queryAll = selector => Array.from(root.querySelectorAll?.(selector) || []);
-  const isVisibleNode = node => {
-    const rect = node.getBoundingClientRect?.();
-    if (rect && (rect.width <= 0 || rect.height <= 0)) return false;
-    return isVisibleByStyle(node);
-  };
-
-  const isVisibleByStyle = node => {
-    const style = window.getComputedStyle?.(node);
-    return !(style && (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0'));
-  };
-
-  const iframeCount = queryAll('iframe').filter(isVisibleNode).length;
-  const canvasCount = queryAll('canvas').filter(isVisibleNode).length;
+  const iframeCount = queryAll('iframe').filter(isVisiblePageTranslationEmbeddedNode).length;
+  const canvasCount = queryAll('canvas').filter(isVisiblePageTranslationEmbeddedNode).length;
   const svgTextCount = queryAll('svg text, svg title, svg [aria-label]')
-    .filter(node => isVisibleByStyle(node.closest?.('svg') || node) && isVisibleByStyle(node))
+    .filter(node => isVisiblePageTranslationEmbeddedNode(node.closest?.('svg') || node) && isVisiblePageTranslationEmbeddedNode(node))
     .filter(node => (node.getAttribute?.('aria-label') || node.textContent || '').trim())
     .length;
   const openShadowRootCount = queryAll('*').filter(node => node.shadowRoot).length;
@@ -1029,6 +1018,133 @@ function detectEmbeddedTranslationTargets(root = document) {
   };
 }
 
+function collectEmbeddedFrameTranslationTargets(root = document, options = {}) {
+  return Array.from(root.querySelectorAll?.('iframe') || [])
+    .map(frame => describeEmbeddedFrameTranslationTarget(frame, options))
+    .filter(Boolean);
+}
+
+function describeEmbeddedFrameTranslationTarget(frame, options = {}) {
+  if (!frame || !isVisiblePageTranslationEmbeddedNode(frame)) return null;
+  const src = frame.getAttribute('src') || '';
+  const title = (frame.getAttribute('title') || frame.getAttribute('name') || '').trim();
+  const srcdoc = frame.hasAttribute('srcdoc');
+  const currentOrigin = options.currentOrigin || location.origin;
+  const sameDocument = srcdoc || !src || /^about:(?:blank)?$/i.test(src);
+
+  if (sameDocument) {
+    return {
+      type: 'iframe',
+      title,
+      src,
+      status: 'ready',
+      bridgeMode: 'same-document',
+      reason: 'same-document'
+    };
+  }
+
+  let url;
+  try {
+    url = new URL(src, location.href);
+  } catch {
+    return {
+      type: 'iframe',
+      title,
+      src,
+      status: 'blocked',
+      bridgeMode: 'none',
+      reason: 'invalid-src'
+    };
+  }
+
+  if (!/^https?:$/.test(url.protocol)) {
+    return {
+      type: 'iframe',
+      title,
+      src: url.href,
+      status: 'blocked',
+      bridgeMode: 'none',
+      reason: 'unsupported-scheme'
+    };
+  }
+
+  const sameOrigin = url.origin === currentOrigin;
+  return {
+    type: 'iframe',
+    title,
+    src: url.href,
+    status: 'ready',
+    bridgeMode: sameOrigin ? 'same-origin' : 'frame-script',
+    reason: sameOrigin ? 'same-origin' : 'cross-origin-frame-script'
+  };
+}
+
+function collectSvgTextTranslationTargets(root = document) {
+  const seen = new Set();
+  return Array.from(root.querySelectorAll?.('svg text, svg title, svg [aria-label]') || [])
+    .map(node => {
+      const text = getSvgTranslationTargetText(node);
+      const normalized = normalizePageTranslationComparableText(text);
+      const svg = node.closest?.('svg');
+      if (!text || seen.has(normalized) || !svg) return null;
+      if (!isVisiblePageTranslationEmbeddedNode(svg) || !isVisiblePageTranslationEmbeddedNode(node)) return null;
+      seen.add(normalized);
+      return {
+        type: 'svg-text',
+        node,
+        svg,
+        text,
+        kind: node.tagName?.toLowerCase() === 'title'
+          ? 'title'
+          : (node.hasAttribute?.('aria-label') ? 'aria-label' : 'text'),
+        overlayMode: 'tooltip'
+      };
+    })
+    .filter(Boolean);
+}
+
+function getSvgTranslationTargetText(node) {
+  return String(node?.getAttribute?.('aria-label') || node?.textContent || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function collectOpenShadowDomTranslationBlocks(root = document) {
+  const hosts = Array.from(root.querySelectorAll?.('*') || []).filter(node => node.shadowRoot);
+  const items = [];
+  const seenTexts = new Set();
+  hosts.forEach(host => {
+    Array.from(host.shadowRoot.querySelectorAll('h1, h2, h3, p, li, [role="heading"]')).forEach(el => {
+      if (!isPageTranslatableElement(el)) return;
+      const text = getElementTranslationText(el);
+      const normalized = normalizePageTranslationComparableText(text);
+      if (!text || seenTexts.has(normalized)) return;
+      seenTexts.add(normalized);
+      items.push({
+        host,
+        el,
+        text,
+        pairId: createPageTranslationPairId(),
+        status: 'pending',
+        translationNode: null,
+        translatedText: '',
+        source: 'open-shadow-dom'
+      });
+    });
+  });
+  return items;
+}
+
+function isVisiblePageTranslationEmbeddedNode(node) {
+  if (!node) return false;
+  const rect = node.getBoundingClientRect?.();
+  const tagName = String(node.tagName || '').toLowerCase();
+  const isSvgTextNode = ['svg', 'text', 'title', 'g'].includes(tagName);
+  if (rect && (rect.width <= 0 || rect.height <= 0) && !isSvgTextNode) return false;
+  const style = window.getComputedStyle?.(node);
+  return !(style && (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0'));
+}
+
 function buildEmbeddedTranslationSummaryText(summary) {
   if (!summary) return '';
   const userVisibleEmbeddedCount = Number(summary.iframeCount || 0)
@@ -1036,6 +1152,42 @@ function buildEmbeddedTranslationSummaryText(summary) {
     + Number(summary.canvasCount || 0);
   if (!userVisibleEmbeddedCount) return '';
   return '本頁有部分圖表或互動內容目前無法全文翻譯，可改用選取翻譯。';
+}
+
+const PAGE_LEARNING_STOP_WORDS = new Set([
+  'around', 'before', 'between', 'during', 'should', 'through', 'without'
+]);
+
+function buildPageLearningSummary(items = [], options = {}) {
+  const sourceItems = (Array.isArray(items) ? items : [])
+    .map(item => String(item?.translatedText || item?.text || '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  const text = sourceItems.join(' ');
+  return {
+    title: String(options.title || document.title || '').trim(),
+    keySentences: splitPageLearningSentences(text).slice(0, options.maxSentences || 3),
+    vocabularyCandidates: extractPageLearningVocabularyCandidates(text, options.maxVocabulary || 8),
+    sourceCount: sourceItems.length
+  };
+}
+
+function splitPageLearningSentences(text) {
+  return String(text || '')
+    .split(/(?<=[.!?。！？])\s+/)
+    .map(sentence => sentence.trim())
+    .filter(sentence => sentence.length >= 12);
+}
+
+function extractPageLearningVocabularyCandidates(text, limit = 8) {
+  const counts = new Map();
+  String(text || '').toLowerCase().match(/[a-z][a-z'-]{5,}/g)?.forEach(word => {
+    if (PAGE_LEARNING_STOP_WORDS.has(word)) return;
+    counts.set(word, (counts.get(word) || 0) + 1);
+  });
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([word, count]) => ({ word, count }));
 }
 
 async function copyPageTranslationText(format, button) {
@@ -1338,6 +1490,11 @@ if (typeof module !== 'undefined' && module.exports) {
     buildPageTranslationUsageSummaryText,
     detectEmbeddedTranslationTargets,
     buildEmbeddedTranslationSummaryText,
+    collectEmbeddedFrameTranslationTargets,
+    describeEmbeddedFrameTranslationTarget,
+    collectSvgTextTranslationTargets,
+    collectOpenShadowDomTranslationBlocks,
+    buildPageLearningSummary,
     locatePageTranslationSource,
     getElementTranslationText,
     isPageTranslatableElement,
