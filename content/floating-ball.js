@@ -592,4 +592,5 @@ function positionResultCardNearFloatingBall() {
   resultCard.style.top = `${top}px`;
 }
 
-initFloatingBall();
+// 子 frame 與敏感網域不生成常駐浮球（避免每個 iframe 都長一顆球、登入頁不擾民）
+if (fanFanBaShouldShowFloatingBall()) initFloatingBall();

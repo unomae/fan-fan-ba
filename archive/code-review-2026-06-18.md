@@ -87,7 +87,11 @@ Review 時間：2026-06-18 09:37 +08:00
 
 證據：`manifest.json` 的 `content_scripts.matches=["<all_urls>"]`、`all_frames=true`
 
-狀態：未完成。只有 background message validation 已先補上，注入範圍本身尚未收斂。
+狀態：部分完成（Batch B）。
+
+- 已新增 `content/site-policy.js`：敏感網域 denylist（登入 / 密碼管理高信心網域）→ 整支 content script 不啟用；**子 frame 不再重複生成常駐浮球**（每個 iframe 都長一顆球是最大常駐成本），選取翻譯仍由最上層 frame 透過 `contentDocument` 處理，功能不變。已接進 `content/floating-ball.js` 與 `content/main.js` 的 bootstrap，並補 `tests/content/site-policy.test.js`。
+- **page translation 已是按需初始化**（Codex 列為待辦，實際已達成）：所有全域 watcher（navigation / scroll / selection）都綁在 `bindPageTranslation*Watcher()` 內，只由 `startPageTranslationBeta()` 觸發，module load 時不掛任何 listener，僅宣告函式。
+- 中期項（使用者自訂 allowlist / per-site 停用、`activeTab` 或 programmatic injection）仍未做，留待 v1.9.6。
 
 ### P1：LLM / 使用者資料透過 `innerHTML` 渲染的面積太大
 
@@ -128,7 +132,7 @@ Review 時間：2026-06-18 09:37 +08:00
 
 證據：`manifest.json` 的 `web_accessible_resources`
 
-狀態：未完成。
+狀態：暫不收斂（Batch B 評估）。兩個資源都被 content script 在 `<all_urls>` 實際使用——字型由 `content/main.js` 的 `injectBrandFont()` 注入、`icons/icon48.png` 由 `content/floating-ball.js` 當浮球 logo——所以無法在不破壞功能下移出 web accessible 或縮小 `matches`。要真正收斂得先把浮球 icon 改成 inline SVG / data-uri 以拿掉 `icon48.png` 公開，屬獨立小改動，留待後續評估。
 
 ## 軟體工程師視角
 
@@ -239,16 +243,16 @@ Done 定義：
 
 細項：
 
-- [ ] 新增站點停用 / allowlist。
-- [ ] 全文翻譯模組按需初始化。
-- [ ] 收斂 `web_accessible_resources`。
+- [~] 站點停用：已做敏感網域 denylist + 子 frame 不生浮球（`content/site-policy.js`）；使用者自訂 allowlist / per-site 停用仍未做。
+- [x] 全文翻譯模組按需初始化（檢視後確認既有實作已是按需，watcher 只在 `startPageTranslationBeta()` 綁定）。
+- [~] 收斂 `web_accessible_resources`：評估後暫不收斂，font / icon48 皆為 content script 在 `<all_urls>` 實際使用（詳見 P2 findings 狀態）。
 - [x] background message handler 加 schema validation、action 白名單、文字長度限制與 sender 檢查。
 
 Done 定義：
 
 - [ ] Gmail / Notion / Google Docs / 新聞長文 / iframe 頁 QA 通過。
-- [ ] 無關頁面初始化成本降低。
-- [ ] P1 風險有回歸測試。
+- [~] 無關頁面初始化成本降低（子 frame 不再重複生浮球、敏感網域不啟用；整體 `<all_urls>` 仍常駐）。
+- [x] P1 風險有回歸測試（`tests/content/site-policy.test.js`）。
 
 ### v1.9.7：Text Immersive UX
 

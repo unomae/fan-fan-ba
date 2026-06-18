@@ -66,6 +66,7 @@ describe('floating ball menu behavior', () => {
     jest.resetModules();
     chrome.runtime.openOptionsPage.mockClear();
     ({ context } = createContentContext());
+    runContentScript('content/site-policy.js', context);
     runContentScript('content/state.js', context);
     runContentScript('content/floating-ball.js', context);
     runContentScript('content/main.js', context);
@@ -145,6 +146,7 @@ describe('floating vocabulary panel', () => {
   it('renders today entries and copies Markdown or CSV exports', async () => {
     const setup = createContentContext();
     context = setup.context;
+    runContentScript('content/site-policy.js', context);
     runContentScript('content/state.js', context);
     runContentScript('content/utils.js', context);
     runContentScript('content/vocabulary.js', context);
@@ -198,6 +200,7 @@ describe('floating vocabulary panel', () => {
   it('filters all entries and deletes selected vocabulary items', async () => {
     const setup = createContentContext();
     context = setup.context;
+    runContentScript('content/site-policy.js', context);
     runContentScript('content/state.js', context);
     runContentScript('content/utils.js', context);
     runContentScript('content/vocabulary.js', context);
@@ -251,6 +254,7 @@ describe('floating vocabulary panel', () => {
   it('shows review views and toggles vocabulary status', async () => {
     const setup = createContentContext();
     context = setup.context;
+    runContentScript('content/site-policy.js', context);
     runContentScript('content/state.js', context);
     runContentScript('content/utils.js', context);
     runContentScript('content/vocabulary.js', context);

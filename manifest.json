@@ -33,6 +33,7 @@
       ],
       "js": [
         "models.js",
+        "content/site-policy.js",
         "content/state.js",
         "content/utils.js",
         "content/vocabulary.js",
