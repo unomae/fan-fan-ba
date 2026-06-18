@@ -674,6 +674,7 @@ options.js</pre>
               <li>同意右側常駐浮球作為穩定入口，承接最近查詢、單字本、全文翻譯、暫停網站與設定。</li>
               <li>同意語言偏好從隱性 prompt 變成明確設定，包含目標語言、解釋語言與 TTS 語音模式。</li>
               <li>全文翻譯先做可見段落 Beta，不直接做完整全頁替換，避免成本、效能與 DOM 相容性風險。</li>
+              <li>2026-06-18 code review 決策：P0 / P1 / P2 先解；朝 Immersive Translate 的文字沉浸閱讀方向靠近，但近期只專注文字翻譯，不追 PDF / 圖片 / 影片字幕。</li>
             </ul>
           </div>
           <div class="card">
@@ -697,6 +698,9 @@ options.js</pre>
             <tr><td>Streaming / 全文翻譯 timeout 需 abort 底層 fetch</td><td>Non-streaming、streaming retry sleep、SSE reader 與全文翻譯停止流程已接 abort / stopping state。</td><td><span class="pill green">v1.6.1 / v1.6.2 完成</span></td></tr>
             <tr><td>結果卡窄視窗 responsive 與定位穩定</td><td>結果卡寬度與 header wrapping 已補強，rAF timestamp 定位 bug 已加防回歸。</td><td><span class="pill green">v1.6.0 / v1.6.2 完成</span></td></tr>
             <tr><td>鍵盤可及性與 icon action 語意</td><td>主要按鈕補 <code>type="button"</code>、<code>aria-label</code> 與更多 <code>:focus-visible</code>。</td><td><span class="pill green">v1.6.2 完成</span></td></tr>
+            <tr><td>2026-06-18 P0：敏感欄位與測試入口</td><td>排除 <code>password</code> / OTP / payment 類敏感 input；修正 <code>npm test</code> 預設入口；補 sensitive input 與 XSS regression tests。</td><td><span class="pill orange">v1.9.5 優先</span></td></tr>
+            <tr><td>2026-06-18 P1：權限面與 content script 干擾</td><td>收斂 <code>&lt;all_urls&gt;</code> / <code>all_frames</code> 影響、按需初始化全文翻譯、收斂 web accessible resources、background message schema validation。</td><td><span class="pill orange">v1.9.6 優先</span></td></tr>
+            <tr><td>2026-06-18 P2：可維護性與 UX polish</td><td>拆 <code>page-translator.js</code> / <code>content.css</code>，建立 DOM render helper；模型選單只保留簡潔特點說明，不做語意標籤。</td><td><span class="pill orange">v1.9.7-v1.9.8</span></td></tr>
             <tr><td>Coverage 偏低、Git / OneDrive 權限風險</td><td>測試檔有持續補，但 Windows 目前受 <code>EPERM</code> 與 git metadata 權限問題影響。</td><td><span class="pill orange">環境待處理；本輪不修</span></td></tr>
           </tbody>
         </table>
@@ -1054,6 +1058,38 @@ options.js</pre>
 
       <section id="roadmap">
         <h2>Roadmap</h2>
+        <div class="callout">2026-06-18 更新：接下來 phase plan 先處理 code review P0 / P1 / P2，再推文字沉浸式翻譯體驗。使用者指標先以手動 QA 與本機匿名彙總 review，不上傳原文、譯文、URL 全文、API Key 或個人識別資訊。</div>
+        <table style="margin-bottom:12px;">
+          <thead>
+            <tr><th>Phase</th><th>目標</th><th>細項</th><th>Done 定義</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>v1.9.5</code><br>P0 Review Hardening</td>
+              <td>先修安全與測試入口</td>
+              <td>修 <code>npm test</code> 多重 Jest config；排除 <code>input[type=password]</code>、OTP、payment 欄位；補 sensitive input、XSS payload、AI HTML escape 測試；privacy / store listing 對第三方 AI provider 資料流一致。</td>
+              <td><code>npm test -- --runInBand</code> 一條指令可通過；敏感欄位不顯示 toolbar / 不送 request；review HTML P0 標為完成。</td>
+            </tr>
+            <tr>
+              <td><code>v1.9.6</code><br>P1 Injection Scope</td>
+              <td>降低常駐注入面與頁面干擾</td>
+              <td>新增站點停用 / allowlist；全文翻譯模組按需初始化；收斂 <code>web_accessible_resources</code>；background message handler 加 schema validation、action 白名單、文字長度限制與 sender 檢查。</td>
+              <td>Gmail / Notion / Google Docs / 新聞長文 / iframe 頁 QA 通過；無關頁面初始化成本降低；P1 風險有回歸測試。</td>
+            </tr>
+            <tr>
+              <td><code>v1.9.7</code><br>Text Immersive UX</td>
+              <td>朝 Immersive Translate 方向，但只做文字</td>
+              <td>優化雙語段落、hover / shortcut paragraph translation、續翻、定位原文、複製雙語、長文 context digest；暫不做 PDF / OCR / 圖片 / 影片字幕。</td>
+              <td>長文章閱讀流程可連續使用；全文翻譯失敗可局部重試；使用者能清楚知道目前只支援文字層。</td>
+            </tr>
+            <tr>
+              <td><code>v1.9.8</code><br>Maintainability + Local Metrics</td>
+              <td>讓後續迭代更穩</td>
+              <td>拆 <code>page-translator.js</code>、整理 <code>content.css</code>；建立 DOM render helper；模型選單改為簡潔特點說明；新增本機診斷摘要 / 手動 QA 表，不上傳內容。</td>
+              <td>Coverage 先拉到 65% lines；本機診斷摘要可清除；隱私政策明確說明沒有 telemetry 或 telemetry 需 opt-in。</td>
+            </tr>
+          </tbody>
+        </table>
         <div class="timeline">
           <div class="phase">
             <strong>v1.2.x：上架前核心能力</strong>
@@ -1117,7 +1153,7 @@ options.js</pre>
           </div>
           <div class="phase">
             <strong>v1.9.x：Learning Layer / Embedded Translation v1</strong>
-            <p>文章級 summary、句子拆解、文法 / 詞彙講解、SRS 複習佇列、難字自動高亮；同步開始 iframe、SVG overlay 與 open Shadow DOM。</p>
+            <p>先改為 review hardening 與 text immersive translation：P0 / P1 / P2 修正、文字雙語閱讀、paragraph hover / shortcut、續翻與本機診斷摘要。Learning Layer / Embedded Translation foundation 已有初稿，但 iframe / SVG / Shadow DOM 實翻延後。</p>
             <span class="pill orange">已開工</span>
           </div>
           <div class="phase">
@@ -1135,6 +1171,12 @@ options.js</pre>
             <tr><th>日期</th><th>版本線</th><th>完成事項</th><th>驗證 / 注意</th></tr>
           </thead>
           <tbody>
+            <tr>
+              <td>2026-06-18</td>
+              <td><code>Review-driven phase plan</code></td>
+              <td>吸收 code review comments：P0 / P1 / P2 先解；軟體工程師優先改善全數採納；模型選單不做「推薦 / 快速 / 長文 / 免費額度」語意標籤，改成簡潔說明模型特點；產品 benchmark 朝 Immersive Translate 的文字沉浸閱讀方向前進，但近期只專注文字翻譯。</td>
+              <td>更新 <code>archive/code-review-2026-06-18.html</code> 與本檔 Roadmap；使用者指標採手動 QA / 本機匿名彙總優先，不上傳原文、譯文、URL 全文、API Key 或個資。</td>
+            </tr>
             <tr>
               <td>2026-06-18</td>
               <td><code>v1.9.0-v1.9.4 foundation</code></td>
