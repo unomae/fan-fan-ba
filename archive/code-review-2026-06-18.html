@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>翻翻吧 Code Review / UX Benchmark - 2026-06-18</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f4;
+      --surface: #ffffff;
+      --surface-soft: #f0f5eb;
+      --text: #1f2420;
+      --muted: #637064;
+      --line: #dfe6da;
+      --brand: #77aa51;
+      --brand-soft: #e9f5df;
+      --amber: #b7791f;
+      --amber-soft: #fff6db;
+      --red: #c2413a;
+      --red-soft: #ffe9e6;
+      --blue: #276b8f;
+      --blue-soft: #e6f3f8;
+      --ink: #283126;
+      --shadow: 0 12px 34px rgba(40, 49, 38, .08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif;
+      line-height: 1.65;
+    }
+
+    a { color: #2f7d42; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #eef3e9;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-size: .92em;
+    }
+
+    header {
+      padding: 40px 24px 24px;
+      background: linear-gradient(180deg, #ffffff 0%, #f6f7f4 100%);
+      border-bottom: 1px solid var(--line);
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; }
+    .eyebrow {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 5px 10px;
+      border: 1px solid #cfe1c6;
+      border-radius: 999px;
+      background: var(--brand-soft);
+      color: #426a2f;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    h1 {
+      margin: 16px 0 10px;
+      font-size: clamp(30px, 4vw, 54px);
+      line-height: 1.08;
+      letter-spacing: 0;
+      color: var(--ink);
+    }
+    .subtitle {
+      max-width: 860px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(255,255,255,.92);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(12px);
+    }
+    nav .wrap {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 10px 24px;
+    }
+    nav a {
+      flex: 0 0 auto;
+      padding: 7px 10px;
+      border-radius: 7px;
+      color: #3f4b40;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    nav a:hover { background: var(--surface-soft); text-decoration: none; }
+
+    main { padding: 28px 24px 56px; }
+    section { margin: 0 auto 28px; max-width: 1180px; }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 24px;
+      letter-spacing: 0;
+      color: var(--ink);
+    }
+    h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      color: var(--ink);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+    @media (max-width: 900px) {
+      .span-3, .span-4, .span-6, .span-8 { grid-column: span 12; }
+      header { padding-top: 28px; }
+    }
+
+    .metric {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-height: 104px;
+    }
+    .metric strong { font-size: 28px; line-height: 1; color: #345f28; }
+    .metric span { color: var(--muted); font-size: 13px; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .p0 { background: var(--red-soft); color: var(--red); }
+    .p1 { background: var(--amber-soft); color: var(--amber); }
+    .p2 { background: var(--blue-soft); color: var(--blue); }
+    .ok { background: var(--brand-soft); color: #46722e; }
+    .finding {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      padding: 16px 0;
+      border-top: 1px solid var(--line);
+    }
+    .finding:first-child { border-top: 0; padding-top: 0; }
+    .finding p { margin: 6px 0; }
+    .evidence {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .recommendation {
+      padding: 10px 12px;
+      border-radius: 7px;
+      background: #f8faf6;
+      border: 1px solid #e5eddf;
+      color: #384238;
+    }
+    .status-done {
+      margin-top: 8px;
+      font-weight: 700;
+      color: #46722e;
+      background: var(--brand-soft);
+      border-radius: 7px;
+      padding: 8px 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #eef4e8;
+      color: #344232;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+    }
+    tr:last-child td { border-bottom: 0; }
+    ul { margin: 8px 0 0 20px; padding: 0; }
+    li { margin: 5px 0; }
+    .comment-box {
+      margin-top: 12px;
+      border-top: 1px dashed #d8e1d2;
+      padding-top: 12px;
+    }
+    .comment-box label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 78px;
+      resize: vertical;
+      border: 1px solid #d5dfcf;
+      border-radius: 7px;
+      padding: 10px 11px;
+      font: inherit;
+      color: var(--text);
+      background: #fbfcfa;
+      outline: none;
+    }
+    textarea:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(119, 170, 81, .16);
+      background: #fff;
+    }
+    .saved { color: #4f7e36; font-weight: 800; }
+    .source-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .note {
+      padding: 12px 14px;
+      border: 1px solid #dfe6da;
+      border-radius: 8px;
+      background: #fbfcfa;
+      color: #526052;
+    }
+    .roadmap {
+      counter-reset: step;
+      display: grid;
+      gap: 12px;
+    }
+    .roadmap .card {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 12px;
+      box-shadow: none;
+    }
+    .roadmap .card::before {
+      counter-increment: step;
+      content: counter(step);
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: var(--brand-soft);
+      color: #426a2f;
+      font-weight: 900;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <span class="eyebrow">Fan Fan Ba v1.8.6 · Review 2026-06-18 09:37 +08:00</span>
+      <h1>翻翻吧 Code Review / UX Benchmark</h1>
+      <p class="subtitle">依照目前 repo 狀態，從軟體工程師、UI/UX 設計師、使用者、以及類似 Chrome 擴充功能 benchmark 的角度整理。這份報告只新增 HTML，不修改產品程式碼。</p>
+    </div>
+  </header>
+
+  <nav>
+    <div class="wrap">
+      <a href="#summary">總覽</a>
+      <a href="#findings">Findings</a>
+      <a href="#engineering">工程建議</a>
+      <a href="#ux">UI/UX</a>
+      <a href="#user">使用者視角</a>
+      <a href="#benchmark">Benchmark</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#sources">Sources</a>
+    </div>
+  </nav>
+
+  <main>
+    <section id="summary">
+      <div class="grid">
+        <div class="card span-3 metric">
+          <strong>114</strong>
+          <span>測試通過，但需指定 <code>--config jest.config.js</code></span>
+        </div>
+        <div class="card span-3 metric">
+          <strong>52.35%</strong>
+          <span>目前 Jest line coverage，content 模組覆蓋偏低</span>
+        </div>
+        <div class="card span-3 metric">
+          <strong>2,337</strong>
+          <span><code>content.css</code> 行數，樣式已成為維護熱區</span>
+        </div>
+        <div class="card span-3 metric">
+          <strong>1,367+</strong>
+          <span><code>page-translator.js</code> 行數，建議拆分狀態 / DOM / pipeline</span>
+        </div>
+      <div class="card span-12">
+        <h2>一句話結論</h2>
+        <p><strong>翻翻吧已經有清楚差異化：即選即用、AI 解釋 / 優化、Obsidian 留存、Google Drive 設定同步。</strong>下一階段最值得先做的不是堆更多功能，而是把「安全、可維護、上架審核可信度、日常閱讀不打擾」補強；這些會直接影響 Chrome Web Store 審核、使用者信任，以及後續功能速度。</p>
+          <div class="note" style="margin-top: 12px;">
+            <strong>2026-06-18 comments 收斂：</strong>同意 P0 / P1 / P2 先解；軟體工程師視角的優先改善全數採納；UI/UX 的 provider 呈現不做「推薦 / 快速 / 長文 / 免費額度」語意標籤，改成簡潔說明模型特點；產品 benchmark 朝 Immersive Translate 方向走，但近期只專注文字翻譯。
+          </div>
+          <div class="note" style="margin-top: 12px;">
+            <strong>Comments 匯出：</strong>如果要把你在本頁寫的 comments 給 Codex，按下方按鈕後貼回對話即可。
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+              <button id="copy-comments" type="button" style="border:1px solid #c8d8bf; background:#e9f5df; color:#345f28; border-radius:7px; padding:8px 11px; font-weight:800; cursor:pointer;">複製所有 comments</button>
+              <span id="copy-comments-status" class="saved" aria-live="polite"></span>
+            </div>
+            <textarea id="comments-export" readonly style="margin-top:10px; min-height:110px;" placeholder="按「複製所有 comments」後，這裡會顯示匯出內容。"></textarea>
+          </div>
+          <div class="comment-box">
+            <label for="comment-summary">你的評論 / 決策 <span class="saved" data-saved-for="summary"></span></label>
+            <textarea id="comment-summary" data-comment="summary" placeholder="例如：同意先做 P0，P2 之後再排..."></textarea>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="findings">
+      <h2>Findings</h2>
+      <div class="card">
+        <div class="finding">
+          <span class="tag p0">P0</span>
+          <div>
+            <h3>密碼欄位目前被視為可翻譯文字來源</h3>
+            <p><code>isTextSelectionControl</code> 把 <code>password</code> 放進允許清單。若使用者在密碼欄或敏感輸入欄選到文字，content script 可能讀取後送進 AI provider。這是隱私與上架審核風險。</p>
+            <p class="recommendation">建議：立即排除 <code>input[type=password]</code>，並評估預設排除信用卡、OTP、email、tel 等敏感欄位；必要時只允許使用者按快捷鍵明確觸發。</p>
+            <p class="evidence">證據：<code>content/main.js:167-171</code>；Chrome 文件也提醒不要把敏感資料傳給 content script，且 content script 互動要謹慎。</p>
+            <p class="status-done">✅ 已完成：改由 <code>content/selection-controls.js</code> 統一判斷可選取輸入欄，排除 password / email / tel / number 與 OTP / 信用卡 / CVV / billing / phone 等敏感欄位（含 autocomplete token 與 placeholder 比對），並補上 sensitive input regression tests。</p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="tag p0">P0</span>
+          <div>
+            <h3><code>npm test</code> 預設失敗，CI 入口不可信</h3>
+            <p>目前同時存在 <code>jest.config.js</code> 與 <code>package.json</code> 的 <code>jest</code> key，Jest 無法隱式選擇設定檔，導致 <code>npm test</code> 直接失敗。</p>
+            <p class="recommendation">建議：保留單一 Jest 設定來源，或把 script 改成 <code>jest --config jest.config.js</code>；再補 GitHub Actions / PR check。</p>
+            <p class="evidence">驗證：<code>npm.cmd test -- --runInBand</code> 失敗；<code>npm.cmd test -- --runInBand --config jest.config.js</code> 則 14 suites / 114 tests passed。</p>
+            <p class="status-done">✅ 已完成：移除 <code>package.json</code> 內重複 Jest 設定，改以 <code>jest.config.js</code> 為單一設定來源。目前 <code>npm test</code> 一條指令即通過：15 suites / 123 tests passed。</p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="tag p1">P1</span>
+          <div>
+            <h3><code>&lt;all_urls&gt;</code> + <code>all_frames: true</code> 的常駐注入面積偏大</h3>
+            <p>所有頁面、所有 frame 都載入 10 個 content scripts 與大型 CSS。以使用者體感來看，這容易在 Google Docs、Notion、內嵌 iframe、企業內部系統或高 DOM 頁面造成干擾；以安全角度看，也會放大攻擊面。</p>
+            <p class="recommendation">建議：短期加入敏感網域 / iframe denylist 與效能 guard；中期改成可選站點啟用、<code>activeTab</code> 或 programmatic injection；至少把 page translation 這種重功能改成按需載入。</p>
+            <p class="evidence">證據：<code>manifest.json</code> 的 <code>content_scripts.matches=["&lt;all_urls&gt;"]</code>、<code>all_frames=true</code>。Chrome 文件建議權限最小化、必要時使用 optional permissions。</p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="tag p1">P1</span>
+          <div>
+            <h3>LLM / 使用者資料透過 <code>innerHTML</code> 渲染的面積太大</h3>
+            <p>專案已有 <code>escapeHtml</code> 與結構化渲染，這是好事；但結果卡、floating ball、page translator 仍大量使用 <code>innerHTML</code>。AI 回傳內容、單字本、歷史紀錄、網頁文字都屬於不完全可信輸入，長期應降低 HTML 拼接依賴。</p>
+            <p class="recommendation">建議：建立 <code>dom()</code> / <code>text()</code> / <code>safeHtml()</code> 小型 render helper；AI markdown 渲染集中在一個白名單管線；新增 XSS payload 測試。</p>
+            <p class="evidence">證據：<code>content/result-card.js:446,459,474,481,706,715</code>、<code>content/page-translator.js:666,774,834,855</code>、<code>content/floating-ball.js:405,431</code>。Chrome 安全文件明確建議避免 <code>innerHTML</code>。</p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="tag p1">P1</span>
+          <div>
+            <h3>整頁翻譯模組過大，後續功能速度會被拖慢</h3>
+            <p><code>page-translator.js</code> 同時處理收集 DOM、狀態機、串流請求、清理結果、面板 UI、導航偵測、滑鼠互動與錯誤狀態。這種單檔會讓 bug 修復與 UX 實驗成本越來越高。</p>
+            <p class="recommendation">建議拆成 <code>collector</code>、<code>translation-client</code>、<code>renderer</code>、<code>panel</code>、<code>state</code>，先不改行為，只做可測試的機械拆分。</p>
+            <p class="evidence">證據：<code>content/page-translator.js</code> 約 1,367+ 行；coverage 約 39.2% lines，未覆蓋集中在啟動流程、請求、渲染與 watcher。</p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="tag p2">P2</span>
+          <div>
+            <h3><code>web_accessible_resources</code> 對所有網站開放，可再收斂</h3>
+            <p>目前字型與 icon 對 <code>&lt;all_urls&gt;</code> 可見。這不是立即漏洞，但 Chrome 文件指出 web-accessible resources 會讓 extension 更容易被網站偵測，也增加可利用面。</p>
+            <p class="recommendation">建議：確認 content script 是否真的需要公開字型；若只 extension pages 用，移出 web accessible；若 content UI 需要，縮到必要資源與更小 matches。</p>
+            <p class="evidence">證據：<code>manifest.json</code> 的 <code>web_accessible_resources</code>。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="engineering">
+      <h2>軟體工程師視角</h2>
+      <div class="grid">
+        <div class="card span-6">
+          <h3>做得好的地方</h3>
+          <ul>
+            <li>Manifest V3 service worker 架構已到位，API Key 主要留在 background / storage 層。</li>
+            <li>有 Secret migration，把 API Key 從 sync 移到 local，方向正確。</li>
+            <li>有 retry / timeout / AbortController，對 AI provider 不穩定有基本韌性。</li>
+            <li>測試數量不算少，核心 content 元件、options、cloud sync、storage 都已有 coverage。</li>
+          </ul>
+        </div>
+        <div class="card span-6">
+          <h3>優先改善</h3>
+          <ul>
+            <li>先修 <code>npm test</code> 入口，讓所有人一條指令知道專案是否健康。</li>
+            <li>把敏感輸入欄排除，尤其 <code>password</code>。</li>
+            <li>為 background message handler 加 request schema validation，避免 content script 傳任意 action / 超長 text。</li>
+            <li>把大型檔案拆成行為不變的小模組，再提高單元測試覆蓋。</li>
+          </ul>
+        </div>
+        <div class="card span-12">
+          <h3>建議新增的測試類型</h3>
+          <table>
+            <thead><tr><th>測試</th><th>目的</th><th>第一批案例</th></tr></thead>
+            <tbody>
+              <tr><td>Security regression</td><td>避免敏感資料外送與 XSS</td><td>password input 不觸發、AI 回傳 HTML / script 只能當文字、history / vocabulary escape</td></tr>
+              <tr><td>DOM fixture</td><td>降低 content script 對真實網站破壞</td><td>Google Docs fallback、Notion-like contenteditable、nested iframe、長文章頁</td></tr>
+              <tr><td>Provider contract</td><td>AI 串流 / JSON 容錯穩定</td><td>Gemini SSE、OpenRouter fallback、Groq 429 retry、半截 JSON</td></tr>
+              <tr><td>Performance smoke</td><td>避免常駐注入變慢</td><td>10k nodes 頁面初始化時間、scroll watcher debounce、page translation 批次上限</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="ux">
+      <h2>UI/UX 設計師視角</h2>
+      <div class="grid">
+        <div class="card span-4">
+          <h3>核心體驗定位</h3>
+          <p>翻翻吧最強的不是「翻譯一切」，而是閱讀途中遇到字詞 / 段落時，能快速理解、潤稿、留存到 Obsidian。UI 應該服務這個輕量流，不要讓設定與整頁翻譯搶走主體。</p>
+        </div>
+        <div class="card span-4">
+          <h3>降低干擾</h3>
+          <p>常駐浮球、選字 toolbar、結果卡、整頁翻譯面板可能同時出現。建議定義「單一主面板」規則：使用者當下只看到一個主要操作焦點，其餘收合成 icon。</p>
+        </div>
+        <div class="card span-4">
+          <h3>強化信任</h3>
+          <p>AI 翻譯產品的信任來自可預期：資料送去哪個 provider、是否會儲存、現在用哪個模型、錯誤如何處理。這些應在結果卡與設定頁用很短的狀態文案呈現。</p>
+        </div>
+        <div class="card span-12">
+          <h3>設定頁資訊架構</h3>
+          <table>
+            <thead><tr><th>目前痛點</th><th>建議改法</th><th>理由</th></tr></thead>
+            <tbody>
+              <tr><td>API Key、模型、語言、Obsidian、雲端同步都在同一個大設定面</td><td>拆成「快速開始」「模型與金鑰」「閱讀體驗」「留存與同步」「隱私」</td><td>新手只需完成第一輪設定，進階功能不干擾主流程</td></tr>
+              <tr><td>多 provider 對一般使用者很抽象</td><td>不加語意標籤；在模型選單旁用一句話說明模型特點，例如速度、穩定性、長文表現、是否需自備額度</td><td>保持介面簡潔，讓使用者理解差異即可，不把模型包裝成過度行銷的選項</td></tr>
+              <tr><td>整頁翻譯 Beta 容易被誤解成成熟功能</td><td>保留 Beta 標示，加上用量 / 區塊上限 / 可繼續翻譯提示</td><td>預期管理會減少負評</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="user">
+      <h2>使用者視角</h2>
+      <div class="grid">
+        <div class="card span-6">
+          <h3>新使用者最可能卡住</h3>
+          <ul>
+            <li>不知道該選 Groq、Gemini 還是 OpenRouter。</li>
+            <li>不知道 API Key 是否安全、會不會同步到雲端。</li>
+            <li>第一次選字後若沒出現 toolbar，不知道是網站限制、暫停、還是 extension 壞了。</li>
+            <li>Obsidian 需要 Advanced URI，這是高價值功能，但 onboarding 要更像 checklist。</li>
+          </ul>
+        </div>
+        <div class="card span-6">
+          <h3>高頻使用者想要</h3>
+          <ul>
+            <li>更快：常用 action 快捷鍵與最近模型切換。</li>
+            <li>更安靜：特定網站停用、特定輸入框不顯示。</li>
+            <li>更可控：結果卡固定、複製格式、存到 Obsidian 的模板可調。</li>
+            <li>更可查：單字本、最近查詢與 Obsidian 留存之間要有清楚關係。</li>
+          </ul>
+        </div>
+        <div class="card span-12">
+          <h3>建議產品指標</h3>
+          <p class="note">指標評估建議預設採「本機、匿名、彙總、可關閉」：第一階段不要上傳任何使用者內容、原文、譯文、網址全文、API Key 或個人識別資訊。可以先用本機 debug panel / review checklist 人工記錄，等確定需要產品分析時，再設計明確 opt-in 的 telemetry。</p>
+          <table>
+            <thead><tr><th>指標</th><th>為什麼重要</th><th>可怎麼量</th></tr></thead>
+            <tbody>
+              <tr><td>首次成功翻譯時間</td><td>決定新使用者是否留下</td><td>手動 QA 或本機匿名事件：安裝 / 設定完成 / 第一次成功回應，只記時間差與步驟，不記文字內容</td></tr>
+              <tr><td>選字後取消率</td><td>代表 toolbar 是否干擾</td><td>本機計數 toolbar 顯示、點擊 action、Esc、外部點擊；review 時看彙總數字，不上傳原文或網址</td></tr>
+              <tr><td>Obsidian save rate</td><td>這是差異化，不只是翻譯工具</td><td>本機計數結果卡顯示與儲存成功次數；不記筆記內容，只看流程轉換</td></tr>
+              <tr><td>敏感欄位防護觸發</td><td>建立安全信任</td><td>只做本機統計：略過 password / OTP / payment 欄位的次數；review 重點是防護有沒有生效</td></tr>
+            </tbody>
+          </table>
+          <h3 style="margin-top:14px;">你可以怎麼 review 使用者指標</h3>
+          <ul>
+            <li>第一階段用手動 QA 表：測 5 個情境，記錄成功 / 失敗 / 干擾點，不做任何資料上傳。</li>
+            <li>第二階段做本機「診斷摘要」頁：顯示最近 7 天的匿名彙總，使用者可一鍵清除。</li>
+            <li>第三階段若要上傳 telemetry，必須明確 opt-in，隱私政策列出欄位，且只傳事件類型、時間差、狀態碼，不傳原文 / 譯文 / URL 全文。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="benchmark">
+      <h2>類似 Chrome 插件 Benchmark</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>產品</th>
+            <th>主戰場</th>
+            <th>可借鏡</th>
+            <th>翻翻吧該避開</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>DeepL for Chrome</strong></td>
+            <td>選取翻譯、輸入框翻譯、寫作替代表達、Pro 整頁翻譯</td>
+            <td>把 read / write 兩個場景講得非常清楚；寫作修飾有 style / tone 選項</td>
+            <td>不要只比翻譯品質；DeepL 品牌與模型品質護城河太高</td>
+          </tr>
+          <tr>
+            <td><strong>Immersive Translate</strong></td>
+            <td>雙語網頁、PDF、影片字幕、圖片 / 漫畫、20+ 引擎</td>
+            <td>雙語閱讀 layout、context-aware terminology、hover / shortcut paragraph translation</td>
+            <td>不要在早期追全媒體功能；容易把 extension 做成沉重平台</td>
+          </tr>
+          <tr>
+            <td><strong>Trancy</strong></td>
+            <td>語言學習、YouTube / Netflix 雙語字幕、生字收藏、文法分析</td>
+            <td>把翻譯結果轉成學習材料：生字、例句、文法、複習</td>
+            <td>除非轉向語言學習，不然不要把首頁敘事稀釋成泛學習平台</td>
+          </tr>
+          <tr>
+            <td><strong>翻翻吧</strong></td>
+            <td>先專注文字翻譯：選取翻譯、段落 / 全文雙語閱讀、解釋與 Obsidian 留存</td>
+            <td>朝 Immersive Translate 的沉浸式閱讀方向靠近，但近期只做文字層，先把雙語段落、可見文字、快捷操作與穩定性打磨好</td>
+            <td>先不追 PDF、影片字幕、圖片 / 漫畫、OCR；避免太早變成全媒體平台</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="comment-box">
+        <label for="comment-benchmark">你的 benchmark 評論 <span class="saved" data-saved-for="benchmark"></span></label>
+        <textarea id="comment-benchmark" data-comment="benchmark" placeholder="例如：我想把競品改成 X / Y / Z，或主打族群改成研究者..."></textarea>
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <h2>建議 Roadmap</h2>
+      <div class="roadmap">
+        <div class="card">
+          <div>
+            <h3>Phase A / 0-3 天：P0 止血與測試入口</h3>
+            <p>修 <code>npm test</code> 設定衝突；排除 <code>password</code> / OTP / payment 類敏感 input；加 sensitive input 與 XSS regression tests；確認 privacy policy / store listing 對第三方 AI provider 的資料流描述一致。</p>
+          </div>
+        </div>
+        <div class="card">
+          <div>
+            <h3>Phase B / 1 週：P1 權限面與干擾控制</h3>
+            <p>新增站點停用 / allowlist 設定；把整頁翻譯改成按需初始化；收斂 <code>web_accessible_resources</code>；background message handler 加 schema validation、action 白名單與長度限制。</p>
+          </div>
+        </div>
+        <div class="card">
+          <div>
+            <h3>Phase C / 2-3 週：P2 可維護性與文字翻譯 UX</h3>
+            <p>拆 <code>page-translator.js</code> 與 <code>content.css</code>；建立 DOM render helper；把 coverage 先拉到 65% lines；全文翻譯先專注文字段落、雙語對照、定位原文、複製雙語與失敗重試。</p>
+          </div>
+        </div>
+        <div class="card">
+          <div>
+            <h3>Phase D / 4-6 週：產品化 polish 與本機指標 review</h3>
+            <p>設定頁改資訊架構；模型只保留簡潔特點說明；結果卡顯示 provider / model / privacy hint；Obsidian onboarding 做成 checklist；新增本機診斷摘要，不上傳使用者內容。</p>
+          </div>
+        </div>
+        <div class="card">
+          <div>
+            <h3>Phase E / 6-8 週：Immersive-style 文字閱讀</h3>
+            <p>朝 Immersive Translate 的文字閱讀體驗收斂：段落 hover / shortcut、全文翻譯續翻、雙語密度、可讀性、長文 context digest；PDF、圖片、影片字幕延後。</p>
+          </div>
+        </div>
+      </div>
+      <div class="comment-box">
+        <label for="comment-roadmap">你的 Roadmap 評論 <span class="saved" data-saved-for="roadmap"></span></label>
+        <textarea id="comment-roadmap" data-comment="roadmap" placeholder="例如：先做 0-3 天，page translator 拆分下週再處理..."></textarea>
+      </div>
+    </section>
+
+    <section id="sources">
+      <h2>Sources / Review 基準</h2>
+      <div class="card">
+        <div class="source-list">
+          <a href="https://developer.chrome.com/docs/extensions/develop/security-privacy/stay-secure">Chrome Extensions - Stay secure：最小權限、web accessible resources、避免 innerHTML、content script 安全</a>
+          <a href="https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions">Chrome Extensions - Declare permissions：optional permissions、host permissions 與 warning</a>
+          <a href="https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts">Chrome Extensions - Content scripts：content script 能力、isolated world、web accessible resource 暴露</a>
+          <a href="https://developer.chrome.com/docs/webstore/program-policies">Chrome Web Store Program Policies：隱私、權限、品質與 MV3 技術要求</a>
+          <a href="https://www.deepl.com/en/chrome-extension">DeepL for Chrome：選取翻譯、輸入框翻譯、DeepL Write、Pro 整頁翻譯</a>
+          <a href="https://immersivetranslate.com/en/">Immersive Translate：雙語網頁、PDF、影片字幕、圖片、context-aware translation</a>
+          <a href="https://www.trancy.org/">Trancy：雙語字幕、AI 選字翻譯、全文沉浸翻譯、生字收藏與學習功能</a>
+        </div>
+        <p class="note">註：Firecrawl search 因憑證鏈錯誤失敗，這份 benchmark 改用一般 web browsing 讀官方頁與 Chrome 官方文件。</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const KEY_PREFIX = 'fanFanBaReview20260618:';
+    document.querySelectorAll('[data-comment]').forEach((field) => {
+      const key = KEY_PREFIX + field.dataset.comment;
+      const savedLabel = document.querySelector(`[data-saved-for="${field.dataset.comment}"]`);
+      field.value = localStorage.getItem(key) || '';
+      field.addEventListener('input', () => {
+        localStorage.setItem(key, field.value);
+        if (!savedLabel) return;
+        savedLabel.textContent = '已暫存';
+        clearTimeout(field._saveTimer);
+        field._saveTimer = setTimeout(() => { savedLabel.textContent = ''; }, 1200);
+      });
+    });
+
+    function collectComments() {
+      const labels = {
+        summary: '總覽 / 決策',
+        benchmark: 'Benchmark',
+        roadmap: 'Roadmap'
+      };
+      return Object.entries(labels)
+        .map(([key, label]) => {
+          const value = localStorage.getItem(KEY_PREFIX + key) || document.querySelector(`[data-comment="${key}"]`)?.value || '';
+          return `## ${label}\n${value.trim() || '(空白)'}`;
+        })
+        .join('\n\n');
+    }
+
+    document.getElementById('copy-comments')?.addEventListener('click', async () => {
+      const output = collectComments();
+      const exportBox = document.getElementById('comments-export');
+      const status = document.getElementById('copy-comments-status');
+      if (exportBox) exportBox.value = output;
+      try {
+        await navigator.clipboard.writeText(output);
+        if (status) status.textContent = '已複製，可以貼回對話';
+      } catch {
+        if (status) status.textContent = '已整理在下方，請手動複製';
+        exportBox?.focus();
+        exportBox?.select();
+      }
+    });
+  </script>
+</body>
+</html>

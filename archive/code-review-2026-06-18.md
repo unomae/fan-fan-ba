@@ -27,10 +27,13 @@ Review 時間：2026-06-18 09:37 +08:00
 - P0：補 AI HTML / XSS payload regression test，確認 `<script>`、`<img onerror>` 只能當文字渲染。
 - P1 partial：background message handler 已加 action 白名單、selectedText / context / title / TTS 長度限制、sender 檢查與 page translation metadata 正規化。
 
+已完成（2026-06-18 後續補）：
+
+- P0：privacy-policy.html / store-listing.md 已補上第三方 AI provider 資料流與「只傳選取文字、不傳 URL 全文 / 譯文 / API Key」說明。
+- P0：對應 review HTML 已把兩項 P0 標為完成。
+
 尚未完成：
 
-- P0 partial：privacy policy / store listing 尚未同步補上第三方 AI provider 資料流與「不傳原文 / 譯文 / URL 全文 / API Key」說明。
-- P0 partial：尚未更新對應 review HTML，把 P0 標為完成。
 - P1：尚未新增站點停用 / allowlist。
 - P1：尚未把 `<all_urls>` + `all_frames: true` 常駐注入改成更小範圍、`activeTab` 或 programmatic injection。
 - P1：尚未把整頁翻譯模組改成按需初始化。
@@ -221,14 +224,14 @@ Review 方式：
 - [x] 修 `npm test` 多重 Jest config。
 - [x] 排除 `input[type=password]`、OTP、payment 欄位。
 - [x] 補 sensitive input、XSS payload、AI HTML escape 測試。
-- [ ] privacy / store listing 對第三方 AI provider 資料流一致。
-- [ ] 更新對應 review HTML，將 P0 狀態標為完成。
+- [x] privacy / store listing 對第三方 AI provider 資料流一致。
+- [x] 更新對應 review HTML，將 P0 狀態標為完成。
 
 Done 定義：
 
 - [x] `npm test -- --runInBand` 一條指令可通過。
 - [x] 敏感欄位不顯示 toolbar / 不送 request。
-- [ ] review HTML P0 標為完成。
+- [x] review HTML P0 標為完成。
 
 ### v1.9.6：P1 Injection Scope
 
