@@ -2112,6 +2112,7 @@ del.g-diff-del {
 .ffb-page-translation-block {
   position: relative !important;
   --ffb-page-translation-font-size: clamp(11px, calc(var(--ffb-page-source-font-size, 14px) - 1px), 15px);
+  list-style: none !important; /* 譯文區塊複製原文 <li> 標籤時，避免殘留清單 bullet */
   margin: 6px 0 12px !important;
   padding: 8px 10px 8px 12px !important;
   border: 0 !important;
