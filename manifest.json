@@ -43,7 +43,11 @@
         "content/selection-controls.js",
         "content/toolbar.js",
         "content/result-card.js",
-        "content/page-translator.js",
+        "content/page-translator-state.js",
+        "content/page-translator-collector.js",
+        "content/page-translator-client.js",
+        "content/page-translator-renderer.js",
+        "content/page-translator-panel.js",
         "content/floating-ball.js",
         "content/main.js"
       ],

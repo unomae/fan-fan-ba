@@ -1,3 +1,45 @@
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+
+// page-translator.js 已機械式拆成 5 個檔（state / collector / client / renderer / panel）。
+// 瀏覽器端靠 content_scripts 共用同一 isolated-world scope 互相呼叫；
+// 測試端用 vm.runInContext 把這 5 個檔依相依順序串進同一 context，
+// 再從 context 取出函式斷言（與 floating-ball.test.js / result-card-position.test.js 同模式）。
+function runContentScript(file, context) {
+  const source = fs.readFileSync(path.join(__dirname, '../../', file), 'utf8');
+  vm.runInContext(source, context, { filename: file });
+}
+
+const pageTranslatorContext = vm.createContext({
+  window,
+  document,
+  location,
+  navigator,
+  chrome,
+  console,
+  Date,
+  setTimeout,
+  clearTimeout,
+  Node,
+  URL,
+  targetLanguage: 'zh-TW',
+  explanationLanguage: 'target',
+  activeModel: 'gemini-3',
+  escapeHtml: value => String(value),
+  FanFanBaModels: { normalizeModel: model => model || 'gemini-3' },
+  updateFloatingBallPageTranslationState: () => {}
+});
+pageTranslatorContext.globalThis = pageTranslatorContext;
+
+[
+  'content/page-translator-state.js',
+  'content/page-translator-collector.js',
+  'content/page-translator-client.js',
+  'content/page-translator-renderer.js',
+  'content/page-translator-panel.js'
+].forEach(file => runContentScript(file, pageTranslatorContext));
+
 const {
   cleanPageTranslationResult,
   collectVisibleTranslatableBlocks,
@@ -18,7 +60,7 @@ const {
   locatePageTranslationSource,
   getPageTranslationContrastTheme,
   getPageTranslationStatusText
-} = require('../../content/page-translator');
+} = pageTranslatorContext;
 
 describe('page translator helpers', () => {
   let originalGetComputedStyle;
