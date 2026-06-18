@@ -15,6 +15,11 @@ describe('Utils module', () => {
       const expected = '&lt;div id=&quot;test&quot;&gt;Test &amp; Demo&lt;/div&gt;';
       expect(escapeHtml(input)).toBe(expected);
     });
+
+    it('also escapes single quotes (defense in depth for single-quoted attributes)', () => {
+      expect(escapeHtml("O'Brien")).toBe('O&#39;Brien');
+      expect(escapeHtml("' onmouseover='alert(1)")).not.toContain("'");
+    });
   });
 
   describe('formatMarkdown', () => {
@@ -31,6 +36,18 @@ describe('Utils module', () => {
       expect(wrapper.querySelector('img')).toBeNull();
       expect(wrapper.textContent).toContain('<script>alert(1)</script>');
       expect(wrapper.textContent).toContain('<img src=x onerror=alert(1)>');
+    });
+
+    it('does not let {{tag}} payloads break out of the tag span attribute', () => {
+      const html = formatMarkdown('{{"><img src=x onerror=alert(1)>}}');
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = html;
+
+      // 不可生出真的 <img>/onerror，惡意內容只能當文字
+      expect(wrapper.querySelector('img')).toBeNull();
+      const tag = wrapper.querySelector('.g-tag');
+      expect(tag).not.toBeNull();
+      expect(tag.getAttribute('onerror')).toBeNull();
     });
   });
 

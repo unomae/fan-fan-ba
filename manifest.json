@@ -36,6 +36,7 @@
         "content/site-policy.js",
         "content/state.js",
         "content/utils.js",
+        "content/dom.js",
         "content/vocabulary.js",
         "content/vocabulary-highlighter.js",
         "content/obsidian.js",

@@ -303,7 +303,7 @@ function showFloatingLibraryPanel() {
   if (!resultCard || !document.body.contains(resultCard)) resultCard = createResultCard();
   savedSel = { text: '收藏 / 紀錄', range: null };
   userDragged = true;
-  resultCard.querySelector('.g-rc-tag').innerHTML = '收藏 / 紀錄';
+  resultCard.querySelector('.g-rc-tag').textContent = '收藏 / 紀錄';
   resultCard.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
   resultCard.querySelector('.g-history-panel')?.classList.remove('g-hist-open');
   hideAutoSaveToast(resultCard);
@@ -340,7 +340,7 @@ async function showFloatingHistoryPanel() {
   if (!resultCard || !document.body.contains(resultCard)) resultCard = createResultCard();
   savedSel = { text: '最近查詢', range: null };
   userDragged = true;
-  resultCard.querySelector('.g-rc-tag').innerHTML = '最近查詢';
+  resultCard.querySelector('.g-rc-tag').textContent = '最近查詢';
   resultCard.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
   resultCard.querySelector('.g-history-panel')?.classList.remove('g-hist-open');
   hideAutoSaveToast(resultCard);
@@ -348,7 +348,7 @@ async function showFloatingHistoryPanel() {
   const body = resultCard.querySelector('.g-rc-body');
   const history = await loadHistory();
   if (!history.length) {
-    body.innerHTML = '<div class="g-hist-empty">尚無查詢紀錄</div>';
+    ffbClear(body).appendChild(ffbEl('div', { class: 'g-hist-empty' }, '尚無查詢紀錄'));
   } else {
     body.innerHTML = `
       <div class="g-floating-history">
@@ -383,13 +383,13 @@ async function showFloatingVocabularyPanel() {
   if (!resultCard || !document.body.contains(resultCard)) resultCard = createResultCard();
   savedSel = { text: '單字本', range: null };
   userDragged = true;
-  resultCard.querySelector('.g-rc-tag').innerHTML = '單字本';
+  resultCard.querySelector('.g-rc-tag').textContent = '單字本';
   resultCard.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
   resultCard.querySelector('.g-history-panel')?.classList.remove('g-hist-open');
   hideAutoSaveToast(resultCard);
 
   const body = resultCard.querySelector('.g-rc-body');
-  body.innerHTML = '<div class="g-hist-empty">讀取單字本中...</div>';
+  ffbClear(body).appendChild(ffbEl('div', { class: 'g-hist-empty' }, '讀取單字本中...'));
 
   const items = typeof listVocabularyItems === 'function' ? await listVocabularyItems() : [];
   renderFloatingVocabularyPanel(body, items);

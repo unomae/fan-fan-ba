@@ -35,6 +35,7 @@ describe('result card positioning', () => {
     });
     context.globalThis = context;
 
+    runContentScript('content/dom.js', context);
     runContentScript('content/result-card.js', context);
     context.resultCard = context.createResultCard();
     Object.defineProperty(context.resultCard, 'offsetWidth', { value: 500, configurable: true });
@@ -81,6 +82,7 @@ describe('result card positioning', () => {
     });
     context.globalThis = context;
 
+    runContentScript('content/dom.js', context);
     runContentScript('content/result-card.js', context);
     const card = context.createResultCard();
 
@@ -118,6 +120,7 @@ describe('result card positioning', () => {
     });
     context.globalThis = context;
 
+    runContentScript('content/dom.js', context);
     runContentScript('content/result-card.js', context);
     context.resultCard = context.createResultCard();
     Object.defineProperty(context.resultCard, 'offsetWidth', { value: 500, configurable: true });
@@ -169,6 +172,7 @@ describe('result card positioning', () => {
     });
     context.globalThis = context;
 
+    runContentScript('content/dom.js', context);
     runContentScript('content/result-card.js', context);
     context.resultCard = context.createResultCard();
     Object.defineProperty(context.resultCard, 'offsetWidth', { value: 500, configurable: true });
@@ -213,6 +217,7 @@ describe('result card positioning', () => {
     });
     context.globalThis = context;
 
+    runContentScript('content/dom.js', context);
     runContentScript('content/result-card.js', context);
     context.resultCard = context.createResultCard();
     Object.defineProperty(context.resultCard, 'offsetWidth', { value: 500, configurable: true });

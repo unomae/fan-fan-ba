@@ -3,7 +3,8 @@
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;'); // 防禦性：單引號也跳脫，避免未來改用單引號屬性時破口
 }
 
 // 強化 Markdown 渲染：段落、無序 / 有序清單、粗體、{{tag}} 標籤

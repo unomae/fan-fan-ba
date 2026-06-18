@@ -68,6 +68,7 @@ describe('floating ball menu behavior', () => {
     ({ context } = createContentContext());
     runContentScript('content/site-policy.js', context);
     runContentScript('content/state.js', context);
+    runContentScript('content/dom.js', context);
     runContentScript('content/floating-ball.js', context);
     runContentScript('content/main.js', context);
   });
@@ -148,6 +149,7 @@ describe('floating vocabulary panel', () => {
     context = setup.context;
     runContentScript('content/site-policy.js', context);
     runContentScript('content/state.js', context);
+    runContentScript('content/dom.js', context);
     runContentScript('content/utils.js', context);
     runContentScript('content/vocabulary.js', context);
     runContentScript('content/result-card.js', context);
@@ -202,6 +204,7 @@ describe('floating vocabulary panel', () => {
     context = setup.context;
     runContentScript('content/site-policy.js', context);
     runContentScript('content/state.js', context);
+    runContentScript('content/dom.js', context);
     runContentScript('content/utils.js', context);
     runContentScript('content/vocabulary.js', context);
     runContentScript('content/result-card.js', context);
@@ -256,6 +259,7 @@ describe('floating vocabulary panel', () => {
     context = setup.context;
     runContentScript('content/site-policy.js', context);
     runContentScript('content/state.js', context);
+    runContentScript('content/dom.js', context);
     runContentScript('content/utils.js', context);
     runContentScript('content/vocabulary.js', context);
     runContentScript('content/result-card.js', context);

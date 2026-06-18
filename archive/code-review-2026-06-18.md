@@ -105,7 +105,13 @@ Review 時間：2026-06-18 09:37 +08:00
 
 證據：`content/result-card.js`、`content/page-translator.js`、`content/floating-ball.js`
 
-狀態：部分完成。已補 AI HTML / XSS payload regression test；尚未建立 render helper，也尚未系統性替換大量 `innerHTML`。
+狀態：大致完成（Batch C）。
+
+- **Audit 結論**：逐一檢視三檔所有 `innerHTML` 注入點後，確認**不可信內容（AI 回傳、頁面文字、單字本、歷史）目前已一致地經 `escapeHtml` / `formatMarkdown` / `formatPageTranslationText` / `renderDiff` 跳脫**，未發現未跳脫的真 XSS 破口。因此不做「盲目替換 27 處已安全 innerHTML」的高風險重寫（對安全零增益、UI 易回歸），改採根治性做法。
+- **`escapeHtml` 防禦性強化**：補上單引號 `'` → `&#39;`，避免未來改用單引號屬性時出現破口（`content/utils.js`）。
+- **新增 `content/dom.js` 安全建構 helper**（`ffbText` / `ffbEl` / `ffbClear`）：一律走 `createElement` / `createTextNode`，建構即免疫；已實際採用取代靜態字串 innerHTML 點（result-card / floating-ball 的空狀態與標題），並作為 Batch D 重構時的安全注入管線。
+- **新增 XSS 回歸測試**鎖死現有安全行為：`tests/content/dom.test.js`、`tests/content/xss-regression.test.js`（buildDictHTML 各欄位 payload / 屬性跳脫），並擴充 `utils.test.js`（單引號跳脫、`{{tag}}` 屬性 breakout）。未來重構（含 Batch D）若不慎漏掉跳脫會被測試擋下。
+- 仍以 `innerHTML` + `escapeHtml` 樣板渲染的安全注入點保留不動（純樣式 / 已跳脫），屬機械式 refactor，列入 Batch D 一併漸進遷移。
 
 ### P1：整頁翻譯模組過大
 

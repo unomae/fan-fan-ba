@@ -153,7 +153,7 @@ function createResultCard() {
     const history = await loadHistory();
 
     if (history.length === 0) {
-      panel.innerHTML = '<div class="g-hist-empty">尚無查詢紀錄</div>';
+      ffbClear(panel).appendChild(ffbEl('div', { class: 'g-hist-empty' }, '尚無查詢紀錄'));
     } else {
       // 動作標籤文字與 CSS class 對應
       const ACTION_LABEL = { translate: '翻譯', explain: '解釋', optimize: '優化' };
@@ -215,7 +215,7 @@ function createResultCard() {
 
     const folders = await loadRecentFolders();
     if (folders.length === 0) {
-      dropdown.innerHTML = '<div class="g-obs-dd-empty">尚無使用記錄</div>';
+      ffbClear(dropdown).appendChild(ffbEl('div', { class: 'g-obs-dd-empty' }, '尚無使用記錄'));
     } else {
       dropdown.innerHTML = folders.map(f =>
         `<button class="g-obs-dd-item" data-folder="${escapeHtml(f)}">${escapeHtml(f)}</button>`
