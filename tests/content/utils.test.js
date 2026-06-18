@@ -21,6 +21,17 @@ describe('Utils module', () => {
     it('should format tags correctly', () => {
       expect(formatMarkdown('This is a {{tag}}')).toContain('<span class="g-tag" data-term="tag">tag</span>');
     });
+
+    it('renders AI-provided HTML payloads as text, not executable markup', () => {
+      const html = formatMarkdown('Hello <script>alert(1)</script>\n<img src=x onerror=alert(1)>');
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = html;
+
+      expect(wrapper.querySelector('script')).toBeNull();
+      expect(wrapper.querySelector('img')).toBeNull();
+      expect(wrapper.textContent).toContain('<script>alert(1)</script>');
+      expect(wrapper.textContent).toContain('<img src=x onerror=alert(1)>');
+    });
   });
 
   describe('parseJSON', () => {

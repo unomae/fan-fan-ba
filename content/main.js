@@ -164,13 +164,6 @@ function getEditableSelectionDataFromDocument(doc, point = null) {
   };
 }
 
-function isTextSelectionControl(el) {
-  if (!el) return false;
-  if (el.tagName === 'TEXTAREA') return true;
-  if (el.tagName !== 'INPUT') return false;
-  return /^(?:text|search|url|tel|email|password|number)?$/i.test(el.type || 'text');
-}
-
 function getEditableSelectionFallbackRect(el, point = null) {
   if (point && Number.isFinite(point.clientX) && Number.isFinite(point.clientY)) {
     return {

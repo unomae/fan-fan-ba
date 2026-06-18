@@ -3,6 +3,8 @@ const {
   buildPrompt,
   checkedFetch,
   formatApiErrorMessage,
+  validateAIRequest,
+  validateTtsRequest,
   withRetry,
   streamOpenAICompat
 } = require('../background');
@@ -92,6 +94,58 @@ describe('Background module', () => {
 
     it('keeps unknown provider messages when no classification exists', () => {
       expect(formatApiErrorMessage(404, 'Model not found', 'Gemini')).toBe('Model not found');
+    });
+  });
+
+  describe('request validation', () => {
+    it('accepts known AI actions and preserves bounded request fields', () => {
+      const request = validateAIRequest({
+        action: 'translate',
+        selectedText: 'hello',
+        context: 'page context',
+        pageTitle: 'Example',
+        pageTranslation: { batch: true, count: 2 }
+      });
+
+      expect(request).toMatchObject({
+        action: 'translate',
+        selectedText: 'hello',
+        context: 'page context',
+        pageTitle: 'Example',
+        pageTranslation: { batch: true, count: 2 }
+      });
+    });
+
+    it('rejects unknown AI actions and overlong selected text', () => {
+      expect(() => validateAIRequest({
+        action: 'deleteEverything',
+        selectedText: 'hello'
+      })).toThrow('未知的操作類型');
+
+      expect(() => validateAIRequest({
+        action: 'translate',
+        selectedText: 'x'.repeat(6001)
+      })).toThrow('選取文字過長');
+    });
+
+    it('rejects empty AI text and overlong TTS text', () => {
+      expect(() => validateAIRequest({
+        action: 'explain',
+        selectedText: '   '
+      })).toThrow('沒有可處理的文字');
+
+      expect(() => validateTtsRequest({
+        text: 'x'.repeat(161),
+        lang: 'en'
+      })).toThrow('朗讀文字過長');
+    });
+
+    it('rejects malformed page translation metadata', () => {
+      expect(() => validateAIRequest({
+        action: 'translate',
+        selectedText: 'hello',
+        pageTranslation: 'yes'
+      })).toThrow('全文翻譯參數格式不正確');
     });
   });
 

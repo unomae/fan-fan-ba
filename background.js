@@ -21,6 +21,11 @@ const GEMINI_API_BASE     = 'https://generativelanguage.googleapis.com/v1beta/mo
 const GROQ_API_BASE       = 'https://api.groq.com/openai/v1';
 const OPENROUTER_API_BASE = 'https://openrouter.ai/api/v1';
 const DEFAULT_MODEL       = ModelRegistry.DEFAULT_MODEL; // 預設 Groq（免費額度最大方）
+const ALLOWED_AI_ACTIONS  = new Set(['translate', 'explain', 'optimize']);
+const MAX_SELECTED_TEXT_CHARS = 6000;
+const MAX_CONTEXT_CHARS = 4000;
+const MAX_PAGE_TITLE_CHARS = 300;
+const MAX_TTS_TEXT_CHARS = 160;
 
 // ── Exponential Backoff with Full Jitter ──────────
 function createAbortError() {
@@ -103,13 +108,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse(data);
   };
   if (request.type === 'GEMINI_REQUEST') {
-    handleAIRequest(request)
+    if (!isTrustedExtensionSender(sender)) {
+      reply({ error: '請求來源不正確' });
+      return false;
+    }
+    handleAIRequest(validateAIRequest(request))
       .then(reply)
       .catch(err => reply({ error: err.message }));
     return true;
   }
   if (request.type === 'TTS_REQUEST') {
-    handleTtsRequest(request)
+    if (!isTrustedExtensionSender(sender)) {
+      reply({ error: '請求來源不正確' });
+      return false;
+    }
+    handleTtsRequest(validateTtsRequest(request))
       .then(reply)
       .catch(err => reply({ error: err.message }));
     return true;
@@ -174,18 +187,20 @@ chrome.runtime.onConnect.addListener(port => {
     port.onDisconnect.addListener(abortOnDisconnect);
 
     try {
+      if (!isTrustedExtensionSender(port.sender)) throw new Error('請求來源不正確');
+      const safeRequest = validateAIRequest(request);
       await _streamAIRequest(
-        request,
+        safeRequest,
         chunk => {
-          try { port.postMessage({ requestId: request.requestId, chunk }); } catch { /* port 已關閉 */ }
+          try { port.postMessage({ requestId: safeRequest.requestId, chunk }); } catch { /* port 已關閉 */ }
         },
         status => {
-          try { port.postMessage({ requestId: request.requestId, status }); } catch { /* port 已關閉 */ }
+          try { port.postMessage({ requestId: safeRequest.requestId, status }); } catch { /* port 已關閉 */ }
         },
         controller.signal
       );
       completed = true;
-      try { port.postMessage({ requestId: request.requestId, done: true }); } catch {}
+      try { port.postMessage({ requestId: safeRequest.requestId, done: true }); } catch {}
     } catch (err) {
       const message = timedOut || err.name === 'AbortError'
         ? '請求逾時或已取消，請稍後重試'
@@ -198,6 +213,60 @@ chrome.runtime.onConnect.addListener(port => {
     }
   });
 });
+
+function isTrustedExtensionSender(sender = {}) {
+  if (!sender || !sender.id) return true;
+  return sender.id === chrome.runtime.id;
+}
+
+function validateAIRequest(request = {}) {
+  if (!ALLOWED_AI_ACTIONS.has(request.action)) throw new Error('未知的操作類型');
+  const selectedText = normalizeBoundedString(request.selectedText, MAX_SELECTED_TEXT_CHARS, '選取文字');
+  if (!selectedText.trim()) throw new Error('沒有可處理的文字');
+
+  return {
+    ...request,
+    action: request.action,
+    selectedText,
+    context: normalizeOptionalBoundedString(request.context, MAX_CONTEXT_CHARS, '上下文'),
+    pageTitle: normalizeOptionalBoundedString(request.pageTitle, MAX_PAGE_TITLE_CHARS, '網頁標題'),
+    targetLanguage: normalizeOptionalBoundedString(request.targetLanguage, 32, '目標語言'),
+    explanationLanguage: normalizeOptionalBoundedString(request.explanationLanguage, 32, '解釋語言'),
+    browserLanguage: normalizeOptionalBoundedString(request.browserLanguage, 32, '瀏覽器語言'),
+    model: normalizeOptionalBoundedString(request.model, 160, '模型'),
+    requestId: normalizeOptionalBoundedString(request.requestId, 80, '請求 ID'),
+    pageTranslation: normalizePageTranslationMeta(request.pageTranslation)
+  };
+}
+
+function validateTtsRequest(request = {}) {
+  return {
+    ...request,
+    text: normalizeBoundedString(request.text, MAX_TTS_TEXT_CHARS, '朗讀文字'),
+    lang: normalizeOptionalBoundedString(request.lang, 32, '朗讀語言')
+  };
+}
+
+function normalizeBoundedString(value, maxChars, label) {
+  if (typeof value !== 'string') throw new Error(`${label}格式不正確`);
+  if (value.length > maxChars) throw new Error(`${label}過長`);
+  return value;
+}
+
+function normalizeOptionalBoundedString(value, maxChars, label) {
+  if (value == null) return '';
+  return normalizeBoundedString(value, maxChars, label);
+}
+
+function normalizePageTranslationMeta(value) {
+  if (!value) return false;
+  if (value === true) return true;
+  if (typeof value !== 'object') throw new Error('全文翻譯參數格式不正確');
+  return {
+    batch: value.batch === true,
+    count: Math.max(0, Math.min(20, Number.parseInt(value.count || 0, 10) || 0))
+  };
+}
 
 // ── 非 streaming：維持原有邏輯（字典 JSON 需要完整回應）──
 async function handleAIRequest({ action, selectedText, context, pageTitle, model, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }) {
@@ -666,4 +735,4 @@ ${selectedText}`;
   }
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, validateAIRequest, validateTtsRequest, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }

@@ -38,6 +38,7 @@
         "content/vocabulary.js",
         "content/vocabulary-highlighter.js",
         "content/obsidian.js",
+        "content/selection-controls.js",
         "content/toolbar.js",
         "content/result-card.js",
         "content/page-translator.js",
