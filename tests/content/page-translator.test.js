@@ -21,6 +21,13 @@ function runContentScript(file, context) {
   vm.runInContext(instrumented, context, { filename: abs });
 }
 
+// 相依檔：不 instrument（避免污染其自身 suite 的覆蓋率），只是提供 renderer 用到的
+// ffbText/ffbEl/ffbClear（dom.js 自己有 dom.test.js 量測覆蓋率）。
+function runDependencyRaw(file, context) {
+  const abs = path.join(__dirname, '../../', file);
+  vm.runInContext(fs.readFileSync(abs, 'utf8'), context, { filename: abs });
+}
+
 afterAll(() => {
   const covered = pageTranslatorContext.__coverage__;
   if (!covered) return;
@@ -53,6 +60,8 @@ const pageTranslatorContext = vm.createContext({
   pageTranslationPanel: null
 });
 pageTranslatorContext.globalThis = pageTranslatorContext;
+
+runDependencyRaw('content/dom.js', pageTranslatorContext);
 
 [
   'content/page-translator-state.js',

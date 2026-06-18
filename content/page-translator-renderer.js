@@ -6,12 +6,11 @@ function createPageTranslationBlock(item) {
   const block = document.createElement(item.el.tagName === 'LI' ? 'li' : 'div');
   block.className = 'ffb-page-translation-block ffb-page-translation-loading';
   block.dataset.ffbPairId = item.pairId;
-  block.innerHTML = `
-    <div class="ffb-page-translation-head">
-      <span class="ffb-page-translation-mark" title="翻翻吧譯文" aria-label="翻翻吧譯文">文</span>
-    </div>
-    <div class="ffb-page-translation-text">翻譯中...</div>
-  `;
+  block.append(
+    ffbEl('div', { class: 'ffb-page-translation-head' },
+      ffbEl('span', { class: 'ffb-page-translation-mark', title: '翻翻吧譯文', 'aria-label': '翻翻吧譯文' }, '文')),
+    ffbEl('div', { class: 'ffb-page-translation-text' }, '翻譯中...')
+  );
   bindPageTranslationBlockEvents(block);
   return block;
 }
@@ -114,16 +113,27 @@ function renderPageTranslationResult(item, result) {
   item.translationNode.classList.toggle('ffb-page-collapsible', shouldCollapse);
   item.translationNode.classList.toggle('ffb-page-collapsed', shouldCollapse);
   item.translationNode.classList.toggle('ffb-page-long', shouldCollapse);
-  item.translationNode.innerHTML = `
-    <div class="ffb-page-translation-head">
-      <span class="ffb-page-translation-mark" title="翻翻吧譯文" aria-label="翻翻吧譯文">文</span>
-      <div class="ffb-page-translation-actions">
-        <button class="ffb-page-locate-btn" type="button" data-ffb-action="locate-source" title="定位原文" aria-label="定位到對應原文">原</button>
-        ${shouldCollapse ? '<button class="ffb-page-expand-btn" type="button" data-ffb-action="toggle-collapse" title="展開全文" aria-label="展開全文">⌄</button>' : ''}
-      </div>
-    </div>
-    <div class="ffb-page-translation-text">${formatPageTranslationText(result)}</div>
-  `;
+
+  const actions = ffbEl('div', { class: 'ffb-page-translation-actions' },
+    ffbEl('button', {
+      class: 'ffb-page-locate-btn', type: 'button', 'data-ffb-action': 'locate-source',
+      title: '定位原文', 'aria-label': '定位到對應原文'
+    }, '原'));
+  if (shouldCollapse) {
+    actions.appendChild(ffbEl('button', {
+      class: 'ffb-page-expand-btn', type: 'button', 'data-ffb-action': 'toggle-collapse',
+      title: '展開全文', 'aria-label': '展開全文'
+    }, '⌄'));
+  }
+  const head = ffbEl('div', { class: 'ffb-page-translation-head' },
+    ffbEl('span', { class: 'ffb-page-translation-mark', title: '翻翻吧譯文', 'aria-label': '翻翻吧譯文' }, '文'));
+  head.appendChild(actions);
+  // 譯文本體是 formatPageTranslationText 產生、且內部已 escapeHtml 過的 HTML 結構，仍以 innerHTML 注入
+  const textEl = ffbEl('div', { class: 'ffb-page-translation-text' });
+  textEl.innerHTML = formatPageTranslationText(result);
+
+  ffbClear(item.translationNode);
+  item.translationNode.append(head, textEl);
   bindPageTranslationBlockEvents(item.translationNode);
 }
 
@@ -174,15 +184,16 @@ function renderPageTranslationError(item, message) {
   if (!item.translationNode) return;
   item.translationNode.classList.remove('ffb-page-translation-loading');
   item.translationNode.classList.add('ffb-page-translation-error');
-  item.translationNode.innerHTML = `
-    <div class="ffb-page-translation-head">
-      <span class="ffb-page-translation-mark ffb-page-translation-mark-error" title="翻譯失敗" aria-label="翻譯失敗">!</span>
-    </div>
-    <div class="ffb-page-translation-text">${escapeHtml(message)}</div>
-    <button class="ffb-page-retry" type="button" aria-label="重試此段">重試此段</button>
-  `;
+  const retryButton = ffbEl('button', { class: 'ffb-page-retry', type: 'button', 'aria-label': '重試此段' }, '重試此段');
+  ffbClear(item.translationNode);
+  item.translationNode.append(
+    ffbEl('div', { class: 'ffb-page-translation-head' },
+      ffbEl('span', { class: 'ffb-page-translation-mark ffb-page-translation-mark-error', title: '翻譯失敗', 'aria-label': '翻譯失敗' }, '!')),
+    ffbEl('div', { class: 'ffb-page-translation-text' }, message),
+    retryButton
+  );
   bindPageTranslationBlockEvents(item.translationNode);
-  item.translationNode.querySelector('.ffb-page-retry')?.addEventListener('click', async e => {
+  retryButton.addEventListener('click', async e => {
     e.stopPropagation();
     pageTranslationState.errors = Math.max(0, pageTranslationState.errors - 1);
     pageTranslationState.usage.failed = Math.max(0, pageTranslationState.usage.failed - 1);
