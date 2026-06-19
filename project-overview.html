@@ -1060,7 +1060,7 @@ options.js</pre>
 
       <section id="roadmap">
         <h2>Roadmap</h2>
-        <div class="callout">2026-06-19 更新：code review P0 / P1 / P2（v1.9.5–v1.9.8）已完成 — 安全硬化、注入面收斂、單段沉浸翻譯、可維護性 + 本機診斷皆落地。<strong>下一步主線是 Phase A（v2.0 上架）</strong>，再進 Phase B 單字本深化。使用者指標一律本機、不上傳原文 / 譯文 / URL / API Key / 個資。</div>
+        <div class="callout">2026-06-20 更新：Claude Code 額度中斷後已接手收尾並 push 到 <code>270b5a4</code>。Phase A 本機可驗證項（測試 / 打包 / 送審指南）已完成；Phase B 已補單字本 JSON round-trip 備份 / 匯入與真 <code>.xlsx</code> 匯出；Phase C 的單段失敗局部重試已落地；Phase D 已同步 README 架構。<strong>下一步仍是 Chrome Web Store 後台送審 / 手動 QA</strong>，再進 IndexedDB / SRS 主線。使用者指標一律本機、不上傳原文 / 譯文 / URL / API Key / 個資。</div>
         <table style="margin-bottom:12px;">
           <thead>
             <tr><th>Phase</th><th>目標</th><th>細項</th><th>Done 定義</th></tr>
@@ -1197,6 +1197,12 @@ options.js</pre>
             <tr><th>日期</th><th>版本線</th><th>完成事項</th><th>驗證 / 注意</th></tr>
           </thead>
           <tbody>
+            <tr>
+              <td>2026-06-20</td>
+              <td><code>Phase A-D handoff closure</code></td>
+              <td>接手 Claude Code 額度中斷後的未推 commits，先推上 <code>origin/master</code>；補 Phase B 單字本真 <code>.xlsx</code> 匯出（設定頁新增「匯出 XLSX」，JSON 仍作為完整還原格式）；同步 README 技術架構、Roadmap 狀態與本文件 handoff 邊界。</td>
+              <td><code>npm.cmd test -- --runInBand</code> 通過，19 suites / 186 tests；<code>npm.cmd run package</code> 通過，產出 <code>dist/fan-fan-ba-v1.9.8.zip</code>；commit <code>270b5a4</code> 已 push。PowerShell 會擋 <code>npm.ps1</code>，本機驗證請用 <code>npm.cmd</code>。</td>
+            </tr>
             <tr>
               <td>2026-06-18</td>
               <td><code>Review-driven phase plan</code></td>
