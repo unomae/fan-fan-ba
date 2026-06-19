@@ -918,6 +918,17 @@
               <p class="field-note">只接受翻翻吧設定檔，匯入時會依白名單更新支援的設定與 API Keys。</p>
             </div>
 
+            <div class="field full">
+              <label>單字本備份 / 還原</label>
+              <div class="backup-actions">
+                <button class="btn-test" id="btnExportVocabulary" type="button">匯出單字本</button>
+                <button class="btn-test" id="btnImportVocabulary" type="button">匯入單字本</button>
+                <input class="file-input" id="vocabularyImportFile" type="file" accept="application/json,.json">
+              </div>
+              <div id="vocabularyBackupStatus" aria-live="polite" style="margin-top:8px;font-size:12px;color:#666;"></div>
+              <p class="field-note">完整匯出單字本成 JSON（含遇到次數、來源、熟悉度），換裝置 / 重新安裝後可匯入。匯入採<strong>合併</strong>：同一單字保留較高的遇到次數，不會覆蓋既有資料。</p>
+            </div>
+
             <div class="security-note field full">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
@@ -1035,6 +1046,7 @@
   <script src="models.js"></script>
   <script src="storage.js"></script>
   <script src="cloud-sync.js"></script>
+  <script src="vocabulary-backup.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

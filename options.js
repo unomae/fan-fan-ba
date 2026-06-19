@@ -6,6 +6,8 @@ const $ = id => document.getElementById(id);
 const ModelRegistry = globalThis.FanFanBaModels || require('./models');
 const Storage = globalThis.FanFanBaStorage || require('./storage');
 const CloudSync = globalThis.FanFanBaCloudSync || require('./cloud-sync');
+const VocabBackup = globalThis.FanFanBaVocabularyBackup || require('./vocabulary-backup');
+const VOCAB_STORAGE_KEY = 'fanFanBaVocabularyItems';
 const SETTINGS_BACKUP_APP = 'fan-fan-ba';
 const SETTINGS_BACKUP_SCHEMA_VERSION = 1;
 const SECRET_BACKUP_CRYPTO_VERSION = 1;
@@ -28,6 +30,56 @@ initSettingsTabs();
 
 loadSettings();
 initDiagnosticsPanel();
+initVocabularyBackup();
+
+// ── 單字本備份 / 還原（Phase B）──────────────────────
+function initVocabularyBackup() {
+  $('btnExportVocabulary')?.addEventListener('click', exportVocabularyBackup);
+  const fileInput = $('vocabularyImportFile');
+  $('btnImportVocabulary')?.addEventListener('click', () => fileInput?.click());
+  fileInput?.addEventListener('change', importVocabularyBackup);
+}
+
+function setVocabularyBackupStatus(text) {
+  const el = $('vocabularyBackupStatus');
+  if (el) el.textContent = text;
+}
+
+async function exportVocabularyBackup() {
+  try {
+    const { [VOCAB_STORAGE_KEY]: items = {} } = await chrome.storage.local.get(VOCAB_STORAGE_KEY);
+    const backup = VocabBackup.buildBackup(items);
+    if (!backup.count) { setVocabularyBackupStatus('單字本是空的，沒有可匯出的單字。'); return; }
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fan-fan-ba-vocabulary-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setVocabularyBackupStatus(`已匯出 ${backup.count} 個單字。`);
+  } catch {
+    setVocabularyBackupStatus('匯出失敗，請再試一次。');
+  }
+}
+
+async function importVocabularyBackup(event) {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const incoming = VocabBackup.parseBackup(text);
+    const { [VOCAB_STORAGE_KEY]: existing = {} } = await chrome.storage.local.get(VOCAB_STORAGE_KEY);
+    const { items, summary } = VocabBackup.mergeBackup(existing, incoming, 'merge');
+    await chrome.storage.local.set({ [VOCAB_STORAGE_KEY]: items });
+    setVocabularyBackupStatus(`匯入完成：新增 ${summary.added}、更新 ${summary.updated}，目前共 ${summary.total} 個單字。`);
+  } catch (error) {
+    setVocabularyBackupStatus(`匯入失敗：${error?.message || '檔案格式不正確'}`);
+  }
+}
 
 // ── 本機診斷摘要（v1.9.8）────────────────────────────
 function initDiagnosticsPanel() {

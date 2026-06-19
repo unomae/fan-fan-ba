@@ -1,0 +1,67 @@
+const Backup = require('../vocabulary-backup');
+
+const entry = (id, word, over = {}) => ({ id, word, lang: 'en', count: 1, createdAt: '2026-06-01T00:00:00.000Z', lastSeenAt: '2026-06-01T00:00:00.000Z', ...over });
+
+describe('vocabulary backup', () => {
+  describe('buildBackup / normalize', () => {
+    it('wraps a valid keyed map with schema metadata', () => {
+      const b = Backup.buildBackup({ 'en:cat': entry('en:cat', 'cat') });
+      expect(b).toMatchObject({ app: 'fan-fan-ba', schema: 'vocabulary', version: 1, count: 1 });
+      expect(b.items['en:cat'].word).toBe('cat');
+      expect(typeof b.exportedAt).toBe('string');
+    });
+
+    it('drops entries missing id or word, and tolerates junk input', () => {
+      const b = Backup.buildBackup({ 'en:cat': entry('en:cat', 'cat'), bad1: { word: 'x' }, bad2: { id: 'y' }, bad3: null });
+      expect(Object.keys(b.items)).toEqual(['en:cat']);
+      expect(Backup.buildBackup(null).count).toBe(0);
+      expect(Backup.buildBackup([]).count).toBe(0);
+    });
+  });
+
+  describe('parseBackup', () => {
+    it('parses a JSON string produced by buildBackup', () => {
+      const json = JSON.stringify(Backup.buildBackup({ 'en:cat': entry('en:cat', 'cat') }));
+      expect(Object.keys(Backup.parseBackup(json))).toEqual(['en:cat']);
+    });
+
+    it('accepts a bare keyed map (fallback)', () => {
+      const map = { 'en:dog': entry('en:dog', 'dog') };
+      expect(Backup.parseBackup(map)['en:dog'].word).toBe('dog');
+    });
+
+    it('rejects invalid JSON, wrong app, and empty payloads', () => {
+      expect(() => Backup.parseBackup('{not json')).toThrow('有效的 JSON');
+      expect(() => Backup.parseBackup({ app: 'other-app', schema: 'vocabulary', items: {} })).toThrow('翻翻吧');
+      expect(() => Backup.parseBackup({})).toThrow('沒有可匯入');
+    });
+  });
+
+  describe('mergeBackup', () => {
+    it('adds new entries and keeps existing ones (merge mode)', () => {
+      const existing = { 'en:cat': entry('en:cat', 'cat') };
+      const incoming = { 'en:dog': entry('en:dog', 'dog') };
+      const { items, summary } = Backup.mergeBackup(existing, incoming);
+      expect(Object.keys(items).sort()).toEqual(['en:cat', 'en:dog']);
+      expect(summary).toMatchObject({ added: 1, updated: 0, kept: 1, total: 2 });
+    });
+
+    it('merges conflicts by taking the larger count and newest lastSeen', () => {
+      const existing = { 'en:cat': entry('en:cat', 'cat', { count: 5, lastSeenAt: '2026-06-10T00:00:00.000Z' }) };
+      const incoming = { 'en:cat': entry('en:cat', 'cat', { count: 2, lastSeenAt: '2026-06-20T00:00:00.000Z', pos: 'n.' }) };
+      const { items, summary } = Backup.mergeBackup(existing, incoming);
+      expect(items['en:cat'].count).toBe(5);
+      expect(items['en:cat'].lastSeenAt).toBe('2026-06-20T00:00:00.000Z');
+      expect(items['en:cat'].createdAt).toBe('2026-06-01T00:00:00.000Z');
+      expect(summary).toMatchObject({ added: 0, updated: 1, total: 1 });
+    });
+
+    it('replace mode discards existing entries', () => {
+      const existing = { 'en:cat': entry('en:cat', 'cat') };
+      const incoming = { 'en:dog': entry('en:dog', 'dog') };
+      const { items, summary } = Backup.mergeBackup(existing, incoming, 'replace');
+      expect(Object.keys(items)).toEqual(['en:dog']);
+      expect(summary).toMatchObject({ added: 1, total: 1 });
+    });
+  });
+});
