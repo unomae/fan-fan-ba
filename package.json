@@ -4,7 +4,8 @@
   "private": true,
   "description": "AI-powered translation, explanation and text optimizer browser extension.",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "package": "node scripts/package-extension.js"
   },
   "devDependencies": {
     "jest": "^30.2.0",
