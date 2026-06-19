@@ -205,7 +205,7 @@
         <img class="header-icon" src="icons/icon128.png" alt="翻翻吧">
         <div class="header-text">
           <h1>翻翻吧 — 隱私權政策</h1>
-          <p>最後更新：2026 年 6 月 · 版本 1.8.x</p>
+          <p>最後更新：2026 年 6 月 · 版本 1.9.x</p>
         </div>
       </div>
 
@@ -225,7 +225,8 @@
           <li>不收集姓名、電子郵件或帳號資訊</li>
           <li>不收集瀏覽歷史或網頁 URL</li>
           <li>不記錄使用者選取的文字內容</li>
-          <li>不進行任何形式的使用行為追蹤或分析</li>
+          <li>不進行任何形式的雲端使用行為追蹤或分析，<strong>沒有 telemetry</strong>，不上傳任何使用資料</li>
+          <li>設定頁的「本機診斷摘要」只在本機累計各功能的<strong>使用次數</strong>（不含選取文字、網址或內容），純供使用者自我檢視，<strong>不會上傳</strong>，可隨時清除</li>
         </ul>
       </div>
 
@@ -320,12 +321,16 @@
               <td>儲存 API Key、模型設定、查詢歷史（本地端）</td>
             </tr>
             <tr>
+              <td><code>identity</code></td>
+              <td>選用：使用者主動啟用 Google Drive 雲端同步時，取得 Drive <code>appData</code> 授權登入；未啟用同步則不會用到</td>
+            </tr>
+            <tr>
               <td><code>&lt;all_urls&gt;</code>（content script）</td>
               <td>在任意網頁注入工具列，偵測文字選取事件</td>
             </tr>
             <tr>
               <td>API host permissions</td>
-              <td>允許直接呼叫 Gemini / Groq / OpenRouter / TTS API</td>
+              <td>允許直接呼叫 Gemini / Groq / OpenRouter / TTS / Google Drive API</td>
             </tr>
           </tbody>
         </table>

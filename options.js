@@ -27,6 +27,39 @@ renderLanguageSelects();
 initSettingsTabs();
 
 loadSettings();
+initDiagnosticsPanel();
+
+// ── 本機診斷摘要（v1.9.8）────────────────────────────
+function initDiagnosticsPanel() {
+  renderDiagnostics();
+  $('btnClearDiagnostics')?.addEventListener('click', async () => {
+    await Storage.clearDiagnostics();
+    renderDiagnostics('已清除診斷資料。');
+  });
+}
+
+async function renderDiagnostics(note = '') {
+  const el = $('diagnosticsSummary');
+  if (!el) return;
+  const d = await Storage.getDiagnostics();
+  const total = d.actions.translate + d.actions.explain + d.actions.optimize + d.pageTranslations;
+  if (!total && !d.errors) {
+    el.textContent = note || '尚無使用紀錄。';
+    return;
+  }
+  const sinceText = (() => {
+    const t = Date.parse(d.since);
+    return Number.isFinite(t) ? new Date(t).toLocaleDateString() : '';
+  })();
+  const parts = [
+    `翻譯 ${d.actions.translate}`,
+    `解釋 ${d.actions.explain}`,
+    `優化 ${d.actions.optimize}`,
+    `全文翻譯 ${d.pageTranslations}`,
+    `失敗 ${d.errors}`
+  ];
+  el.textContent = `${note ? note + ' ' : ''}自 ${sinceText} 起：${parts.join(' · ')}`;
+}
 
 // ── 載入已儲存的設定 ─────────────────────────────────
 async function loadSettings() {

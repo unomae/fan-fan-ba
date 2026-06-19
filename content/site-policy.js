@@ -54,6 +54,13 @@ function fanFanBaCurrentHostname() {
   }
 }
 
+// 每站停用旗標的 storage key（per-host）。所有 frame 都會用到，因此放在
+// always-loaded 的本檔，而非只在 top frame 載入的 floating-ball.js。
+function getPauseStorageKey() {
+  const host = fanFanBaCurrentHostname() || 'local-file';
+  return `fanFanBaPaused:${host}`;
+}
+
 // 整個 content script 是否要在這個頁面啟用（敏感網域則完全不啟用）
 function fanFanBaShouldActivate() {
   return !fanFanBaIsSensitiveHost(fanFanBaCurrentHostname());
@@ -69,6 +76,7 @@ if (typeof module !== 'undefined' && module.exports) {
     FFB_SENSITIVE_HOST_DENYLIST,
     fanFanBaIsSensitiveHost,
     fanFanBaIsTopFrame,
+    getPauseStorageKey,
     fanFanBaShouldActivate,
     fanFanBaShouldShowFloatingBall
   };

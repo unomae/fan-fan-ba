@@ -699,8 +699,10 @@ options.js</pre>
             <tr><td>結果卡窄視窗 responsive 與定位穩定</td><td>結果卡寬度與 header wrapping 已補強，rAF timestamp 定位 bug 已加防回歸。</td><td><span class="pill green">v1.6.0 / v1.6.2 完成</span></td></tr>
             <tr><td>鍵盤可及性與 icon action 語意</td><td>主要按鈕補 <code>type="button"</code>、<code>aria-label</code> 與更多 <code>:focus-visible</code>。</td><td><span class="pill green">v1.6.2 完成</span></td></tr>
             <tr><td>2026-06-18 P0：敏感欄位與測試入口</td><td>排除 <code>password</code> / OTP / payment 類敏感 input；修正 <code>npm test</code> 預設入口；補 sensitive input 與 XSS regression tests。</td><td><span class="pill orange">v1.9.5 優先</span></td></tr>
-            <tr><td>2026-06-18 P1：權限面與 content script 干擾</td><td>收斂 <code>&lt;all_urls&gt;</code> / <code>all_frames</code> 影響、按需初始化全文翻譯、收斂 web accessible resources、background message schema validation。</td><td><span class="pill orange">v1.9.6 優先</span></td></tr>
-            <tr><td>2026-06-18 P2：可維護性與 UX polish</td><td>拆 <code>page-translator.js</code> / <code>content.css</code>，建立 DOM render helper；模型選單只保留簡潔特點說明，不做語意標籤。</td><td><span class="pill orange">v1.9.7-v1.9.8</span></td></tr>
+            <tr><td>2026-06-18 P1：權限面與 content script 干擾</td><td>content script 拆兩個 entry：子 frame 只載入選取翻譯核心，浮球 + page-translator 5 檔改 <code>all_frames:false</code>（只在 top frame）；全文翻譯維持按需啟動；<code>web_accessible_resources</code> 加 <code>use_dynamic_url</code> 防指紋；background message handler 補 <code>OBSIDIAN_URI</code>/<code>OPEN_OPTIONS</code> sender 檢查、obsidian:// scheme 白名單、type 白名單，並補回歸測試。</td><td><span class="pill green">v1.9.6 完成（2026-06-19）</span></td></tr>
+            <tr><td>2026-06-18 P2：可維護性與 UX polish</td><td>拆 <code>page-translator.js</code> ✓、建立 DOM render helper ✓、模型選單已是簡潔特點說明（無語意標籤）✓；<code>content.css</code> 整理 deferred（非 gating，純樣式重排風險高、需 Chrome QA）。</td><td><span class="pill green">v1.9.8 大致完成（2026-06-19）</span></td></tr>
+            <tr><td>v1.9.7 文字沉浸：單段翻譯</td><td>新增 hover 浮鈕 + <code>Alt+T</code> 快捷鍵，按需翻譯游標／選取所在段落，重用整頁翻譯的 pair／renderer／locate 基礎設施（top frame）。</td><td><span class="pill green">v1.9.7 完成（2026-06-19）</span></td></tr>
+            <tr><td>v1.9.8 本機診斷摘要</td><td>純本機累計各功能使用次數（不含文字／網址／內容），設定頁可檢視＋清除；隱私政策明載無 telemetry、不上傳、可清除。Coverage 行覆蓋 71%（&gt;65% 目標）。</td><td><span class="pill green">v1.9.8 完成（2026-06-19）</span></td></tr>
             <tr><td>Coverage 偏低、Git / OneDrive 權限風險</td><td>測試檔有持續補，但 Windows 目前受 <code>EPERM</code> 與 git metadata 權限問題影響。</td><td><span class="pill orange">環境待處理；本輪不修</span></td></tr>
           </tbody>
         </table>

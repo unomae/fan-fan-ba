@@ -5,6 +5,7 @@ const {
   formatApiErrorMessage,
   validateAIRequest,
   validateTtsRequest,
+  validateObsidianUriRequest,
   withRetry,
   streamOpenAICompat
 } = require('../background');
@@ -146,6 +147,36 @@ describe('Background module', () => {
         selectedText: 'hello',
         pageTranslation: 'yes'
       })).toThrow('全文翻譯參數格式不正確');
+    });
+  });
+
+  describe('Obsidian URI validation', () => {
+    it('accepts obsidian:// links from urls array and url field', () => {
+      expect(validateObsidianUriRequest({ urls: ['obsidian://new?file=a', 'obsidian://open?vault=b'] }))
+        .toEqual(['obsidian://new?file=a', 'obsidian://open?vault=b']);
+      expect(validateObsidianUriRequest({ url: 'obsidian://new?file=a' }))
+        .toEqual(['obsidian://new?file=a']);
+    });
+
+    it('rejects non-obsidian schemes (no arbitrary tab opening)', () => {
+      expect(() => validateObsidianUriRequest({ urls: ['https://evil.example.com'] }))
+        .toThrow('只允許 obsidian:// 連結');
+      expect(() => validateObsidianUriRequest({ url: 'javascript:alert(1)' }))
+        .toThrow('只允許 obsidian:// 連結');
+    });
+
+    it('drops blank / non-string entries and rejects empty results', () => {
+      expect(validateObsidianUriRequest({ urls: ['obsidian://x', '', 42, null] }))
+        .toEqual(['obsidian://x']);
+      expect(() => validateObsidianUriRequest({ urls: [] })).toThrow('沒有可開啟的 Obsidian URI');
+      expect(() => validateObsidianUriRequest({})).toThrow('沒有可開啟的 Obsidian URI');
+    });
+
+    it('rejects overlong links and caps the number of URIs', () => {
+      expect(() => validateObsidianUriRequest({ url: `obsidian://${'x'.repeat(4097)}` }))
+        .toThrow('Obsidian 連結過長');
+      const many = Array.from({ length: 80 }, (_, i) => `obsidian://n${i}`);
+      expect(validateObsidianUriRequest({ urls: many })).toHaveLength(50);
     });
   });
 

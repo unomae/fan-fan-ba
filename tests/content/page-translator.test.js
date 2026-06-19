@@ -68,7 +68,8 @@ runDependencyRaw('content/dom.js', pageTranslatorContext);
   'content/page-translator-collector.js',
   'content/page-translator-client.js',
   'content/page-translator-renderer.js',
-  'content/page-translator-panel.js'
+  'content/page-translator-panel.js',
+  'content/page-translator-single.js'
 ].forEach(file => runContentScript(file, pageTranslatorContext));
 
 const {
@@ -90,7 +91,8 @@ const {
   buildPageLearningSummary,
   locatePageTranslationSource,
   getPageTranslationContrastTheme,
-  getPageTranslationStatusText
+  getPageTranslationStatusText,
+  findSinglePageTranslatableBlock
 } = pageTranslatorContext;
 
 describe('page translator helpers', () => {
@@ -1039,5 +1041,53 @@ describe('page translator panel + state controls', () => {
     expect(ctxRun('pageTranslationState.usage.batchRequests')).toBe(1);
     expect(ctxRun('pageTranslationState.usage.fallbackRequests')).toBe(1);
     expect(ctxRun('pageTranslationState.usage.singleRequests')).toBe(1);
+  });
+});
+
+describe('single-paragraph translate — block finder (v1.9.7)', () => {
+  let originalGetComputedStyle;
+  let originalGetBoundingClientRect;
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    Object.defineProperty(window, 'innerHeight', { value: 900, configurable: true });
+    originalGetComputedStyle = window.getComputedStyle;
+    originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    window.getComputedStyle = jest.fn(() => ({
+      display: 'block', visibility: 'visible', opacity: '1',
+      fontSize: '16px', lineHeight: 'normal', backgroundColor: 'rgba(0,0,0,0)'
+    }));
+    HTMLElement.prototype.getBoundingClientRect = function () {
+      return { width: 360, height: 28, top: 20, bottom: 48, left: 0, right: 360 };
+    };
+  });
+
+  afterEach(() => {
+    window.getComputedStyle = originalGetComputedStyle;
+    HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+  });
+
+  it('walks up from an inner node to the nearest translatable block', () => {
+    document.body.innerHTML = '<p><span id="inner">This is a sufficiently long paragraph.</span></p>';
+    const block = findSinglePageTranslatableBlock(document.getElementById('inner'));
+    expect(block).not.toBeNull();
+    expect(block.tagName).toBe('P');
+  });
+
+  it('accepts a text node by resolving to its parent element', () => {
+    document.body.innerHTML = '<p id="p">This is a sufficiently long paragraph.</p>';
+    const textNode = document.getElementById('p').firstChild;
+    expect(findSinglePageTranslatableBlock(textNode)?.tagName).toBe('P');
+  });
+
+  it('ignores our own UI and non-translatable / too-short blocks', () => {
+    document.body.innerHTML = `
+      <div class="ffb-page-translation-panel"><p id="ours">面板內的長段落內容測試測試測試測試測試</p></div>
+      <p id="short">短</p>
+      <div id="bare">no block ancestor here</div>`;
+    expect(findSinglePageTranslatableBlock(document.getElementById('ours'))).toBeNull();
+    expect(findSinglePageTranslatableBlock(document.getElementById('short'))).toBeNull();
+    expect(findSinglePageTranslatableBlock(document.getElementById('bare'))).toBeNull();
+    expect(findSinglePageTranslatableBlock(null)).toBeNull();
   });
 });

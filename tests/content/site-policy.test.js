@@ -1,6 +1,7 @@
 const {
   fanFanBaIsSensitiveHost,
-  FFB_SENSITIVE_HOST_DENYLIST
+  FFB_SENSITIVE_HOST_DENYLIST,
+  getPauseStorageKey
 } = require('../../content/site-policy');
 
 describe('site policy — sensitive host denylist', () => {
@@ -42,5 +43,16 @@ describe('site policy — sensitive host denylist', () => {
   it('exposes the denylist as an array of RegExp', () => {
     expect(Array.isArray(FFB_SENSITIVE_HOST_DENYLIST)).toBe(true);
     expect(FFB_SENSITIVE_HOST_DENYLIST.every(re => re instanceof RegExp)).toBe(true);
+  });
+});
+
+describe('site policy — per-site pause storage key', () => {
+  // getPauseStorageKey 從 floating-ball.js 移來此處（所有 frame 都需要，
+  // 但 floating-ball.js 在 frame-split 後只在 top frame 載入）。
+  it('namespaces the pause flag per host and is deterministic', () => {
+    const key = getPauseStorageKey();
+    expect(key.startsWith('fanFanBaPaused:')).toBe(true);
+    expect(key).toBe(`fanFanBaPaused:${location.hostname || 'local-file'}`);
+    expect(getPauseStorageKey()).toBe(key);
   });
 });

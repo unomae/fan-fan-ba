@@ -26,6 +26,9 @@ const MAX_SELECTED_TEXT_CHARS = 6000;
 const MAX_CONTEXT_CHARS = 4000;
 const MAX_PAGE_TITLE_CHARS = 300;
 const MAX_TTS_TEXT_CHARS = 160;
+const MAX_OBSIDIAN_URIS = 50;
+const MAX_OBSIDIAN_URI_CHARS = 4096;
+const ALLOWED_MESSAGE_TYPES = new Set(['GEMINI_REQUEST', 'TTS_REQUEST', 'OPEN_OPTIONS', 'OBSIDIAN_URI']);
 
 // ── Exponential Backoff with Full Jitter ──────────
 function createAbortError() {
@@ -107,14 +110,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (chrome.runtime.lastError) return;
     sendResponse(data);
   };
+  // 訊息 schema 基本檢查：必須是帶已知 type 的物件，否則直接忽略
+  if (!request || typeof request !== 'object' || !ALLOWED_MESSAGE_TYPES.has(request.type)) {
+    return false;
+  }
   if (request.type === 'GEMINI_REQUEST') {
     if (!isTrustedExtensionSender(sender)) {
       reply({ error: '請求來源不正確' });
       return false;
     }
     handleAIRequest(validateAIRequest(request))
-      .then(reply)
-      .catch(err => reply({ error: err.message }));
+      .then(result => { recordAiDiagnostics(request); reply(result); })
+      .catch(err => { recordDiagnosticError(); reply({ error: err.message }); });
     return true;
   }
   if (request.type === 'TTS_REQUEST') {
@@ -128,18 +135,32 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
   if (request.type === 'OPEN_OPTIONS') {
+    if (!isTrustedExtensionSender(sender)) {
+      reply({ error: '請求來源不正確' });
+      return false;
+    }
     chrome.runtime.openOptionsPage();
     sendResponse({});
   }
   if (request.type === 'OBSIDIAN_URI') {
+    if (!isTrustedExtensionSender(sender)) {
+      reply({ ok: false, error: '請求來源不正確' });
+      return false;
+    }
+    let urls;
+    try {
+      urls = validateObsidianUriRequest(request);
+    } catch (error) {
+      reply({ ok: false, error: error?.message || '無法開啟 Obsidian URI' });
+      return false;
+    }
     (async () => {
       try {
         // 記錄目前的分頁與視窗，存入後拉回原始分頁
         const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
         const originalTabId = activeTab?.id;
         const winId         = activeTab?.windowId;
-        const urls = Array.isArray(request.urls) ? request.urls : [request.url];
-        await openObsidianUris(urls.filter(Boolean));
+        await openObsidianUris(urls);
         // 明確切回原始分頁，避免 Chrome 自動切到旁邊的分頁
         if (originalTabId) chrome.tabs.update(originalTabId, { active: true }).catch(() => {});
         if (winId) chrome.windows.update(winId, { focused: true }).catch(() => {});
@@ -151,6 +172,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 });
+
+// 只允許 obsidian:// scheme，並限制數量與長度，避免被當成任意開分頁的跳板
+function validateObsidianUriRequest(request = {}) {
+  const raw = Array.isArray(request.urls)
+    ? request.urls
+    : (request.url != null ? [request.url] : []);
+  const urls = [];
+  for (const value of raw) {
+    if (typeof value !== 'string') continue;
+    const trimmed = value.trim();
+    if (!trimmed) continue;
+    if (trimmed.length > MAX_OBSIDIAN_URI_CHARS) throw new Error('Obsidian 連結過長');
+    if (!/^obsidian:\/\//i.test(trimmed)) throw new Error('只允許 obsidian:// 連結');
+    urls.push(trimmed);
+    if (urls.length >= MAX_OBSIDIAN_URIS) break;
+  }
+  if (!urls.length) throw new Error('沒有可開啟的 Obsidian URI');
+  return urls;
+}
 
 async function openObsidianUris(urls) {
   if (!urls.length) throw new Error('沒有可開啟的 Obsidian URI');
@@ -200,8 +240,10 @@ chrome.runtime.onConnect.addListener(port => {
         controller.signal
       );
       completed = true;
+      recordAiDiagnostics(safeRequest);
       try { port.postMessage({ requestId: safeRequest.requestId, done: true }); } catch {}
     } catch (err) {
+      if (!(err.name === 'AbortError' || timedOut)) recordDiagnosticError();
       const message = timedOut || err.name === 'AbortError'
         ? '請求逾時或已取消，請稍後重試'
         : err.message;
@@ -213,6 +255,16 @@ chrome.runtime.onConnect.addListener(port => {
     }
   });
 });
+
+// 本機診斷：依操作類型累計成功次數（pageTranslation 與一般操作分開計）
+function recordAiDiagnostics(request) {
+  const kind = request?.pageTranslation ? 'pageTranslation' : request?.action;
+  Storage.recordDiagnosticEvent?.(kind)?.catch?.(() => {});
+}
+
+function recordDiagnosticError() {
+  Storage.recordDiagnosticEvent?.('error')?.catch?.(() => {});
+}
 
 function isTrustedExtensionSender(sender = {}) {
   if (!sender || !sender.id) return true;
@@ -735,4 +787,4 @@ ${selectedText}`;
   }
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, validateAIRequest, validateTtsRequest, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, validateAIRequest, validateTtsRequest, validateObsidianUriRequest, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }

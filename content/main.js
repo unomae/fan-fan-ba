@@ -101,7 +101,7 @@ function onKeyUp(e) {
 function onMouseDown(e) {
   lastSelectionPointerDown = { clientX: e.clientX, clientY: e.clientY };
   if (isInOurUI(e.target)) return;
-  hideFloatingBallMenu?.();
+  globalThis.hideFloatingBallMenu?.();
   if (fanFanBaPaused) return;
   if (isPinned) {
     // 釘住時只收起工具列，結果卡保留
@@ -303,7 +303,7 @@ function getCurrentLocationParts() {
 function hideAll() {
   hideToolbar();
   hideResultCard();
-  hideFloatingBallMenu?.();
+  globalThis.hideFloatingBallMenu?.();
 }
 
 // ── 觸發 AI 功能 ─────────────────────────────────────
@@ -551,7 +551,7 @@ function initContentSettings() {
   chrome.storage.sync.get({ model: FanFanBaModels.DEFAULT_MODEL, pageTranslationModel: '', targetLanguage: 'zh-TW', explanationLanguage: 'target', ttsLanguageMode: 'auto' })
     .then(settings => {
       activeModel = FanFanBaModels.normalizeModel(settings.model);
-      setPageTranslationModel?.(settings.pageTranslationModel || activeModel);
+      globalThis.setPageTranslationModel?.(settings.pageTranslationModel || activeModel);
       targetLanguage = FanFanBaModels.normalizeLanguage(settings.targetLanguage, 'zh-TW');
       explanationLanguage = FanFanBaModels.normalizeExplanationLanguage(settings.explanationLanguage, 'target');
       ttsLanguageMode = FanFanBaModels.normalizeTtsLanguageMode(settings.ttsLanguageMode, 'auto');
@@ -561,7 +561,7 @@ function initContentSettings() {
   chrome.storage.local.get(getPauseStorageKey())
     .then(data => {
       fanFanBaPaused = !!data[getPauseStorageKey()];
-      updateFloatingBallPausedState?.();
+      globalThis.updateFloatingBallPausedState?.();
     })
     .catch(() => {});
 
@@ -571,8 +571,8 @@ function initContentSettings() {
         activeModel = FanFanBaModels.normalizeModel(changes.model.newValue);
         syncResultCardModelSelect?.();
       }
-      if (changes.model && !changes.pageTranslationModel) setPageTranslationModel?.(activeModel);
-      if (changes.pageTranslationModel) setPageTranslationModel?.(changes.pageTranslationModel.newValue || activeModel);
+      if (changes.model && !changes.pageTranslationModel) globalThis.setPageTranslationModel?.(activeModel);
+      if (changes.pageTranslationModel) globalThis.setPageTranslationModel?.(changes.pageTranslationModel.newValue || activeModel);
       if (changes.targetLanguage) targetLanguage = FanFanBaModels.normalizeLanguage(changes.targetLanguage.newValue, 'zh-TW');
       if (changes.explanationLanguage) explanationLanguage = FanFanBaModels.normalizeExplanationLanguage(changes.explanationLanguage.newValue, 'target');
       if (changes.ttsLanguageMode) ttsLanguageMode = FanFanBaModels.normalizeTtsLanguageMode(changes.ttsLanguageMode.newValue, 'auto');
@@ -580,7 +580,7 @@ function initContentSettings() {
     }
     if (area === 'local' && changes[getPauseStorageKey()]) {
       fanFanBaPaused = !!changes[getPauseStorageKey()].newValue;
-      updateFloatingBallPausedState?.();
+      globalThis.updateFloatingBallPausedState?.();
       if (fanFanBaPaused) hideAll();
     }
   });

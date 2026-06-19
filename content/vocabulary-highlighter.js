@@ -19,7 +19,7 @@ async function restoreVocabularyHighlightState() {
   try {
     vocabularyHighlightEnabled = (await getVocabularyHighlightMode()) === 'auto';
     if (vocabularyHighlightEnabled) await applyVocabularyHighlights();
-    updateFloatingBallVocabularyHighlightState?.(vocabularyHighlightEnabled);
+    globalThis.updateFloatingBallVocabularyHighlightState?.(vocabularyHighlightEnabled);
   } catch {
     vocabularyHighlightEnabled = false;
   }
@@ -41,7 +41,7 @@ async function setVocabularyHighlightMode(mode = 'off') {
   }
   if (vocabularyHighlightEnabled) await applyVocabularyHighlights();
   else clearVocabularyHighlights();
-  updateFloatingBallVocabularyHighlightState?.(vocabularyHighlightEnabled);
+  globalThis.updateFloatingBallVocabularyHighlightState?.(vocabularyHighlightEnabled);
   return vocabularyHighlightEnabled;
 }
 

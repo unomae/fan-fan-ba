@@ -1006,6 +1006,18 @@
               重寫選取內容，使表達更清晰流暢。
             </li>
           </ul>
+
+          <div class="security-note">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>
+            </svg>
+            <div>
+              <strong>本機診斷摘要</strong>
+              <p style="margin:4px 0 8px;color:#666;font-size:12px;">只在本機累計使用次數，<strong>不含任何選取文字、網址或內容</strong>，不會上傳，也沒有 telemetry。可隨時清除。</p>
+              <div id="diagnosticsSummary" aria-live="polite">尚無使用紀錄。</div>
+              <button class="btn-test" id="btnClearDiagnostics" type="button" style="margin-top:10px;">清除診斷資料</button>
+            </div>
+          </div>
         </section>
 
         <div class="settings-actions">

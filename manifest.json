@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "翻翻吧",
-  "version": "1.8.6",
+  "version": "1.9.8",
   "description": "選取文字後使用AI 翻譯、解釋、優化改寫",
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
@@ -43,12 +43,6 @@
         "content/selection-controls.js",
         "content/toolbar.js",
         "content/result-card.js",
-        "content/page-translator-state.js",
-        "content/page-translator-collector.js",
-        "content/page-translator-client.js",
-        "content/page-translator-renderer.js",
-        "content/page-translator-panel.js",
-        "content/floating-ball.js",
         "content/main.js"
       ],
       "css": [
@@ -56,6 +50,22 @@
       ],
       "run_at": "document_idle",
       "all_frames": true
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/page-translator-state.js",
+        "content/page-translator-collector.js",
+        "content/page-translator-client.js",
+        "content/page-translator-renderer.js",
+        "content/page-translator-panel.js",
+        "content/floating-ball.js",
+        "content/page-translator-single.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
     }
   ],
   "options_ui": {
@@ -86,7 +96,8 @@
       ],
       "matches": [
         "<all_urls>"
-      ]
+      ],
+      "use_dynamic_url": true
     }
   ]
 }
