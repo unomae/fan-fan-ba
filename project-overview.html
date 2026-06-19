@@ -1093,26 +1093,26 @@ options.js</pre>
             <tr style="background:#f4faf0;">
               <td><strong>Phase A</strong><br>v2.0 上架</td>
               <td>把已硬化的成果送上 Chrome Web Store 換真實回饋（推薦先做）</td>
-              <td>跑 Chrome 手動 QA → 補 1280×800 截圖 → 確認正式 OAuth client_id → 打包腳本（排除 tests/coverage/node_modules）產 <code>v1.9.8.zip</code> → 送審；附過審自檢（權限說明、單一用途、隱私揭露）。</td>
-              <td>商店審核通過、可安裝；送審文案與 manifest 權限一致；有可重跑的打包腳本。</td>
+              <td>跑 Chrome 手動 QA → 補 1280×800 截圖 → 確認正式 OAuth client_id ✓ → 打包腳本（排除 tests/coverage/node_modules）產 <code>v1.9.8.zip</code> ✓ → 送審；附過審自檢（權限說明、單一用途、隱私揭露）✓。</td>
+              <td>本機可驗證項已完成（測試 / 打包 / 送審指南）；商店審核通過與正式上架仍需 Chrome Web Store 後台操作。</td>
             </tr>
             <tr>
               <td><strong>Phase B</strong><br>單字本深化</td>
               <td>把「翻譯工具」變「學習工具」（上架後主線、產品差異化）</td>
-              <td>單字本備份 / 匯入（最高優先，避免移除 extension 流失）→ 真 <code>.xlsx</code> 匯出 → IndexedDB migration → SRS 間隔複習 / 每日佇列 / 錯題回看。</td>
-              <td>單字資料可搬移與還原；數千筆不卡；有可用的間隔複習迴圈。</td>
+              <td>單字本備份 / 匯入（最高優先，避免移除 extension 流失）✓ → 真 <code>.xlsx</code> 匯出 ✓ → IndexedDB migration → SRS 間隔複習 / 每日佇列 / 錯題回看。</td>
+              <td>JSON 可搬移與還原 ✓；XLSX 可檢視整理 ✓；數千筆不卡與間隔複習迴圈仍待 IndexedDB / SRS 主線。</td>
             </tr>
             <tr>
               <td><strong>Phase C</strong><br>沉浸式閱讀 polish</td>
               <td>承 v1.9.7 方向打磨文字沉浸體驗</td>
-              <td>單段翻譯失敗局部重試、續翻體驗、長文 context digest 調優、hover 浮鈕 options 開關（尊重降干擾原則）；近期仍不碰 PDF / OCR / 圖片 / 影片字幕。</td>
-              <td>長文連續閱讀順暢；單段 / 整頁失敗可重試；hover 行為可關閉。</td>
+              <td>單段翻譯失敗局部重試 ✓、續翻體驗、長文 context digest 調優 ✓、hover 浮鈕 options 開關（尊重降干擾原則）；近期仍不碰 PDF / OCR / 圖片 / 影片字幕。</td>
+              <td>單段失敗可局部重試 ✓；整頁失敗有停止 / 還原 / 續翻基礎；hover 行為可關閉仍待 options 開關。</td>
             </tr>
             <tr>
               <td><strong>Phase D</strong><br>技術債清理</td>
               <td>隨手穿插，不單獨排期</td>
-              <td>整理 <code>content.css</code>（2708 行）、更新 README「技術架構」（目前過期、未反映拆檔 / single.js）、本機診斷升級成更實用的自檢表。</td>
-              <td>樣式重排後無視覺回歸（需 Chrome QA）；README 架構與實際檔案一致。</td>
+              <td>整理 <code>content.css</code>（2708 行）、更新 README「技術架構」（目前過期、未反映拆檔 / single.js）✓、本機診斷升級成更實用的自檢表。</td>
+              <td>README 架構與實際檔案一致 ✓；樣式重排與更完整自檢表仍待 Chrome QA 後分批做。</td>
             </tr>
           </tbody>
         </table>

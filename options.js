@@ -35,6 +35,7 @@ initVocabularyBackup();
 // ── 單字本備份 / 還原（Phase B）──────────────────────
 function initVocabularyBackup() {
   $('btnExportVocabulary')?.addEventListener('click', exportVocabularyBackup);
+  $('btnExportVocabularyXlsx')?.addEventListener('click', exportVocabularyXlsx);
   const fileInput = $('vocabularyImportFile');
   $('btnImportVocabulary')?.addEventListener('click', () => fileInput?.click());
   fileInput?.addEventListener('change', importVocabularyBackup);
@@ -62,6 +63,28 @@ async function exportVocabularyBackup() {
     setVocabularyBackupStatus(`已匯出 ${backup.count} 個單字。`);
   } catch {
     setVocabularyBackupStatus('匯出失敗，請再試一次。');
+  }
+}
+
+async function exportVocabularyXlsx() {
+  try {
+    const { [VOCAB_STORAGE_KEY]: items = {} } = await chrome.storage.local.get(VOCAB_STORAGE_KEY);
+    const normalized = VocabBackup.normalizeItemsMap(items);
+    const count = Object.keys(normalized).length;
+    if (!count) { setVocabularyBackupStatus('單字本是空的，沒有可匯出的單字。'); return; }
+    const workbook = VocabBackup.buildXlsxWorkbook(normalized);
+    const blob = new Blob([workbook], { type: VocabBackup.XLSX_MIME_TYPE });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fan-fan-ba-vocabulary-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setVocabularyBackupStatus(`已匯出 ${count} 個單字成 XLSX。`);
+  } catch {
+    setVocabularyBackupStatus('XLSX 匯出失敗，請再試一次。');
   }
 }
 

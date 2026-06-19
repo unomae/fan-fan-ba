@@ -8,6 +8,23 @@
   const BACKUP_APP = 'fan-fan-ba';
   const BACKUP_SCHEMA = 'vocabulary';
   const BACKUP_SCHEMA_VERSION = 1;
+  const XLSX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  const XLSX_COLUMNS = [
+    ['word', item => item.word],
+    ['lang', item => item.lang],
+    ['pos', item => item.pos],
+    ['translations', item => Array.isArray(item.translations) ? item.translations.join('；') : item.translations],
+    ['definition', item => item.definition],
+    ['count', item => item.count],
+    ['createdAt', item => item.createdAt],
+    ['lastSeenAt', item => item.lastSeenAt],
+    ['familiarity', item => item.familiarity],
+    ['reviewedAt', item => item.reviewedAt],
+    ['nextReviewAt', item => item.nextReviewAt],
+    ['sourceTitle', item => item.sources?.[0]?.title],
+    ['sourceUrl', item => item.sources?.[0]?.url],
+    ['sourceContext', item => item.sources?.[0]?.context]
+  ];
 
   // 把 storage 的 keyed map 正規化成「只含有效條目」的 map（id + word 必要）
   function normalizeItemsMap(input) {
@@ -98,14 +115,182 @@
     return { items: result, summary };
   }
 
+  function buildXlsxRows(itemsMap) {
+    const items = Object.values(normalizeItemsMap(itemsMap))
+      .sort((a, b) => entryTime(b) - entryTime(a) || String(a.word).localeCompare(String(b.word)));
+    return [
+      XLSX_COLUMNS.map(([header]) => header),
+      ...items.map(item => XLSX_COLUMNS.map(([, read]) => normalizeXlsxCell(read(item))))
+    ];
+  }
+
+  function normalizeXlsxCell(value) {
+    if (value === null || value === undefined) return '';
+    return String(value);
+  }
+
+  function buildXlsxWorkbook(itemsMap) {
+    const rows = buildXlsxRows(itemsMap);
+    return buildZipPackage({
+      '[Content_Types].xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`,
+      '_rels/.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
+      'xl/workbook.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Vocabulary" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+      'xl/_rels/workbook.xml.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`,
+      'xl/styles.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts><fills count="1"><fill><patternFill patternType="none"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellXfs></styleSheet>`,
+      'xl/worksheets/sheet1.xml': buildWorksheetXml(rows)
+    });
+  }
+
+  function buildWorksheetXml(rows) {
+    const sheetData = rows.map((row, rowIndex) => {
+      const rowNumber = rowIndex + 1;
+      const cells = row.map((value, colIndex) => {
+        const ref = `${columnName(colIndex)}${rowNumber}`;
+        return `<c r="${ref}" t="inlineStr"><is><t>${escapeXml(value)}</t></is></c>`;
+      }).join('');
+      return `<row r="${rowNumber}">${cells}</row>`;
+    }).join('');
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetData>${sheetData}</sheetData></worksheet>`;
+  }
+
+  function columnName(index) {
+    let n = index + 1;
+    let name = '';
+    while (n > 0) {
+      const rem = (n - 1) % 26;
+      name = String.fromCharCode(65 + rem) + name;
+      n = Math.floor((n - 1) / 26);
+    }
+    return name;
+  }
+
+  function escapeXml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  }
+
+  function buildZipPackage(files) {
+    const localParts = [];
+    const centralParts = [];
+    let offset = 0;
+
+    for (const [name, text] of Object.entries(files)) {
+      const nameBytes = utf8Bytes(name);
+      const data = utf8Bytes(text);
+      const crc = crc32(data);
+      const localHeader = zipLocalHeader(nameBytes, data.length, crc);
+      const centralHeader = zipCentralHeader(nameBytes, data.length, crc, offset);
+      localParts.push(localHeader, nameBytes, data);
+      centralParts.push(centralHeader, nameBytes);
+      offset += localHeader.length + nameBytes.length + data.length;
+    }
+
+    const centralOffset = offset;
+    const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+    return concatBytes([...localParts, ...centralParts, zipEndRecord(Object.keys(files).length, centralSize, centralOffset)]);
+  }
+
+  function zipLocalHeader(nameBytes, size, crc) {
+    const out = new Uint8Array(30);
+    const view = new DataView(out.buffer);
+    view.setUint32(0, 0x04034b50, true);
+    view.setUint16(4, 20, true);
+    view.setUint16(6, 0, true);
+    view.setUint16(8, 0, true);
+    view.setUint16(10, 0, true);
+    view.setUint16(12, 0, true);
+    view.setUint32(14, crc, true);
+    view.setUint32(18, size, true);
+    view.setUint32(22, size, true);
+    view.setUint16(26, nameBytes.length, true);
+    view.setUint16(28, 0, true);
+    return out;
+  }
+
+  function zipCentralHeader(nameBytes, size, crc, offset) {
+    const out = new Uint8Array(46);
+    const view = new DataView(out.buffer);
+    view.setUint32(0, 0x02014b50, true);
+    view.setUint16(4, 20, true);
+    view.setUint16(6, 20, true);
+    view.setUint16(8, 0, true);
+    view.setUint16(10, 0, true);
+    view.setUint16(12, 0, true);
+    view.setUint16(14, 0, true);
+    view.setUint32(16, crc, true);
+    view.setUint32(20, size, true);
+    view.setUint32(24, size, true);
+    view.setUint16(28, nameBytes.length, true);
+    view.setUint16(30, 0, true);
+    view.setUint16(32, 0, true);
+    view.setUint16(34, 0, true);
+    view.setUint16(36, 0, true);
+    view.setUint32(38, 0, true);
+    view.setUint32(42, offset, true);
+    return out;
+  }
+
+  function zipEndRecord(fileCount, centralSize, centralOffset) {
+    const out = new Uint8Array(22);
+    const view = new DataView(out.buffer);
+    view.setUint32(0, 0x06054b50, true);
+    view.setUint16(4, 0, true);
+    view.setUint16(6, 0, true);
+    view.setUint16(8, fileCount, true);
+    view.setUint16(10, fileCount, true);
+    view.setUint32(12, centralSize, true);
+    view.setUint32(16, centralOffset, true);
+    view.setUint16(20, 0, true);
+    return out;
+  }
+
+  function utf8Bytes(text) {
+    return new TextEncoder().encode(String(text));
+  }
+
+  function concatBytes(parts) {
+    const total = parts.reduce((sum, part) => sum + part.length, 0);
+    const out = new Uint8Array(total);
+    let offset = 0;
+    parts.forEach(part => {
+      out.set(part, offset);
+      offset += part.length;
+    });
+    return out;
+  }
+
+  function crc32(bytes) {
+    let crc = 0xffffffff;
+    for (const byte of bytes) {
+      crc ^= byte;
+      for (let i = 0; i < 8; i += 1) {
+        crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+      }
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
   const api = {
     BACKUP_APP,
     BACKUP_SCHEMA,
     BACKUP_SCHEMA_VERSION,
+    XLSX_MIME_TYPE,
     normalizeItemsMap,
     buildBackup,
     parseBackup,
-    mergeBackup
+    mergeBackup,
+    buildXlsxRows,
+    buildXlsxWorkbook
   };
 
   global.FanFanBaVocabularyBackup = api;

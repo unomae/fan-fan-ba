@@ -64,4 +64,45 @@ describe('vocabulary backup', () => {
       expect(summary).toMatchObject({ added: 1, total: 1 });
     });
   });
+
+  describe('buildXlsxWorkbook', () => {
+    it('builds rows with readable vocabulary columns', () => {
+      const rows = Backup.buildXlsxRows({
+        'en:beacon': entry('en:beacon', 'Beacon', {
+          pos: 'noun',
+          translations: ['燈塔', '信標'],
+          definition: 'A signal light.',
+          sources: [{ title: 'Article', url: 'https://example.com', context: 'shipping lane' }]
+        })
+      });
+
+      expect(rows[0]).toEqual([
+        'word', 'lang', 'pos', 'translations', 'definition', 'count', 'createdAt',
+        'lastSeenAt', 'familiarity', 'reviewedAt', 'nextReviewAt', 'sourceTitle',
+        'sourceUrl', 'sourceContext'
+      ]);
+      expect(rows[1]).toContain('Beacon');
+      expect(rows[1]).toContain('燈塔；信標');
+      expect(rows[1]).toContain('https://example.com');
+    });
+
+    it('creates a real XLSX zip package with worksheet XML', () => {
+      const bytes = Backup.buildXlsxWorkbook({
+        'en:signal': entry('en:signal', 'Signal, flare', {
+          translations: ['信號彈', '照明彈'],
+          definition: 'A bright, "visible" signal.'
+        })
+      });
+      const text = new TextDecoder().decode(bytes);
+
+      expect(bytes).toBeInstanceOf(Uint8Array);
+      expect(bytes[0]).toBe(0x50);
+      expect(bytes[1]).toBe(0x4b);
+      expect(text).toContain('[Content_Types].xml');
+      expect(text).toContain('xl/worksheets/sheet1.xml');
+      expect(text).toContain('Signal, flare');
+      expect(text).toContain('信號彈；照明彈');
+      expect(text).toContain('&quot;visible&quot;');
+    });
+  });
 });
