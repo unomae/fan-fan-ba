@@ -1,20 +1,17 @@
 SESSION_CONTEXT.md
-store-listing.md
 
 # macOS 系統暫存檔
 .DS_Store
 **/.DS_Store
 
-# 測試框架設定與產出
+# 測試框架「產出」（jest.config.js / jest.setup.js 是執行測試必要的設定檔，需進版控；
+# 否則他機 clone 後 npm test 會因缺檔失敗）
 node_modules/
 coverage/
 .vitest/
 dist/
 __tests__/
-jest.config.js
-jest.setup.js
 vitest.config.js
-TESTING.md
 
 # Claude Code 工作目錄
 .claude/
