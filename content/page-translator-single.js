@@ -12,10 +12,21 @@ let ffbSingleHoverBlock = null;     // 目前浮鈕對應的區塊
 let ffbSingleLastBlock = null;      // 最近 hover 到的可翻譯區塊（給快捷鍵 fallback）
 let ffbSingleHideTimer = null;
 let ffbSingleBound = false;
+let ffbSingleHoverEnabled = true; // hover 浮鈕開關（快捷鍵 Alt+T 永遠可用，不受此影響）
 
 function initSingleParagraphTranslate() {
   if (ffbSingleBound) return;
   ffbSingleBound = true;
+  // 讀取 hover 浮鈕設定（預設開；尊重 v1.9.6 降干擾，使用者可關）
+  chrome.storage?.sync?.get?.({ singleHoverButton: true })
+    .then(s => { ffbSingleHoverEnabled = s.singleHoverButton !== false; })
+    .catch(() => {});
+  chrome.storage?.onChanged?.addListener?.((changes, area) => {
+    if (area === 'sync' && changes.singleHoverButton) {
+      ffbSingleHoverEnabled = changes.singleHoverButton.newValue !== false;
+      if (!ffbSingleHoverEnabled) hideSingleTranslateButton();
+    }
+  });
   document.addEventListener('mouseover', onSingleTranslateHover, true);
   document.addEventListener('keydown', onSingleTranslateShortcut, true);
 }
@@ -33,7 +44,7 @@ function findSinglePageTranslatableBlock(node) {
 
 // ── hover 浮鈕 ───────────────────────────────────────
 function onSingleTranslateHover(e) {
-  if (fanFanBaPaused) { hideSingleTranslateButton(); return; }
+  if (!ffbSingleHoverEnabled || fanFanBaPaused) { hideSingleTranslateButton(); return; }
   const block = findSinglePageTranslatableBlock(e.target);
   if (!block) { scheduleHideSingleTranslateButton(); return; }
   ffbSingleLastBlock = block;
@@ -143,12 +154,32 @@ async function translateSinglePageBlock(el) {
   updatePageTranslationPanel();
   updateFloatingBallPageTranslationState?.(pageTranslationState);
 
-  await translatePageItem(item, { requestKind: 'single' });
+  // 單段翻譯的上下文取自「實際 DOM 鄰居」，而非稀疏的 items 佇列，
+  // 讓 AI 拿到前後文，翻得更準（Phase C 長文 context 調優）。
+  await translatePageItem(item, { requestKind: 'single', context: buildSinglePageContext(item) });
 
   pageTranslationState.canContinue = hasVisibleTranslatableBlocks();
   updatePageTranslationPanel();
   updateFloatingBallPageTranslationState?.(pageTranslationState);
   return true;
+}
+
+// 用 block 在 DOM 中前後 ±2 個可翻譯區塊組成上下文（含 block 自己，
+// 讓 buildPageTranslationContextDigest 的 indexOf 能正確標 Before/After）
+function buildSinglePageContext(item) {
+  const block = item.el;
+  const all = Array.from(document.querySelectorAll(SINGLE_TRANSLATE_BLOCK_SELECTOR));
+  const idx = all.indexOf(block);
+  const neighbors = [];
+  if (idx >= 0) {
+    for (let i = Math.max(0, idx - 2); i <= Math.min(all.length - 1, idx + 2); i += 1) {
+      if (all[i] === block) { neighbors.push(item); continue; }
+      const text = getElementTranslationText(all[i]);
+      if (text) neighbors.push({ el: all[i], text });
+    }
+  }
+  if (!neighbors.includes(item)) neighbors.push(item);
+  return buildPageTranslationContextDigest(item, neighbors);
 }
 
 // 輕量啟動：確保面板與 watcher 就緒，但不跑整頁佇列
@@ -168,7 +199,7 @@ function ensurePageTranslationSessionForSingle() {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { findSinglePageTranslatableBlock, getSingleTranslateShortcutTarget };
+  module.exports = { findSinglePageTranslatableBlock, getSingleTranslateShortcutTarget, buildSinglePageContext };
 }
 
 // 與浮球同一 guard：只在最上層 frame、非敏感網域啟用

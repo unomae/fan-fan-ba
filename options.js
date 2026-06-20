@@ -19,6 +19,7 @@ const SYNC_SETTING_KEYS = [
   'explanationLanguage',
   'ttsLanguageMode',
   'vocabularyHighlightMode',
+  'singleHoverButton',
   'obsidianVault',
   'obsidianDefaultFolder'
 ];
@@ -88,10 +89,16 @@ async function exportVocabularyXlsx() {
   }
 }
 
+const MAX_VOCAB_IMPORT_BYTES = 10 * 1024 * 1024; // 10MB，避免超大檔塞爆 storage
+
 async function importVocabularyBackup(event) {
   const file = event.target.files?.[0];
   event.target.value = '';
   if (!file) return;
+  if (file.size > MAX_VOCAB_IMPORT_BYTES) {
+    setVocabularyBackupStatus('檔案太大（上限 10MB），請確認是翻翻吧的單字本備份。');
+    return;
+  }
   try {
     const text = await file.text();
     const incoming = VocabBackup.parseBackup(text);
@@ -139,10 +146,10 @@ async function renderDiagnostics(note = '') {
 // ── 載入已儲存的設定 ─────────────────────────────────
 async function loadSettings() {
   const [
-    { model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder },
+    { model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, singleHoverButton, obsidianVault, obsidianDefaultFolder },
     { apiKey, groqApiKey, openrouterApiKey, ttsApiKey }
   ] = await Promise.all([
-    chrome.storage.sync.get(['model', 'pageTranslationModel', 'targetLanguage', 'explanationLanguage', 'ttsLanguageMode', 'vocabularyHighlightMode', 'obsidianVault', 'obsidianDefaultFolder']),
+    chrome.storage.sync.get(['model', 'pageTranslationModel', 'targetLanguage', 'explanationLanguage', 'ttsLanguageMode', 'vocabularyHighlightMode', 'singleHoverButton', 'obsidianVault', 'obsidianDefaultFolder']),
     Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', ttsApiKey: '' })
   ]);
 
@@ -165,6 +172,9 @@ async function loadSettings() {
   }
   if ($('vocabularyHighlightMode')) {
     $('vocabularyHighlightMode').value = vocabularyHighlightMode === 'auto' ? 'auto' : 'off';
+  }
+  if ($('singleHoverButton')) {
+    $('singleHoverButton').value = singleHoverButton === false ? 'off' : 'on';
   }
   if (obsidianVault)          $('obsidianVault').value          = obsidianVault;
   if (ttsApiKey)              $('ttsApiKey').value              = ttsApiKey;
@@ -273,6 +283,7 @@ $('btnSave').addEventListener('click', async () => {
   const explanationLanguage = ModelRegistry.normalizeExplanationLanguage($('explanationLanguage')?.value, 'target');
   const ttsLanguageMode  = ModelRegistry.normalizeTtsLanguageMode($('ttsLanguageMode')?.value, 'auto');
   const vocabularyHighlightMode = $('vocabularyHighlightMode')?.value === 'auto' ? 'auto' : 'off';
+  const singleHoverButton = $('singleHoverButton')?.value !== 'off';
   const isGroq           = model.startsWith('groq:');
   const isOpenRouter     = model.startsWith('openrouter:');
 
@@ -293,7 +304,7 @@ $('btnSave').addEventListener('click', async () => {
   const obsidianDefaultFolder = $('obsidianDefaultFolder').value.trim();
 
   await Promise.all([
-    chrome.storage.sync.set({ model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder }),
+    chrome.storage.sync.set({ model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, singleHoverButton, obsidianVault, obsidianDefaultFolder }),
     Storage.setSecrets({ apiKey, groqApiKey, openrouterApiKey, ttsApiKey })
   ]);
   showStatus('ok', '✓ 設定已儲存');
@@ -841,6 +852,9 @@ function normalizeImportedSetting(key, value) {
   }
   if (key === 'vocabularyHighlightMode') {
     return value === 'auto' ? 'auto' : 'off';
+  }
+  if (key === 'singleHoverButton') {
+    return value !== false;
   }
   return String(value || '').trim();
 }

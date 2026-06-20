@@ -92,7 +92,8 @@ const {
   locatePageTranslationSource,
   getPageTranslationContrastTheme,
   getPageTranslationStatusText,
-  findSinglePageTranslatableBlock
+  findSinglePageTranslatableBlock,
+  buildSinglePageContext
 } = pageTranslatorContext;
 
 describe('page translator helpers', () => {
@@ -1089,5 +1090,33 @@ describe('single-paragraph translate — block finder (v1.9.7)', () => {
     expect(findSinglePageTranslatableBlock(document.getElementById('short'))).toBeNull();
     expect(findSinglePageTranslatableBlock(document.getElementById('bare'))).toBeNull();
     expect(findSinglePageTranslatableBlock(null)).toBeNull();
+  });
+});
+
+describe('single-paragraph translate — context digest (v1.9.7 / Phase C)', () => {
+  let origCS, origRect;
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    Object.defineProperty(window, 'innerHeight', { value: 900, configurable: true });
+    origCS = window.getComputedStyle;
+    origRect = HTMLElement.prototype.getBoundingClientRect;
+    window.getComputedStyle = jest.fn(() => ({ display: 'block', visibility: 'visible', opacity: '1', fontSize: '16px', lineHeight: 'normal', backgroundColor: 'rgba(0,0,0,0)' }));
+    HTMLElement.prototype.getBoundingClientRect = function () { return { width: 360, height: 28, top: 20, bottom: 48, left: 0, right: 360 }; };
+  });
+  afterEach(() => { window.getComputedStyle = origCS; HTMLElement.prototype.getBoundingClientRect = origRect; });
+
+  it('pulls Before/After neighbour text from the DOM, not the sparse items queue', () => {
+    document.body.innerHTML = `
+      <article>
+        <p id="p1">First paragraph with enough length to qualify here.</p>
+        <p id="p2">Second paragraph that we will translate on its own.</p>
+        <p id="p3">Third paragraph with enough length to qualify here.</p>
+      </article>`;
+    const item = { el: document.getElementById('p2'), text: 'Second paragraph that we will translate on its own.' };
+    const context = buildSinglePageContext(item);
+    expect(context).toContain('Before:');
+    expect(context).toContain('After:');
+    expect(context).toContain('First paragraph');
+    expect(context).toContain('Third paragraph');
   });
 });
