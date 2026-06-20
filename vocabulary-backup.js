@@ -8,6 +8,9 @@
   const BACKUP_APP = 'fan-fan-ba';
   const BACKUP_SCHEMA = 'vocabulary';
   const BACKUP_SCHEMA_VERSION = 1;
+  const MAX_IMPORT_ITEMS = 50000;
+  // 不可當成 id 的危險鍵，避免匯入檔污染物件原型
+  const DANGEROUS_IDS = new Set(['__proto__', 'constructor', 'prototype']);
   const XLSX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
   const XLSX_COLUMNS = [
     ['word', item => item.word],
@@ -29,15 +32,22 @@
   // 把 storage 的 keyed map 正規化成「只含有效條目」的 map（id + word 必要）
   function normalizeItemsMap(input) {
     const source = (input && typeof input === 'object' && !Array.isArray(input)) ? input : {};
-    const out = {};
+    const out = Object.create(null); // null prototype：即使 id 是 __proto__ 也不會污染原型
     for (const value of Object.values(source)) {
       if (!value || typeof value !== 'object') continue;
       const id = String(value.id || '').trim();
       const word = String(value.word || '').trim();
-      if (!id || !word) continue;
+      if (!id || !word || DANGEROUS_IDS.has(id)) continue;
       out[id] = value;
     }
     return out;
+  }
+
+  function assertImportSize(map) {
+    if (Object.keys(map).length > MAX_IMPORT_ITEMS) {
+      throw new Error(`單字數超過匯入上限（${MAX_IMPORT_ITEMS}）`);
+    }
+    return map;
   }
 
   function buildBackup(itemsMap) {
@@ -62,12 +72,12 @@
     if (!data || typeof data !== 'object') throw new Error('備份內容格式不正確');
     if (data.items || data.schema === BACKUP_SCHEMA) {
       if (data.app && data.app !== BACKUP_APP) throw new Error('這不是翻翻吧的單字本備份');
-      return normalizeItemsMap(data.items);
+      return assertImportSize(normalizeItemsMap(data.items));
     }
     // 容錯：直接給裸 keyed map
     const fallback = normalizeItemsMap(data);
     if (!Object.keys(fallback).length) throw new Error('備份內沒有可匯入的單字');
-    return fallback;
+    return assertImportSize(fallback);
   }
 
   function entryTime(item) {
@@ -284,6 +294,7 @@
     BACKUP_APP,
     BACKUP_SCHEMA,
     BACKUP_SCHEMA_VERSION,
+    MAX_IMPORT_ITEMS,
     XLSX_MIME_TYPE,
     normalizeItemsMap,
     buildBackup,

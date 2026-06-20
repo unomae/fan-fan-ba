@@ -106,3 +106,31 @@ describe('vocabulary backup', () => {
     });
   });
 });
+
+describe('import hardening (review fixes)', () => {
+  it('does not pollute Object.prototype via __proto__ / constructor ids', () => {
+    const malicious = JSON.stringify({
+      app: 'fan-fan-ba',
+      items: {
+        '__proto__': { id: '__proto__', word: 'evil', polluted: 'yes' },
+        'constructor': { id: 'constructor', word: 'evil2' },
+        'ok': { id: 'ok', word: 'good' }
+      }
+    });
+    const map = Backup.parseBackup(malicious);
+    expect(({}).polluted).toBeUndefined();
+    expect(Object.prototype.polluted).toBeUndefined();
+    expect(Object.keys(map)).toEqual(['ok']);
+  });
+
+  it('rejects imports above the item cap', () => {
+    const items = {};
+    for (let i = 0; i <= Backup.MAX_IMPORT_ITEMS; i += 1) items[`id${i}`] = { id: `id${i}`, word: `w${i}` };
+    expect(() => Backup.parseBackup({ app: 'fan-fan-ba', items })).toThrow('超過匯入上限');
+  });
+
+  it('still accepts a normal backup within the cap', () => {
+    const map = Backup.parseBackup({ app: 'fan-fan-ba', items: { a: { id: 'a', word: 'hello' } } });
+    expect(Object.keys(map)).toEqual(['a']);
+  });
+});
