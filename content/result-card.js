@@ -444,7 +444,6 @@ function renderResult(action, rawResult, selectedText, { fromHistory = false } =
       const data = parseJSON(rawResult);
       lastDictData = data;
       body.innerHTML = buildDictHTML(data);
-      showResultMeta(getResultLanguage(action, data.targetLang));
       body.querySelector('.g-speak-btn')?.addEventListener('click', e => {
         e.stopPropagation();
         speakWord(data.word || selectedText, e.currentTarget, data.lang);
@@ -457,7 +456,6 @@ function renderResult(action, rawResult, selectedText, { fromHistory = false } =
 
   if (action === 'optimize' && selectedText.length > 20) {
     body.innerHTML = buildOptimizeHTML(rawResult, selectedText);
-    showResultMeta(getResultLanguage(action));
     // 綁定「優化後」區塊的複製按鈕
     body.querySelector('.g-opt-copy-btn')?.addEventListener('click', e => {
       e.stopPropagation();
@@ -472,14 +470,12 @@ function renderResult(action, rawResult, selectedText, { fromHistory = false } =
 
   if (action === 'explain') {
     body.innerHTML = buildExplainHTML(rawResult);
-    showResultMeta(getResultLanguage(action));
     initTagHandlers(body);
     if (!fromHistory) saveToHistory(action, selectedText, rawResult, null);
     return;
   }
 
   body.innerHTML = `<div class="g-text-body">${formatMarkdown(rawResult)}</div>`;
-  showResultMeta(getResultLanguage(action));
   if (!fromHistory) saveToHistory(action, selectedText, rawResult, null);
 }
 
@@ -713,19 +709,6 @@ function showResultNotice(msg) {
   const body = resultCard?.querySelector('.g-rc-body');
   if (!body || !msg) return;
   body.insertAdjacentHTML('afterbegin', `<div class="g-provider-notice">${escapeHtml(msg)}</div>`);
-}
-
-function showResultMeta(language) {
-  const body = resultCard?.querySelector('.g-rc-body');
-  if (!body) return;
-  const modelName = FanFanBaModels.getModelDisplayName(activeModel);
-  const langName = FanFanBaModels.getLanguageName(language || targetLanguage, navigator.language || '');
-  body.insertAdjacentHTML('afterbegin', `<div class="g-result-meta">${escapeHtml(modelName)} · ${escapeHtml(langName)}</div>`);
-}
-
-function getResultLanguage(action, responseLanguage) {
-  if (action === 'translate') return responseLanguage || targetLanguage;
-  return explanationLanguage === 'target' ? targetLanguage : explanationLanguage;
 }
 
 function speakWord(word, btn, lang) {

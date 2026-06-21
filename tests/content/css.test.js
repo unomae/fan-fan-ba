@@ -32,7 +32,6 @@ describe('content CSS UI safeguards', () => {
   it('keeps the pinned status line inside the result-card header', () => {
     expect(css).toContain('.g-rc-header::after');
     expect(css).toContain('#gemini-result-card.g-pinned .g-rc-header::after');
-    expect(css).toContain('margin: 0 0 4px !important;');
   });
 
   it('hides the autosave-bar bottom border until it is shown (no leaked green line)', () => {

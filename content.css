@@ -1637,15 +1637,6 @@ del.g-diff-del {
 /* ════════════════════════════════════════════════
    17. 右側常駐懸浮球
    ════════════════════════════════════════════════ */
-.g-result-meta {
-  margin: 0 0 4px !important;
-  padding: 0 1px !important;
-  color: #6b7280 !important;
-  font-size: 11px !important;
-  font-weight: 650 !important;
-  line-height: 1.25 !important;
-}
-
 #fanfanba-floating {
   all: initial;
   position: fixed !important;
