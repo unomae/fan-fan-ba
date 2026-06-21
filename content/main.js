@@ -499,7 +499,7 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey, requ
   let   streamNotice = '';
 
   port.onMessage.addListener(msg => {
-    if (requestId !== activeRequestId || (msg.requestId && msg.requestId !== requestId)) return;
+    if (requestId !== activeRequestId || (msg.requestId && String(msg.requestId) !== String(requestId))) return;
     if (msg.status) {
       streamNotice = msg.status;
       if (body && !accumulated) body.innerHTML = `<div class="g-provider-notice">${escapeHtml(streamNotice)}</div>`;

@@ -148,6 +148,17 @@ describe('Background module', () => {
         pageTranslation: 'yes'
       })).toThrow('全文翻譯參數格式不正確');
     });
+
+    it('coerces a numeric requestId instead of throwing (streaming paragraph fix)', () => {
+      // content/main.js 串流送的 requestId 是數字；correlation id 不該擋掉整個請求
+      const req = validateAIRequest({ action: 'translate', selectedText: 'hello', requestId: 7 });
+      expect(req.requestId).toBe('7');
+    });
+
+    it('drops non string/number requestId without throwing', () => {
+      expect(validateAIRequest({ action: 'translate', selectedText: 'hi', requestId: {} }).requestId).toBe('');
+      expect(validateAIRequest({ action: 'translate', selectedText: 'hi' }).requestId).toBe('');
+    });
   });
 
   describe('Obsidian URI validation', () => {

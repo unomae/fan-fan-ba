@@ -286,7 +286,7 @@ function validateAIRequest(request = {}) {
     explanationLanguage: normalizeOptionalBoundedString(request.explanationLanguage, 32, '解釋語言'),
     browserLanguage: normalizeOptionalBoundedString(request.browserLanguage, 32, '瀏覽器語言'),
     model: normalizeOptionalBoundedString(request.model, 160, '模型'),
-    requestId: normalizeOptionalBoundedString(request.requestId, 80, '請求 ID'),
+    requestId: normalizeCorrelationId(request.requestId, 80),
     pageTranslation: normalizePageTranslationMeta(request.pageTranslation)
   };
 }
@@ -308,6 +308,15 @@ function normalizeBoundedString(value, maxChars, label) {
 function normalizeOptionalBoundedString(value, maxChars, label) {
   if (value == null) return '';
   return normalizeBoundedString(value, maxChars, label);
+}
+
+// requestId 只是前後端對應請求的 correlation id（content 端可能傳數字），
+// 容錯轉成有界字串即可，格式不對也不該擋掉整個翻譯請求。
+function normalizeCorrelationId(value, maxChars) {
+  if (value == null) return '';
+  if (typeof value === 'number' && Number.isFinite(value)) value = String(value);
+  if (typeof value !== 'string') return '';
+  return value.length > maxChars ? value.slice(0, maxChars) : value;
 }
 
 function normalizePageTranslationMeta(value) {
