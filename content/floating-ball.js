@@ -397,7 +397,7 @@ async function showFloatingVocabularyPanel() {
 
 function renderFloatingVocabularyPanel(body, initialItems) {
   let items = initialItems;
-  let filter = 'today';
+  let filter = 'review';
   let query = '';
 
   body.innerHTML = `
@@ -405,7 +405,8 @@ function renderFloatingVocabularyPanel(body, initialItems) {
       <div class="g-vocab-panel-toolbar">
         <input class="g-vocab-search" type="search" placeholder="搜尋單字">
         <div class="g-vocab-tabs">
-          <button type="button" class="g-vocab-tab g-active" data-filter="today">今日新增</button>
+          <button type="button" class="g-vocab-tab g-active" data-filter="review">今日複習</button>
+          <button type="button" class="g-vocab-tab" data-filter="today">今日新增</button>
           <button type="button" class="g-vocab-tab" data-filter="recent">最近遇到</button>
           <button type="button" class="g-vocab-tab" data-filter="frequent">最常遇到</button>
           <button type="button" class="g-vocab-tab" data-filter="learning">還不熟</button>
@@ -428,7 +429,7 @@ function renderFloatingVocabularyPanel(body, initialItems) {
     const visible = filterVocabularyPanelItems(items, filter, query);
     listEl.innerHTML = visible.length
       ? visible.map(item => buildVocabularyPanelItemHtml(item)).join('')
-      : '<div class="g-hist-empty">沒有符合的單字</div>';
+      : `<div class="g-hist-empty">${escapeHtml(getVocabularyPanelEmptyText(items, filter, query))}</div>`;
 
     listEl.querySelectorAll('[data-vocab-delete]').forEach(button => {
       button.addEventListener('click', async e => {
@@ -453,6 +454,20 @@ function renderFloatingVocabularyPanel(body, initialItems) {
         const id = button.dataset.vocabStatus;
         const nextStatus = button.dataset.nextStatus === 'known' ? 'known' : 'learning';
         const updated = await updateVocabularyEntryStatus?.(id, nextStatus);
+        if (updated) {
+          items = typeof listVocabularyItems === 'function'
+            ? await listVocabularyItems()
+            : items.map(item => item.id === id ? updated : item);
+          render();
+        }
+      });
+    });
+    listEl.querySelectorAll('[data-vocab-review]').forEach(button => {
+      button.addEventListener('click', async e => {
+        e.stopPropagation();
+        const id = button.dataset.vocabReview;
+        const status = button.dataset.reviewStatus === 'known' ? 'known' : 'learning';
+        const updated = await updateVocabularyEntryStatus?.(id, status);
         if (updated) {
           items = typeof listVocabularyItems === 'function'
             ? await listVocabularyItems()
@@ -494,7 +509,12 @@ function renderFloatingVocabularyPanel(body, initialItems) {
 }
 
 function filterVocabularyPanelItems(items, filter, query) {
-  const visible = items.filter(item => {
+  const source = filter === 'review'
+    ? (buildVocabularyReviewQueue?.(items, { limit: 50 }) || [])
+      .filter(item => item.due)
+      .map(item => ({ ...item, reviewMode: true }))
+    : items;
+  const visible = source.filter(item => {
     if (filter === 'today' && !isVocabularyItemFromToday?.(item)) return false;
     if (filter === 'learning' && item.status === 'known') return false;
     if (filter === 'known' && item.status !== 'known') return false;
@@ -515,7 +535,16 @@ function filterVocabularyPanelItems(items, filter, query) {
       return getVocabularyItemTime(b) - getVocabularyItemTime(a);
     });
   }
+  if (filter === 'review') return visible;
   return visible.slice().sort((a, b) => getVocabularyItemTime(b) - getVocabularyItemTime(a));
+}
+
+function getVocabularyPanelEmptyText(items, filter, query) {
+  if (query) return '沒有符合搜尋的單字';
+  if (!items.length) return '單字本是空的';
+  if (filter === 'review') return '今天沒有到期複習的單字';
+  if (filter === 'today') return '今天還沒有新增單字';
+  return '沒有符合的單字';
 }
 
 function getVocabularyItemTime(item) {
@@ -528,8 +557,15 @@ function buildVocabularyPanelItemHtml(item) {
   const exportedBadge = item.obsidianExportedAt ? '<span>已匯出</span>' : '';
   const isKnown = item.status === 'known';
   const statusBadge = isKnown ? '<span class="g-vocab-known">已記得</span>' : '<span class="g-vocab-learning">還不熟</span>';
+  const reviewBadge = item.reviewMode ? `<span>下次 ${escapeHtml(formatVocabularyReviewDate(item.nextReviewAt))}</span>` : '';
   const nextStatus = isKnown ? 'learning' : 'known';
   const statusLabel = isKnown ? '還不熟' : '我記得了';
+  const statusActions = item.reviewMode
+    ? `
+        <button class="g-vocab-status" type="button" data-vocab-review="${escapeHtml(item.id)}" data-review-status="known" title="標記為已記得">記得</button>
+        <button class="g-vocab-status" type="button" data-vocab-review="${escapeHtml(item.id)}" data-review-status="learning" title="明天再複習">還不熟</button>
+      `
+    : `<button class="g-vocab-status" type="button" data-vocab-status="${escapeHtml(item.id)}" data-next-status="${nextStatus}" title="更新熟悉度">${statusLabel}</button>`;
   return `
     <div class="g-vocab-panel-item">
       <div class="g-vocab-panel-main">
@@ -540,17 +576,28 @@ function buildVocabularyPanelItemHtml(item) {
           <span>遇到 ${count} 次</span>
           ${statusBadge}
           ${exportedBadge}
+          ${reviewBadge}
         </div>
         ${translations ? `<div class="g-vocab-panel-meaning">${escapeHtml(translations)}</div>` : ''}
         ${item.definition ? `<div class="g-vocab-panel-def">${escapeHtml(item.definition)}</div>` : ''}
       </div>
       <div class="g-vocab-panel-item-actions">
-        <button class="g-vocab-status" type="button" data-vocab-status="${escapeHtml(item.id)}" data-next-status="${nextStatus}" title="更新熟悉度">${statusLabel}</button>
+        ${statusActions}
         <button class="g-vocab-copy" type="button" data-vocab-copy="${escapeHtml(item.id)}" title="複製 Markdown">複製</button>
         <button class="g-vocab-delete" type="button" data-vocab-delete="${escapeHtml(item.id)}" title="刪除">刪除</button>
       </div>
     </div>
   `;
+}
+
+function formatVocabularyReviewDate(value) {
+  const date = new Date(value || '');
+  if (Number.isNaN(date.getTime())) return '尚未排程';
+  return date.toLocaleDateString('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    month: '2-digit',
+    day: '2-digit'
+  });
 }
 
 async function copyVocabularyPanelText(text, button, successText, fallbackText) {

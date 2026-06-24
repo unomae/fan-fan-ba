@@ -3,7 +3,7 @@
 這個專案使用 **Jest 30** + **jsdom** 作為測試框架（早期曾用 Vitest，已全面遷移到 Jest）。
 本檔說明的是**自動化單元測試**；需要在真實瀏覽器執行的**手動驗收**請見 [`MANUAL-QA.md`](MANUAL-QA.md)。
 
-最後更新：2026-06-20 · 19 suites / 190 tests 全綠。
+最後更新：2026-06-25 · 20 suites / 195 tests 全綠。
 
 ---
 
@@ -32,6 +32,7 @@ tests/
 ├── storage.test.js              # storage.js：API Key 遷移 + 本機診斷摘要
 ├── cloud-sync.test.js           # cloud-sync.js：Google Drive appData 同步
 ├── vocabulary-backup.test.js    # vocabulary-backup.js：JSON round-trip / merge / XLSX / 匯入硬化
+├── vocabulary-store.test.js     # vocabulary-store.js：IndexedDB store fallback / legacy mirror
 ├── options.test.js              # options.js：設定載入 / 儲存 / 備份還原
 ├── popup.test.js                # popup.js：模型快選
 ├── welcome.test.js              # welcome.js：首次安裝頁

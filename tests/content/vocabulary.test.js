@@ -241,8 +241,9 @@ describe('Vocabulary storage helper', () => {
 
     expect(result).toEqual({ exported: true, folder: 'Learning' });
     expect(updated.obsidianExportedAt).toBe('2026-05-26T04:00:00.000Z');
-    expect(runtimeSendMessage).toHaveBeenCalledTimes(1);
-    const url = runtimeSendMessage.mock.calls[0][0].url;
+    const obsidianCall = runtimeSendMessage.mock.calls.find(call => call[0]?.type === 'OBSIDIAN_URI');
+    expect(obsidianCall).toBeTruthy();
+    const url = obsidianCall[0].url;
     expect(url).toContain('obsidian://advanced-uri?');
     expect(decodeURIComponent(url)).toContain('filepath=Learning/2026-W22.md');
     expect(decodeURIComponent(url)).toContain('vault=Main Vault');

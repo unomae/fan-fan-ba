@@ -178,6 +178,7 @@ describe('floating vocabulary panel', () => {
         sources: [],
         createdAt: '2026-05-25T04:00:00.000Z',
         lastSeenAt: '2026-05-25T04:00:00.000Z',
+        nextReviewAt: '2026-05-30T04:00:00.000Z',
         count: 3,
         status: 'learning'
       }
@@ -185,9 +186,11 @@ describe('floating vocabulary panel', () => {
 
     await context.showFloatingVocabularyPanel();
 
+    expect(document.querySelector('.g-vocab-tab.g-active').textContent).toBe('今日複習');
     expect(document.querySelector('.g-vocab-panel-word').textContent).toBe('Beacon');
     expect(document.querySelector('.g-vocab-panel-meta').textContent).toContain('已匯出');
 
+    document.querySelector('[data-filter="today"]').click();
     document.querySelector('[data-vocab-copy="en:beacon"]').click();
     await Promise.resolve();
     expect(setup.clipboardWriteText).toHaveBeenLastCalledWith(expect.stringContaining('### Beacon'));
@@ -251,7 +254,7 @@ describe('floating vocabulary panel', () => {
     await Promise.resolve();
     expect(context.deleteVocabularyEntry).toHaveBeenCalledWith('en:anchor');
     expect(setup.localStore.fanFanBaVocabularyItems['en:anchor']).toBeUndefined();
-    expect(document.querySelector('.g-hist-empty').textContent).toBe('沒有符合的單字');
+    expect(document.querySelector('.g-hist-empty').textContent).toBe('沒有符合搜尋的單字');
   });
 
   it('shows review views and toggles vocabulary status', async () => {
@@ -309,14 +312,7 @@ describe('floating vocabulary panel', () => {
     expect([...document.querySelectorAll('.g-vocab-panel-word')].map(node => node.textContent)).toEqual(['Beacon', 'Compass']);
 
     document.querySelector('[data-vocab-status="en:beacon"]').click();
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+    for (let i = 0; i < 20; i += 1) await Promise.resolve();
     expect(setup.localStore.fanFanBaVocabularyItems['en:beacon'].status).toBe('known');
 
     await context.showFloatingVocabularyPanel();

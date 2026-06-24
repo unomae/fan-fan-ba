@@ -107,7 +107,7 @@ fan-fan-ba/
 │   ├── dom.js            # 安全 DOM helper（ffbText / ffbEl / ffbClear）
 │   ├── site-policy.js    # 站點停用 / allowlist / 敏感欄位保護
 │   ├── obsidian.js       # Obsidian 存入 + 最近資料夾管理
-│   ├── vocabulary*.js    # 單字本儲存、匯出、高亮
+│   ├── vocabulary*.js    # 單字本 helper、匯出、高亮
 │   ├── toolbar.js        # 懸浮工具列 UI + 定位
 │   ├── result-card.js    # 結果卡 UI + 渲染（字典 / 解釋 / 優化）+ 歷史紀錄
 │   ├── page-translator-*.js # 全文 / 單段沉浸式翻譯：狀態、收集、請求、渲染、面板
@@ -117,6 +117,7 @@ fan-fan-ba/
 ├── popup.html / js       # 模型快選 Popup
 ├── options.html / js     # 完整設定頁
 ├── vocabulary-backup.js  # 單字本 JSON round-trip 備份與 XLSX 匯出
+├── vocabulary-store.js   # 單字本 IndexedDB store + chrome.storage.local fallback / migration
 ├── welcome.html / js     # 首次安裝 Onboarding 頁面
 ├── privacy-policy.html   # 隱私權政策
 ├── design.md             # 設計語言規範（色彩 / 元件 / 動畫）

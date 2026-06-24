@@ -20,6 +20,12 @@ function getVocabularyId(word, lang) {
 
 async function loadVocabularyItems() {
   try {
+    const response = await requestVocabularyStore('list');
+    if (Array.isArray(response?.items)) return vocabularyMapFromList(response.items);
+  } catch {
+    // fallback to legacy chrome.storage.local below
+  }
+  try {
     const { [VOCABULARY_STORAGE_KEY]: items = {} } = await chrome.storage.local.get(VOCABULARY_STORAGE_KEY);
     return items && typeof items === 'object' && !Array.isArray(items) ? items : {};
   } catch {
@@ -27,11 +33,65 @@ async function loadVocabularyItems() {
   }
 }
 
+async function getVocabularyEntry(id) {
+  const key = String(id || '').trim();
+  if (!key) return null;
+  try {
+    const response = await requestVocabularyStore('get', { id: key });
+    if (response?.item) return response.item;
+  } catch {
+    // fallback to legacy map below
+  }
+  const items = await loadVocabularyItemsLegacy();
+  return items[key] || null;
+}
+
+async function upsertVocabularyEntry(item) {
+  try {
+    const response = await requestVocabularyStore('upsert', { item });
+    if (response?.item) return response.item;
+  } catch {
+    // fallback to legacy map below
+  }
+  const items = await loadVocabularyItemsLegacy();
+  items[item.id] = item;
+  await chrome.storage.local.set({ [VOCABULARY_STORAGE_KEY]: items });
+  return item;
+}
+
+async function loadVocabularyItemsLegacy() {
+  try {
+    const { [VOCABULARY_STORAGE_KEY]: items = {} } = await chrome.storage.local.get(VOCABULARY_STORAGE_KEY);
+    return items && typeof items === 'object' && !Array.isArray(items) ? items : {};
+  } catch {
+    return {};
+  }
+}
+
+function vocabularyMapFromList(list) {
+  return (Array.isArray(list) ? list : []).reduce((acc, item) => {
+    if (item?.id) acc[item.id] = item;
+    return acc;
+  }, {});
+}
+
+async function requestVocabularyStore(action, payload = {}) {
+  if (!chrome.runtime?.sendMessage) throw new Error('單字本資料層不可用');
+  const response = await chrome.runtime.sendMessage({
+    type: 'VOCABULARY_STORE',
+    action,
+    ...payload
+  });
+  if (!response || response.ok !== true) {
+    throw new Error(response?.error || '單字本資料層不可用');
+  }
+  return response;
+}
+
 async function isVocabularySaved(word, lang) {
   const id = getVocabularyId(word, lang);
   if (!id) return false;
-  const items = await loadVocabularyItems();
-  return Boolean(items[id]);
+  return Boolean(await getVocabularyEntry(id));
 }
 
 async function listVocabularyItems() {
@@ -44,7 +104,13 @@ async function listVocabularyItems() {
 }
 
 async function deleteVocabularyEntry(id) {
-  const items = await loadVocabularyItems();
+  try {
+    const response = await requestVocabularyStore('delete', { id });
+    return Boolean(response?.deleted);
+  } catch {
+    // fallback to legacy map below
+  }
+  const items = await loadVocabularyItemsLegacy();
   if (!items[id]) return false;
   delete items[id];
   await chrome.storage.local.set({ [VOCABULARY_STORAGE_KEY]: items });
@@ -53,24 +119,22 @@ async function deleteVocabularyEntry(id) {
 
 async function updateVocabularyEntryStatus(id, status) {
   const normalizedStatus = status === 'known' ? 'known' : 'learning';
-  const items = await loadVocabularyItems();
-  if (!items[id]) return null;
-  items[id] = {
-    ...items[id],
+  const existing = await getVocabularyEntry(id);
+  if (!existing) return null;
+  const updated = {
+    ...existing,
     status: normalizedStatus,
     reviewedAt: new Date().toISOString()
   };
-  items[id].nextReviewAt = getVocabularyNextReviewAt(items[id], items[id].reviewedAt);
-  await chrome.storage.local.set({ [VOCABULARY_STORAGE_KEY]: items });
-  return items[id];
+  updated.nextReviewAt = getVocabularyNextReviewAt(updated, updated.reviewedAt);
+  return upsertVocabularyEntry(updated);
 }
 
 async function saveVocabularyEntry(dictData, selectedText) {
   const base = normalizeVocabularyEntry(dictData, selectedText);
   if (!base.id) throw new Error('無法收藏這個單字');
 
-  const items = await loadVocabularyItems();
-  const existing = items[base.id];
+  const existing = await getVocabularyEntry(base.id);
   const now = new Date().toISOString();
   const source = buildVocabularySource(selectedText);
   const sources = mergeVocabularySources(existing?.sources || [], source);
@@ -86,8 +150,7 @@ async function saveVocabularyEntry(dictData, selectedText) {
     obsidianExportedAt: existing?.obsidianExportedAt || null
   };
 
-  items[item.id] = item;
-  await chrome.storage.local.set({ [VOCABULARY_STORAGE_KEY]: items });
+  await upsertVocabularyEntry(item);
   return { item, isNew: !existing };
 }
 
@@ -160,10 +223,12 @@ async function exportVocabularyEntryToObsidianIfConfigured(item) {
 }
 
 async function markVocabularyEntryExported(id) {
-  const items = await loadVocabularyItems();
-  if (!items[id]) return;
-  items[id].obsidianExportedAt = new Date().toISOString();
-  await chrome.storage.local.set({ [VOCABULARY_STORAGE_KEY]: items });
+  const item = await getVocabularyEntry(id);
+  if (!item) return;
+  await upsertVocabularyEntry({
+    ...item,
+    obsidianExportedAt: new Date().toISOString()
+  });
 }
 
 async function appendVocabularyEntryToObsidian(item, folderPath) {

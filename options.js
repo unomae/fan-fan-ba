@@ -49,7 +49,7 @@ function setVocabularyBackupStatus(text) {
 
 async function exportVocabularyBackup() {
   try {
-    const { [VOCAB_STORAGE_KEY]: items = {} } = await chrome.storage.local.get(VOCAB_STORAGE_KEY);
+    const items = await getVocabularyItemsMap();
     const backup = VocabBackup.buildBackup(items);
     if (!backup.count) { setVocabularyBackupStatus('單字本是空的，沒有可匯出的單字。'); return; }
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
@@ -69,7 +69,7 @@ async function exportVocabularyBackup() {
 
 async function exportVocabularyXlsx() {
   try {
-    const { [VOCAB_STORAGE_KEY]: items = {} } = await chrome.storage.local.get(VOCAB_STORAGE_KEY);
+    const items = await getVocabularyItemsMap();
     const normalized = VocabBackup.normalizeItemsMap(items);
     const count = Object.keys(normalized).length;
     if (!count) { setVocabularyBackupStatus('單字本是空的，沒有可匯出的單字。'); return; }
@@ -102,13 +102,52 @@ async function importVocabularyBackup(event) {
   try {
     const text = await file.text();
     const incoming = VocabBackup.parseBackup(text);
-    const { [VOCAB_STORAGE_KEY]: existing = {} } = await chrome.storage.local.get(VOCAB_STORAGE_KEY);
+    const existing = await getVocabularyItemsMap();
     const { items, summary } = VocabBackup.mergeBackup(existing, incoming, 'merge');
-    await chrome.storage.local.set({ [VOCAB_STORAGE_KEY]: items });
+    await replaceVocabularyItemsMap(items);
     setVocabularyBackupStatus(`匯入完成：新增 ${summary.added}、更新 ${summary.updated}，目前共 ${summary.total} 個單字。`);
   } catch (error) {
     setVocabularyBackupStatus(`匯入失敗：${error?.message || '檔案格式不正確'}`);
   }
+}
+
+async function getVocabularyItemsMap() {
+  try {
+    const response = await requestVocabularyStore('list');
+    if (Array.isArray(response?.items)) {
+      return response.items.reduce((acc, item) => {
+        if (item?.id) acc[item.id] = item;
+        return acc;
+      }, {});
+    }
+  } catch {
+    // fallback to legacy map below
+  }
+  const { [VOCAB_STORAGE_KEY]: items = {} } = await chrome.storage.local.get(VOCAB_STORAGE_KEY);
+  return VocabBackup.normalizeItemsMap(items);
+}
+
+async function replaceVocabularyItemsMap(items) {
+  try {
+    await requestVocabularyStore('replaceAll', { items });
+    return;
+  } catch {
+    // fallback to legacy map below
+  }
+  await chrome.storage.local.set({ [VOCAB_STORAGE_KEY]: VocabBackup.normalizeItemsMap(items) });
+}
+
+async function requestVocabularyStore(action, payload = {}) {
+  if (!chrome.runtime?.sendMessage) throw new Error('單字本資料層不可用');
+  const response = await chrome.runtime.sendMessage({
+    type: 'VOCABULARY_STORE',
+    action,
+    ...payload
+  });
+  if (!response || response.ok !== true) {
+    throw new Error(response?.error || '單字本資料層不可用');
+  }
+  return response;
 }
 
 // ── 本機診斷摘要（v1.9.8）────────────────────────────

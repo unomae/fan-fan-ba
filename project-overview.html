@@ -476,7 +476,7 @@ options.js</pre>
             <tr><td><code>ttsApiKey</code></td><td><code>chrome.storage.local</code></td><td>Google Cloud TTS API Key；不跟 Chrome 帳號同步。</td></tr>
             <tr><td><code>obsidianVault</code></td><td><code>chrome.storage.sync</code></td><td>Obsidian Vault 名稱。</td></tr>
             <tr><td><code>obsidianDefaultFolder</code></td><td><code>chrome.storage.sync</code></td><td>Obsidian 預設寫入資料夾。</td></tr>
-            <tr><td><code>fanFanBaVocabularyItems</code></td><td><code>chrome.storage.local</code></td><td>本地單字本 keyed object map。</td></tr>
+            <tr><td><code>fanFanBaVocabularyItems</code></td><td><code>chrome.storage.local</code></td><td>本地單字本 legacy keyed object map；Phase B 起會 migration / mirror 到 extension-owned IndexedDB。</td></tr>
             <tr><td><code>fanFanBaFloatingPosition</code></td><td><code>chrome.storage.local</code></td><td>每個 host 的浮球 top 與左右吸附位置。</td></tr>
             <tr><td><code>fanFanBaPaused:&lt;host&gt;</code></td><td><code>chrome.storage.local</code></td><td>每個網站的暫停狀態。</td></tr>
             <tr><td><code>fanFanBaCloudDeviceId</code></td><td><code>chrome.storage.local</code></td><td>雲端同步用裝置識別碼，不含個資或 API Key。</td></tr>
@@ -714,7 +714,7 @@ options.js</pre>
           <div class="card">
             <h3>核心邊界</h3>
             <ul>
-              <li>Extension 本地資料是主資料庫，使用 <code>fanFanBaVocabularyItems</code> keyed object map 管理收藏、查重、來源、熟悉度與高亮狀態。</li>
+              <li>Extension 本地資料是主資料庫；Phase B 起以 extension-owned IndexedDB 為主，<code>fanFanBaVocabularyItems</code> keyed object map 保留為 legacy migration / fallback mirror。</li>
               <li>Obsidian 是沉澱出口，只做 one-way export，不從 Markdown 反向同步回 extension。</li>
               <li>同字去重規則採 <code>lang:normalizedWord</code>；每個單字最多保留近 5 筆來源，避免 local storage 物件過大。</li>
               <li>高亮預設關閉，由使用者在設定頁開啟，並限制可見區域、文字節點數量與標記數量。</li>
@@ -738,9 +738,9 @@ options.js</pre>
           <tbody>
             <tr><td>真正 <code>.xlsx</code> 匯出</td><td>保留欄寬、工作表與格式，降低 Excel 使用門檻。</td><td><code>v1.9.x+</code></td></tr>
             <tr><td>單字本備份 / 匯入</td><td>讓使用者可搬移單字資料，避免移除 extension 後流失。</td><td><code>v1.9.x+</code></td></tr>
-            <tr><td>IndexedDB migration</td><td>單字量接近數千筆時降低單一 storage object 負擔。</td><td><code>v1.9.x+</code></td></tr>
+            <tr><td>IndexedDB migration</td><td>單字量接近數千筆時降低單一 storage object 負擔。</td><td><code>v1.9.8 Phase B</code></td></tr>
             <tr><td>高亮斷詞改善</td><td>減少英文詞形、大小寫與多語詞彙漏標 / 誤標。</td><td><code>v1.9.x+</code></td></tr>
-            <tr><td>進階複習 / SRS</td><td>加入每日佇列、間隔提醒、錯題回看。</td><td><code>v1.9.x+</code></td></tr>
+            <tr><td>進階複習 / SRS</td><td>加入每日佇列、間隔提醒、錯題回看。</td><td><code>v1.9.8 Phase B</code></td></tr>
           </tbody>
         </table>
       </section>
@@ -1060,7 +1060,7 @@ options.js</pre>
 
       <section id="roadmap">
         <h2>Roadmap</h2>
-        <div class="callout">2026-06-20 更新：Claude Code 額度中斷後已接手收尾並 push 到 <code>270b5a4</code>。Phase A 本機可驗證項（測試 / 打包 / 送審指南）已完成；Phase B 已補單字本 JSON round-trip 備份 / 匯入與真 <code>.xlsx</code> 匯出；Phase C 的單段失敗局部重試已落地；Phase D 已同步 README 架構。<strong>下一步仍是 Chrome Web Store 後台送審 / 手動 QA</strong>，再進 IndexedDB / SRS 主線。使用者指標一律本機、不上傳原文 / 譯文 / URL / API Key / 個資。</div>
+        <div class="callout">2026-06-25 更新：Phase A 暫時略過；Phase B 已先完成 extension-owned IndexedDB store、legacy <code>fanFanBaVocabularyItems</code> migration / fallback mirror、今日複習 tab 與 SRS <code>記得 / 還不熟</code> 流程。Phase A 的 Chrome Web Store 後台送審 / 手動 QA 仍未執行；Phase B 也仍需真瀏覽器驗證 IndexedDB migration、JSON / XLSX 匯出與單字高亮。使用者指標一律本機、不上傳原文 / 譯文 / URL / API Key / 個資。</div>
         <table style="margin-bottom:12px;">
           <thead>
             <tr><th>Phase</th><th>目標</th><th>細項</th><th>Done 定義</th></tr>
@@ -1088,7 +1088,7 @@ options.js</pre>
               <td><code>v1.9.8</code><br>Maintainability + Local Metrics</td>
               <td>讓後續迭代更穩</td>
               <td>拆 <code>page-translator.js</code> ✓、建立 DOM render helper ✓、模型選單簡潔特點說明 ✓、本機診斷摘要 ✓；<code>content.css</code> 整理 deferred 至 Phase D。</td>
-              <td>Coverage 行覆蓋 68.5%（&gt;65%）✓；本機診斷摘要可清除 ✓；隱私政策明載無 telemetry / 不上傳 / 可清除 ✓。</td>
+              <td>Coverage 行覆蓋 67.5%（&gt;65%）✓；本機診斷摘要可清除 ✓；隱私政策明載無 telemetry / 不上傳 / 可清除 ✓。</td>
             </tr>
             <tr style="background:#f4faf0;">
               <td><strong>Phase A</strong><br>v2.0 上架</td>
@@ -1099,8 +1099,8 @@ options.js</pre>
             <tr>
               <td><strong>Phase B</strong><br>單字本深化</td>
               <td>把「翻譯工具」變「學習工具」（上架後主線、產品差異化）</td>
-              <td>單字本備份 / 匯入（最高優先，避免移除 extension 流失）✓ → 真 <code>.xlsx</code> 匯出 ✓ → IndexedDB migration → SRS 間隔複習 / 每日佇列 / 錯題回看。</td>
-              <td>JSON 可搬移與還原 ✓；XLSX 可檢視整理 ✓；數千筆不卡與間隔複習迴圈仍待 IndexedDB / SRS 主線。</td>
+              <td>單字本備份 / 匯入（最高優先，避免移除 extension 流失）✓ → 真 <code>.xlsx</code> 匯出 ✓ → IndexedDB migration ✓ → SRS 間隔複習 / 每日佇列 ✓ → 錯題回看。</td>
+              <td>JSON 可搬移與還原 ✓；XLSX 可檢視整理 ✓；IndexedDB + fallback mirror 已落地 ✓；今日複習可用 ✓；仍待真瀏覽器 QA 與更完整錯題回看。</td>
             </tr>
             <tr>
               <td><strong>Phase C</strong><br>沉浸式閱讀 polish</td>
@@ -1197,6 +1197,12 @@ options.js</pre>
             <tr><th>日期</th><th>版本線</th><th>完成事項</th><th>驗證 / 注意</th></tr>
           </thead>
           <tbody>
+            <tr>
+              <td>2026-06-25</td>
+              <td><code>Phase B IndexedDB / SRS</code></td>
+              <td>略過 Phase A 送審後先做 Phase B：新增 <code>vocabulary-store.js</code> 作為 extension-owned IndexedDB store；background 新增 <code>VOCABULARY_STORE</code> message API；content / options 單字本讀寫改走 store 並保留 <code>chrome.storage.local</code> fallback mirror；浮球單字本預設新增「今日複習」，支援 <code>記得</code> / <code>還不熟</code> 更新 SRS 排程。</td>
+              <td><code>npm test -- --runInBand</code> 通過，20 suites / 195 tests；仍需真瀏覽器載入 <code>dist/pkg/</code> 驗證 IndexedDB migration、JSON / XLSX 匯出、單字高亮與今日複習互動。</td>
+            </tr>
             <tr>
               <td>2026-06-20</td>
               <td><code>Phase A-D handoff closure</code></td>

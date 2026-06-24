@@ -21,6 +21,7 @@ const INCLUDE_FILES = [
   'models.js',
   'storage.js',
   'cloud-sync.js',
+  'vocabulary-store.js',
   'vocabulary-backup.js',
   'content.css',
   'popup.html', 'popup.js',

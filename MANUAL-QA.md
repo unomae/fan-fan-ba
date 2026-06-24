@@ -8,7 +8,7 @@
 ---
 
 ## 0. 前置
-- [ ] `npm test` 全綠（19 suites / 190 tests）
+- [ ] `npm test` 全綠（20 suites / 195 tests）
 - [ ] `npm run package` 成功產出 `dist/fan-fan-ba-v<版本>.zip`，先用 `dist/pkg/` 在 `chrome://extensions`「載入未封裝」
 - [ ] 擴充功能版本顯示正確、背景 Service Worker console 無紅字錯誤
 
@@ -42,7 +42,11 @@
 - [ ] 按「清除診斷資料」→ 歸零
 - [ ] DevTools Network：操作時**只有對 AI API 的請求**，無其他上傳（確認真的無 telemetry）
 
-## 6. Phase B / review 修正 — 單字本備份 / 匯入 / XLSX
+## 6. Phase B — 單字本 IndexedDB / SRS / 備份
+- [ ] 從舊版 local storage 單字本升級後，單字本面板仍看得到既有單字
+- [ ] 浮球 → 單字本，預設顯示「今日複習」；到期單字排序合理
+- [ ] 在「今日複習」點「記得」→ 狀態變已記得，下一次複習約 7 天後
+- [ ] 在「今日複習」點「還不熟」→ 狀態維持還不熟，下一次複習約 1 天後
 - [ ] 收藏幾個單字 → 設定頁「匯出 JSON」→ 得到 `.json` 備份
 - [ ] 「匯出 XLSX」→ 得到 `.xlsx`，**用真 Excel / Google Sheets 開得起來**、欄位正確
 - [ ] **公式注入防護**：收藏一個以 `=` 開頭的內容（或 word/definition 含 `=cmd`）→ 匯出 XLSX → Excel 開啟時該格顯示為**純文字**，不被當公式執行

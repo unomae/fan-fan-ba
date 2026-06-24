@@ -6,9 +6,11 @@
 if (typeof importScripts === 'function') {
   if (!globalThis.FanFanBaModels) importScripts('models.js');
   if (!globalThis.FanFanBaStorage) importScripts('storage.js');
+  if (!globalThis.FanFanBaVocabularyStore) importScripts('vocabulary-store.js');
 }
 const ModelRegistry = globalThis.FanFanBaModels || require('./models');
 const Storage = globalThis.FanFanBaStorage || require('./storage');
+const VocabularyStore = globalThis.FanFanBaVocabularyStore || require('./vocabulary-store');
 
 // ── 首次安裝時開啟 Welcome 頁面 ──────────────────────
 chrome.runtime.onInstalled.addListener(details => {
@@ -28,7 +30,7 @@ const MAX_PAGE_TITLE_CHARS = 300;
 const MAX_TTS_TEXT_CHARS = 160;
 const MAX_OBSIDIAN_URIS = 50;
 const MAX_OBSIDIAN_URI_CHARS = 4096;
-const ALLOWED_MESSAGE_TYPES = new Set(['GEMINI_REQUEST', 'TTS_REQUEST', 'OPEN_OPTIONS', 'OBSIDIAN_URI']);
+const ALLOWED_MESSAGE_TYPES = new Set(['GEMINI_REQUEST', 'TTS_REQUEST', 'OPEN_OPTIONS', 'OBSIDIAN_URI', 'VOCABULARY_STORE']);
 
 // ── Exponential Backoff with Full Jitter ──────────
 function createAbortError() {
@@ -171,6 +173,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     })();
     return true;
   }
+  if (request.type === 'VOCABULARY_STORE') {
+    if (!isTrustedExtensionSender(sender)) {
+      reply({ ok: false, error: '請求來源不正確' });
+      return false;
+    }
+    VocabularyStore.handleMessage(request)
+      .then(reply)
+      .catch(error => reply({ ok: false, error: error?.message || '單字本操作失敗' }));
+    return true;
+  }
+  return false;
 });
 
 // 只允許 obsidian:// scheme，並限制數量與長度，避免被當成任意開分頁的跳板
