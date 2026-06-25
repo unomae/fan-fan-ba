@@ -376,11 +376,11 @@
           </div>
           <div class="card">
             <h3>目前重點</h3>
-            <p>目前版本線仍是 v1.8.6，但 v1.9.x 已開工：先建立 iframe bridge 分類、SVG overlay target、open Shadow DOM block 收集、Learning Summary seed 與 SRS review queue。</p>
+            <p>目前版本線是 v1.9.8：review hardening、單段翻譯、本機診斷摘要、單字本備份 / 匯出、IndexedDB store、SRS 今日複習、錯題回看與本機自檢表已完成；下一步聚焦真瀏覽器驗證。</p>
           </div>
           <div class="card">
             <h3>最新進展</h3>
-            <p>2026-06-18 已開 v1.9.0～v1.9.4 foundation：嵌入翻譯先補可測資料結構，Learning Layer 與 Vocabulary Pro 先補本地 helper，完整測試通過 14 suites / 114 tests。</p>
+            <p>2026-06-25 Phase B/D 已補齊錯題回看與本機自檢表；自動測試 20 suites / 200 tests 通過。</p>
           </div>
         </div>
       </section>
@@ -1099,20 +1099,20 @@ options.js</pre>
             <tr>
               <td><strong>Phase B</strong><br>單字本深化</td>
               <td>把「翻譯工具」變「學習工具」（上架後主線、產品差異化）</td>
-              <td>單字本備份 / 匯入（最高優先，避免移除 extension 流失）✓ → 真 <code>.xlsx</code> 匯出 ✓ → IndexedDB migration ✓ → SRS 間隔複習 / 每日佇列 ✓ → 錯題回看。</td>
-              <td>JSON 可搬移與還原 ✓；XLSX 可檢視整理 ✓；IndexedDB + fallback mirror 已落地 ✓；今日複習可用 ✓；仍待真瀏覽器 QA 與更完整錯題回看。</td>
+              <td>單字本備份 / 匯入（最高優先，避免移除 extension 流失）✓ → 真 <code>.xlsx</code> 匯出 ✓ → IndexedDB migration ✓ → SRS 間隔複習 / 每日佇列 ✓ → 錯題回看 ✓。</td>
+              <td>JSON 可搬移與還原 ✓；XLSX 可檢視整理 ✓；IndexedDB + fallback mirror 已落地 ✓；今日複習與錯題回看可用 ✓；仍待真瀏覽器 QA。</td>
             </tr>
             <tr>
               <td><strong>Phase C</strong><br>沉浸式閱讀 polish</td>
               <td>承 v1.9.7 方向打磨文字沉浸體驗</td>
-              <td>單段翻譯失敗局部重試 ✓、續翻體驗、長文 context digest 調優 ✓、hover 浮鈕 options 開關（尊重降干擾原則）；近期仍不碰 PDF / OCR / 圖片 / 影片字幕。</td>
-              <td>單段失敗可局部重試 ✓；整頁失敗有停止 / 還原 / 續翻基礎；hover 行為可關閉仍待 options 開關。</td>
+              <td>單段翻譯失敗局部重試 ✓、續翻體驗、長文 context digest 調優 ✓、hover 浮鈕 options 開關 ✓（尊重降干擾原則）；近期仍不碰 PDF / OCR / 圖片 / 影片字幕。</td>
+              <td>單段失敗可局部重試 ✓；整頁失敗有停止 / 還原 / 續翻基礎；hover 行為可在 options 關閉 ✓；仍待真瀏覽器驗證互動細節。</td>
             </tr>
             <tr>
               <td><strong>Phase D</strong><br>技術債清理</td>
               <td>隨手穿插，不單獨排期</td>
-              <td>整理 <code>content.css</code>（2708 行）、更新 README「技術架構」（目前過期、未反映拆檔 / single.js）✓、本機診斷升級成更實用的自檢表。</td>
-              <td>README 架構與實際檔案一致 ✓；樣式重排與更完整自檢表仍待 Chrome QA 後分批做。</td>
+              <td>整理 <code>content.css</code>（2708 行）、更新 README「技術架構」（目前過期、未反映拆檔 / single.js）✓、本機診斷升級成更實用的自檢表 ✓。</td>
+              <td>README 架構與實際檔案一致 ✓；本機自檢表可檢查版本、模型 API Key、hover / 高亮設定、使用失敗紀錄與隱私邊界 ✓；樣式重排仍待 Chrome QA 後分批做。</td>
             </tr>
           </tbody>
         </table>
@@ -1197,6 +1197,12 @@ options.js</pre>
             <tr><th>日期</th><th>版本線</th><th>完成事項</th><th>驗證 / 注意</th></tr>
           </thead>
           <tbody>
+            <tr>
+              <td>2026-06-25</td>
+              <td><code>Phase B/D follow-up</code></td>
+              <td>補齊 Phase B「錯題回看」：單字本新增錯題回看 tab，沿用既有 <code>learning</code> / <code>known</code> / <code>nextReviewAt</code> SRS 狀態，不新增平行資料模型；補齊 Phase D「本機自檢表」：設定頁診斷區改為本機 checklist，檢查版本、單段 / 全文模型 API Key、hover / 高亮設定、使用失敗紀錄與隱私邊界。</td>
+              <td><code>npm test -- --runInBand</code> 通過，20 suites / 200 tests；仍需真瀏覽器載入 <code>dist/pkg/</code> 驗證錯題回看互動、自檢表顯示、IndexedDB migration、JSON / XLSX 匯出、單字高亮與今日複習互動。</td>
+            </tr>
             <tr>
               <td>2026-06-25</td>
               <td><code>Phase B IndexedDB / SRS</code></td>

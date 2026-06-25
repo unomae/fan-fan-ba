@@ -320,4 +320,72 @@ describe('floating vocabulary panel', () => {
     expect([...document.querySelectorAll('.g-vocab-panel-word')].map(node => node.textContent)).toEqual(['Beacon', 'Anchor']);
     expect(document.querySelector('[data-vocab-status="en:beacon"]').textContent).toBe('還不熟');
   });
+
+  it('renders a weak-review view with SRS actions for learning items', async () => {
+    const setup = createContentContext();
+    context = setup.context;
+    runContentScript('content/site-policy.js', context);
+    runContentScript('content/state.js', context);
+    runContentScript('content/dom.js', context);
+    runContentScript('content/utils.js', context);
+    runContentScript('content/vocabulary.js', context);
+    runContentScript('content/result-card.js', context);
+    runContentScript('content/floating-ball.js', context);
+
+    setup.localStore.fanFanBaVocabularyItems = {
+      'en:anchor': {
+        id: 'en:anchor',
+        word: 'Anchor',
+        lang: 'en',
+        translations: ['錨'],
+        sources: [],
+        createdAt: '2026-05-20T04:00:00.000Z',
+        lastSeenAt: '2026-05-25T04:00:00.000Z',
+        nextReviewAt: '2026-05-20T04:00:00.000Z',
+        count: 5,
+        status: 'known'
+      },
+      'en:beacon': {
+        id: 'en:beacon',
+        word: 'Beacon',
+        lang: 'en',
+        translations: ['燈塔'],
+        sources: [],
+        createdAt: '2026-05-26T04:00:00.000Z',
+        lastSeenAt: '2026-05-26T04:00:00.000Z',
+        nextReviewAt: '2026-05-28T04:00:00.000Z',
+        count: 1,
+        status: 'learning'
+      },
+      'en:compass': {
+        id: 'en:compass',
+        word: 'Compass',
+        lang: 'en',
+        translations: ['指南針'],
+        sources: [],
+        createdAt: '2026-05-24T04:00:00.000Z',
+        lastSeenAt: '2026-05-24T04:00:00.000Z',
+        nextReviewAt: '2026-05-25T04:00:00.000Z',
+        count: 2,
+        status: 'learning'
+      }
+    };
+
+    await context.showFloatingVocabularyPanel();
+    document.querySelector('[data-filter="weak"]').click();
+
+    expect(document.querySelector('.g-vocab-tab.g-active').textContent).toBe('錯題回看');
+    expect([...document.querySelectorAll('.g-vocab-panel-word')].map(node => node.textContent)).toEqual(['Compass', 'Beacon']);
+    expect(document.querySelector('.g-vocab-panel-meta').textContent).toContain('錯題回看');
+    expect(document.querySelector('.g-vocab-panel-meta').textContent).toContain('到期');
+    expect(document.querySelector('[data-vocab-review="en:compass"][data-review-status="known"]').textContent).toBe('記得');
+    expect(document.querySelector('[data-vocab-review="en:compass"][data-review-status="learning"]').textContent).toBe('還不熟');
+
+    document.querySelector('[data-vocab-review="en:compass"][data-review-status="known"]').click();
+    for (let i = 0; i < 20; i += 1) await Promise.resolve();
+
+    expect(setup.localStore.fanFanBaVocabularyItems['en:compass'].status).toBe('known');
+    for (let i = 0; i < 20; i += 1) await Promise.resolve();
+    expect([...document.querySelectorAll('.g-vocab-panel-word')].map(node => node.textContent)).toEqual(['Beacon']);
+  });
 });

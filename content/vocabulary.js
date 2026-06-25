@@ -339,6 +339,13 @@ function buildVocabularyReviewQueue(items = [], options = {}) {
     .slice(0, limit);
 }
 
+function buildVocabularyWeakReviewQueue(items = [], options = {}) {
+  return buildVocabularyReviewQueue(items, {
+    ...options,
+    limit: options.limit || 50
+  }).filter(item => item.status !== 'known');
+}
+
 function buildVocabularyReviewQueueItem(item, now) {
   if (!item?.id) return null;
   const nextReviewAt = item.nextReviewAt || getVocabularyNextReviewAt(item, item.reviewedAt || item.createdAt || item.lastSeenAt);

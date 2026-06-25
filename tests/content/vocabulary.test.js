@@ -185,6 +185,45 @@ describe('Vocabulary storage helper', () => {
     ]);
   });
 
+  it('builds a weak-review queue from existing SRS status without a new model', () => {
+    const { context } = createVocabularyContext();
+    const queue = context.buildVocabularyWeakReviewQueue([
+      {
+        id: 'en:anchor',
+        word: 'Anchor',
+        status: 'known',
+        nextReviewAt: '2026-05-20T00:00:00.000Z',
+        createdAt: '2026-05-01T00:00:00.000Z'
+      },
+      {
+        id: 'en:beacon',
+        word: 'Beacon',
+        status: 'learning',
+        nextReviewAt: '2026-05-28T00:00:00.000Z',
+        createdAt: '2026-05-02T00:00:00.000Z'
+      },
+      {
+        id: 'en:compass',
+        word: 'Compass',
+        status: 'learning',
+        nextReviewAt: '2026-05-20T00:00:00.000Z',
+        createdAt: '2026-05-03T00:00:00.000Z'
+      }
+    ], {
+      now: '2026-05-26T12:00:00.000Z'
+    });
+
+    expect(queue.map(item => ({
+      id: item.id,
+      status: item.status,
+      due: item.due,
+      reviewReason: item.reviewReason
+    }))).toEqual([
+      { id: 'en:compass', status: 'learning', due: true, reviewReason: 'due' },
+      { id: 'en:beacon', status: 'learning', due: false, reviewReason: 'scheduled' }
+    ]);
+  });
+
   it('builds Markdown export blocks for saved vocabulary', async () => {
     const { context } = createVocabularyContext();
     const { item } = await context.saveVocabularyEntry({

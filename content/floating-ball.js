@@ -312,7 +312,7 @@ function showFloatingLibraryPanel() {
       <button class="g-floating-library-item" type="button" data-library-action="vocabulary">
         <span>${FFB_ICON_NOTEBOOK}</span>
         <strong>單字本</strong>
-        <em>今日新增、複習、搜尋、匯出</em>
+        <em>今日新增、複習、錯題回看、匯出</em>
       </button>
       <button class="g-floating-library-item" type="button" data-library-action="history">
         <span>${FFB_ICON_HISTORY}</span>
@@ -406,6 +406,7 @@ function renderFloatingVocabularyPanel(body, initialItems) {
         <input class="g-vocab-search" type="search" placeholder="搜尋單字">
         <div class="g-vocab-tabs">
           <button type="button" class="g-vocab-tab g-active" data-filter="review">今日複習</button>
+          <button type="button" class="g-vocab-tab" data-filter="weak">錯題回看</button>
           <button type="button" class="g-vocab-tab" data-filter="today">今日新增</button>
           <button type="button" class="g-vocab-tab" data-filter="recent">最近遇到</button>
           <button type="button" class="g-vocab-tab" data-filter="frequent">最常遇到</button>
@@ -455,9 +456,8 @@ function renderFloatingVocabularyPanel(body, initialItems) {
         const nextStatus = button.dataset.nextStatus === 'known' ? 'known' : 'learning';
         const updated = await updateVocabularyEntryStatus?.(id, nextStatus);
         if (updated) {
-          items = typeof listVocabularyItems === 'function'
-            ? await listVocabularyItems()
-            : items.map(item => item.id === id ? updated : item);
+          const refreshedItems = typeof listVocabularyItems === 'function' ? await listVocabularyItems() : items;
+          items = updateVocabularyPanelItems(refreshedItems, updated);
           render();
         }
       });
@@ -469,9 +469,8 @@ function renderFloatingVocabularyPanel(body, initialItems) {
         const status = button.dataset.reviewStatus === 'known' ? 'known' : 'learning';
         const updated = await updateVocabularyEntryStatus?.(id, status);
         if (updated) {
-          items = typeof listVocabularyItems === 'function'
-            ? await listVocabularyItems()
-            : items.map(item => item.id === id ? updated : item);
+          const refreshedItems = typeof listVocabularyItems === 'function' ? await listVocabularyItems() : items;
+          items = updateVocabularyPanelItems(refreshedItems, updated);
           render();
         }
       });
@@ -508,12 +507,28 @@ function renderFloatingVocabularyPanel(body, initialItems) {
   render();
 }
 
+function updateVocabularyPanelItems(items, updatedItem) {
+  if (!updatedItem?.id) return Array.isArray(items) ? items : [];
+  const source = Array.isArray(items) ? items : [];
+  let found = false;
+  const nextItems = source.map(item => {
+    if (item.id !== updatedItem.id) return item;
+    found = true;
+    return updatedItem;
+  });
+  return found ? nextItems : [updatedItem, ...nextItems];
+}
+
 function filterVocabularyPanelItems(items, filter, query) {
-  const source = filter === 'review'
-    ? (buildVocabularyReviewQueue?.(items, { limit: 50 }) || [])
+  let source = items;
+  if (filter === 'review') {
+    source = (buildVocabularyReviewQueue?.(items, { limit: 50 }) || [])
       .filter(item => item.due)
-      .map(item => ({ ...item, reviewMode: true }))
-    : items;
+      .map(item => ({ ...item, reviewMode: true }));
+  } else if (filter === 'weak') {
+    source = (buildVocabularyWeakReviewQueue?.(items, { limit: 50 }) || [])
+      .map(item => ({ ...item, reviewMode: true, weakReviewMode: true }));
+  }
   const visible = source.filter(item => {
     if (filter === 'today' && !isVocabularyItemFromToday?.(item)) return false;
     if (filter === 'learning' && item.status === 'known') return false;
@@ -535,7 +550,7 @@ function filterVocabularyPanelItems(items, filter, query) {
       return getVocabularyItemTime(b) - getVocabularyItemTime(a);
     });
   }
-  if (filter === 'review') return visible;
+  if (filter === 'review' || filter === 'weak') return visible;
   return visible.slice().sort((a, b) => getVocabularyItemTime(b) - getVocabularyItemTime(a));
 }
 
@@ -543,6 +558,7 @@ function getVocabularyPanelEmptyText(items, filter, query) {
   if (query) return '沒有符合搜尋的單字';
   if (!items.length) return '單字本是空的';
   if (filter === 'review') return '今天沒有到期複習的單字';
+  if (filter === 'weak') return '目前沒有還不熟的單字';
   if (filter === 'today') return '今天還沒有新增單字';
   return '沒有符合的單字';
 }
@@ -557,7 +573,8 @@ function buildVocabularyPanelItemHtml(item) {
   const exportedBadge = item.obsidianExportedAt ? '<span>已匯出</span>' : '';
   const isKnown = item.status === 'known';
   const statusBadge = isKnown ? '<span class="g-vocab-known">已記得</span>' : '<span class="g-vocab-learning">還不熟</span>';
-  const reviewBadge = item.reviewMode ? `<span>下次 ${escapeHtml(formatVocabularyReviewDate(item.nextReviewAt))}</span>` : '';
+  const reviewBadge = item.reviewMode ? `<span>${item.due ? '到期' : '下次'} ${escapeHtml(formatVocabularyReviewDate(item.nextReviewAt))}</span>` : '';
+  const weakBadge = item.weakReviewMode ? '<span>錯題回看</span>' : '';
   const nextStatus = isKnown ? 'learning' : 'known';
   const statusLabel = isKnown ? '還不熟' : '我記得了';
   const statusActions = item.reviewMode
@@ -576,6 +593,7 @@ function buildVocabularyPanelItemHtml(item) {
           <span>遇到 ${count} 次</span>
           ${statusBadge}
           ${exportedBadge}
+          ${weakBadge}
           ${reviewBadge}
         </div>
         ${translations ? `<div class="g-vocab-panel-meaning">${escapeHtml(translations)}</div>` : ''}

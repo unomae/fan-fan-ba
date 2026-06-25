@@ -3,7 +3,7 @@
 這個專案使用 **Jest 30** + **jsdom** 作為測試框架（早期曾用 Vitest，已全面遷移到 Jest）。
 本檔說明的是**自動化單元測試**；需要在真實瀏覽器執行的**手動驗收**請見 [`MANUAL-QA.md`](MANUAL-QA.md)。
 
-最後更新：2026-06-25 · 20 suites / 195 tests 全綠。
+最後更新：2026-06-25 · 20 suites / 200 tests 全綠。
 
 ---
 
@@ -14,7 +14,7 @@ npm test
 ```
 
 - 設定在 [`jest.config.js`](jest.config.js)：`testEnvironment: 'jsdom'`、`setupFilesAfterEnv: jest.setup.js`、`collectCoverage: true`。
-- **覆蓋率預設開啟**，報告輸出到 `coverage/`（reporters：`text` 印在終端、`lcov` 供工具讀）。目前行覆蓋約 **69%**。
+- **覆蓋率預設開啟**，報告輸出到 `coverage/`（reporters：`text` 印在終端、`lcov` 供工具讀）。目前行覆蓋約 **68%**。
 - 跑單一檔：`npx jest tests/background.test.js`
 - 跑單一案例：`npx jest -t "關鍵字"`
 - 序列執行（debug 偶發順序問題）：`npm test -- --runInBand`

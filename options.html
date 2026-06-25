@@ -336,6 +336,81 @@
       min-width: 78px;
     }
 
+    .diagnostics-self-check {
+      display: grid;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .diagnostics-overview {
+      display: grid;
+      gap: 4px;
+      padding: 10px 12px;
+      background: #f9fdf5;
+      border: 1px solid #d4edbc;
+      border-radius: 8px;
+      color: #3f4b5f;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .diagnostics-overview.is-warn {
+      background: #fffaf0;
+      border-color: #f5d08a;
+    }
+
+    .diagnostics-overview strong {
+      color: #3a7a1a;
+      font-size: 13px;
+    }
+
+    .diagnostics-overview.is-warn strong {
+      color: #9a6e00;
+    }
+
+    .diagnostics-checklist {
+      list-style: none;
+      display: grid;
+      gap: 8px;
+    }
+
+    .diagnostics-checklist li {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px;
+      padding: 9px 10px;
+      background: #fff;
+      border: 1px solid #dce3db;
+      border-radius: 8px;
+      color: #4b586a;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .diagnostics-dot {
+      width: 9px;
+      height: 9px;
+      margin-top: 5px;
+      border-radius: 999px;
+      background: #98a2b3;
+    }
+
+    .diagnostics-dot.ok { background: var(--green-deep); }
+    .diagnostics-dot.warn { background: #c77a00; }
+    .diagnostics-dot.info { background: #5476c8; }
+
+    .diagnostics-checklist strong {
+      display: block;
+      color: #3f4b5f;
+      font-size: 12.5px;
+    }
+
+    .diagnostics-checklist small {
+      display: block;
+      margin-top: 2px;
+      color: #7b8794;
+    }
+
     .cloud-sync-hint {
       margin: 0;
       color: #4b586a;
@@ -1035,7 +1110,7 @@
             <div>
               <strong>本機診斷摘要</strong>
               <p style="margin:4px 0 8px;color:#666;font-size:12px;">只在本機累計使用次數，<strong>不含任何選取文字、網址或內容</strong>，不會上傳，也沒有 telemetry。可隨時清除。</p>
-              <div id="diagnosticsSummary" aria-live="polite">尚無使用紀錄。</div>
+              <div class="diagnostics-self-check" id="diagnosticsSummary" aria-live="polite">尚無使用紀錄。</div>
               <button class="btn-test" id="btnClearDiagnostics" type="button" style="margin-top:10px;">清除診斷資料</button>
             </div>
           </div>

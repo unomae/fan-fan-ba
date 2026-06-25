@@ -245,6 +245,73 @@ describe('Options module', () => {
     });
   });
 
+  describe('local diagnostics self-check', () => {
+    it('builds a checklist with actionable warnings for missing provider keys', () => {
+      const rows = global.optionsModule.buildDiagnosticsChecklist({
+        since: '2026-06-25T08:00:00.000Z',
+        actions: { translate: 2, explain: 1, optimize: 0 },
+        pageTranslations: 1,
+        errors: 0
+      }, {
+        model: 'groq:meta-llama/llama-4-scout-17b-16e-instruct',
+        pageTranslationModel: 'openrouter:deepseek/deepseek-v4-flash:free',
+        targetLanguage: 'en',
+        vocabularyHighlightMode: 'auto',
+        singleHoverButton: true
+      }, {
+        groqApiKey: 'gsk_test'
+      }, '1.9.8');
+
+      expect(rows[0]).toEqual(expect.objectContaining({
+        label: '擴充功能版本',
+        value: 'v1.9.8',
+        status: 'ok'
+      }));
+      expect(rows.find(row => row.label === '單段翻譯模型')).toEqual(expect.objectContaining({
+        status: 'ok',
+        value: expect.stringContaining('API Key 已設定')
+      }));
+      expect(rows.find(row => row.label === '全文翻譯模型')).toEqual(expect.objectContaining({
+        status: 'warn',
+        value: expect.stringContaining('缺 API Key'),
+        detail: expect.stringContaining('不會發送測試請求')
+      }));
+      expect(rows.find(row => row.label === '隱私邊界').value).toContain('不含選取文字、網址或內容');
+    });
+
+    it('renders the diagnostics checklist with warning count and local summary', () => {
+      const el = document.createElement('div');
+      global.optionsModule.renderDiagnosticsSelfCheck(el, {
+        diagnostics: {
+          since: '2026-06-25T08:00:00.000Z',
+          actions: { translate: 0, explain: 0, optimize: 0 },
+          pageTranslations: 0,
+          errors: 1
+        },
+        rows: [
+          { status: 'warn', label: '單段翻譯模型', value: 'Groq：缺 API Key', detail: '請先填入 Groq API Key。' },
+          { status: 'ok', label: '隱私邊界', value: '僅保留本機計數，不含選取文字、網址或內容' }
+        ]
+      });
+
+      expect(el.textContent).toContain('自檢結果：1 項需要處理');
+      expect(el.textContent).toContain('失敗 1');
+      expect(el.textContent).toContain('Groq：缺 API Key');
+      expect(el.querySelectorAll('.diagnostics-checklist li')).toHaveLength(2);
+    });
+
+    it('keeps the empty diagnostics summary clear after reset', () => {
+      const summary = global.optionsModule.formatDiagnosticsSummary({
+        since: '2026-06-25T08:00:00.000Z',
+        actions: { translate: 0, explain: 0, optimize: 0 },
+        pageTranslations: 0,
+        errors: 0
+      }, '已清除診斷資料。');
+
+      expect(summary).toBe('已清除診斷資料。');
+    });
+  });
+
   describe('cloud sync', () => {
     it('builds a cloud payload from general settings only', async () => {
       chrome.storage.sync.get.mockResolvedValueOnce({
