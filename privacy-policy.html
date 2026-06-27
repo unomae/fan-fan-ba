@@ -214,7 +214,7 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
         </svg>
-        <p><strong>重點摘要：</strong>翻翻吧不收集、不儲存任何個人資料。所有 API Key 僅存於裝置本地端，選取的文字僅傳送至使用者自行設定的 AI API，不經過任何第三方伺服器中轉或留存。</p>
+        <p><strong>重點摘要：</strong>翻翻吧不收集、不儲存任何個人資料。所有 API Key 僅存於裝置本地端；使用者選取的文字、頁面標題與必要的鄰近文字上下文僅傳送至使用者自行設定的 AI API，不經過任何第三方伺服器中轉或留存。</p>
       </div>
 
       <!-- 1. 資料收集 -->
@@ -249,8 +249,8 @@
               <td>僅存於 <code>chrome.storage.local</code>（本地裝置，不跟 Chrome 帳號同步）</td>
             </tr>
             <tr>
-              <td>選取的文字</td>
-              <td>傳送至 AI API 取得翻譯 / 解釋 / 優化結果</td>
+              <td>選取的文字、頁面標題與必要的鄰近文字上下文</td>
+              <td>傳送至 AI API 取得翻譯 / 解釋 / 優化結果，協助模型理解語境</td>
               <td>不儲存，僅在請求期間傳輸，完成即丟棄</td>
             </tr>
             <tr>
@@ -286,8 +286,8 @@
         <p style="margin-top:10px;">上述服務均由使用者自行申請 API Key 並直接使用，翻翻吧開發者不持有也無法存取任何通訊內容。</p>
         <p style="margin-top:10px;"><strong>傳送給 AI 服務的資料範圍：</strong></p>
         <ul>
-          <li><strong>只傳送</strong>使用者主動選取的文字、或在整頁翻譯時擷取的網頁段落文字，作為翻譯 / 解釋 / 優化的輸入</li>
-          <li><strong>不傳送</strong>所在網頁的完整網址（URL）、瀏覽歷史或其他頁面內容</li>
+          <li><strong>只傳送</strong>使用者主動選取的文字、頁面標題、必要的鄰近文字上下文，或在整頁翻譯時擷取的可見段落文字，作為翻譯 / 解釋 / 優化的輸入</li>
+          <li><strong>不傳送</strong>所在網頁的完整網址（URL）、網站網域、瀏覽歷史或非必要頁面內容</li>
           <li><strong>不傳送</strong>使用者的 API Key 給翻翻吧開發者；金鑰只在使用者的瀏覽器內，直接附在對該 AI 服務的請求中</li>
           <li>AI 回傳的譯文 / 解釋結果只在使用者本機顯示與（選用）留存到 Obsidian，<strong>不會再被回傳</strong>給翻翻吧或任何第三方</li>
           <li>密碼、OTP、信用卡、Email、電話等敏感輸入欄位的內容會被排除，<strong>不會</strong>被當成可翻譯文字送出</li>

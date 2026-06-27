@@ -158,7 +158,6 @@ function buildPageTranslationContextDigest(item, items = pageTranslationState.it
   const headings = collectPageTranslationHeadingSummary(options.root || document);
   const lines = [
     `Page title: ${document.title || ''}`,
-    `Hostname: ${location.hostname || ''}`,
     headings ? `Main headings: ${headings}` : '',
     nearby.length ? `Nearby paragraphs:\n${nearby.join('\n')}` : ''
   ].filter(Boolean);

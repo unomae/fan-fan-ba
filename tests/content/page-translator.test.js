@@ -335,7 +335,7 @@ describe('page translator helpers', () => {
     const digest = buildPageTranslationContextDigest(target, items);
 
     expect(digest).toContain('Page title: Supply chain outlook');
-    expect(digest).toContain('Hostname: localhost');
+    expect(digest).not.toContain('Hostname:');
     expect(digest).toContain('Quarterly demand planning');
     expect(digest).toContain('Automotive backlog');
     expect(digest).toContain('Before: Opening paragraph');

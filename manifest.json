@@ -21,7 +21,8 @@
     "https://texttospeech.googleapis.com/*",
     "https://api.groq.com/*",
     "https://openrouter.ai/*",
-    "https://www.googleapis.com/*"
+    "https://www.googleapis.com/drive/v3/*",
+    "https://www.googleapis.com/upload/drive/v3/*"
   ],
   "background": {
     "service_worker": "background.js"

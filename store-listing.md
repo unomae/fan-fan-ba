@@ -55,7 +55,7 @@
 
 API Key 僅存於本機 `chrome.storage.local`，不跟 Chrome 帳號同步，不經任何第三方伺服器。Google Drive 同步只同步一般設定，不包含 API Key；只有使用者明確勾選本機 JSON 匯出時，匯出的檔案才會包含 API Key。
 
-送往 AI 服務的資料只有使用者選取的文字（或整頁翻譯擷取的段落）：**不傳送所在網頁的完整網址、不傳送瀏覽歷史、不把 API Key 交給開發者**；AI 回傳的譯文只在本機顯示，不會再回傳給翻翻吧或任何第三方。密碼、OTP、信用卡、Email、電話等敏感輸入欄位會被自動排除，不會被當成可翻譯文字送出。
+送往 AI 服務的資料限於使用者選取的文字、頁面標題、必要的鄰近文字上下文（或整頁翻譯擷取的可見段落）：**不傳送所在網頁的完整網址、不傳送網站網域、不傳送瀏覽歷史、不把 API Key 交給開發者**；AI 回傳的譯文只在本機顯示，不會再回傳給翻翻吧或任何第三方。密碼、OTP、信用卡、Email、電話等敏感輸入欄位會被自動排除，不會被當成可翻譯文字送出。
 
 ---
 
@@ -81,7 +81,7 @@ https://unomae.github.io/fan-fan-ba/privacy-policy.html
 
 - [ ] Chrome Developer 帳號已註冊（$5 USD 一次性）
 - [ ] ZIP 依 manifest 版本重新打包：fan-fan-ba-v1.9.6.zip
-- [ ] 隱私政策 URL：https://unomae.github.io/fan-fan-ba/privacy-policy.html（已揭露 storage / identity / &lt;all_urls&gt; / API host）
+- [ ] 隱私政策 URL：https://unomae.github.io/fan-fan-ba/privacy-policy.html（已揭露 storage / identity / &lt;all_urls&gt; / AI API host / Google Drive API host）
 - [ ] Privacy / README / Store listing 的 API Key local storage 文案一致
 - [ ] 若啟用 Cloud Sync，manifest 已換成正式 Google OAuth Client ID，且 Edge redirect URL 已加入 Google Cloud OAuth 設定
 - [ ] v1.9.6 實站 QA：frame-split（iframe 頁浮球只在主頁、iframe 內選取仍可翻譯）、Cloud Sync Chrome / Edge、Gmail、Notion、Google Docs、新聞長文、一般文件頁

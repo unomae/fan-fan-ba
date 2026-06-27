@@ -280,7 +280,6 @@ function recordDiagnosticError() {
 }
 
 function isTrustedExtensionSender(sender = {}) {
-  if (!sender || !sender.id) return true;
   return sender.id === chrome.runtime.id;
 }
 
