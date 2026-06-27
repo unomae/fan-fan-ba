@@ -7,8 +7,6 @@ function createPageTranslationBlock(item) {
   block.className = 'ffb-page-translation-block ffb-page-translation-loading';
   block.dataset.ffbPairId = item.pairId;
   block.append(
-    ffbEl('div', { class: 'ffb-page-translation-head' },
-      ffbEl('span', { class: 'ffb-page-translation-mark', title: '翻翻吧譯文', 'aria-label': '翻翻吧譯文' }, '文')),
     ffbEl('div', { class: 'ffb-page-translation-text' }, '翻譯中...')
   );
   bindPageTranslationBlockEvents(block);
@@ -126,8 +124,7 @@ function renderPageTranslationResult(item, result) {
     }, '⌄'));
   }
   const head = ffbEl('div', { class: 'ffb-page-translation-head' },
-    ffbEl('span', { class: 'ffb-page-translation-mark', title: '翻翻吧譯文', 'aria-label': '翻翻吧譯文' }, '文'));
-  head.appendChild(actions);
+    actions);
   // 譯文本體是 formatPageTranslationText 產生、且內部已 escapeHtml 過的 HTML 結構，仍以 innerHTML 注入
   const textEl = ffbEl('div', { class: 'ffb-page-translation-text' });
   textEl.innerHTML = formatPageTranslationText(result);
@@ -187,8 +184,6 @@ function renderPageTranslationError(item, message) {
   const retryButton = ffbEl('button', { class: 'ffb-page-retry', type: 'button', 'aria-label': '重試此段' }, '重試此段');
   ffbClear(item.translationNode);
   item.translationNode.append(
-    ffbEl('div', { class: 'ffb-page-translation-head' },
-      ffbEl('span', { class: 'ffb-page-translation-mark ffb-page-translation-mark-error', title: '翻譯失敗', 'aria-label': '翻譯失敗' }, '!')),
     ffbEl('div', { class: 'ffb-page-translation-text' }, message),
     retryButton
   );

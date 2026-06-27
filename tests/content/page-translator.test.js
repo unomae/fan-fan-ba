@@ -726,6 +726,7 @@ describe('page translator render helpers', () => {
     expect(block.tagName).toBe('DIV');
     expect(block.classList.contains('ffb-page-translation-loading')).toBe(true);
     expect(block.dataset.ffbPairId).toBe('blk-1');
+    expect(block.querySelector('.ffb-page-translation-mark')).toBeNull();
 
     const li = document.createElement('li');
     document.body.appendChild(li);
@@ -737,6 +738,7 @@ describe('page translator render helpers', () => {
     const shortItem = { el: p, pairId: 'r-short', translationNode: createPageTranslationBlock({ el: p, pairId: 'r-short' }) };
     renderPageTranslationResult(shortItem, '簡短譯文');
     expect(shortItem.translationNode.querySelector('.ffb-page-expand-btn')).toBeNull();
+    expect(shortItem.translationNode.querySelector('.ffb-page-translation-mark')).toBeNull();
     expect(shortItem.translationNode.querySelector('.ffb-page-translation-text').textContent).toContain('簡短譯文');
 
     const longItem = { el: p, pairId: 'r-long', translationNode: createPageTranslationBlock({ el: p, pairId: 'r-long' }) };

@@ -370,13 +370,11 @@ function schedulePageTranslationAvailabilityCheck() {
 function bindPageTranslationSourceEvents(sourceEl) {
   if (!sourceEl || sourceEl.dataset.ffbPairBound === '1') return;
   sourceEl.dataset.ffbPairBound = '1';
-  sourceEl.addEventListener('mouseenter', () => setActivePageTranslationPair(sourceEl.dataset.ffbPairId));
 }
 
 function bindPageTranslationBlockEvents(block) {
   if (!block || block.dataset.ffbBlockBound === '1') return;
   block.dataset.ffbBlockBound = '1';
-  block.addEventListener('mouseenter', () => setActivePageTranslationPair(block.dataset.ffbPairId));
   block.addEventListener('click', e => {
     const button = e.target.closest('[data-ffb-action]');
     if (!button) {
@@ -392,28 +390,11 @@ function bindPageTranslationSelectionWatcher() {
   if (pageTranslationState.selectionBound) return;
   pageTranslationState.selectionBound = true;
   document.addEventListener('selectionchange', handlePageTranslationSelectionChange);
-  document.addEventListener('mouseover', handlePageTranslationPointerFocus, true);
-  document.addEventListener('pointerover', handlePageTranslationPointerFocus, true);
-  document.addEventListener('mouseout', handlePageTranslationPointerBlur, true);
-  document.addEventListener('pointerout', handlePageTranslationPointerBlur, true);
   document.addEventListener('mousedown', e => {
     if (!e.target.closest('[data-ffb-pair-id], .ffb-page-translation-panel')) {
       clearActivePageTranslationPair();
     }
   }, true);
-}
-
-function handlePageTranslationPointerFocus(event) {
-  const pairEl = findPageTranslationPairElement(event.target);
-  if (pairEl) setActivePageTranslationPair(pairEl.dataset.ffbPairId);
-}
-
-function handlePageTranslationPointerBlur(event) {
-  const pairEl = findPageTranslationPairElement(event.target);
-  if (!pairEl || pageTranslationState.activePairId !== pairEl.dataset.ffbPairId) return;
-  const nextPairEl = findPageTranslationPairElement(event.relatedTarget);
-  if (nextPairEl?.dataset.ffbPairId === pairEl.dataset.ffbPairId) return;
-  clearActivePageTranslationPair();
 }
 
 function handlePageTranslationSelectionChange() {

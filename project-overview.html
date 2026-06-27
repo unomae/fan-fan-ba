@@ -340,7 +340,7 @@
         <div class="meta-row">
           <span class="pill green">版本 1.8.6</span>
           <span class="pill blue">Manifest V3</span>
-          <span class="pill">最後更新 2026-06-17</span>
+          <span class="pill">最後更新 2026-06-27</span>
           <span class="pill orange">文件狀態：主入口</span>
         </div>
       </header>
@@ -380,7 +380,7 @@
           </div>
           <div class="card">
             <h3>最新進展</h3>
-            <p>2026-06-25 Phase B/D 已補齊錯題回看與本機自檢表；自動測試 20 suites / 200 tests 通過。</p>
+            <p>2026-06-27 全文翻譯譯文呈現已降干擾：移除段落前綴直條、圓圈標記與 hover 自動外框；自動測試 20 suites / 200 tests 通過。</p>
           </div>
         </div>
       </section>
@@ -752,8 +752,8 @@ options.js</pre>
           <div class="card">
             <h3>段落呈現</h3>
             <ul>
-              <li>譯文卡像輕量閱讀註解：淡綠底、左側品牌色線、小型語言 / 模型 label。</li>
-              <li>降低 shadow 與大卡片感，避免長文頁被工具 UI 切碎。</li>
+              <li>譯文區塊像輕量閱讀註解：保留文字層級與間距，不加前綴直條、圓圈標記或大型卡片框。</li>
+              <li>降低 shadow、框線與裝飾感，避免長文頁被工具 UI 切碎。</li>
               <li>長譯文可折疊，並用密度設定控制頁面節奏。</li>
             </ul>
           </div>
@@ -761,7 +761,7 @@ options.js</pre>
             <h3>同步互動</h3>
             <ul>
               <li>原文段落與譯文卡綁定相同 <code>data-ffb-pair-id</code>。</li>
-              <li>使用者選取或 hover 原文時，對應譯文卡加上 active 樣式；反向選譯文也同步高亮原文。</li>
+              <li>選取原文 / 譯文時仍可同步 pair 狀態；hover 不再自動顯示外框，降低閱讀干擾。</li>
               <li>點譯文卡只設定 pair active，不強制改變瀏覽器原生 selection。</li>
             </ul>
           </div>
@@ -1197,6 +1197,12 @@ options.js</pre>
             <tr><th>日期</th><th>版本線</th><th>完成事項</th><th>驗證 / 注意</th></tr>
           </thead>
           <tbody>
+            <tr>
+              <td>2026-06-27</td>
+              <td><code>Page translation UX polish</code></td>
+              <td>依實際截圖回饋降低全文翻譯譯文段落干擾：移除譯文前方直條、圓圈標記節點，並取消 hover 原文 / 譯文時自動加上的 pair active 外框；保留 click / selection / 定位原文等明確互動。</td>
+              <td><code>git diff --check</code> 通過；<code>npm test -- --runInBand</code> 通過，20 suites / 200 tests。仍需重新載入 extension 後用新聞長文頁目視確認實際頁面呈現。</td>
+            </tr>
             <tr>
               <td>2026-06-25</td>
               <td><code>Phase B/D follow-up</code></td>
