@@ -405,6 +405,7 @@
         </table>
         <h3 style="margin-top:14px;">建議處理順序</h3>
         <p>T1 → T3 → T6 →（決策）T2 選 A + T4 → T5 / T7。前三張都是 S 工時、當天可清。三條最危險的跨層攻擊鏈皆已斷：注入 HTML 竊金鑰（斷在全 sink escapeHtml + content script 無讀金鑰路徑）、Obsidian URI 改檔路徑（斷在 encodeURIComponent + 固定 filepath + scheme 白名單）、外部頁偽造訊息（斷在 <code>sender.id</code> 驗證 + 無 externally_connectable）。</p>
+        <div class="callout" style="margin-top:12px;"><strong>待辦（KAKA）</strong>：T1–T7 已做成互動決策看板 <code>archive/2026-07-06_security-decision-board.html</code>——晚點打開逐張標同意 / 暫緩 / 拒絕、留言，匯出 Markdown 後再交 Opus 4.8 / GPT-5.5 依 <code>docs/security-improvement-plan.md</code> 實作。T7 需你親自登 Google Cloud Console，送審前必做。</div>
       </section>
 
       <section id="structure">
