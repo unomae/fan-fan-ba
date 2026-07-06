@@ -1,6 +1,8 @@
 const {
   fanFanBaIsSensitiveHost,
+  fanFanBaShouldOmitPageContext,
   FFB_SENSITIVE_HOST_DENYLIST,
+  FFB_SENSITIVE_CONTEXT_HOST_DENYLIST,
   getPauseStorageKey
 } = require('../../content/site-policy');
 
@@ -43,6 +45,34 @@ describe('site policy — sensitive host denylist', () => {
   it('exposes the denylist as an array of RegExp', () => {
     expect(Array.isArray(FFB_SENSITIVE_HOST_DENYLIST)).toBe(true);
     expect(FFB_SENSITIVE_HOST_DENYLIST.every(re => re instanceof RegExp)).toBe(true);
+  });
+});
+
+describe('site policy — sensitive-category context downgrade (T5)', () => {
+  it('flags financial / medical hosts for context omission (incl. subdomains)', () => {
+    expect(fanFanBaShouldOmitPageContext('www.paypal.com')).toBe(true);
+    expect(fanFanBaShouldOmitPageContext('chase.com')).toBe(true);
+    expect(fanFanBaShouldOmitPageContext('mybank.cathaybk.com.tw')).toBe(true);
+    expect(fanFanBaShouldOmitPageContext('esunbank.com.tw')).toBe(true);
+    expect(fanFanBaShouldOmitPageContext('mychart.somehospital.org')).toBe(true);
+    expect(fanFanBaShouldOmitPageContext('nhi.gov.tw')).toBe(true);
+  });
+
+  it('does not downgrade ordinary reading sites', () => {
+    expect(fanFanBaShouldOmitPageContext('en.wikipedia.org')).toBe(false);
+    expect(fanFanBaShouldOmitPageContext('news.ycombinator.com')).toBe(false);
+    expect(fanFanBaShouldOmitPageContext('medium.com')).toBe(false);
+  });
+
+  it('avoids substring false positives and tolerates blank input', () => {
+    expect(fanFanBaShouldOmitPageContext('paypal.com.evil.example')).toBe(false);
+    expect(fanFanBaShouldOmitPageContext('')).toBe(false);
+    expect(fanFanBaShouldOmitPageContext(null)).toBe(false);
+  });
+
+  it('exposes the context denylist as an array of RegExp', () => {
+    expect(Array.isArray(FFB_SENSITIVE_CONTEXT_HOST_DENYLIST)).toBe(true);
+    expect(FFB_SENSITIVE_CONTEXT_HOST_DENYLIST.every(re => re instanceof RegExp)).toBe(true);
   });
 });
 

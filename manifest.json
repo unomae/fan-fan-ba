@@ -32,6 +32,23 @@
       "matches": [
         "<all_urls>"
       ],
+      "exclude_matches": [
+        "*://accounts.google.com/*",
+        "*://appleid.apple.com/*",
+        "*://login.microsoftonline.com/*",
+        "*://login.live.com/*",
+        "*://signin.aws.amazon.com/*",
+        "*://lastpass.com/*",
+        "*://*.lastpass.com/*",
+        "*://1password.com/*",
+        "*://*.1password.com/*",
+        "*://bitwarden.com/*",
+        "*://*.bitwarden.com/*",
+        "*://dashlane.com/*",
+        "*://*.dashlane.com/*",
+        "*://keepersecurity.com/*",
+        "*://*.keepersecurity.com/*"
+      ],
       "js": [
         "models.js",
         "content/site-policy.js",
@@ -55,6 +72,23 @@
     {
       "matches": [
         "<all_urls>"
+      ],
+      "exclude_matches": [
+        "*://accounts.google.com/*",
+        "*://appleid.apple.com/*",
+        "*://login.microsoftonline.com/*",
+        "*://login.live.com/*",
+        "*://signin.aws.amazon.com/*",
+        "*://lastpass.com/*",
+        "*://*.lastpass.com/*",
+        "*://1password.com/*",
+        "*://*.1password.com/*",
+        "*://bitwarden.com/*",
+        "*://*.bitwarden.com/*",
+        "*://dashlane.com/*",
+        "*://*.dashlane.com/*",
+        "*://keepersecurity.com/*",
+        "*://*.keepersecurity.com/*"
       ],
       "js": [
         "content/page-translator-state.js",

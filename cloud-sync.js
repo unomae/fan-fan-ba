@@ -234,7 +234,12 @@
   }
 
   function createOAuthState() {
-    return `ffb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+    // OAuth state 用於 CSRF 防護，需密碼學亂數；改用 crypto.getRandomValues 取代
+    // 非密碼學的 Math.random()。crypto 在 service worker / extension 頁面皆可用。
+    const bytes = new Uint8Array(16);
+    (globalThis.crypto || crypto).getRandomValues(bytes);
+    const rand = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    return `ffb-${rand}`;
   }
 
   async function signOut(token) {
@@ -501,6 +506,7 @@
     getOAuthRedirectUrl,
     getAuthToken,
     signOut,
+    createOAuthState,
     buildGoogleOAuthUrl,
     parseGoogleOAuthRedirect,
     getOrCreateDeviceId,

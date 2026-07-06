@@ -368,7 +368,11 @@ function triggerAction(action) {
     return;
   }
 
-  const context   = extractContext(savedSel.text, savedSel.range);
+  // T5：金融 / 醫療等高敏站點照常翻譯，但不擷取周邊上下文外送（避免鄰近餘額 /
+  // 帳號 / 病歷等文字一併進第三方 provider）。其餘站點維持原本的上下文擷取。
+  const context   = fanFanBaShouldOmitPageContext(fanFanBaCurrentHostname())
+    ? ''
+    : extractContext(savedSel.text, savedSel.range);
   const pageTitle = document.title;
   const cacheKey  = FanFanBaModels.buildCacheKey({
     action,

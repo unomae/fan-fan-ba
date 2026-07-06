@@ -34,6 +34,17 @@ describe('Cloud Sync helper', () => {
     })).toBe(true);
   });
 
+  it('generates OAuth state from crypto.getRandomValues, not Math.random (T6)', () => {
+    const spy = jest.spyOn(globalThis.crypto, 'getRandomValues');
+    const state = CloudSync.createOAuthState();
+    expect(spy).toHaveBeenCalled();
+    // 格式：ffb- 前綴 + 32 位 hex（16 bytes）
+    expect(state).toMatch(/^ffb-[0-9a-f]{32}$/);
+    // 兩次產生不相同
+    expect(CloudSync.createOAuthState()).not.toBe(state);
+    spy.mockRestore();
+  });
+
   it('builds a Google OAuth URL for launchWebAuthFlow', async () => {
     await CloudSync.setWebAuthClientId('web-client-example.apps.googleusercontent.com');
 

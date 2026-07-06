@@ -3,6 +3,10 @@
 > 產出：2026-07-06 資安健檢（AI 風險盤點，非滲透測試）
 > 對象：fan-fan-ba v1.9.8（Chrome MV3 擴充功能，尚未送審 Web Store，repo 私有）
 > 高價值資產：① 使用者自填 AI API Key ② Google OAuth token（drive.appdata）③ 單字本與設定
+>
+> **實作狀態（2026-07-07 更新）**：7 張工單經決策看板全數核准，T5 採 (c)。
+> **T1–T6 已實作並通過測試**（20 suites / 212 tests 綠燈，新增 T1/T2/T3/T5/T6 回歸測試）。
+> **T7 待人工**：需 KAKA 親自登 Google Cloud Console 驗證（送審前必做）。
 
 ## 0. 立即處理清單
 

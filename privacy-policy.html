@@ -299,6 +299,7 @@
         <h2>資料安全</h2>
         <ul>
           <li>API Key 僅儲存於瀏覽器本地端（<code>chrome.storage.local</code>），不跟 Chrome 帳號同步，也不會傳送至任何翻翻吧伺服器（翻翻吧沒有伺服器）</li>
+          <li>API Key 在本地端以明文儲存於 <code>chrome.storage.local</code>（此為瀏覽器擴充功能的標準做法，僅同一擴充功能可讀取，移除擴充功能即一併清除）；金鑰只在背景服務中用來組成對 AI 服務的請求，<strong>永遠不會被回傳到網頁內容環境</strong></li>
           <li>Google Drive 雲端同步只同步一般設定，不包含 API Key；若使用者在設定備份中選擇包含 API Key，金鑰會先以使用者自訂密碼加密後才匯出</li>
           <li>所有 AI API 請求直接從瀏覽器發出，不經任何中間伺服器代理</li>
           <li>擴充功能原始碼公開於 GitHub，可自行稽核</li>

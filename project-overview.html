@@ -405,7 +405,16 @@
         </table>
         <h3 style="margin-top:14px;">建議處理順序</h3>
         <p>T1 → T3 → T6 →（決策）T2 選 A + T4 → T5 / T7。前三張都是 S 工時、當天可清。三條最危險的跨層攻擊鏈皆已斷：注入 HTML 竊金鑰（斷在全 sink escapeHtml + content script 無讀金鑰路徑）、Obsidian URI 改檔路徑（斷在 encodeURIComponent + 固定 filepath + scheme 白名單）、外部頁偽造訊息（斷在 <code>sender.id</code> 驗證 + 無 externally_connectable）。</p>
-        <div class="callout" style="margin-top:12px;"><strong>待辦（KAKA）</strong>：T1–T7 已做成互動決策看板 <code>archive/2026-07-06_security-decision-board.html</code>——晚點打開逐張標同意 / 暫緩 / 拒絕、留言，匯出 Markdown 後再交 Opus 4.8 / GPT-5.5 依 <code>docs/security-improvement-plan.md</code> 實作。T7 需你親自登 Google Cloud Console，送審前必做。</div>
+        <div class="callout" style="margin-top:12px;"><strong>實作狀態（2026-07-07）</strong>：7 張工單經決策看板全數核准（T5 採 (c) 高敏站只降 context）。<strong>T1–T6 已實作並通過測試</strong>（20 suites / 212 tests 綠燈，含新增 T1/T2/T3/T5/T6 回歸測試）：
+          <ul style="margin:6px 0 0;">
+            <li>T1 prompt 圍欄：<code>background.js</code> buildPrompt 頁面來源字串先中和（去控制碼、標題壓單行）+ 加「忽略指令」界標</li>
+            <li>T2 金鑰 at-rest：<code>privacy-policy.html</code> 揭露 + <code>tests/background.test.js</code> 回歸測試鎖「handler 回傳不含金鑰」不變量</li>
+            <li>T3 錯誤訊息：<code>formatApiErrorMessage</code> 不再轉述上游 rawMessage</li>
+            <li>T4 <code>exclude_matches</code>：manifest 兩個 content_scripts 加敏感站排除（與 site-policy denylist 同步）</li>
+            <li>T5 高敏站降 context：<code>site-policy.js</code> 新增金融/醫療 denylist，<code>main.js</code> 這些站不擷取上下文</li>
+            <li>T6 OAuth state：<code>cloud-sync.js</code> 改用 <code>crypto.getRandomValues</code></li>
+          </ul>
+          <strong>T7 待你處理</strong>：親自登 Google Cloud Console 對 OAuth 同意畫面狀態 / Edge redirect URI 白名單 / scope，送審前必做。決策看板存檔於 <code>archive/2026-07-06_security-decision-board.html</code>。</div>
       </section>
 
       <section id="structure">
