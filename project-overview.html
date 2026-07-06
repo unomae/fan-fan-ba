@@ -414,7 +414,8 @@
             <li>T5 高敏站降 context：<code>site-policy.js</code> 新增金融/醫療 denylist，<code>main.js</code> 這些站不擷取上下文</li>
             <li>T6 OAuth state：<code>cloud-sync.js</code> 改用 <code>crypto.getRandomValues</code></li>
           </ul>
-          <strong>T7 待你處理</strong>：親自登 Google Cloud Console 對 OAuth 同意畫面狀態 / Edge redirect URI 白名單 / scope，送審前必做。決策看板存檔於 <code>archive/2026-07-06_security-decision-board.html</code>。</div>
+          <strong>T7 待你處理</strong>：親自登 Google Cloud Console 對 OAuth 同意畫面狀態 / Edge redirect URI 白名單 / scope，送審前必做。決策看板存檔於 <code>archive/2026-07-06_security-decision-board.html</code>。
+          <br><strong>真瀏覽器 smoke test 通過（2026-07-07）</strong>：載入重打包的 <code>dist/pkg</code> 到 unbranded Chromium 驗證——service worker 註冊無錯、content script 於一般站正常注入、選字工具列浮現、<code>options/popup/welcome</code> 頁面 console 無錯；<strong>T4 exclude_matches 實測有效</strong>（host-resolver 將 1password.com 導到本機，該站確認不注入浮球 / 工具列）。註：品牌版 Google Chrome 封鎖 <code>--load-extension</code>，需用 Chromium / Chrome for Testing 才能自動化載入未封裝擴充。T1/T3/T5 的 AI 請求路徑需 API Key，由 212 筆單元測試覆蓋。</div>
       </section>
 
       <section id="structure">
