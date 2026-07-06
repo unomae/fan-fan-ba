@@ -843,7 +843,13 @@
     }
 
     function saveState() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      // localStorage 在 sandbox / 預覽面板 / 無痕等環境可能被封鎖並拋例外。
+      // 存不了就略過持久化，但記憶體狀態與 render() 仍須照跑，否則按鈕會「沒反應」。
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        /* 持久化失敗不致命：本 session 仍可正常決策，只是重整後不保留 */
+      }
       updateMetrics();
     }
 
@@ -863,7 +869,11 @@
     }
 
     function saveCollapsedColumns() {
-      localStorage.setItem(COLLAPSE_STORAGE_KEY, JSON.stringify(collapsedColumns));
+      try {
+        localStorage.setItem(COLLAPSE_STORAGE_KEY, JSON.stringify(collapsedColumns));
+      } catch (e) {
+        /* 持久化失敗不致命，同 saveState */
+      }
     }
 
     function applyCollapsedColumns() {
