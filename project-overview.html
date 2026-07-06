@@ -308,6 +308,7 @@
       <nav>
         <a href="#hub-policy">文件入口</a>
         <a href="#status">現況</a>
+        <a href="#security-audit">資安健檢</a>
         <a href="#structure">專案結構</a>
         <a href="#architecture">架構流程</a>
         <a href="#settings">設定與 Storage</a>
@@ -383,6 +384,27 @@
             <p>2026-06-27 全文翻譯譯文呈現已降干擾：移除段落前綴直條、圓圈標記與 hover 自動外框；自動測試 20 suites / 200 tests 通過。</p>
           </div>
         </div>
+      </section>
+
+      <section id="security-audit">
+        <h2>資安健檢（2026-07-06）</h2>
+        <div class="callout">AI 風險盤點（非滲透測試）。<strong>無 Critical、無 High</strong>；最高 Medium×2，皆為 defense-in-depth／社交工程層，非可直接利用的資料外洩或 RCE。經三層事實蒐集 + 親讀驗證 + 全新上下文對抗審查逐條實測 XSS payload，乾淨結論推不翻。完整報告與工單見 <code>docs/security-improvement-plan.md</code>。</div>
+        <table style="margin-top:12px;">
+          <thead>
+            <tr><th>ID</th><th>嚴重度</th><th>發現</th><th>工單方向</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>F1</td><td><span class="pill orange">Medium</span></td><td>Prompt injection：頁面可控的 title / context / 選字無圍欄直拼 prompt（<code>background.js:675-809</code>）。</td><td>T1 加界標 + 清洗控制字元；日常模型可修。</td></tr>
+            <tr><td>F2</td><td><span class="pill orange">Medium</span></td><td>API Key + Drive OAuth token 明文存 <code>chrome.storage.local</code>，MV3 下同擴充所有 isolated world 可讀。</td><td>T2（需決策）：選 A 文件揭露 + 回歸測試鎖「handler 回傳不含金鑰」不變量。</td></tr>
+            <tr><td>F3</td><td><span class="pill blue">Low</span></td><td>上游 API 錯誤訊息原文轉述給使用者（<code>background.js:92,106</code>）。</td><td>T3 只留自家中文分類訊息；日常模型可修。</td></tr>
+            <tr><td>F4</td><td><span class="pill blue">Low</span></td><td>敏感站 denylist 只在執行期短路，manifest 無 <code>exclude_matches</code>，仍注入密碼管理站。</td><td>T4（需決策）：是否值得維護 manifest / regex 兩份清單。</td></tr>
+            <tr><td>F5</td><td><span class="pill blue">Low</span></td><td>自動上下文最多前後各 500 字送 provider，金融 / 醫療站不在 denylist（隱私政策已揭露）。</td><td>T5（政策取捨）：是否把高敏類別併入 denylist。</td></tr>
+            <tr><td>F6</td><td><span class="pill blue">Low</span></td><td>OAuth state 用 <code>Math.random()</code>（<code>cloud-sync.js:236-238</code>）。</td><td>T6 改 <code>crypto.getRandomValues</code>；日常模型可修。</td></tr>
+            <tr><td>F7</td><td><span class="pill red">需人工確認</span></td><td>Google Cloud OAuth 同意畫面發佈狀態、Edge redirect URI 白名單，無法從 repo 驗證。</td><td>T7：<strong>送審前你要親自登 Console 對一次</strong>。</td></tr>
+          </tbody>
+        </table>
+        <h3 style="margin-top:14px;">建議處理順序</h3>
+        <p>T1 → T3 → T6 →（決策）T2 選 A + T4 → T5 / T7。前三張都是 S 工時、當天可清。三條最危險的跨層攻擊鏈皆已斷：注入 HTML 竊金鑰（斷在全 sink escapeHtml + content script 無讀金鑰路徑）、Obsidian URI 改檔路徑（斷在 encodeURIComponent + 固定 filepath + scheme 白名單）、外部頁偽造訊息（斷在 <code>sender.id</code> 驗證 + 無 externally_connectable）。</p>
       </section>
 
       <section id="structure">
