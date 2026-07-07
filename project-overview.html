@@ -3,26 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>翻翻吧｜專案總覽與 Roadmap</title>
+  <title>翻翻吧｜專案總覽</title>
   <style>
     :root {
       color-scheme: light;
-      --bg: #f7faf5;
+      --bg: #f6f8f3;
       --surface: #ffffff;
-      --surface-soft: #fbfcfa;
+      --surface-soft: #fbfcf8;
       --ink: #1f2937;
-      --muted: #6b7280;
-      --green: #5a9e3a;
+      --muted: #64748b;
+      --green: #3f7f2f;
       --green-soft: #edf7e8;
       --blue: #1d4ed8;
+      --blue-soft: #eef5ff;
       --orange: #9a3412;
+      --orange-soft: #fff7ed;
       --red: #b91c1c;
-      --line: rgba(31, 41, 55, 0.12);
-      --shadow: 0 12px 30px rgba(31, 41, 55, 0.07);
+      --red-soft: #fef2f2;
+      --line: rgba(31, 41, 55, 0.13);
+      --shadow: 0 12px 28px rgba(31, 41, 55, 0.07);
     }
 
     * { box-sizing: border-box; }
-
     html { scroll-behavior: smooth; }
 
     body {
@@ -30,7 +32,7 @@
       background: var(--bg);
       color: var(--ink);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
-      line-height: 1.56;
+      line-height: 1.58;
     }
 
     a { color: var(--green); text-decoration: none; }
@@ -38,7 +40,7 @@
 
     .shell {
       display: grid;
-      grid-template-columns: 240px minmax(0, 1fr);
+      grid-template-columns: 248px minmax(0, 1fr);
       min-height: 100vh;
     }
 
@@ -48,7 +50,7 @@
       height: 100vh;
       padding: 22px 16px;
       border-right: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.86);
+      background: rgba(255, 255, 255, 0.9);
       backdrop-filter: blur(10px);
       overflow: auto;
     }
@@ -61,44 +63,34 @@
     }
 
     .brand img {
-      width: 36px;
-      height: 36px;
-      border-radius: 9px;
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
     }
 
-    .brand strong {
-      display: block;
-      line-height: 1.2;
-    }
+    .brand strong { display: block; line-height: 1.2; }
+    .brand span { color: var(--muted); font-size: 12px; }
 
-    .brand span {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    nav {
-      display: grid;
-      gap: 4px;
-    }
+    nav { display: grid; gap: 4px; }
 
     nav a {
       padding: 8px 10px;
       border-radius: 8px;
-      color: #374151;
+      color: #334155;
       font-size: 13px;
-      font-weight: 750;
+      font-weight: 760;
     }
 
     nav a:hover {
       background: var(--green-soft);
-      color: #315f22;
+      color: #28551f;
       text-decoration: none;
     }
 
     .side-note {
       margin-top: 18px;
-      padding: 10px;
-      border: 1px solid rgba(90, 158, 58, 0.18);
+      padding: 11px;
+      border: 1px solid rgba(63, 127, 47, 0.2);
       border-radius: 8px;
       background: #f8fcf5;
       color: var(--muted);
@@ -106,40 +98,58 @@
     }
 
     main {
-      max-width: 1120px;
+      max-width: 1160px;
       width: 100%;
       padding: 30px 26px 54px;
     }
 
-    header {
-      display: grid;
-      gap: 12px;
-      margin-bottom: 18px;
-      padding: 24px;
+    header,
+    section {
       border: 1px solid var(--line);
-      border-radius: 10px;
+      border-radius: 8px;
       background: var(--surface);
       box-shadow: var(--shadow);
     }
 
-    h1 {
-      margin: 0;
-      font-size: 32px;
-      line-height: 1.15;
+    header {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 18px;
+      padding: 24px;
     }
 
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    p { margin: 0 0 10px; }
+
     .lead {
-      max-width: 760px;
+      max-width: 820px;
       margin: 0;
       color: var(--muted);
-      font-size: 14px;
+      font-size: 15px;
     }
 
     .meta-row {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-top: 2px;
     }
 
     .pill {
@@ -150,36 +160,18 @@
       border: 1px solid var(--line);
       border-radius: 999px;
       background: #fff;
-      color: #374151;
+      color: #334155;
       font-size: 12px;
       font-weight: 800;
+      white-space: nowrap;
     }
 
-    .pill.green { border-color: rgba(90, 158, 58, 0.22); background: var(--green-soft); color: #315f22; }
-    .pill.blue { border-color: rgba(29, 78, 216, 0.18); background: #eff6ff; color: var(--blue); }
-    .pill.orange { border-color: rgba(154, 52, 18, 0.18); background: #fff7ed; color: var(--orange); }
-    .pill.red { border-color: rgba(185, 28, 28, 0.18); background: #fef2f2; color: var(--red); }
+    .pill.green { border-color: rgba(63, 127, 47, 0.22); background: var(--green-soft); color: #28551f; }
+    .pill.blue { border-color: rgba(29, 78, 216, 0.18); background: var(--blue-soft); color: var(--blue); }
+    .pill.orange { border-color: rgba(154, 52, 18, 0.18); background: var(--orange-soft); color: var(--orange); }
+    .pill.red { border-color: rgba(185, 28, 28, 0.18); background: var(--red-soft); color: var(--red); }
 
-    section {
-      margin-top: 16px;
-      padding: 20px;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: var(--surface);
-      box-shadow: 0 8px 18px rgba(31, 41, 55, 0.04);
-    }
-
-    h2 {
-      margin: 0 0 12px;
-      font-size: 20px;
-    }
-
-    h3 {
-      margin: 0 0 8px;
-      font-size: 15px;
-    }
-
-    p { margin: 0 0 10px; }
+    section { margin-top: 16px; padding: 20px; }
 
     .grid {
       display: grid;
@@ -198,8 +190,27 @@
 
     .card p,
     .card li {
-      color: #4b5563;
+      color: #475569;
       font-size: 13px;
+    }
+
+    .callout {
+      padding: 12px 14px;
+      border: 1px solid rgba(63, 127, 47, 0.2);
+      border-radius: 8px;
+      background: #f8fcf5;
+      color: #334155;
+      font-size: 14px;
+    }
+
+    .callout.warning {
+      border-color: rgba(154, 52, 18, 0.22);
+      background: var(--orange-soft);
+    }
+
+    .callout.danger {
+      border-color: rgba(185, 28, 28, 0.18);
+      background: var(--red-soft);
     }
 
     ul, ol { margin: 8px 0 0; padding-left: 20px; }
@@ -223,7 +234,7 @@
 
     th {
       background: #f6faf3;
-      color: #315f22;
+      color: #28551f;
       font-size: 12px;
     }
 
@@ -233,7 +244,7 @@
       padding: 2px 5px;
       border-radius: 5px;
       background: #f2f6ef;
-      color: #315f22;
+      color: #28551f;
       font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
       font-size: 12px;
     }
@@ -250,14 +261,37 @@
       line-height: 1.55;
     }
 
-    .timeline {
+    .flow {
       display: grid;
-      gap: 10px;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
     }
+
+    .step {
+      min-height: 92px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .step strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .step span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .timeline { display: grid; gap: 10px; }
 
     .phase {
       display: grid;
-      grid-template-columns: 130px minmax(0, 1fr) auto;
+      grid-template-columns: 150px minmax(0, 1fr) auto;
       gap: 12px;
       align-items: start;
       padding: 12px;
@@ -266,32 +300,61 @@
       background: var(--surface-soft);
     }
 
-    .phase strong { display: block; }
-    .phase p { color: #4b5563; font-size: 13px; }
-
-    .callout {
-      padding: 12px 14px;
-      border: 1px solid rgba(90, 158, 58, 0.22);
-      border-radius: 8px;
-      background: #f8fcf5;
-      color: #315f22;
+    .phase p {
+      margin: 0;
+      color: #475569;
       font-size: 13px;
-      font-weight: 700;
     }
 
-    .danger {
-      border-color: rgba(185, 28, 28, 0.18);
-      background: #fff7f7;
-      color: #7f1d1d;
+    details {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-soft);
     }
 
-    @media (max-width: 900px) {
+    summary {
+      cursor: pointer;
+      padding: 12px 14px;
+      color: #334155;
+      font-weight: 800;
+    }
+
+    details > div { padding: 0 14px 14px; }
+
+    .compact-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .compact-list li {
+      margin: 0;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: #475569;
+      font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
       .shell { grid-template-columns: 1fr; }
-      aside { position: static; height: auto; }
-      main { padding: 20px 16px 42px; }
+      aside {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      main { padding: 22px 16px 44px; }
       .grid,
       .grid.two,
+      .flow { grid-template-columns: 1fr; }
       .phase { grid-template-columns: 1fr; }
+      h1 { font-size: 28px; }
     }
   </style>
 </head>
@@ -299,1190 +362,371 @@
   <div class="shell">
     <aside>
       <div class="brand">
-        <img src="icons/icon48.png" alt="">
+        <img src="icons/icon48.png" alt="翻翻吧 icon">
         <div>
           <strong>翻翻吧</strong>
-          <span>Project Hub</span>
+          <span>Project overview</span>
         </div>
       </div>
-      <nav>
-        <a href="#hub-policy">文件入口</a>
-        <a href="#status">現況</a>
-        <a href="#security-audit">資安健檢</a>
-        <a href="#structure">專案結構</a>
+      <nav aria-label="頁面導覽">
+        <a href="#one-page">一頁摘要</a>
+        <a href="#developer-map">開發者地圖</a>
         <a href="#architecture">架構流程</a>
-        <a href="#settings">設定與 Storage</a>
-        <a href="#cloud-sync-plan">Cloud Sync</a>
-        <a href="#cloud-sync-google-cloud-setup">Google Cloud 設定</a>
-        <a href="#settings-ui-plan">設定頁方案</a>
-        <a href="#features">功能清單</a>
-        <a href="#decisions">決策紀錄</a>
-        <a href="#vocabulary-plan">單字本</a>
-        <a href="#page-translation-ux">全文 UX</a>
-        <a href="#readfrog-benchmark">Read Frog 對標</a>
-        <a href="#embedded-translation-roadmap">嵌入翻譯</a>
-        <a href="#release-qa">v1.6.3 QA</a>
-        <a href="#roadmap">Roadmap</a>
-        <a href="#session-log">Session Log</a>
-        <a href="#cleanup">清理候選</a>
+        <a href="#features">功能狀態</a>
+        <a href="#security-audit">資安健檢</a>
+        <a href="#data-privacy">資料與隱私</a>
+        <a href="#qa-release">測試與發布</a>
+        <a href="#roadmap">後續計劃</a>
+        <a href="#history">歷程摘要</a>
         <a href="#maintenance">更新規則</a>
       </nav>
       <div class="side-note">
-        之後新增功能、調整架構、改設定 key、更新 roadmap，只更新這份 HTML。
+        這份檔案是本專案的接手入口。打開後先看「一頁摘要」與「後續計劃」；要改程式再看「開發者地圖」。
       </div>
     </aside>
 
     <main>
       <header>
         <div>
-          <h1>翻翻吧專案總覽與 Roadmap</h1>
-          <p class="lead">這份文件是翻翻吧唯一專案記憶入口，已整合原本散落的 review HTML、vocabulary roadmap、全文翻譯 UX review 與 session context。之後專案進度、roadmap、決策與驗證狀態都更新在這裡。</p>
+          <h1>翻翻吧專案總覽</h1>
+          <p class="lead">給工程新手的接手版：先看產品在做什麼、程式分成哪些區塊、目前做到哪裡、下一輪要先做什麼。詳細歷史仍保留在本頁後段與 <code>archive/</code>，但第一屏只放現在最重要的資訊。</p>
         </div>
         <div class="meta-row">
-          <span class="pill green">版本 1.8.6</span>
+          <span class="pill green">目前版本 v1.9.9</span>
+          <span class="pill blue">Chrome / Edge Extension</span>
           <span class="pill blue">Manifest V3</span>
-          <span class="pill">最後更新 2026-06-27</span>
-          <span class="pill orange">文件狀態：主入口</span>
+          <span class="pill orange">最後整理 2026-07-07</span>
+          <span class="pill orange">主線：先打磨，再上架</span>
         </div>
       </header>
 
-      <section id="hub-policy">
-        <h2>文件入口</h2>
-        <div class="callout">以後專案狀態、phase plan、review 結論、session context、待辦與驗證結果都寫在這份 <code>project-overview.html</code>。舊 review HTML 與 <code>SESSION_CONTEXT.md</code> 已移到 <code>archive/</code>，僅保留為歷史快照，不再作為接手依據。</div>
-        <table style="margin-top:12px;">
-          <thead>
-            <tr><th>舊文件</th><th>已併入主文件的內容</th><th>後續狀態</th></tr>
-          </thead>
-          <tbody>
-            <tr><td><code>archive/SESSION_CONTEXT.md</code></td><td>近期進度、驗證指令、環境阻塞、Roadmap 編碼對照、開發偏好。</td><td><span class="pill orange">歷史快照</span></td></tr>
-            <tr><td><code>archive/project-review-roadmap.html</code></td><td>產品 / 工程 / UI / 使用者視角 review、Phase 2A/2B/2C/3 決策。</td><td><span class="pill orange">歷史快照</span></td></tr>
-            <tr><td><code>archive/vocabulary-notebook-roadmap.html</code></td><td>單字本資料模型、Obsidian one-way export、P1.1-P1.5 完成狀態、後續 Vocabulary Pro。</td><td><span class="pill orange">歷史快照</span></td></tr>
-            <tr><td><code>archive/page-translation-ux-review.html</code></td><td>全文翻譯段落呈現、pair id、同步高亮、複製譯文 / 雙語、定位原文規劃。</td><td><span class="pill orange">歷史快照</span></td></tr>
-            <tr><td><code>archive/code-review-optimization-suggestions.md</code></td><td>2026-06-01 code review：API Key 隱私一致性、content script 開設定頁、request abort、responsive、a11y、測試與環境風險。</td><td><span class="pill orange">歷史快照</span></td></tr>
-            <tr><td><code>archive/settings-page-integration-ideas.html</code></td><td>設定頁整合方案：分頁式設定中心、初次設定精靈、總覽儀表板；採用方案 A 作為正式版優先方向。</td><td><span class="pill orange">歷史快照</span></td></tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section id="status">
-        <h2>現況</h2>
+      <section id="one-page">
+        <h2>一頁摘要</h2>
         <div class="grid">
           <div class="card">
-            <h3>產品定位</h3>
-            <p>選取網頁文字後提供翻譯、解釋、優化改寫，也提供右側常駐浮球作為全文翻譯、最近查詢、單字本、暫停網站與設定入口。</p>
+            <h3>這是什麼</h3>
+            <p>翻翻吧是瀏覽器擴充功能。使用者在任何網頁選取文字後，可以用 AI 翻譯、解釋、優化，也能做整頁或單段沉浸式翻譯。</p>
           </div>
           <div class="card">
-            <h3>主要 Provider</h3>
-            <p>模型 registry 集中在 <code>models.js</code>，支援 Groq、Gemini、OpenRouter。預設模型為 Groq 的 Llama 4 Scout。</p>
+            <h3>現在做到哪裡</h3>
+            <p>核心功能、設定頁、Cloud Sync、單字本 IndexedDB / SRS、XLSX 匯出、單段翻譯、本機診斷與 v1.9.9 資安 hardening T1-T6 都已實作。</p>
           </div>
           <div class="card">
-            <h3>目前重點</h3>
-            <p>目前版本線是 v1.9.9：在 v1.9.8（review hardening、單段翻譯、本機診斷、單字本備份 / 匯出、IndexedDB、SRS 複習與錯題回看）之上，完成資安健檢工單 T1–T6（prompt 圍欄、金鑰揭露＋回歸測試、錯誤訊息去識別、exclude_matches、高敏站降 context、OAuth 密碼學亂數），並通過真瀏覽器 smoke test；僅剩 T7（Google Cloud OAuth 設定）待人工。</p>
-          </div>
-          <div class="card">
-            <h3>最新進展</h3>
-            <p>2026-06-27 全文翻譯譯文呈現已降干擾：移除段落前綴直條、圓圈標記與 hover 自動外框；自動測試 20 suites / 200 tests 通過。</p>
+            <h3>下一步先做什麼</h3>
+            <p>先處理 T7：親自登入 Google Cloud Console 確認 OAuth 同意畫面、Edge redirect URI 白名單與 scope；接著跑 <code>MANUAL-QA.md</code> 的真瀏覽器 QA。</p>
           </div>
         </div>
-      </section>
 
-      <section id="security-audit">
-        <h2>資安健檢（2026-07-06）</h2>
-        <div class="callout">AI 風險盤點（非滲透測試）。<strong>無 Critical、無 High</strong>；最高 Medium×2，皆為 defense-in-depth／社交工程層，非可直接利用的資料外洩或 RCE。經三層事實蒐集 + 親讀驗證 + 全新上下文對抗審查逐條實測 XSS payload，乾淨結論推不翻。完整報告與工單見 <code>docs/security-improvement-plan.md</code>。</div>
+        <div class="callout warning" style="margin-top:12px;">
+          目前決策：2026-07-07 已確認「打磨完再上架」。Chrome Web Store 送審保留為 release checkpoint，不是下一輪主線。
+        </div>
+
         <table style="margin-top:12px;">
-          <thead>
-            <tr><th>ID</th><th>嚴重度</th><th>發現</th><th>工單方向</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>F1</td><td><span class="pill orange">Medium</span></td><td>Prompt injection：頁面可控的 title / context / 選字無圍欄直拼 prompt（<code>background.js:675-809</code>）。</td><td>T1 加界標 + 清洗控制字元；日常模型可修。</td></tr>
-            <tr><td>F2</td><td><span class="pill orange">Medium</span></td><td>API Key + Drive OAuth token 明文存 <code>chrome.storage.local</code>，MV3 下同擴充所有 isolated world 可讀。</td><td>T2（需決策）：選 A 文件揭露 + 回歸測試鎖「handler 回傳不含金鑰」不變量。</td></tr>
-            <tr><td>F3</td><td><span class="pill blue">Low</span></td><td>上游 API 錯誤訊息原文轉述給使用者（<code>background.js:92,106</code>）。</td><td>T3 只留自家中文分類訊息；日常模型可修。</td></tr>
-            <tr><td>F4</td><td><span class="pill blue">Low</span></td><td>敏感站 denylist 只在執行期短路，manifest 無 <code>exclude_matches</code>，仍注入密碼管理站。</td><td>T4（需決策）：是否值得維護 manifest / regex 兩份清單。</td></tr>
-            <tr><td>F5</td><td><span class="pill blue">Low</span></td><td>自動上下文最多前後各 500 字送 provider，金融 / 醫療站不在 denylist（隱私政策已揭露）。</td><td>T5（政策取捨）：是否把高敏類別併入 denylist。</td></tr>
-            <tr><td>F6</td><td><span class="pill blue">Low</span></td><td>OAuth state 用 <code>Math.random()</code>（<code>cloud-sync.js:236-238</code>）。</td><td>T6 改 <code>crypto.getRandomValues</code>；日常模型可修。</td></tr>
-            <tr><td>F7</td><td><span class="pill red">需人工確認</span></td><td>Google Cloud OAuth 同意畫面發佈狀態、Edge redirect URI 白名單，無法從 repo 驗證。</td><td>T7：<strong>送審前你要親自登 Console 對一次</strong>。</td></tr>
-          </tbody>
+          <tr><th>你想知道</th><th>直接看哪裡</th><th>原因</th></tr>
+          <tr><td>今天要接手開發</td><td><a href="#roadmap">後續計劃</a>、<a href="#developer-map">開發者地圖</a></td><td>先知道下一個 slice 與會動到哪些檔案。</td></tr>
+          <tr><td>想理解架構</td><td><a href="#architecture">架構流程</a></td><td>用資料流看，比直接讀 20 多個 JS 檔快。</td></tr>
+          <tr><td>想確認現在進度</td><td><a href="#features">功能狀態</a>、<a href="#qa-release">測試與發布</a></td><td>區分「已實作」、「自動測試過」、「還要真瀏覽器 QA」。</td></tr>
+          <tr><td>想查資安與上架風險</td><td><a href="#security-audit">資安健檢</a>、<code>docs/security-improvement-plan.md</code></td><td>v1.9.9 的主要變更集中在這裡。</td></tr>
+          <tr><td>想查歷史決策</td><td><a href="#history">歷程摘要</a>、<code>archive/</code></td><td>保留脈絡，但不塞在第一屏。</td></tr>
         </table>
-        <h3 style="margin-top:14px;">建議處理順序</h3>
-        <p>T1 → T3 → T6 →（決策）T2 選 A + T4 → T5 / T7。前三張都是 S 工時、當天可清。三條最危險的跨層攻擊鏈皆已斷：注入 HTML 竊金鑰（斷在全 sink escapeHtml + content script 無讀金鑰路徑）、Obsidian URI 改檔路徑（斷在 encodeURIComponent + 固定 filepath + scheme 白名單）、外部頁偽造訊息（斷在 <code>sender.id</code> 驗證 + 無 externally_connectable）。</p>
-        <div class="callout" style="margin-top:12px;"><strong>實作狀態（2026-07-07）</strong>：7 張工單經決策看板全數核准（T5 採 (c) 高敏站只降 context）。<strong>T1–T6 已實作並通過測試</strong>（20 suites / 212 tests 綠燈，含新增 T1/T2/T3/T5/T6 回歸測試）：
-          <ul style="margin:6px 0 0;">
-            <li>T1 prompt 圍欄：<code>background.js</code> buildPrompt 頁面來源字串先中和（去控制碼、標題壓單行）+ 加「忽略指令」界標</li>
-            <li>T2 金鑰 at-rest：<code>privacy-policy.html</code> 揭露 + <code>tests/background.test.js</code> 回歸測試鎖「handler 回傳不含金鑰」不變量</li>
-            <li>T3 錯誤訊息：<code>formatApiErrorMessage</code> 不再轉述上游 rawMessage</li>
-            <li>T4 <code>exclude_matches</code>：manifest 兩個 content_scripts 加敏感站排除（與 site-policy denylist 同步）</li>
-            <li>T5 高敏站降 context：<code>site-policy.js</code> 新增金融/醫療 denylist，<code>main.js</code> 這些站不擷取上下文</li>
-            <li>T6 OAuth state：<code>cloud-sync.js</code> 改用 <code>crypto.getRandomValues</code></li>
-          </ul>
-          <strong>T7 待你處理</strong>：親自登 Google Cloud Console 對 OAuth 同意畫面狀態 / Edge redirect URI 白名單 / scope，送審前必做。決策看板存檔於 <code>archive/2026-07-06_security-decision-board.html</code>。
-          <br><strong>真瀏覽器 smoke test 通過（2026-07-07）</strong>：載入重打包的 <code>dist/pkg</code> 到 unbranded Chromium 驗證——service worker 註冊無錯、content script 於一般站正常注入、選字工具列浮現、<code>options/popup/welcome</code> 頁面 console 無錯；<strong>T4 exclude_matches 實測有效</strong>（host-resolver 將 1password.com 導到本機，該站確認不注入浮球 / 工具列）。註：品牌版 Google Chrome 封鎖 <code>--load-extension</code>，需用 Chromium / Chrome for Testing 才能自動化載入未封裝擴充。T1/T3/T5 的 AI 請求路徑需 API Key，由 212 筆單元測試覆蓋。</div>
       </section>
 
-      <section id="structure">
-        <h2>專案結構</h2>
-        <table>
-          <thead>
-            <tr><th>路徑</th><th>用途</th><th>是否必要</th></tr>
-          </thead>
-          <tbody>
-            <tr><td><code>manifest.json</code></td><td>Chrome extension manifest，定義權限、content scripts、background、popup、options。</td><td><span class="pill green">必要</span></td></tr>
-            <tr><td><code>background.js</code></td><td>Service worker，負責 AI API 請求、streaming、OpenRouter fallback、安裝事件。</td><td><span class="pill green">必要</span></td></tr>
-            <tr><td><code>models.js</code></td><td>模型、語言、TTS 偏好、migration、provider 判斷與 hash 工具。</td><td><span class="pill green">必要</span></td></tr>
-            <tr><td><code>cloud-sync.js</code></td><td>Google Drive appData 雲端同步 helper，負責 OAuth 狀態、payload schema、Drive API 上傳 / 下載。</td><td><span class="pill green">必要</span></td></tr>
-            <tr><td><code>content/</code></td><td>注入網頁的功能模組，包含工具列、結果卡、浮球、全文翻譯、單字本、高亮、Obsidian、共用狀態。</td><td><span class="pill green">必要</span></td></tr>
-            <tr><td><code>content.css</code></td><td>所有 content script UI 樣式，使用高 specificity 與 <code>!important</code> 隔離宿主頁樣式。</td><td><span class="pill green">必要</span></td></tr>
-            <tr><td><code>popup.html</code> / <code>popup.js</code></td><td>extension toolbar popup，呈現目前模型/API 狀態與快速設定入口。</td><td><span class="pill green">必要</span></td></tr>
-            <tr><td><code>options.html</code> / <code>options.js</code></td><td>完整設定頁，管理模型、API key、語言、TTS、Obsidian、全文翻譯模型。</td><td><span class="pill green">必要</span></td></tr>
-            <tr><td><code>welcome.html</code> / <code>welcome.js</code></td><td>首次安裝 onboarding。</td><td><span class="pill green">必要</span></td></tr>
-            <tr><td><code>privacy-policy.html</code></td><td>隱私權政策，商店上架與使用者信任用。</td><td><span class="pill green">必要</span></td></tr>
-            <tr><td><code>icons/</code></td><td>extension icon 與 source。</td><td><span class="pill green">必要</span></td></tr>
-            <tr><td><code>fonts/</code></td><td>本地 jf-openhuninn 字體，content script 以 web accessible resource 注入。</td><td><span class="pill green">必要</span></td></tr>
-            <tr><td><code>tests/</code></td><td>Jest 測試。</td><td><span class="pill green">必要</span></td></tr>
-            <tr><td><code>screenshots/</code></td><td>README、商店 listing、mockup 與素材產物。</td><td><span class="pill orange">部分可整理</span></td></tr>
-            <tr><td><code>coverage/</code></td><td>測試 coverage 產物，可由 <code>npm test</code> 重新產生。</td><td><span class="pill orange">可刪候選</span></td></tr>
-            <tr><td><code>node_modules/</code></td><td>npm 安裝產物，可由 <code>npm install</code> 重新產生。</td><td><span class="pill orange">可刪候選</span></td></tr>
-          </tbody>
-        </table>
+      <section id="developer-map">
+        <h2>開發者地圖</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>入口與設定</h3>
+            <ul>
+              <li><code>manifest.json</code>：權限、content scripts、background、popup、options。</li>
+              <li><code>popup.html</code> / <code>popup.js</code>：工具列 popup。</li>
+              <li><code>options.html</code> / <code>options.js</code>：完整設定頁、備份、Cloud Sync、診斷。</li>
+              <li><code>welcome.html</code> / <code>welcome.js</code>：首次安裝 onboarding。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>網頁內功能</h3>
+            <ul>
+              <li><code>content/toolbar.js</code>：選字後浮出工具列。</li>
+              <li><code>content/result-card.js</code>：翻譯、解釋、優化結果卡。</li>
+              <li><code>content/floating-ball.js</code>：常駐浮球與閱讀入口。</li>
+              <li><code>content/page-translator-*.js</code>：整頁 / 單段翻譯。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>資料與共用工具</h3>
+            <ul>
+              <li><code>background.js</code>：AI API、streaming、TTS、訊息入口、prompt 圍欄。</li>
+              <li><code>models.js</code>：模型、語言、provider、migration。</li>
+              <li><code>storage.js</code>：API Key、設定與本機診斷。</li>
+              <li><code>vocabulary-store.js</code> / <code>vocabulary-backup.js</code>：單字本 IndexedDB、JSON、XLSX。</li>
+              <li><code>cloud-sync.js</code>：Google Drive appData 同步與 OAuth state。</li>
+            </ul>
+          </div>
+        </div>
+
+        <details>
+          <summary>完整檔案角色速查</summary>
+          <div>
+            <table>
+              <tr><th>檔案 / 資料夾</th><th>用途</th><th>接手注意</th></tr>
+              <tr><td><code>content/site-policy.js</code></td><td>站點停用、敏感網域、top frame 判斷。</td><td>改注入範圍或敏感頁保護時先看。</td></tr>
+              <tr><td><code>content/dom.js</code></td><td>安全 DOM helper。</td><td>新增 UI 時優先用 helper，避免回到大量 <code>innerHTML</code>。</td></tr>
+              <tr><td><code>content/vocabulary.js</code></td><td>單字本面板與互動。</td><td>不要新增平行資料模型，沿用 IndexedDB store。</td></tr>
+              <tr><td><code>content/vocabulary-highlighter.js</code></td><td>網頁單字高亮。</td><td>注意不要標到翻翻吧自己的 UI。</td></tr>
+              <tr><td><code>content/obsidian.js</code></td><td>Obsidian Advanced URI 存入。</td><td>只允許 <code>obsidian://</code> scheme。</td></tr>
+              <tr><td><code>content.css</code></td><td>content script UI 樣式。</td><td>檔案大，整理需真瀏覽器 QA；目前列為 deferred。</td></tr>
+              <tr><td><code>tests/</code></td><td>Jest + jsdom 自動化測試。</td><td>自動測試不能取代 <code>MANUAL-QA.md</code>。</td></tr>
+              <tr><td><code>scripts/package-extension.js</code></td><td>產出 Chrome Web Store zip。</td><td>送審前用 <code>npm run package</code>。</td></tr>
+              <tr><td><code>archive/</code></td><td>歷史 review、決策看板、舊 roadmap。</td><td>查脈絡用，不是目前主線入口。</td></tr>
+            </table>
+          </div>
+        </details>
       </section>
 
       <section id="architecture">
         <h2>架構流程</h2>
         <div class="grid two">
           <div class="card">
-            <h3>選字工具流程</h3>
-            <ol>
-              <li><code>content/main.js</code> 偵測 selection。</li>
-              <li><code>content/toolbar.js</code> 顯示翻譯/解釋/優化工具列。</li>
-              <li><code>content/main.js</code> 透過 message 或 port 呼叫 <code>background.js</code>。</li>
-              <li><code>background.js</code> 依模型 provider 呼叫 Groq/Gemini/OpenRouter。</li>
-              <li><code>content/result-card.js</code> 顯示字典卡、段落結果、Obsidian 與收藏操作。</li>
-            </ol>
+            <h3>選字翻譯流程</h3>
+            <div class="flow">
+              <div class="step"><strong>1. 使用者選字</strong><span><code>content/main.js</code> 監聽 selection。</span></div>
+              <div class="step"><strong>2. 工具列浮出</strong><span><code>toolbar.js</code> 定位翻譯 / 解釋 / 優化。</span></div>
+              <div class="step"><strong>3. 發送 request</strong><span>content script 透過 runtime message / port 找 background。</span></div>
+              <div class="step"><strong>4. AI 回應</strong><span><code>background.js</code> 分流 Gemini / Groq / OpenRouter。</span></div>
+              <div class="step"><strong>5. 結果渲染</strong><span><code>result-card.js</code> 顯示並支援收藏、朗讀、Obsidian。</span></div>
+            </div>
           </div>
           <div class="card">
-            <h3>浮球與全文翻譯流程</h3>
-            <ol>
-              <li><code>content/floating-ball.js</code> 建立右側吸附浮球。</li>
-              <li>浮球可開收藏/紀錄、全文翻譯、設定，並提供「在此網站停用」。</li>
-              <li><code>content/page-translator.js</code> 收集可見段落並逐段翻譯。</li>
-              <li>全文翻譯請求帶 <code>pageTranslation: true</code>，短標題不走單字字典 prompt。</li>
-              <li>可見段落收集會避開已翻譯元素、父子節點重複與相同文字重複。</li>
-              <li>翻譯狀態面板提供雙語/譯文/原文與密度切換。</li>
-              <li>全文模型由設定頁 <code>pageTranslationModel</code> 管理。</li>
-            </ol>
+            <h3>整頁 / 單段翻譯流程</h3>
+            <div class="flow">
+              <div class="step"><strong>1. 浮球啟動</strong><span><code>floating-ball.js</code> 提供閱讀入口。</span></div>
+              <div class="step"><strong>2. 收集段落</strong><span><code>page-translator-collector.js</code> 避開 nav、button、editable。</span></div>
+              <div class="step"><strong>3. 建立 pair</strong><span>原文與譯文用 pair id 對應。</span></div>
+              <div class="step"><strong>4. 渲染卡片</strong><span><code>page-translator-renderer.js</code> 做雙語 / 譯文 / 原文模式。</span></div>
+              <div class="step"><strong>5. 面板控制</strong><span>停止、還原、續翻、定位原文、複製譯文。</span></div>
+            </div>
           </div>
         </div>
-        <h3 style="margin-top:14px;">Content script 載入順序</h3>
-        <pre>models.js
+
+        <details>
+          <summary>Content script 載入順序</summary>
+          <div>
+            <pre>核心選字層 all_frames: true
+models.js
+content/site-policy.js
 content/state.js
 content/utils.js
+content/dom.js
 content/vocabulary.js
 content/vocabulary-highlighter.js
 content/obsidian.js
+content/selection-controls.js
 content/toolbar.js
 content/result-card.js
-content/page-translator.js
+content/main.js
+
+整頁 / 單段翻譯層 all_frames: false
+content/page-translator-state.js
+content/page-translator-collector.js
+content/page-translator-client.js
+content/page-translator-renderer.js
+content/page-translator-panel.js
 content/floating-ball.js
-content/main.js</pre>
-        <h3 style="margin-top:14px;">Options page 額外載入</h3>
-        <pre>models.js
-storage.js
-cloud-sync.js
-options.js</pre>
-      </section>
-
-      <section id="settings">
-        <h2>設定與 Storage</h2>
-        <table>
-          <thead>
-            <tr><th>Key</th><th>Storage</th><th>用途</th></tr>
-          </thead>
-          <tbody>
-            <tr><td><code>model</code></td><td><code>chrome.storage.sync</code></td><td>一般選字翻譯/解釋/優化的預設模型。</td></tr>
-            <tr><td><code>pageTranslationModel</code></td><td><code>chrome.storage.sync</code></td><td>右側浮球啟動全文翻譯時使用的模型。</td></tr>
-            <tr><td><code>apiKey</code></td><td><code>chrome.storage.local</code></td><td>Gemini API Key；啟動時會從舊 sync key migration 到 local。</td></tr>
-            <tr><td><code>groqApiKey</code></td><td><code>chrome.storage.local</code></td><td>Groq API Key；不跟 Chrome 帳號同步。</td></tr>
-            <tr><td><code>openrouterApiKey</code></td><td><code>chrome.storage.local</code></td><td>OpenRouter API Key；不跟 Chrome 帳號同步。</td></tr>
-            <tr><td><code>targetLanguage</code></td><td><code>chrome.storage.sync</code></td><td>翻譯目標語言。</td></tr>
-            <tr><td><code>explanationLanguage</code></td><td><code>chrome.storage.sync</code></td><td>解釋/優化說明輸出語言。</td></tr>
-            <tr><td><code>ttsLanguageMode</code></td><td><code>chrome.storage.sync</code></td><td>單字卡朗讀語音模式。</td></tr>
-            <tr><td><code>vocabularyHighlightMode</code></td><td><code>chrome.storage.sync</code></td><td>單字高亮全域模式：關閉或自動高亮已收藏單字。</td></tr>
-            <tr><td><code>ttsApiKey</code></td><td><code>chrome.storage.local</code></td><td>Google Cloud TTS API Key；不跟 Chrome 帳號同步。</td></tr>
-            <tr><td><code>obsidianVault</code></td><td><code>chrome.storage.sync</code></td><td>Obsidian Vault 名稱。</td></tr>
-            <tr><td><code>obsidianDefaultFolder</code></td><td><code>chrome.storage.sync</code></td><td>Obsidian 預設寫入資料夾。</td></tr>
-            <tr><td><code>fanFanBaVocabularyItems</code></td><td><code>chrome.storage.local</code></td><td>本地單字本 legacy keyed object map；Phase B 起會 migration / mirror 到 extension-owned IndexedDB。</td></tr>
-            <tr><td><code>fanFanBaFloatingPosition</code></td><td><code>chrome.storage.local</code></td><td>每個 host 的浮球 top 與左右吸附位置。</td></tr>
-            <tr><td><code>fanFanBaPaused:&lt;host&gt;</code></td><td><code>chrome.storage.local</code></td><td>每個網站的暫停狀態。</td></tr>
-            <tr><td><code>fanFanBaCloudDeviceId</code></td><td><code>chrome.storage.local</code></td><td>雲端同步用裝置識別碼，不含個資或 API Key。</td></tr>
-            <tr><td><code>fanFanBaCloudSyncMeta</code></td><td><code>chrome.storage.local</code></td><td>最後上傳 / 下載時間、Drive file id 等同步狀態。</td></tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section id="cloud-sync-plan">
-        <h2>v1.7.x Cloud Sync</h2>
-        <div class="callout">v1.6.3 實站測試先告一段落；目前主線切到 v1.7.0-v1.7.5。v1.7.0 只同步一般設定到 Google Drive appData，不同步 API Key；v1.7.2 將 Edge / Chromium 登入改為 <code>identity.launchWebAuthFlow</code> fallback；v1.7.3 收斂同步可靠性、衝突提示與錯誤診斷；v1.7.4 做公開使用者 Cloud Sync 頁面打磨；v1.7.5 補 API Key 加密備份。</div>
-        <table style="margin-top:12px;">
-          <thead>
-            <tr><th>項目</th><th>內容</th><th>狀態</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>同步範圍</td><td>模型、全文翻譯模型、翻譯語言、解釋語言、TTS 模式、單字高亮、Obsidian Vault / folder。</td><td><span class="pill green">已實作</span></td></tr>
-            <tr><td>不納入範圍</td><td>Gemini / Groq / OpenRouter / TTS API Key、單字本資料、查詢歷史。</td><td><span class="pill green">已限制</span></td></tr>
-            <tr><td>Google Drive</td><td>使用 <code>drive.appdata</code> scope，將 <code>fan-fan-ba-cloud-settings.json</code> 存到 appDataFolder。</td><td><span class="pill green">已實作 helper</span></td></tr>
-            <tr><td>Options UI</td><td>新增「雲端同步」分頁：登入 Google、上傳目前設定、下載雲端設定、登出、同步狀態。</td><td><span class="pill green">已實作</span></td></tr>
-            <tr><td>OAuth Client ID</td><td><code>manifest.json</code> 已設定 Chrome native OAuth Client ID；Edge / Chromium Web Auth fallback 改由設定頁「Edge / Chromium Web Auth Client ID」欄位儲存 Web Application OAuth Client ID，並在 Google Cloud 允許 extension redirect URL。</td><td><span class="pill green">Edge 已驗證</span></td></tr>
-            <tr><td>瀏覽器支援</td><td>Chrome 優先使用 <code>chrome.identity.getAuthToken</code>；Microsoft Edge / Chromium 若不支援 native auth，fallback 到 <code>identity.launchWebAuthFlow</code>，且必須使用 Web Auth 專用 client。</td><td><span class="pill green">v1.7.3 補強</span></td></tr>
-            <tr><td>v1.7.3 hardening</td><td>已補同步前後狀態、最後同步時間、錯誤訊息分類、OAuth redirect URL 提示、上傳覆寫雲端檔案確認、下載覆寫本機設定確認與 Web Auth 專用 client 診斷；Edge 登入與上傳已實機通過。</td><td><span class="pill green">完成</span></td></tr>
-            <tr><td>v1.7.4 polish</td><td>狀態列新增同步摘要、同步範圍、Google Drive appDataFolder 位置、操作方向與設定數量；按鈕文案改為更清楚的「上傳這台設定」。</td><td><span class="pill green">完成</span></td></tr>
-            <tr><td>v1.7.5 encrypted secrets</td><td>設定備份含 API Key 時改用使用者自訂密碼加密；匯入加密備份需輸入同一密碼，舊版明文 API Key 備份仍可匯入。</td><td><span class="pill green">完成</span></td></tr>
-            <tr><td>衝突策略</td><td>第一版採手動操作：使用者明確選擇上傳本機設定或下載雲端設定。</td><td><span class="pill green">已定義</span></td></tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section id="cloud-sync-google-cloud-setup">
-        <h2>Google Cloud 設定手順</h2>
-        <div class="callout">明天接著做這段：Edge / Chromium 的 <code>identity.launchWebAuthFlow</code> fallback 要用 <strong>網頁應用程式（Web application）</strong>OAuth 用戶端 ID，不要沿用 Chrome native auth 的 Chrome 擴充功能 client。中文 Google Cloud 介面路徑是 <code>Google Auth Platform &gt; 用戶端</code>，網頁應用程式需要在 <code>已授權的重新導向 URI</code> 加入 extension redirect URL。</div>
-
-        <h3 style="margin-top:14px;">0. 先從 Edge 複製 Redirect URL</h3>
-        <ol>
-          <li>打開 Edge，進入 <code>edge://extensions</code>。</li>
-          <li>確認翻翻吧已重新載入，然後開翻翻吧 Options / 設定頁。</li>
-          <li>切到「雲端同步」分頁。</li>
-          <li>從狀態列找到 <code>Redirect URL：https://xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.chromiumapp.org/</code>。</li>
-          <li>貼到 Google Cloud 時只能貼純 URL：<code>https://xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.chromiumapp.org/</code>。不要貼到 <code>Redirect URL：</code> 這段文字，也不要有前後空白或換行。</li>
-          <li>這串要完整複製，包含最後的 <code>/</code>；如果 Edge extension ID 之後改變，Redirect URL 也要重新加入 Google Cloud。</li>
-        </ol>
-
-        <h3 style="margin-top:14px;">1. 建立 / 選用網頁應用程式 OAuth 用戶端</h3>
-        <ol>
-          <li>打開 <a href="https://console.cloud.google.com/auth/clients" target="_blank">Google Cloud 控制台：Google Auth Platform &gt; 用戶端</a>。</li>
-          <li>確認上方 project 是翻翻吧目前使用的同一個 Google Cloud project。</li>
-          <li>如果 Google 要求先設定 Google Auth Platform，點「開始使用」（<code>Get Started</code>）。</li>
-          <li>在「品牌宣傳」（<code>Branding</code>）填「應用程式名稱」（<code>App name</code>）：<code>翻翻吧</code> 或 <code>Fan Fan Ba</code>；「使用者支援電子郵件」與「開發人員聯絡資訊」填你的信箱。</li>
-          <li>在「目標對象」（<code>Audience</code>）選「外部」（<code>External</code>）；如果「發布狀態」是「測試中」（<code>Testing</code>），把 <code>TeaKingdom@gmail.com</code> 加進「測試使用者」（<code>Test users</code>）。</li>
-          <li>回到 <code>Google Auth Platform &gt; 用戶端</code>，點「建立用戶端」（<code>Create Client</code>）。</li>
-          <li>「應用程式類型」（<code>Application type</code>）選 <strong>網頁應用程式</strong>（<code>Web application</code>）。</li>
-          <li>「名稱」（<code>Name</code>）建議填 <code>Fan Fan Ba Edge Web Auth</code>。</li>
-          <li>「已授權的 JavaScript 來源」（<code>Authorized JavaScript origins</code>）留空。</li>
-          <li>「已授權的重新導向 URI」（<code>Authorized redirect URIs</code>）點「新增 URI」（<code>Add URI</code>），只貼上第 0 步的純 URL，例如 <code>https://xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.chromiumapp.org/</code>。</li>
-          <li>點「建立」（<code>Create</code>），建立後複製「用戶端 ID」（<code>Client ID</code>）；格式會像 <code>1234567890-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com</code>。</li>
-          <li>不要把「用戶端密碼」（<code>Client secret</code>）放進 extension；翻翻吧 Web Auth fallback 只需要「用戶端 ID」。</li>
-        </ol>
-
-        <h3 style="margin-top:14px;">2. 填回翻翻吧設定頁</h3>
-        <ol>
-          <li>回到 Edge 的翻翻吧 Options / 設定頁。</li>
-          <li>切到「雲端同步」分頁。</li>
-          <li>把網頁應用程式 OAuth「用戶端 ID」（<code>Client ID</code>）貼到「Edge / Chromium Web Auth Client ID」欄位。</li>
-          <li>點「儲存 Web Auth Client ID」。</li>
-          <li>不要把 Web client ID 寫進 <code>manifest.json</code>；Edge 會把自訂 manifest key 標成 <code>Unrecognized manifest key</code>。</li>
-          <li>不要動 <code>oauth2.client_id</code>；那個仍是 Chrome native auth 使用。</li>
-        </ol>
-
-        <h3 style="margin-top:14px;">3. 重新載入 Edge extension 並驗收</h3>
-        <ol>
-          <li>回到 <code>edge://extensions</code>，重新載入翻翻吧；若剛剛只改設定頁欄位，通常不需要重新載入，但測 OAuth 前建議 reload 一次。</li>
-          <li>重新打開翻翻吧設定頁 &gt;「雲端同步」。</li>
-          <li>狀態列應看到 <code>Native Client：已設定</code>、<code>Web Auth Client：已設定</code>、<code>Redirect URL：...</code>。</li>
-          <li>點「登入 Google」，選 <code>TeaKingdom@gmail.com</code>。</li>
-          <li>若測試階段看到未驗證 app 提醒，可繼續完成授權。</li>
-          <li>登入成功後，依序測「上傳目前設定」、「下載雲端設定」、「取消覆寫提示」。</li>
-          <li>測完把結果回填到本文件的 v1.7.3 Session Log / QA 矩陣。</li>
-        </ol>
-
-        <h3 style="margin-top:14px;">4. 如果還是 redirect_uri_mismatch</h3>
-        <table>
-          <thead>
-            <tr><th>檢查項目</th><th>處理方式</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>OAuth 用戶端類型</td><td>必須是 <strong>網頁應用程式</strong>（<code>Web application</code>）client，不是 Chrome 擴充功能 client。</td></tr>
-            <tr><td>Client ID 貼錯位置</td><td>Web client ID 要貼到設定頁「Edge / Chromium Web Auth Client ID」欄位，不要覆蓋 <code>oauth2.client_id</code>。</td></tr>
-            <tr><td>重新導向無效：不得包含空格字元</td><td>通常是貼到了 <code>Redirect URL：</code> 前綴或前後空白。欄位內只能有純 URL，例如 <code>https://xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.chromiumapp.org/</code>。</td></tr>
-            <tr><td>Redirect URL 不一致</td><td>Google Cloud 的「已授權的重新導向 URI」必須和設定頁狀態列的純 URL 一字不差，包含最後的 <code>/</code>。</td></tr>
-            <tr><td>Extension ID 改變</td><td>重新載入或換安裝方式後，若 Redirect URL 改變，要把新的 URL 加回 Google Cloud。</td></tr>
-            <tr><td>Project 不一致</td><td>確認 Web client 建在翻翻吧目前使用的同一個 Google Cloud project。</td></tr>
-            <tr><td>測試使用者未加入</td><td>如果 app 還在「測試中」（<code>Testing</code>），確認登入帳號 <code>TeaKingdom@gmail.com</code> 已在「測試使用者」（<code>Test users</code>）。</td></tr>
-          </tbody>
-        </table>
-
-        <h3 style="margin-top:14px;">官方依據</h3>
-        <ul>
-          <li><a href="https://developers.google.com/workspace/guides/create-credentials" target="_blank">Create access credentials</a>：OAuth 用戶端 ID 需要依平台分開建立；網頁應用程式在 <code>Google Auth Platform &gt; 用戶端</code> 建立，並設定「已授權的重新導向 URI」。</li>
-          <li><a href="https://developers.google.com/workspace/guides/configure-oauth-consent" target="_blank">Configure OAuth consent</a>：測試階段需設定 OAuth 同意畫面 / 目標對象 / 測試使用者。</li>
-          <li><a href="https://support.google.com/cloud/answer/15549257" target="_blank">Manage OAuth Clients</a>：Google Cloud OAuth 用戶端管理入口與用戶端管理方式。</li>
-        </ul>
-      </section>
-
-      <section id="settings-ui-plan">
-        <h2>設定頁整合方案</h2>
-        <div class="callout">已採用方向：優先使用「方案 A：分頁式設定中心」。它能把單欄長表單收斂成可掃描的設定中心，同時對現有 <code>options.js</code> 與 storage 邏輯影響最小。</div>
-        <div class="grid">
-          <div class="card">
-            <h3>方案 A：分頁式設定中心</h3>
-            <ul>
-              <li>左側分組：模型與金鑰、語言與朗讀、Obsidian、隱私與說明。</li>
-              <li>使用者只看當下要改的區塊，API Key 集中在「模型與金鑰」。</li>
-              <li>推薦給正式版：主要是 HTML / CSS 結構調整，開發量低、可維護性高。</li>
-            </ul>
+content/page-translator-single.js</pre>
           </div>
-          <div class="card">
-            <h3>方案 B：初次設定精靈</h3>
-            <ul>
-              <li>流程化：選 AI 供應商、輸入 API Key、設定語言與朗讀、接 Obsidian。</li>
-              <li>適合 onboarding 或首次安裝導引。</li>
-              <li>若目標是快速修設定頁過長，先不作為第一優先。</li>
-            </ul>
-          </div>
-          <div class="card">
-            <h3>方案 C：總覽儀表板</h3>
-            <ul>
-              <li>首頁顯示設定健康度與常用偏好；少改的 API Key、安全說明、Obsidian 細節放可展開區塊。</li>
-              <li>適合已設定完成的使用者，日常打開時先看「是否正常」。</li>
-              <li>可作為方案 A 穩定後的進一步優化。</li>
-            </ul>
-          </div>
-        </div>
+        </details>
       </section>
 
       <section id="features">
-        <h2>功能清單</h2>
-        <div class="grid">
-          <div class="card">
-            <h3>已完成</h3>
-            <ul>
-              <li>選字翻譯、解釋、優化。</li>
-              <li>字典卡 JSON 結構化輸出。</li>
-              <li>Streaming 段落結果。</li>
-              <li>Obsidian append 與週記檔。</li>
-              <li>最近查詢、pin、copy、retry。</li>
-              <li>設定頁分頁與 API 測試。</li>
-              <li>右側常駐浮球與每站位置記憶。</li>
-              <li>單字本、本地收藏、篩選、搜尋、刪除。</li>
-              <li>單字高亮與可見區域控制。</li>
-              <li>全文翻譯 Beta 與段落密度模式。</li>
-              <li>全文翻譯短標題使用純譯文 prompt，並對字典 JSON 回應做 fallback 清洗。</li>
-              <li>全文翻譯段落收集去除父子節點與相同文字重複。</li>
-              <li>API Key 改存本機 local storage，設定頁支援 JSON 備份與還原。</li>
-              <li>Streaming / 非 streaming request timeout 會 abort 底層 fetch，停止全文翻譯會取消當前段落請求。</li>
-              <li>結果卡小視窗 header wrapping、主要 icon action aria-label、focus-visible 與 reduced motion 補強。</li>
-            </ul>
-          </div>
-          <div class="card">
-            <h3>近期調整</h3>
-            <ul>
-              <li>浮球選單改成 icon button。</li>
-              <li>浮球半收納右側，hover 完整露出並上下展開。</li>
-              <li>浮球主入口收斂為「收藏/紀錄」與「全文翻譯」。</li>
-              <li>單字本、高亮、全文翻譯 icon 統一為 Lucide 風格。</li>
-              <li>單字高亮移到設定頁，改為全域模式。</li>
-              <li>全文翻譯模型從浮球移到設定頁。</li>
-              <li>全文翻譯控制卡改為預設緊湊控制列。</li>
-              <li>新增浮球配置預覽頁。</li>
-              <li>浮球新增設定 icon，放在全文翻譯下方。</li>
-              <li>「在此網站停用」icon 移到浮球 8 點鐘方向，hover 顯示說明文字。</li>
-            </ul>
-          </div>
-          <div class="card">
-            <h3>技術守則</h3>
-            <ul>
-              <li>Content UI 不污染宿主頁。</li>
-              <li>API Key 只保存在 Chrome storage。</li>
-              <li>模型與語言設定集中在 registry。</li>
-              <li>全文翻譯先做可見段落，避免全頁 DOM 破壞。</li>
-              <li>可重建產物不要混進必要架構。</li>
-            </ul>
-          </div>
+        <h2>功能狀態</h2>
+        <table>
+          <tr><th>功能</th><th>目前狀態</th><th>下一步</th></tr>
+          <tr><td>選字翻譯 / 解釋 / 優化</td><td><span class="pill green">已實作</span> 核心流程完整，支援 streaming、重試、pin、歷史紀錄。</td><td>真瀏覽器回歸 QA。</td></tr>
+          <tr><td>整頁翻譯</td><td><span class="pill green">已實作</span> 支援雙語卡、停止、還原、續翻、定位原文、複製。</td><td>針對 Gmail / Notion / Google Docs / 長文 / iframe 頁測互動狀態。</td></tr>
+          <tr><td>單段翻譯</td><td><span class="pill green">v1.9.7 完成</span> hover 浮鈕與 <code>Alt+T</code>。</td><td>驗證 hover 開關、局部重試、與整頁翻譯混用。</td></tr>
+          <tr><td>單字本 / SRS</td><td><span class="pill green">Phase B 完成</span> IndexedDB、今日複習、錯題回看、JSON / XLSX。</td><td>用真 Excel / Google Sheets 開 XLSX，測公式注入防護。</td></tr>
+          <tr><td>資安 hardening</td><td><span class="pill green">v1.9.9 完成</span> T1-T6 已實作，包含 prompt 圍欄、錯誤去識別、敏感站降 context、OAuth state 亂數。</td><td>T7 需人工登入 Google Cloud Console 確認 OAuth 設定。</td></tr>
+          <tr><td>Obsidian</td><td><span class="pill green">已實作</span> Advanced URI 存入，資料夾依使用者設定。</td><td>手動確認跨平台 URI 與回到原分頁流程。</td></tr>
+          <tr><td>Cloud Sync</td><td><span class="pill green">v1.7.5 完成</span> 一般設定同步到 Drive appData；API Key 不自動雲端同步，加密備份需使用者密碼。</td><td>Chrome / Edge OAuth 實機回填。</td></tr>
+          <tr><td>本機診斷</td><td><span class="pill green">v1.9.8 完成</span> 只記操作次數與錯誤數，不記原文、譯文、URL、API Key、個資。</td><td>DevTools Network 確認沒有 telemetry。</td></tr>
+          <tr><td>Chrome Web Store</td><td><span class="pill orange">暫緩</span> 送審不是現在主線。</td><td>等 QA Hardening 和產品打磨完成後再當 checkpoint。</td></tr>
+        </table>
+      </section>
+
+      <section id="security-audit">
+        <h2>資安健檢</h2>
+        <div class="callout">
+          這輪是 AI 風險盤點與 defensive hardening，不是正式滲透測試。結論：無 Critical、無 High；最高為 Medium。完整報告與工單在 <code>docs/security-improvement-plan.md</code>，決策看板在 <code>archive/2026-07-06_security-decision-board.html</code>。
+        </div>
+        <table style="margin-top:12px;">
+          <tr><th>工單</th><th>處理內容</th><th>狀態</th></tr>
+          <tr><td>T1</td><td>Prompt 圍欄：頁面來源字串先清洗控制字元，標題壓單行，並加忽略指令界標。</td><td><span class="pill green">完成</span></td></tr>
+          <tr><td>T2</td><td>Key / secret 相關錯誤與 UI 路徑收斂，避免不必要揭露。</td><td><span class="pill green">完成</span></td></tr>
+          <tr><td>T3</td><td>錯誤訊息去識別，只保留可處理的摘要，不暴露敏感內容。</td><td><span class="pill green">完成</span></td></tr>
+          <tr><td>T4</td><td><code>exclude_matches</code> 擋高敏站，實測 1password.com 不注入浮球 / 工具列。</td><td><span class="pill green">完成</span></td></tr>
+          <tr><td>T5</td><td>高敏站降低 context，避免把敏感頁上下文塞進 AI request。</td><td><span class="pill green">完成</span></td></tr>
+          <tr><td>T6</td><td>OAuth state 改用 <code>crypto.getRandomValues</code>。</td><td><span class="pill green">完成</span></td></tr>
+          <tr><td>T7</td><td>Google Cloud OAuth 同意畫面發佈狀態、Edge redirect URI 白名單、scope。</td><td><span class="pill red">需人工確認</span></td></tr>
+        </table>
+        <div class="callout" style="margin-top:12px;">
+          驗證紀錄：2026-07-07 遠端已記錄 <code>20 suites / 212 tests</code> 綠燈，並完成 unbranded Chromium 真瀏覽器 smoke test：service worker 註冊、content script 注入、選字工具列、options / popup / welcome console、T4 exclude_matches 都通過。T1 / T3 / T5 的 AI 請求路徑仍需 API Key 實測，單元測試已覆蓋主要防線。
         </div>
       </section>
 
-      <section id="decisions">
-        <h2>決策紀錄</h2>
+      <section id="data-privacy">
+        <h2>資料與隱私</h2>
         <div class="grid two">
           <div class="card">
-            <h3>產品與工程方向</h3>
+            <h3>存在本機</h3>
             <ul>
-              <li>同意先做模型 registry、設定 migration、快取 key 改良與 provider fallback，再擴充更多產品功能。</li>
-              <li>同意右側常駐浮球作為穩定入口，承接最近查詢、單字本、全文翻譯、暫停網站與設定。</li>
-              <li>同意語言偏好從隱性 prompt 變成明確設定，包含目標語言、解釋語言與 TTS 語音模式。</li>
-              <li>全文翻譯先做可見段落 Beta，不直接做完整全頁替換，避免成本、效能與 DOM 相容性風險。</li>
-              <li>2026-06-18 code review 決策：P0 / P1 / P2 先解；朝 Immersive Translate 的文字沉浸閱讀方向靠近，但近期只專注文字翻譯，不追 PDF / 圖片 / 影片字幕。</li>
+              <li>API Key：<code>chrome.storage.local</code>，不跟 Chrome 帳號同步。</li>
+              <li>單字本：extension-owned IndexedDB，保留 <code>chrome.storage.local</code> fallback / migration mirror。</li>
+              <li>診斷摘要：只存功能使用次數、錯誤數、版本與設定狀態。</li>
             </ul>
           </div>
           <div class="card">
-            <h3>近期重要決策</h3>
+            <h3>可能送出到外部服務</h3>
             <ul>
-              <li>API Key 存在 <code>chrome.storage.local</code>，不跟 Chrome 帳號同步；設定備份預設不含 API Key。</li>
-              <li>設定匯出 / 匯入支援本機 JSON；Google Drive appData 同步一般設定，API Key 則透過密碼加密備份處理，不進雲端同步 payload。</li>
-              <li>Obsidian 單字匯出完全依照使用者填寫資料夾，不再自動追加 <code>/單字本</code>。</li>
-              <li>Roadmap 以版本里程碑為主，不再使用舊文件裡的 Phase 2A / 2B / 2C / Phase 3 / P1 作為目前主線編碼。</li>
+              <li>使用者選取或要求翻譯的文字，會送到使用者選擇的 AI provider。</li>
+              <li>Cloud Sync 只同步一般設定到 Google Drive appData。</li>
+              <li>不送完整 URL、不送瀏覽歷史、不送原文 / 譯文給自家 server，因為沒有自家 server。</li>
             </ul>
           </div>
         </div>
-        <h3 style="margin-top:14px;">Code Review 收斂狀態</h3>
-        <table>
-          <thead>
-            <tr><th>Review 項目</th><th>處理狀態</th><th>版本歸屬 / 後續</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>API Key 儲存方式與隱私文案一致</td><td>API Key 改由 <code>storage.js</code> 統一管理並存 <code>chrome.storage.local</code>；設定備份預設不匯出 key。</td><td><span class="pill green">v1.6.1 完成</span></td></tr>
-            <tr><td>Content script 開設定頁不直接呼叫不穩 API</td><td>浮球透過 <code>OPEN_OPTIONS</code> message 交給 background 開啟 options page。</td><td><span class="pill green">v1.6.1 完成</span></td></tr>
-            <tr><td>Streaming / 全文翻譯 timeout 需 abort 底層 fetch</td><td>Non-streaming、streaming retry sleep、SSE reader 與全文翻譯停止流程已接 abort / stopping state。</td><td><span class="pill green">v1.6.1 / v1.6.2 完成</span></td></tr>
-            <tr><td>結果卡窄視窗 responsive 與定位穩定</td><td>結果卡寬度與 header wrapping 已補強，rAF timestamp 定位 bug 已加防回歸。</td><td><span class="pill green">v1.6.0 / v1.6.2 完成</span></td></tr>
-            <tr><td>鍵盤可及性與 icon action 語意</td><td>主要按鈕補 <code>type="button"</code>、<code>aria-label</code> 與更多 <code>:focus-visible</code>。</td><td><span class="pill green">v1.6.2 完成</span></td></tr>
-            <tr><td>2026-06-18 P0：敏感欄位與測試入口</td><td>排除 <code>password</code> / OTP / payment 類敏感 input；修正 <code>npm test</code> 預設入口；補 sensitive input 與 XSS regression tests。</td><td><span class="pill orange">v1.9.5 優先</span></td></tr>
-            <tr><td>2026-06-18 P1：權限面與 content script 干擾</td><td>content script 拆兩個 entry：子 frame 只載入選取翻譯核心，浮球 + page-translator 5 檔改 <code>all_frames:false</code>（只在 top frame）；全文翻譯維持按需啟動；<code>web_accessible_resources</code> 加 <code>use_dynamic_url</code> 防指紋；background message handler 補 <code>OBSIDIAN_URI</code>/<code>OPEN_OPTIONS</code> sender 檢查、obsidian:// scheme 白名單、type 白名單，並補回歸測試。</td><td><span class="pill green">v1.9.6 完成（2026-06-19）</span></td></tr>
-            <tr><td>2026-06-18 P2：可維護性與 UX polish</td><td>拆 <code>page-translator.js</code> ✓、建立 DOM render helper ✓、模型選單已是簡潔特點說明（無語意標籤）✓；<code>content.css</code> 整理 deferred（非 gating，純樣式重排風險高、需 Chrome QA）。</td><td><span class="pill green">v1.9.8 大致完成（2026-06-19）</span></td></tr>
-            <tr><td>v1.9.7 文字沉浸：單段翻譯</td><td>新增 hover 浮鈕 + <code>Alt+T</code> 快捷鍵，按需翻譯游標／選取所在段落，重用整頁翻譯的 pair／renderer／locate 基礎設施（top frame）。</td><td><span class="pill green">v1.9.7 完成（2026-06-19）</span></td></tr>
-            <tr><td>v1.9.8 本機診斷摘要</td><td>純本機累計各功能使用次數（不含文字／網址／內容），設定頁可檢視＋清除；隱私政策明載無 telemetry、不上傳、可清除。Coverage 行覆蓋 71%（&gt;65% 目標）。</td><td><span class="pill green">v1.9.8 完成（2026-06-19）</span></td></tr>
-            <tr><td>Coverage 偏低、Git / OneDrive 權限風險</td><td>測試檔有持續補，但 Windows 目前受 <code>EPERM</code> 與 git metadata 權限問題影響。</td><td><span class="pill orange">環境待處理；本輪不修</span></td></tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section id="vocabulary-plan">
-        <h2>單字本規劃</h2>
-        <div class="grid two">
-          <div class="card">
-            <h3>核心邊界</h3>
-            <ul>
-              <li>Extension 本地資料是主資料庫；Phase B 起以 extension-owned IndexedDB 為主，<code>fanFanBaVocabularyItems</code> keyed object map 保留為 legacy migration / fallback mirror。</li>
-              <li>Obsidian 是沉澱出口，只做 one-way export，不從 Markdown 反向同步回 extension。</li>
-              <li>同字去重規則採 <code>lang:normalizedWord</code>；每個單字最多保留近 5 筆來源，避免 local storage 物件過大。</li>
-              <li>高亮預設關閉，由使用者在設定頁開啟，並限制可見區域、文字節點數量與標記數量。</li>
-            </ul>
-          </div>
-          <div class="card">
-            <h3>完成狀態</h3>
-            <ul>
-              <li>P1.1 本地單字本核心：完成。</li>
-              <li>P1.2 Obsidian 匯出：完成；目前路徑完全依設定欄位。</li>
-              <li>P1.3 單字本 UI：完成，含浮球入口、今日新增、全部、搜尋、刪除、單筆複製。</li>
-              <li>P1.4 頁面高亮：Beta 完成，含網站級開關與效能上限。</li>
-              <li>P1.5 輕量複習：完成，含最近遇到、最常遇到、還不熟、已記得與熟悉度切換。</li>
-            </ul>
-          </div>
+        <div class="callout danger" style="margin-top:12px;">
+          修改隱私、storage、Cloud Sync 或診斷時，要同步檢查 <code>privacy-policy.html</code>、<code>STORE-SUBMISSION.md</code>、<code>MANUAL-QA.md</code>，避免程式行為與商店揭露不一致。
         </div>
-        <table style="margin-top:12px;">
-          <thead>
-            <tr><th>後續方向</th><th>價值</th><th>版本歸屬</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>真正 <code>.xlsx</code> 匯出</td><td>保留欄寬、工作表與格式，降低 Excel 使用門檻。</td><td><code>v1.9.x+</code></td></tr>
-            <tr><td>單字本備份 / 匯入</td><td>讓使用者可搬移單字資料，避免移除 extension 後流失。</td><td><code>v1.9.x+</code></td></tr>
-            <tr><td>IndexedDB migration</td><td>單字量接近數千筆時降低單一 storage object 負擔。</td><td><code>v1.9.8 Phase B</code></td></tr>
-            <tr><td>高亮斷詞改善</td><td>減少英文詞形、大小寫與多語詞彙漏標 / 誤標。</td><td><code>v1.9.x+</code></td></tr>
-            <tr><td>進階複習 / SRS</td><td>加入每日佇列、間隔提醒、錯題回看。</td><td><code>v1.9.8 Phase B</code></td></tr>
-          </tbody>
-        </table>
       </section>
 
-      <section id="page-translation-ux">
-        <h2>全文翻譯 UX</h2>
-        <div class="callout">建議路線：先做好雙語段落卡、pair id 與視覺同步高亮；不要第一版就嘗試真正雙區文字反白，因為 Chromium Selection API 對 multiple ranges 支援不可靠。</div>
+      <section id="qa-release">
+        <h2>測試與發布</h2>
         <div class="grid">
           <div class="card">
-            <h3>段落呈現</h3>
-            <ul>
-              <li>譯文區塊像輕量閱讀註解：保留文字層級與間距，不加前綴直條、圓圈標記或大型卡片框。</li>
-              <li>降低 shadow、框線與裝飾感，避免長文頁被工具 UI 切碎。</li>
-              <li>長譯文可折疊，並用密度設定控制頁面節奏。</li>
-            </ul>
+            <h3>自動測試</h3>
+            <p>目前測試框架是 Jest 30 + jsdom。遠端 v1.9.9 安全 hardening 基準為 <code>20 suites / 212 tests</code>。</p>
+            <pre>npm test
+npm test -- --runInBand</pre>
           </div>
           <div class="card">
-            <h3>同步互動</h3>
-            <ul>
-              <li>原文段落與譯文卡綁定相同 <code>data-ffb-pair-id</code>。</li>
-              <li>選取原文 / 譯文時仍可同步 pair 狀態；hover 不再自動顯示外框，降低閱讀干擾。</li>
-              <li>點譯文卡只設定 pair active，不強制改變瀏覽器原生 selection。</li>
-            </ul>
+            <h3>打包</h3>
+            <p>送審或手動載入前先打包，產物放在 <code>dist/</code>。真瀏覽器 QA 請載入 <code>dist/pkg/</code>。</p>
+            <pre>npm run package</pre>
           </div>
           <div class="card">
-            <h3>操作補強</h3>
-            <ul>
-              <li>複製譯文、複製雙語與定位原文已完成；重試此段保留在 <code>v1.8.x</code> 收斂。</li>
-              <li>定位原文在只看譯文模式下會先切回雙語，並同步 active pair。</li>
-              <li>Esc 或點空白處取消 pair active。</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section id="readfrog-benchmark">
-        <h2>Read Frog 對標</h2>
-        <div class="callout">2026-06-08 查核公開資料：Read Frog Chrome Web Store 顯示 Featured、約 50,000 users、v1.33.11、2026-05-29 更新；GitHub 約 7.6k stars、最新 release v1.33.12。它已從「翻譯工具」擴成「語言學習助教」，翻翻吧後續應追「閱讀流不中斷 + 學習沉澱」，不要單純比 provider 數量。</div>
-
-        <table style="margin-top:12px;">
-          <thead>
-            <tr><th>Read Frog 能力</th><th>公開依據</th><th>翻翻吧現況</th><th>建議</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>雙語 / 只看譯文模式</td>
-              <td><a href="https://www.readfrog.app/en/docs/translation">Bilingual Translation docs</a>：可全文翻譯，也可 hover paragraph + Ctrl 翻單段。</td>
-              <td>已有可見區域全文翻譯、雙語 / 譯文 / 原文模式，但仍在 Beta。</td>
-              <td><span class="pill green">優先追</span> 把全文翻譯從「可用」磨成「穩」，補複製譯文 / 複製雙語 / 定位原文。</td>
-            </tr>
-            <tr>
-              <td>Context-aware translation</td>
-              <td>Chrome Web Store 與 README 都強調 AI 會理解文章上下文；GitHub README 說會抽 page title 與 concise Markdown 給 AI。</td>
-              <td>選字已有上下文擷取；全文翻譯多以段落為單位，文章級 context 還薄。</td>
-              <td><span class="pill green">優先追</span> 做「頁面 context digest」：title、主要段落摘要、domain hint、近鄰段落，降低術語翻錯。</td>
-            </tr>
-            <tr>
-              <td>Batch requests</td>
-              <td>Read Frog 宣稱可節省約 70% API cost；2025 recap 寫 20 paragraphs 可從 20 calls 降到 3-4 calls。</td>
-              <td>目前逐段 queue 翻譯，容易慢且打到 rate limit。</td>
-              <td><span class="pill green">優先追</span> v1.8.x 做批次翻譯 schema：多段合併請求、逐段回填、失敗 fallback 單段重試。</td>
-            </tr>
-            <tr>
-              <td>20+ AI providers + free providers</td>
-              <td>Chrome Web Store / GitHub README 列 OpenAI、DeepSeek、Gemini、Ollama 等，另有 Google / Microsoft / DeepLX 免費翻譯選項。</td>
-              <td>已有 Groq / Gemini / OpenRouter / TTS，選項少但設定單純。</td>
-              <td><span class="pill orange">選擇性追</span> 不急著堆 20+；先補 OpenAI-compatible custom endpoint、Ollama local、Microsoft / Google pure translate 作為低成本 fallback。</td>
-            </tr>
-            <tr>
-              <td>Custom prompts / translation styles</td>
-              <td>Chrome Web Store 提到 dynamic tokens；Read Frog docs 有 Custom AI Actions / Custom Translation Styles 入口。</td>
-              <td>目前 prompt 內建，使用者不能自訂領域風格。</td>
-              <td><span class="pill orange">取消 v1.8.5</span> 暫不做 prompt templates；避免在全文翻譯穩定前增加設定複雜度。</td>
-            </tr>
-            <tr>
-              <td>YouTube subtitle translation</td>
-              <td>Chrome Web Store 列 Subtitle Translation Beta；2025 recap 說 v1.21.0 支援 YouTube subtitles。</td>
-              <td>尚未支援影音字幕。</td>
-              <td><span class="pill orange">後排</span> 等全文翻譯穩定後再做；若做，先支援 YouTube captions，不碰影片 OCR。</td>
-            </tr>
-            <tr>
-              <td>TTS 高階體驗</td>
-              <td>Read Frog README 寫 Edge TTS、150+ voices、rate / pitch / volume、language detection、chunk prefetch。</td>
-              <td>已有 Google Cloud TTS + browser fallback，語音管理較簡單。</td>
-              <td><span class="pill orange">選擇性追</span> 先補語速、語音偏好、長文分句播放；不急著做大型 voice catalog。</td>
-            </tr>
-            <tr>
-              <td>Statistics / usage insight</td>
-              <td>2025 recap 列 Statistics page，追蹤 translation usage。</td>
-              <td>有最近查詢與單字本 count，但沒有使用量儀表板。</td>
-              <td><span class="pill green">優先追</span> 做本地 usage summary：今日查詢、全文翻譯段落、收藏單字、估算 calls；不需上雲。</td>
-            </tr>
-            <tr>
-              <td>PDF / image / comic / input translation</td>
-              <td>Read Frog 官網與 2025 recap 把 PDF、OCR 圖像、input translation、mobile support 列為後續方向。</td>
-              <td>Google Docs / iframe 選字仍需打磨；PDF / OCR 尚未開始。</td>
-              <td><span class="pill red">暫不追大包</span> 先把 Google Docs、Gmail、Notion、Skills 類頁面做穩；PDF / OCR 拆到 v2.x。</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div class="grid two" style="margin-top:12px;">
-          <div class="card">
-            <h3>推薦主線</h3>
-            <ol>
-              <li><strong>v1.6.3</strong>：先完成真實網站 QA，尤其 Google Docs / Gmail / Notion / Google Skills，不讓選字工具列與全文翻譯破壞頁面。</li>
-              <li><strong>v1.7.x</strong>：Cloud Sync / secrets / cross-browser OAuth 收乾淨，解決換機成本。</li>
-              <li><strong>v1.8.x</strong>：全文翻譯穩定化：定位原文、context digest、batch requests、usage summary 已完成；取消 prompt templates，最後只做嵌入元件偵測。</li>
-              <li><strong>v1.9.x</strong>：Learning layer + 嵌入元件 v1：單字本 SRS、難字自動高亮、iframe / SVG / open Shadow DOM。</li>
-            </ol>
-          </div>
-          <div class="card">
-            <h3>差異化定位</h3>
-            <ul>
-              <li>Read Frog 是「語言學習助教」；翻翻吧可以定位成「台灣使用者的閱讀 + Obsidian 學習工作流」。</li>
-              <li>不要用 provider 數量硬追；優先把 Groq / Gemini / OpenRouter / custom endpoint 的體驗做穩。</li>
-              <li>保留 Obsidian、週記、單字本、繁中語氣、Google Skills / SCM / 工作文件場景，這些是更貼近 KAKA 工作流的護城河。</li>
-            </ul>
+            <h3>手動 QA</h3>
+            <p>自動測試不等於上線可用。凡是 content script、CSS、OAuth、實站互動，都要照 <code>MANUAL-QA.md</code> 用真瀏覽器驗。</p>
           </div>
         </div>
 
-        <h3 style="margin-top:14px;">資料來源</h3>
-        <ul>
-          <li><a href="https://chromewebstore.google.com/detail/read-frog-translate-learn/modkelfkcfjpgbfmnbnllalkiogfofhb">Chrome Web Store：Read Frog - Translate &amp; Learn</a></li>
-          <li><a href="https://github.com/mengxi-ream/read-frog">GitHub：mengxi-ream/read-frog</a></li>
-          <li><a href="https://www.readfrog.app/en/docs/translation">Read Frog docs：Bilingual Translation</a></li>
-          <li><a href="https://www.readfrog.app/en/blog/2025-recap">Read Frog 2025 recap</a></li>
-          <li><a href="https://www.readfrog.app/en/docs/future-plan">Read Frog docs：Future Plan</a></li>
-        </ul>
-      </section>
-
-      <section id="embedded-translation-roadmap">
-        <h2>嵌入元件翻譯 Roadmap</h2>
-        <div class="callout">結論：v1.8 只做「可偵測、可告知」的嵌入元件偵測器；iframe / SVG / open Shadow DOM 翻譯移到 v1.9.x。canvas、圖片、PDF、字幕與封閉 Shadow DOM 延後，避免為了少數頁面破壞一般全文翻譯穩定性。</div>
-
         <table style="margin-top:12px;">
-          <thead>
-            <tr><th>型態</th><th>常見網站 / 元件</th><th>目前為何翻不到</th><th>排程建議</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>iframe 圖表 / 互動內容</td>
-              <td>Datawrapper、Flourish、Tableau Public、Observable、Guardian interactive、Google Forms / Slides / Docs embed。</td>
-              <td>文字在 iframe 文件內，主頁全文翻譯只能看到 iframe 外殼；目前浮球只在 top page 顯示。</td>
-              <td><span class="pill orange">v1.9.x</span> 先由偵測器標記；正式翻譯再讓 content script 跑進 iframe，由主頁廣播翻譯命令。</td>
-            </tr>
-            <tr>
-              <td>SVG 圖表文字</td>
-              <td>D3、Highcharts、ECharts、Datawrapper 內部圖表、新聞互動圖表。</td>
-              <td>目前全文翻譯刻意排除 <code>svg</code>，避免直接改圖表文字造成座標軸與 legend 版面炸掉。</td>
-              <td><span class="pill orange">v1.9.x</span> 抓 <code>svg text</code>、<code>title</code>、<code>aria-label</code>，以 overlay / tooltip 顯示譯文，不直接改原 SVG。</td>
-            </tr>
-            <tr>
-              <td>Shadow DOM 元件</td>
-              <td>Web Components、部分學習平台、現代 SaaS UI、設計系統元件。</td>
-              <td>普通 <code>querySelectorAll</code> 不會穿透 shadow root；closed shadow root 完全不可直接讀。</td>
-              <td><span class="pill orange">v1.9.x</span> 遞迴掃 open shadow roots；closed shadow root 顯示限制，改走選取翻譯或未來 OCR。</td>
-            </tr>
-            <tr>
-              <td>canvas / WebGL 圖表</td>
-              <td>金融圖、BI dashboard、地圖、遊戲式互動教學、部分 analytics widget。</td>
-              <td>文字被畫成像素，DOM 裡沒有可翻譯文字；直接覆蓋容易跟 zoom / hover 狀態不同步。</td>
-              <td><span class="pill orange">v1.9.x 探索</span> 先做偵測與提示；正式翻譯需截圖 + OCR + 側邊面板，不做原位替換。</td>
-            </tr>
-            <tr>
-              <td>圖片式資訊圖 / 截圖</td>
-              <td>新聞 infographic、社群圖卡、掃描截圖、漫畫式教學圖。</td>
-              <td>文字在圖片像素內，沒有 DOM text。</td>
-              <td><span class="pill orange">v1.9.x / v2.0</span> 與 canvas 共用 OCR pipeline；第一版輸出「圖中文字翻譯」面板。</td>
-            </tr>
-            <tr>
-              <td>PDF viewer</td>
-              <td>Chrome 內建 PDF、學術論文、公司文件、課程講義。</td>
-              <td>PDF viewer 不是普通文章 DOM，extension 可介入面受限；不同來源檔案權限差異大。</td>
-              <td><span class="pill red">v2.0</span> 拆成 PDF 模式，優先抽文字；掃描型 PDF 再走 OCR。</td>
-            </tr>
-            <tr>
-              <td>影片字幕 / transcript</td>
-              <td>YouTube、Coursera、Udemy、Loom、Google Skills 類課程。</td>
-              <td>字幕可能是 DOM、timed text API、iframe 或影像燒錄字幕，來源不一致。</td>
-              <td><span class="pill orange">v1.9.x</span> 先支援 YouTube transcript / caption DOM；課程平台依實站 QA 結果逐一列入。</td>
-            </tr>
-            <tr>
-              <td>社群留言 / 第三方留言區</td>
-              <td>X / Twitter embed、Reddit embed、Disqus、LinkedIn embed。</td>
-              <td>常見跨 iframe、登入限制、懶載入與虛擬化列表。</td>
-              <td><span class="pill orange">v1.9.x</span> 跟 iframe 掃描共用能力；先翻可見留言，不追無限 scroll 全量。</td>
-            </tr>
-            <tr>
-              <td>地圖 / Dashboard</td>
-              <td>Google Maps、Mapbox、Power BI、Looker Studio、GA / BI dashboard。</td>
-              <td>大量 iframe、canvas、虛擬化 DOM 與互動控制；全文翻譯容易誤翻 UI 控制。</td>
-              <td><span class="pill red">Backlog</span> 先支援選取翻譯；全文翻譯只顯示「偵測到 dashboard，建議使用選取翻譯」。</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div class="grid two" style="margin-top:12px;">
-          <div class="card">
-            <h3>推薦實作順序</h3>
-            <ol>
-              <li><strong>v1.8.6</strong>：嵌入元件偵測器已完成，顯示本頁有多少 iframe / SVG / canvas / shadow root。</li>
-              <li><strong>v1.9.x</strong>：主頁浮球廣播到可注入 iframe，支援 Datawrapper / Flourish 類圖表文字翻譯。</li>
-              <li><strong>v1.9.x</strong>：SVG text overlay 翻譯，優先處理座標軸、legend、tooltip label。</li>
-              <li><strong>v1.9.x</strong>：open Shadow DOM 掃描；closed shadow root 只告知限制。</li>
-              <li><strong>v2.0.x</strong>：字幕、OCR、PDF、canvas 進入探索，不綁在 v1.8 穩定版。</li>
-            </ol>
-          </div>
-          <div class="card">
-            <h3>完成定義</h3>
-            <ul>
-              <li>翻不到時要明確告知原因，不讓使用者以為功能壞掉。</li>
-              <li>所有嵌入翻譯都不直接破壞原圖表 DOM；優先使用 overlay、tooltip 或側邊面板。</li>
-              <li>iframe 失敗需區分：跨來源無法注入、CSP 限制、未載入、沒有可翻文字。</li>
-              <li>Guardian / Datawrapper、Flourish demo、D3 SVG demo、Google Docs embed 至少納入手動 QA。</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section id="release-qa">
-        <h2>v1.6.3 Release QA</h2>
-        <div class="callout">v1.6.3 的範圍是上線前真實網站驗收與低風險修補，不加入 Cloud Sync、xlsx、IndexedDB、SRS 或全文翻譯複製 / 定位大功能。</div>
-        <table style="margin-top:12px;">
-          <thead>
-            <tr><th>QA 面向</th><th>驗收項目</th><th>目前狀態</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>實站矩陣</td><td>Gmail、Notion、Google Docs / 類文件頁、新聞頁、長文章、部落格 / 文件頁、含大量 sidebar / nav / button 的頁面。</td><td><span class="pill orange">待手動實測</span></td></tr>
-            <tr><td>全文翻譯 DOM 干擾</td><td>不翻 toolbar、menu、dialog、status、editable、button/input/form/code/nav/header/footer/aside；不重複翻父子節點與相同文字。</td><td><span class="pill green">本輪補強</span></td></tr>
-            <tr><td>全文翻譯控制</td><td>停止時顯示「正在停止 X/Y」並取消當前 request；完成後顯示「已停止 X/Y」；原文 / 譯文 / 雙語模式切換不殘留壞 DOM。</td><td><span class="pill green">測試補強</span></td></tr>
-            <tr><td>結果卡回歸</td><td>單字翻譯完成後不亂跳、autosave bar 不冒綠線、pin/history/copy/Obsidian/收藏可用、小視窗 header wrapping 正常。</td><td><span class="pill green">已有防回歸</span></td></tr>
-            <tr><td>設定備份 / 還原</td><td>不含 API Key 匯出、含 API Key 二次確認、匯入 schema 白名單、成功回報設定與 key 數量。</td><td><span class="pill green">已有測試</span></td></tr>
-            <tr><td>Obsidian / 單字本</td><td>單字匯出完全依使用者填寫資料夾，不自動加 <code>/單字本</code>；收藏同字不重複 append；高亮不標翻翻吧 UI 與互動區。</td><td><span class="pill green">測試更新</span></td></tr>
-            <tr><td>文件與上線收尾</td><td>更新本文件 Session Log、README / privacy / store listing 文案一致性、記錄 Windows / OneDrive 權限阻塞。</td><td><span class="pill green">本輪更新</span></td></tr>
-          </tbody>
-        </table>
-
-        <h3 style="margin-top:14px;">手動 QA 前置設定</h3>
-        <table>
-          <thead>
-            <tr><th>項目</th><th>確認方式</th><th>結果</th><th>備註</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Extension 已重新載入</td><td>到 <code>chrome://extensions</code> / <code>edge://extensions</code> reload 翻翻吧，並重整測試網頁。</td><td>TODO</td><td>Content script / CSS 修改後必須重整網頁。</td></tr>
-            <tr><td>API Key 可用</td><td>設定頁測試 Groq / Gemini / OpenRouter 至少一個 provider 可成功。</td><td>TODO</td><td>建議先用預設 Groq。</td></tr>
-            <tr><td>Obsidian 設定</td><td>Vault 與資料夾已填；單字本資料夾應完全依欄位值，不自動加 <code>/單字本</code>。</td><td>TODO</td><td>例：<code>30_Knowledge/my-notes/languages/vocabulary</code>。</td></tr>
-            <tr><td>設定備份基準</td><td>先匯出一份不含 API Key 的設定 JSON，必要時可還原。</td><td>TODO</td><td>若測 API Key 匯出，確認有二次確認。</td></tr>
-          </tbody>
-        </table>
-
-        <h3 style="margin-top:14px;">手動實站 QA 矩陣</h3>
-        <table>
-          <thead>
-            <tr><th>站點 / 情境</th><th>測試步驟</th><th>Pass 標準</th><th>結果</th><th>備註 / Issue</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Gmail</td>
-              <td>開一封英文信；選字翻譯；開浮球全文翻譯；按停止；切換雙語 / 譯文 / 原文。</td>
-              <td>不翻 toolbar、button、label；信件正文可翻；停止狀態正確；Gmail 操作不被破壞。</td>
-              <td>TODO</td>
-              <td></td>
-            </tr>
-            <tr>
-              <td>Notion</td>
-              <td>開一篇含標題、段落、todo / table 的頁面；測選字、全文翻譯、單字收藏與高亮。</td>
-              <td>不翻 editable block 或 toolbar；正文翻譯不破壞 Notion 編輯；高亮不標到 Notion UI。</td>
-              <td>TODO</td>
-              <td></td>
-            </tr>
-            <tr>
-              <td>Google Docs / 類文件頁</td>
-              <td>開文件頁；測浮球位置、暫停此網站、選字結果卡與設定入口。</td>
-              <td>浮球不遮主要編輯區；暫停後工具列 / 浮球狀態合理；設定入口可開 options。</td>
-              <td>TODO</td>
-              <td></td>
-            </tr>
-            <tr>
-              <td>新聞頁</td>
-              <td>開英文新聞；全文翻譯目前可見內容；往下捲後確認是否提示有新段落。</td>
-              <td>標題 / 段落可翻；不重複翻父子節點；不翻 nav / ads / sidebar；JSON 字典 fallback 不外露。</td>
-              <td>TODO</td>
-              <td></td>
-            </tr>
-            <tr>
-              <td>長文章 / 部落格</td>
-              <td>開長文；測全文翻譯、停止、還原、密度切換、長譯文折疊。</td>
-              <td>最多批次限制合理；停止與還原不殘留壞 DOM；頁面仍可閱讀與捲動。</td>
-              <td>TODO</td>
-              <td></td>
-            </tr>
-            <tr>
-              <td>結果卡窄視窗</td>
-              <td>把瀏覽器縮窄或分割視窗；選單字翻譯、段落翻譯、解釋、優化。</td>
-              <td>結果卡不超出視窗；header actions 不擠爆；單字翻譯完成後位置不亂跳。</td>
-              <td>TODO</td>
-              <td></td>
-            </tr>
-            <tr>
-              <td>Obsidian / 單字本</td>
-              <td>選英文單字翻譯並收藏；檢查單字本面板與 Obsidian 週記檔。</td>
-              <td>單字已收藏；同字不重複 append；Obsidian 寫入使用者指定資料夾；Markdown 可讀。</td>
-              <td>TODO</td>
-              <td></td>
-            </tr>
-            <tr>
-              <td>設定備份 / 還原</td>
-              <td>匯出不含 API Key JSON；匯入；再測含 API Key 匯出二次確認。</td>
-              <td>匯入成功回報數量；錯誤 schema 被拒；API Key 只有勾選並輸入密碼後才會加密匯出。</td>
-              <td>TODO</td>
-              <td></td>
-            </tr>
-          </tbody>
+          <tr><th>發布前 gate</th><th>狀態</th><th>說明</th></tr>
+          <tr><td>Jest</td><td><span class="pill green">遠端基準通過</span></td><td>v1.9.9 記錄為 <code>20 suites / 212 tests</code>；本次 overview 整理沒有重跑。</td></tr>
+          <tr><td>Manual QA</td><td><span class="pill orange">主線下一步</span></td><td>優先跑 <code>MANUAL-QA.md</code>，特別是 v1.9.6 frame split、v1.9.7 單段翻譯、Phase B 單字本。</td></tr>
+          <tr><td>OAuth / Cloud Sync</td><td><span class="pill red">T7 待人工</span></td><td>Chrome native auth 與 Edge Web Auth fallback 都要回填結果；Google Cloud Console 設定送審前必查。</td></tr>
+          <tr><td>Chrome Web Store</td><td><span class="pill orange">checkpoint</span></td><td>等產品打磨完成後，再依 <code>STORE-SUBMISSION.md</code> 送審。</td></tr>
         </table>
       </section>
 
       <section id="roadmap">
-        <h2>Roadmap</h2>
-        <div class="callout">2026-06-25 更新：Phase A 暫時略過；Phase B 已先完成 extension-owned IndexedDB store、legacy <code>fanFanBaVocabularyItems</code> migration / fallback mirror、今日複習 tab 與 SRS <code>記得 / 還不熟</code> 流程。Phase A 的 Chrome Web Store 後台送審 / 手動 QA 仍未執行；Phase B 也仍需真瀏覽器驗證 IndexedDB migration、JSON / XLSX 匯出與單字高亮。使用者指標一律本機、不上傳原文 / 譯文 / URL / API Key / 個資。</div>
-        <table style="margin-bottom:12px;">
-          <thead>
-            <tr><th>Phase</th><th>目標</th><th>細項</th><th>Done 定義</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>v1.9.5</code><br>P0 Review Hardening</td>
-              <td>先修安全與測試入口</td>
-              <td>修 <code>npm test</code> 多重 Jest config；排除 <code>input[type=password]</code>、OTP、payment 欄位；補 sensitive input、XSS payload、AI HTML escape 測試；privacy / store listing 對第三方 AI provider 資料流一致。</td>
-              <td><code>npm test -- --runInBand</code> 一條指令可通過；敏感欄位不顯示 toolbar / 不送 request；review HTML P0 標為完成。</td>
-            </tr>
-            <tr>
-              <td><code>v1.9.6</code><br>P1 Injection Scope</td>
-              <td>降低常駐注入面與頁面干擾</td>
-              <td>新增站點停用 / allowlist；全文翻譯模組按需初始化；收斂 <code>web_accessible_resources</code>；background message handler 加 schema validation、action 白名單、文字長度限制與 sender 檢查。</td>
-              <td>Gmail / Notion / Google Docs / 新聞長文 / iframe 頁 QA 通過；無關頁面初始化成本降低；P1 風險有回歸測試。</td>
-            </tr>
-            <tr>
-              <td><code>v1.9.7</code><br>Text Immersive UX</td>
-              <td>朝 Immersive Translate 方向，但只做文字</td>
-              <td>優化雙語段落、hover / shortcut paragraph translation、續翻、定位原文、複製雙語、長文 context digest；暫不做 PDF / OCR / 圖片 / 影片字幕。</td>
-              <td>長文章閱讀流程可連續使用；全文翻譯失敗可局部重試；使用者能清楚知道目前只支援文字層。</td>
-            </tr>
-            <tr>
-              <td><code>v1.9.8</code><br>Maintainability + Local Metrics</td>
-              <td>讓後續迭代更穩</td>
-              <td>拆 <code>page-translator.js</code> ✓、建立 DOM render helper ✓、模型選單簡潔特點說明 ✓、本機診斷摘要 ✓；<code>content.css</code> 整理 deferred 至 Phase D。</td>
-              <td>Coverage 行覆蓋 67.5%（&gt;65%）✓；本機診斷摘要可清除 ✓；隱私政策明載無 telemetry / 不上傳 / 可清除 ✓。</td>
-            </tr>
-            <tr style="background:#f4faf0;">
-              <td><strong>Phase A</strong><br>v2.0 上架</td>
-              <td>把已硬化的成果送上 Chrome Web Store 換真實回饋（推薦先做）</td>
-              <td>跑 Chrome 手動 QA → 補 1280×800 截圖 → 確認正式 OAuth client_id ✓ → 打包腳本（排除 tests/coverage/node_modules）產 <code>v1.9.8.zip</code> ✓ → 送審；附過審自檢（權限說明、單一用途、隱私揭露）✓。</td>
-              <td>本機可驗證項已完成（測試 / 打包 / 送審指南）；商店審核通過與正式上架仍需 Chrome Web Store 後台操作。</td>
-            </tr>
-            <tr>
-              <td><strong>Phase B</strong><br>單字本深化</td>
-              <td>把「翻譯工具」變「學習工具」（上架後主線、產品差異化）</td>
-              <td>單字本備份 / 匯入（最高優先，避免移除 extension 流失）✓ → 真 <code>.xlsx</code> 匯出 ✓ → IndexedDB migration ✓ → SRS 間隔複習 / 每日佇列 ✓ → 錯題回看 ✓。</td>
-              <td>JSON 可搬移與還原 ✓；XLSX 可檢視整理 ✓；IndexedDB + fallback mirror 已落地 ✓；今日複習與錯題回看可用 ✓；仍待真瀏覽器 QA。</td>
-            </tr>
-            <tr>
-              <td><strong>Phase C</strong><br>沉浸式閱讀 polish</td>
-              <td>承 v1.9.7 方向打磨文字沉浸體驗</td>
-              <td>單段翻譯失敗局部重試 ✓、續翻體驗、長文 context digest 調優 ✓、hover 浮鈕 options 開關 ✓（尊重降干擾原則）；近期仍不碰 PDF / OCR / 圖片 / 影片字幕。</td>
-              <td>單段失敗可局部重試 ✓；整頁失敗有停止 / 還原 / 續翻基礎；hover 行為可在 options 關閉 ✓；仍待真瀏覽器驗證互動細節。</td>
-            </tr>
-            <tr>
-              <td><strong>Phase D</strong><br>技術債清理</td>
-              <td>隨手穿插，不單獨排期</td>
-              <td>整理 <code>content.css</code>（2708 行）、更新 README「技術架構」（目前過期、未反映拆檔 / single.js）✓、本機診斷升級成更實用的自檢表 ✓。</td>
-              <td>README 架構與實際檔案一致 ✓；本機自檢表可檢查版本、模型 API Key、hover / 高亮設定、使用失敗紀錄與隱私邊界 ✓；樣式重排仍待 Chrome QA 後分批做。</td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="timeline">
+        <h2>後續計劃</h2>
+        <div class="callout">
+          推薦順序：先讓已完成的東西變得可信，再做新能力。也就是先處理 T7 / QA Hardening，接著打磨浮球閱讀控制台與學習閉環。
+        </div>
+        <div class="timeline" style="margin-top:12px;">
           <div class="phase">
-            <strong>v1.2.x：上架前核心能力</strong>
-            <p>Obsidian 存入、錯誤重試、Groq 預設、welcome/privacy、結果卡歷史紀錄與基礎設計系統。</p>
+            <strong>Phase 0</strong>
+            <p>Roadmap Sync：把「打磨完再上架」同步進正本、決策紀錄與 review artifact。</p>
             <span class="pill green">完成</span>
           </div>
           <div class="phase">
-            <strong>v1.3.x：模型與設定基礎</strong>
-            <p>模型 registry、設定 migration、快取 key 改良、OpenRouter fallback、目標語言 / 解釋語言 / TTS 偏好。</p>
-            <span class="pill green">完成</span>
+            <strong>Phase 0.5</strong>
+            <p>Security Hardening：T1-T6 已實作並有 212 tests / Chromium smoke test 紀錄；T7 Google Cloud OAuth 設定需人工確認。</p>
+            <span class="pill orange">T7 待辦</span>
           </div>
           <div class="phase">
-            <strong>v1.4.x：常駐入口與全文翻譯 Beta</strong>
-            <p>右側常駐浮球、收藏 / 紀錄入口、每站位置記憶、可見區域全文翻譯、雙語 / 譯文 / 原文模式。</p>
-            <span class="pill green">完成</span>
+            <strong>Phase 1</strong>
+            <p>QA Hardening：照 <code>MANUAL-QA.md</code> 跑真瀏覽器 QA，修 P0 / P1 缺陷，明確標出 OAuth、商店後台或環境阻塞。</p>
+            <span class="pill orange">下一步</span>
           </div>
           <div class="phase">
-            <strong>v1.5.x：單字本與閱讀沉澱</strong>
-            <p>本地單字本、Obsidian 單字匯出、單字本 UI、review 視圖、頁面高亮、輕量複習。</p>
-            <span class="pill green">完成</span>
-          </div>
-          <div class="phase">
-            <strong>v1.6.x：穩定性、備份與 A11y</strong>
-            <p>API Key local storage、JSON 備份 / 還原、Obsidian 路徑精準寫入、request abort、結果卡 responsive、focus-visible、reduced motion。</p>
-            <span class="pill green">完成</span>
-          </div>
-          <div class="phase">
-            <strong>v1.6.3：Release Readiness + Real-site QA</strong>
-            <p>實站回測 Gmail / Notion / 新聞頁 / 長文章全文翻譯，降低 app shell / toolbar / dialog / editable 區誤翻風險，補商店與 README 上線收尾。</p>
-            <span class="pill orange">手動 QA 測試中</span>
-          </div>
-          <div class="phase">
-            <strong>v1.7.0：Cloud Sync</strong>
-            <p>Google Drive appData 同步一般設定，不含 API Key；提供登入、上傳、下載、登出與狀態提示。Chrome 使用 native auth，Edge / Chromium 由 v1.7.2 Web Auth fallback 補齊。</p>
-            <span class="pill green">完成</span>
-          </div>
-          <div class="phase">
-            <strong>v1.7.5：Encrypted Secrets Backup</strong>
-            <p>使用者自訂密碼後，以 Web Crypto 派生金鑰加密 API Key；匯出 / 還原時，還原端需輸入同一組密碼解密。</p>
-            <span class="pill green">完成</span>
-          </div>
-          <div class="phase">
-            <strong>v1.7.2：Cross-browser OAuth</strong>
-            <p>保留 Chrome <code>getAuthToken</code>；當 Microsoft Edge 回報 API 不支援時，自動 fallback 到 <code>identity.launchWebAuthFlow</code>，並快取短期 access token。</p>
-            <span class="pill green">完成</span>
-          </div>
-          <div class="phase">
-            <strong>v1.7.3：Cloud Sync Reliability</strong>
-            <p>同步前後狀態、最後同步 metadata、錯誤分類、OAuth redirect 設定提醒、同檔覆寫 / 下載前提示、Web Auth 專用 client 診斷已完成；Edge 登入與上傳已實機通過，公開使用者頁面打磨延續到 v1.7.4。</p>
-            <span class="pill green">完成</span>
-          </div>
-          <div class="phase">
-            <strong>v1.7.4：Public Cloud Sync Polish</strong>
-            <p>雲端同步頁面改成一般使用者優先：狀態摘要直接顯示最近上傳 / 下載、設定數量、同步範圍、Google Drive 隱藏儲存位置與操作方向。</p>
-            <span class="pill green">完成</span>
-          </div>
-          <div class="phase">
-            <strong>v1.8.x：全文翻譯穩定化</strong>
-            <p>定位原文、context digest、batch requests、usage summary 已完成；取消 v1.8.5 prompt templates，直接完成嵌入元件偵測器，但不在 v1.8 做 iframe / SVG / Shadow DOM 翻譯。</p>
-            <span class="pill green">完成</span>
-          </div>
-          <div class="phase">
-            <strong>v1.9.x：Learning Layer / Embedded Translation v1</strong>
-            <p>先改為 review hardening 與 text immersive translation：P0 / P1 / P2 修正、文字雙語閱讀、paragraph hover / shortcut、續翻與本機診斷摘要。Learning Layer / Embedded Translation foundation 已有初稿，但 iframe / SVG / Shadow DOM 實翻延後。</p>
-            <span class="pill orange">已開工</span>
-          </div>
-          <div class="phase">
-            <strong>v2.0.x：PDF / OCR Mode</strong>
-            <p>PDF viewer、掃描型 PDF、圖片式資訊圖與 canvas / WebGL 圖表統一走抽文字或 OCR pipeline；第一版以側邊翻譯面板為主，不做原位替換。</p>
+            <strong>Phase 2</strong>
+            <p>Floating Reader Control：浮球維持 4 個主入口：學習庫、翻譯本頁 / 續翻、設定、停用此站；重點是狀態文案與操作分層。</p>
             <span class="pill orange">待排程</span>
+          </div>
+          <div class="phase">
+            <strong>Phase 3</strong>
+            <p>Learning Loop：把單字本從資料清單打磨成每日複習介面，強化錯題回看、今日任務、Obsidian 回流。</p>
+            <span class="pill orange">待排程</span>
+          </div>
+          <div class="phase">
+            <strong>Phase 4</strong>
+            <p>Translation Quality：建立台灣繁中禁用詞、術語表、漏網詞診斷，避免簡中詞與生硬直譯。</p>
+            <span class="pill orange">待排程</span>
+          </div>
+          <div class="phase">
+            <strong>Phase 5</strong>
+            <p>TTS / Low-cost Fallback Spike：先研究 provider、成本、權限與 UI 影響，再決定要不要實作。</p>
+            <span class="pill blue">研究</span>
+          </div>
+          <div class="phase">
+            <strong>v2.x</strong>
+            <p>YouTube 字幕、PDF / OCR / 圖片翻譯先暫緩。若重啟，定位成影音 / 文件學習模式，不跟目前網頁閱讀主線混在一起。</p>
+            <span class="pill blue">探索</span>
           </div>
         </div>
       </section>
 
-      <section id="session-log">
-        <h2>Session Log</h2>
-        <table>
-          <thead>
-            <tr><th>日期</th><th>版本線</th><th>完成事項</th><th>驗證 / 注意</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>2026-06-27</td>
-              <td><code>Page translation UX polish</code></td>
-              <td>依實際截圖回饋降低全文翻譯譯文段落干擾：移除譯文前方直條、圓圈標記節點，並取消 hover 原文 / 譯文時自動加上的 pair active 外框；保留 click / selection / 定位原文等明確互動。</td>
-              <td><code>git diff --check</code> 通過；<code>npm test -- --runInBand</code> 通過，20 suites / 200 tests。仍需重新載入 extension 後用新聞長文頁目視確認實際頁面呈現。</td>
-            </tr>
-            <tr>
-              <td>2026-06-25</td>
-              <td><code>Phase B/D follow-up</code></td>
-              <td>補齊 Phase B「錯題回看」：單字本新增錯題回看 tab，沿用既有 <code>learning</code> / <code>known</code> / <code>nextReviewAt</code> SRS 狀態，不新增平行資料模型；補齊 Phase D「本機自檢表」：設定頁診斷區改為本機 checklist，檢查版本、單段 / 全文模型 API Key、hover / 高亮設定、使用失敗紀錄與隱私邊界。</td>
-              <td><code>npm test -- --runInBand</code> 通過，20 suites / 200 tests；仍需真瀏覽器載入 <code>dist/pkg/</code> 驗證錯題回看互動、自檢表顯示、IndexedDB migration、JSON / XLSX 匯出、單字高亮與今日複習互動。</td>
-            </tr>
-            <tr>
-              <td>2026-06-25</td>
-              <td><code>Phase B IndexedDB / SRS</code></td>
-              <td>略過 Phase A 送審後先做 Phase B：新增 <code>vocabulary-store.js</code> 作為 extension-owned IndexedDB store；background 新增 <code>VOCABULARY_STORE</code> message API；content / options 單字本讀寫改走 store 並保留 <code>chrome.storage.local</code> fallback mirror；浮球單字本預設新增「今日複習」，支援 <code>記得</code> / <code>還不熟</code> 更新 SRS 排程。</td>
-              <td><code>npm test -- --runInBand</code> 通過，20 suites / 195 tests；仍需真瀏覽器載入 <code>dist/pkg/</code> 驗證 IndexedDB migration、JSON / XLSX 匯出、單字高亮與今日複習互動。</td>
-            </tr>
-            <tr>
-              <td>2026-06-20</td>
-              <td><code>Phase A-D handoff closure</code></td>
-              <td>接手 Claude Code 額度中斷後的未推 commits，先推上 <code>origin/master</code>；補 Phase B 單字本真 <code>.xlsx</code> 匯出（設定頁新增「匯出 XLSX」，JSON 仍作為完整還原格式）；同步 README 技術架構、Roadmap 狀態與本文件 handoff 邊界。</td>
-              <td><code>npm.cmd test -- --runInBand</code> 通過，19 suites / 186 tests；<code>npm.cmd run package</code> 通過，產出 <code>dist/fan-fan-ba-v1.9.8.zip</code>；commit <code>270b5a4</code> 已 push。PowerShell 會擋 <code>npm.ps1</code>，本機驗證請用 <code>npm.cmd</code>。</td>
-            </tr>
-            <tr>
-              <td>2026-06-18</td>
-              <td><code>Review-driven phase plan</code></td>
-              <td>吸收 code review comments：P0 / P1 / P2 先解；軟體工程師優先改善全數採納；模型選單不做「推薦 / 快速 / 長文 / 免費額度」語意標籤，改成簡潔說明模型特點；產品 benchmark 朝 Immersive Translate 的文字沉浸閱讀方向前進，但近期只專注文字翻譯。</td>
-              <td>更新 <code>archive/code-review-2026-06-18.html</code> 與本檔 Roadmap；使用者指標採手動 QA / 本機匿名彙總優先，不上傳原文、譯文、URL 全文、API Key 或個資。</td>
-            </tr>
-            <tr>
-              <td>2026-06-18</td>
-              <td><code>v1.9.0-v1.9.4 foundation</code></td>
-              <td>開工 v1.9.x 五條線：<code>v1.9.0</code> 新增 iframe 翻譯 target 分類，區分 same-origin、cross-origin frame-script 與 blocked；<code>v1.9.1</code> 新增 SVG text / title / aria-label overlay target helper；<code>v1.9.2</code> 新增 open Shadow DOM 可翻 block 收集；<code>v1.9.3</code> 新增本地 Learning Summary seed；<code>v1.9.4</code> 新增 SRS review queue，單字狀態更新會寫入 <code>nextReviewAt</code>。</td>
-              <td><code>node --check content/page-translator.js</code> 通過；<code>node --check content/vocabulary.js</code> 通過；<code>npm test -- tests/content/page-translator.test.js tests/content/vocabulary.test.js --runInBand</code> 通過，2 suites / 28 tests；<code>npm test -- --runInBand</code> 通過，14 suites / 114 tests。</td>
-            </tr>
-            <tr>
-              <td>2026-06-18</td>
-              <td><code>Test reproducibility</code></td>
-              <td>修正 roadmap 狀態標籤：<code>v1.6.x</code> 改為完成，<code>v1.6.3 Release QA</code> 標為手動 QA 測試中；同時移除 <code>.gitignore</code> 對 <code>package.json</code> / <code>package-lock.json</code> 的忽略，新增最小 npm / Jest 設定與共用 Chrome extension mock，讓新機器可重建測試環境。</td>
-              <td><code>npm install --package-lock-only</code> 已產生 lock 檔；<code>npm install</code> 完成本機 dev dependencies；<code>npm test -- --runInBand</code> 通過，14 suites / 109 tests。npm audit 仍回報 17 個 moderate dev dependency warnings，本輪未自動修正。</td>
-            </tr>
-            <tr>
-              <td>2026-06-17</td>
-              <td><code>v1.8.6 UX follow-up</code></td>
-              <td>依手動測試回饋調整嵌入內容提示：不再對一般使用者顯示 iframe / SVG / Shadow DOM / canvas 等技術術語；Shadow DOM-only 的現代網站不顯示警告，只有明顯圖表或互動嵌入內容時才提示「本頁有部分圖表或互動內容目前無法全文翻譯，可改用選取翻譯」。</td>
-              <td>補 <code>tests/content/page-translator.test.js</code> 覆蓋 Shadow DOM-only 不提示與使用者文案。</td>
-            </tr>
-            <tr>
-              <td>2026-06-17</td>
-              <td><code>v1.8.2 / v1.8.3 / v1.8.4</code></td>
-              <td>回補全文翻譯穩定化：每段 request 帶入本地 context digest（page title、hostname、主要 heading、附近段落）；多段全文翻譯改為小批次請求，批次解析失敗時 fallback 單段重試；面板新增本次 usage summary，顯示段落數、成功數、失敗數與 request 估算，不上雲。</td>
-              <td><code>node --check content/page-translator.js</code> 通過；<code>node --check background.js</code> 通過；<code>npm test -- tests/content/page-translator.test.js tests/content/css.test.js tests/background.test.js --runInBand</code> 通過，3 suites / 36 tests；<code>npm test -- --runInBand</code> 通過，14 suites / 107 tests。</td>
-            </tr>
-            <tr>
-              <td>2026-06-17</td>
-              <td><code>v1.8.6</code></td>
-              <td>取消 v1.8.5 Prompt Templates，直接完成 v1.8.6 Embedded Detector：全文翻譯面板會偵測本頁 iframe、SVG 文字、open Shadow DOM 與 canvas，顯示「目前不做原位翻譯，建議先用選取翻譯」的摘要；不進行 iframe / SVG / Shadow DOM 實際翻譯。</td>
-              <td><code>node --check content/page-translator.js</code> 通過；<code>npm test -- tests/content/page-translator.test.js tests/content/css.test.js tests/options.test.js --runInBand</code> 通過，3 suites / 37 tests；<code>npm test -- --runInBand</code> 通過，14 suites / 101 tests。</td>
-            </tr>
-            <tr>
-              <td>2026-06-17</td>
-              <td><code>v1.8.1</code></td>
-              <td>完成全文翻譯定位原文：每個譯文區塊新增「定位原文」操作；點擊後切回雙語模式、同步 active pair，並捲動到對應原文。同步重排 roadmap：v1.8.x 聚焦全文翻譯穩定化，iframe / SVG / Shadow DOM 移到 v1.9.x。</td>
-              <td><code>node --check content/page-translator.js</code> 通過；<code>npm test -- tests/content/page-translator.test.js tests/options.test.js --runInBand</code> 通過，2 suites / 27 tests；<code>npm test -- --runInBand</code> 通過，14 suites / 99 tests。</td>
-            </tr>
-            <tr>
-              <td>2026-06-17</td>
-              <td><code>v1.8.0</code></td>
-              <td>開 v1.8.0 Read Frog Benchmark / Embedded Translation v1：全文翻譯面板新增「複製譯文」與「複製雙語」操作，僅複製已完成段落；雙語輸出保留原文 / 譯文對照，方便貼到筆記或分享。</td>
-              <td><code>node --check content/page-translator.js</code> 通過；<code>npm test -- tests/content/page-translator.test.js --runInBand</code> 通過，9 tests；<code>npm test -- --runInBand</code> 通過，14 suites / 98 tests。</td>
-            </tr>
-            <tr>
-              <td>2026-06-17</td>
-              <td><code>v1.7.5 / Release hygiene</code></td>
-              <td>收尾 v1.7.5 版本一致性：同步 <code>package.json</code>、<code>package-lock.json</code> 與 README badge 到 <code>1.7.5</code>；README / privacy policy 隱私段落改為反映 API Key 設定備份已在 v1.7.5 支援密碼加密；將 2026-06-10 code review 收進 <code>archive/</code> 作為歷史快照。</td>
-              <td><code>npm test -- --runInBand</code> 通過，14 suites / 97 tests；<code>package.json</code> 與 <code>package-lock.json</code> 目前仍依現有 <code>.gitignore</code> 規則作為本機檔，不納入 git diff。</td>
-            </tr>
-            <tr>
-              <td>2026-06-09</td>
-              <td><code>v1.7.5</code></td>
-              <td>開 v1.7.5 Encrypted Secrets Backup：版本號升到 <code>1.7.5</code>；備份頁「包含 API Keys」改為密碼加密匯出，payload 使用 <code>secretsEncrypted</code>，不再輸出明文 <code>secrets</code>；匯入加密 API Key 備份需同一密碼，舊明文備份維持可匯入。</td>
-              <td><code>manifest.json</code> parse 通過；<code>npm test -- --runInBand</code> 通過，14 suites / 97 tests。Browser 以 localhost 檢查備份頁靜態 layout 正常；Jest / jsdom 缺 <code>crypto.subtle</code> 時會 fallback 到 Node <code>crypto.webcrypto</code>，extension 環境使用瀏覽器 Web Crypto。</td>
-            </tr>
-            <tr>
-              <td>2026-06-09</td>
-              <td><code>v1.7.4</code></td>
-              <td>完成 v1.7.4 Public Cloud Sync Polish：版本號升到 <code>1.7.4</code>；雲端同步狀態列新增同步摘要、同步範圍、儲存位置、操作方向與最後上傳 / 下載設定數量，讓一般使用者不用讀 Google Cloud 說明也能判斷現在狀態。</td>
-              <td><code>manifest.json</code> parse 通過；<code>npm test -- --runInBand</code> 通過，14 suites / 93 tests。Browser 以 localhost 檢查靜態 layout 正常；動態 <code>chrome.storage</code> 狀態需在 extension 環境驗證。</td>
-            </tr>
-            <tr>
-              <td>2026-06-09</td>
-              <td><code>v1.7.3 / Closeout</code></td>
-              <td>收斂 v1.7.3：版本號升到 <code>1.7.3</code>；Edge Google 登入與「上傳目前設定」已成功；移除 <code>manifest.json</code> 的自訂 <code>fan_fan_ba</code> key，Web Auth Client ID 改由設定頁進階欄位儲存；Cloud Sync 狀態改成常駐摘要，顯示登入狀態、目前版本、最後上傳 / 下載時間與雲端版本。</td>
-              <td><code>manifest.json</code> parse 通過；<code>npm test -- --runInBand</code> 通過。本版完成後，下一版建議開 <code>v1.7.4 Public Cloud Sync Polish</code>。</td>
-            </tr>
-            <tr>
-              <td>2026-06-09</td>
-              <td><code>v1.7.3 / UX</code></td>
-              <td>Edge Google 登入與上傳已成功；修正雲端同步頁沒有常駐登入狀態、上傳後沒有顯示目前版本與日期時間的問題。Options 雲端同步頁改為狀態摘要優先，Google Cloud / Web Auth Client ID 設定收進「進階設定」，降低未來一般使用者看到工程說明的負擔。</td>
-              <td><code>fanFanBaCloudSyncMeta</code> 會保留登入、登出、最後上傳 / 下載時間與版本；常駐狀態列已有單元測試覆蓋，下一步用 v1.7.4 做公開使用者流程打磨。</td>
-            </tr>
-            <tr>
-              <td>2026-06-09</td>
-              <td><code>v1.7.3 / Hotfix</code></td>
-              <td>Edge 重新載入 extension 時回報 <code>Unrecognized manifest key 'fan_fan_ba'</code>；修正為不在 <code>manifest.json</code> 放自訂 key，改由 Options「Edge / Chromium Web Auth Client ID」欄位寫入 <code>chrome.storage.local</code>。</td>
-              <td>重新載入 extension 前需確認 <code>manifest.json</code> 只保留標準 key；Web Auth client ID 由設定頁儲存。</td>
-            </tr>
-            <tr>
-              <td>2026-06-09</td>
-              <td><code>v1.7.3 / Docs</code></td>
-              <td>新增「Google Cloud 設定手順」章節，改用中文 Google Cloud 介面名稱記錄 Edge Web Auth fallback：建立「網頁應用程式」OAuth 用戶端、貼入「已授權的重新導向 URI」、填回設定頁「Edge / Chromium Web Auth Client ID」、重新載入 Edge extension 與排查 <code>redirect_uri_mismatch</code> 的流程。</td>
-              <td>依 Google 官方文件整理；明天完成 Google Cloud 設定後，需回填 Edge OAuth / 上傳 / 下載實測結果。</td>
-            </tr>
-            <tr>
-              <td>2026-06-09</td>
-              <td><code>v1.7.3</code></td>
-              <td>Edge Cloud Sync QA 進入 Google 登入頁後回報 <code>400 redirect_uri_mismatch</code>；判定 fallback 已啟動，但不應沿用 Chrome native OAuth client。已拆分 Chrome native client 與 Edge / Chromium Web Auth client，Web Auth fallback 現在會要求設定頁欄位提供 Web Application OAuth Client ID。</td>
-              <td>需到 Google Cloud 建立 / 選用「網頁應用程式」OAuth 用戶端，將狀態列 Redirect URL 加到「已授權的重新導向 URI」，並把用戶端 ID 填回設定頁後再測 Edge。</td>
-            </tr>
-            <tr>
-              <td>2026-06-08</td>
-              <td><code>v1.7.3</code></td>
-              <td>Cloud Sync 上傳前會偵測既有雲端設定檔並要求確認覆寫；下載前會要求確認覆寫本機一般設定，取消時不會上傳、下載或寫入 <code>chrome.storage.sync</code>。本機測試環境已確認 extension 版本為 <code>1.7.2</code>。</td>
-              <td><code>./node_modules/.bin/jest tests/options.test.js tests/cloud-sync.test.js --runInBand</code> 通過；仍需在 Chrome / Edge 實機回填 OAuth 與雲端同步 QA。</td>
-            </tr>
-            <tr>
-              <td>2026-06-08</td>
-              <td><code>v1.7.2 / v1.7.3</code></td>
-              <td>版本號升級至 <code>1.7.2</code>；Cloud Sync 狀態列新增 Web Auth Redirect URL、最後錯誤 metadata、錯誤分類與提示，方便判斷 <code>redirect_uri_mismatch</code>、OAuth client、Drive permission、network 等問題。</td>
-              <td>後續 v1.7.3 仍需手測 Edge / Chrome OAuth；同檔覆寫提示與下載前確認流程已補單元測試。</td>
-            </tr>
-            <tr>
-              <td>2026-06-08</td>
-              <td><code>v1.7.2</code></td>
-              <td>手測雲端同步時在 Microsoft Edge 遇到 <code>This API is not supported on Microsoft Edge</code>；確認原因是 <code>chrome.identity.getAuthToken</code> 不支援 Edge，而非 Google Drive appData payload 問題。</td>
-              <td>已將 Cloud Sync OAuth 改為 Chrome native auth 優先、Edge / Chromium fallback 到 <code>identity.launchWebAuthFlow</code>；後續 v1.7.3 需補 redirect 設定提醒、同步錯誤分類與 Edge / Chrome QA。</td>
-            </tr>
-            <tr>
-              <td>2026-06-08</td>
-              <td><code>v1.8.x / v1.9.x / v2.0</code></td>
-              <td>新增「嵌入元件翻譯 Roadmap」，盤點 iframe 圖表、SVG 文字、Shadow DOM、canvas / WebGL、圖片資訊圖、PDF viewer、影片字幕、社群留言與 dashboard 類型。</td>
-              <td>排程建議：v1.8.0 先做偵測器，v1.8.1 做 iframe，v1.8.2 做 SVG overlay，v1.8.3 做 open Shadow DOM；OCR / PDF 延後到 v1.9.x 探索或 v2.0 模式。</td>
-            </tr>
-            <tr>
-              <td>2026-06-08</td>
-              <td><code>Benchmark / v1.8.x+</code></td>
-              <td>對標 Read Frog 公開資料，新增「Read Frog 對標」章節，整理雙語模式、context-aware、batch requests、custom prompts、provider、YouTube 字幕、TTS、usage statistics、PDF / OCR / input translation 等能力差距。</td>
-              <td>建議翻翻吧先追 v1.6.3 實站穩定與 v1.7.x Cloud Sync，再於 v1.8.x 收斂 context digest、batch requests、全文翻譯操作、usage summary、prompt templates；v1.9.x 再做文章級 learning layer。</td>
-            </tr>
-            <tr>
-              <td>2026-06-02</td>
-              <td><code>v1.7.0 / v1.7.2</code></td>
-              <td>Cloud Sync OAuth 手測時確認 Microsoft Edge 不支援 <code>chrome.identity.getAuthToken</code>；v1.7.0 保持 Chrome-only，跨瀏覽器 OAuth 改排入 <code>v1.7.2 Cross-browser OAuth</code>。</td>
-              <td>Chrome 仍可用目前 Google Cloud OAuth Client ID 手測；若要 Edge / Chrome 共用，後續需改成 <code>identity.launchWebAuthFlow</code> 並處理各 browser extension ID / redirect URL。</td>
-            </tr>
-            <tr>
-              <td>2026-06-02</td>
-              <td><code>v1.7.0</code></td>
-              <td>新增 <code>cloud-sync.js</code>、Google Drive appData payload schema、Options「雲端同步」分頁、manifest identity / OAuth placeholder、Drive upload / download helper；一般設定可上傳 / 下載，API Key 明確排除。</td>
-              <td><code>node --check cloud-sync.js/options.js/tests/cloud-sync.test.js/tests/options.test.js</code> 與 manifest / package JSON parse 通過；Jest 子集仍因 <code>content/vocabulary-highlighter.js</code> <code>EPERM</code> 在 haste map 階段失敗。正式手動測試前，需將 <code>manifest.json</code> 的 <code>REPLACE_WITH_GOOGLE_OAUTH_CLIENT_ID</code> 換成 Google Cloud OAuth Client ID。</td>
-            </tr>
-            <tr>
-              <td>2026-06-02</td>
-              <td><code>v1.6.3</code></td>
-              <td>新增手動 QA 前置設定與實站 QA 矩陣，方便 Gmail / Notion / Google Docs / 新聞頁 / 長文章 / Obsidian / 設定備份逐項回填。</td>
-              <td>此矩陣需在已載入 extension 且登入真實服務的瀏覽器中手動執行。</td>
-            </tr>
-            <tr>
-              <td>2026-06-02</td>
-              <td><code>v1.6.3</code></td>
-              <td>建立 Release QA 範圍；全文翻譯補強 app shell / toolbar / dialog / editable / 互動控制區排除；更新 Obsidian 單字匯出測試為精準資料夾；修正 privacy policy 與 store listing 的 API Key storage 文案。</td>
-              <td><code>node --check content/page-translator.js</code> 通過；<code>npx.cmd jest tests/content/page-translator.test.js tests/content/vocabulary.test.js --runInBand</code> 仍在 haste map 階段因 <code>content/vocabulary-highlighter.js</code> <code>EPERM</code> 失敗。</td>
-            </tr>
-            <tr>
-              <td>2026-06-02</td>
-              <td><code>v1.6.0</code></td>
-              <td>修正結果卡 header 下方綠線、rAF timestamp 導致結果卡定位亂跳；加入防回歸測試。</td>
-              <td>先前在 macOS 跑過 <code>npx jest</code> 13 suites / 57 tests passed；Windows 目前因 OneDrive 權限問題無法重跑完整 Jest。</td>
-            </tr>
-            <tr>
-              <td>2026-06-02</td>
-              <td><code>v1.6.1</code></td>
-              <td>設定 JSON 備份 / 還原、API Key local storage、Obsidian 單字路徑精準寫入、request abort / timeout。</td>
-              <td><code>node --check</code> 通過相關 JS；Jest 在 Windows / OneDrive 因 <code>content/vocabulary-highlighter.js</code> <code>EPERM</code> 阻塞，依指示不修環境。</td>
-            </tr>
-            <tr>
-              <td>2026-06-02</td>
-              <td><code>v1.6.2</code></td>
-              <td>結果卡小視窗 header wrapping、主要 icon aria-label、更多 focus-visible、reduced motion、全文翻譯 stopping 狀態、匯出 API Key 二次確認。</td>
-              <td><code>node --check background.js/options.js/content/result-card.js/content/page-translator.js</code> 與相關測試檔通過。</td>
-            </tr>
-            <tr>
-              <td>2026-06-02</td>
-              <td>文件整理</td>
-              <td>Roadmap 重新對齊版本里程碑，並把 review HTML、設定頁整合方案、單字本 roadmap、全文翻譯 UX review、code review、session context 統整進本文件。</td>
-              <td><code>archive/settings-page-integration-ideas.html</code> 需要較高權限唯讀才能讀取，已完成內容併入與歸檔。</td>
-            </tr>
-            <tr>
-              <td>2026-05-28</td>
-              <td><code>v1.4.x / v1.6.x</code></td>
-              <td>浮球設定 icon、停用 icon 定位、全文翻譯短標題純譯文 prompt、父子 / 重複段落去重、字典 JSON fallback。</td>
-              <td><code>npm test -- tests/content/page-translator.test.js tests/background.test.js tests/content/floating-ball.test.js --runInBand</code> 曾通過 3 suites / 15 tests。</td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="callout danger" style="margin-top:12px;">Content script / CSS 修改後，只 reload 擴充不會重新注入已開啟分頁；必須刷新目標網頁才會看到新程式碼。</div>
-      </section>
+      <section id="history">
+        <h2>歷程摘要</h2>
+        <ul class="compact-list">
+          <li><strong>v1.0-v1.5：</strong>完成選字翻譯、解釋、優化、結果卡、朗讀、Obsidian、基本設定。</li>
+          <li><strong>v1.6.x：</strong>完成 code review 收斂、API Key 管理、abort / timeout、responsive、可及性、敏感欄位保護、frame split。</li>
+          <li><strong>v1.7.x：</strong>完成 Google Drive appData Cloud Sync，一般設定可同步，API Key 不自動同步；Edge / Chromium 使用 Web Auth fallback。</li>
+          <li><strong>v1.8.x：</strong>全文翻譯 UX 穩定化，包含雙語段落卡、pair id、同步高亮、定位原文、複製譯文 / 雙語。</li>
+          <li><strong>v1.9.5-v1.9.8：</strong>完成 P0 / P1 hardening、單段翻譯、IndexedDB / SRS、XLSX 匯出、本機診斷摘要。</li>
+          <li><strong>v1.9.9：</strong>完成 security hardening T1-T6；T7 Google Cloud OAuth 人工確認留作送審前 gate。</li>
+          <li><strong>2026-07-07：</strong>產品決策改為先打磨再上架；送審降為 release checkpoint；下一步主線是 T7 + QA Hardening。</li>
+        </ul>
 
-      <section id="cleanup">
-        <h2>清理候選</h2>
-        <div class="callout danger">目前只做盤點，不建議自動刪除。刪除前先確認是否要保留商店素材、歷史 mockup 或 release package。</div>
-        <table style="margin-top:12px;">
-          <thead>
-            <tr><th>項目</th><th>判斷</th><th>建議</th></tr>
-          </thead>
-          <tbody>
-            <tr><td><code>coverage/</code></td><td>Jest coverage 產物，可重建。</td><td><span class="pill orange">可刪</span></td></tr>
-            <tr><td><code>node_modules/</code></td><td>npm install 產物，可由 lockfile 重建；保留可加快本機開發。</td><td><span class="pill orange">需要省空間時可刪</span></td></tr>
-            <tr><td><code>fan-fan-ba-v1.2.3.zip</code></td><td>舊版打包檔，不是目前 1.7.5 執行必要檔。</td><td><span class="pill green">已刪除</span></td></tr>
-            <tr><td><code>screenshots/*.b64</code></td><td>base64 素材，體積較大，PNG 已保留。</td><td><span class="pill green">已刪除</span></td></tr>
-            <tr><td><code>screenshots/mockup-generator.html</code></td><td>大型 mockup 產生器，商店素材 PNG 已保留。</td><td><span class="pill green">已刪除</span></td></tr>
-            <tr><td><code>screenshots/icon-gen-*.html</code> / <code>icon-sq-*.html</code></td><td>圖示產生器中間產物，正式 icons 與 source 已保留於 <code>icons/</code>。</td><td><span class="pill green">已刪除</span></td></tr>
-            <tr><td><code>.claude/</code></td><td>開發工具設定，非 extension runtime 必要，但可能是你的工作流需要。</td><td><span class="pill blue">保留</span></td></tr>
-            <tr><td><code>content.js</code></td><td>已確認內容只是重構後的舊入口說明，manifest 目前沒有載入它。</td><td><span class="pill orange">可刪或保留為註記</span></td></tr>
-          </tbody>
-        </table>
+        <details>
+          <summary>目前仍有用的歷史檔</summary>
+          <div>
+            <table>
+              <tr><th>檔案</th><th>用途</th><th>狀態</th></tr>
+              <tr><td><code>archive/2026-07-07_product-polish-decision-board.html</code></td><td>2026-07-07 產品打磨決策看板。</td><td><span class="pill green">保留</span></td></tr>
+              <tr><td><code>archive/2026-07-06_security-decision-board.html</code></td><td>v1.9.9 安全 hardening 決策看板。</td><td><span class="pill green">保留</span></td></tr>
+              <tr><td><code>docs/security-improvement-plan.md</code></td><td>資安健檢報告、工單與驗證紀錄。</td><td><span class="pill green">保留</span></td></tr>
+              <tr><td><code>archive/code-review-2026-06-18.md</code></td><td>多視角 code review 匯出，查 P0 / P1 / P2 脈絡。</td><td><span class="pill green">保留</span></td></tr>
+              <tr><td><code>archive/project-review-roadmap.html</code></td><td>舊產品 / 工程 / UI review。</td><td><span class="pill orange">歷史快照</span></td></tr>
+              <tr><td><code>archive/vocabulary-notebook-roadmap.html</code></td><td>單字本資料模型與 Obsidian export 規劃。</td><td><span class="pill orange">歷史快照</span></td></tr>
+              <tr><td><code>archive/page-translation-ux-review.html</code></td><td>全文翻譯 UX review。</td><td><span class="pill orange">歷史快照</span></td></tr>
+            </table>
+          </div>
+        </details>
       </section>
 
       <section id="maintenance">
         <h2>更新規則</h2>
         <div class="grid two">
           <div class="card">
-            <h3>每次功能更新時</h3>
+            <h3>功能有變時</h3>
             <ul>
-              <li>只更新這份 <code>project-overview.html</code>；<code>archive/</code> 內舊 review HTML 與 <code>SESSION_CONTEXT.md</code> 不再作為目前計畫文件。</li>
-              <li>更新「功能清單」與「Roadmap」。</li>
-              <li>更新「Session Log」，記錄完成事項、驗證指令與環境阻塞。</li>
-              <li>若新增 storage key，更新「設定與 Storage」。</li>
-              <li>若調整 options page IA / UI，更新「設定頁整合方案」。</li>
-              <li>若新增 content script 或調整載入順序，更新「架構流程」。</li>
-              <li>若產生大型素材，更新「清理候選」。</li>
+              <li>先更新本頁的「功能狀態」與「後續計劃」。</li>
+              <li>如果新增 content script 或調整載入順序，要更新「架構流程」。</li>
+              <li>如果改 storage、Cloud Sync、API Key、prompt 邊界或 telemetry 邊界，要更新「資料與隱私」與「資安健檢」。</li>
             </ul>
           </div>
           <div class="card">
-            <h3>驗證指令</h3>
+            <h3>驗證有變時</h3>
             <ul>
-              <li><code>npx.cmd jest tests/content/floating-ball.test.js tests/options.test.js --runInBand</code></li>
-              <li><code>npm test -- tests/content/page-translator.test.js tests/background.test.js tests/content/floating-ball.test.js --runInBand</code></li>
-              <li><code>npm test</code> 會產生 <code>coverage/</code>。</li>
-              <li>若 PowerShell 擋 <code>npx</code>，用 <code>npx.cmd</code>。</li>
+              <li>自動測試結果寫在「測試與發布」。</li>
+              <li>真瀏覽器 QA 結果回填 <code>MANUAL-QA.md</code>，摘要再寫回本頁。</li>
+              <li>Chrome Web Store 送審只在打磨完成後進行，不提前宣稱已上架。</li>
             </ul>
           </div>
+        </div>
+        <div class="callout danger" style="margin-top:12px;">
+          Content script / CSS 修改後，只 reload 擴充功能不會重新注入已開啟分頁；必須刷新目標網頁才會看到新程式碼。
         </div>
       </section>
     </main>
