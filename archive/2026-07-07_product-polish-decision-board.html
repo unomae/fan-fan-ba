@@ -1,0 +1,1113 @@
+﻿<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>翻翻吧打磨優先決策看板</title>
+  <style>
+    :root {
+      --color-paper-white: #f6f6f8;
+      --color-card-white: #ffffff;
+      --color-deep-ink: #011821;
+      --color-carbon: #12161e;
+      --color-slate: #7c7f88;
+      --color-mist: #e3e4e8;
+      --color-fog: #a9acb6;
+      --color-graphite: #3b3e47;
+      --color-deep-indigo: #111a4a;
+      --color-ember-orange: #ec652b;
+      --color-midnight-teal: #023247;
+      --color-forest-teal: #167e6c;
+      --color-pale-cyan: #c1e8ef;
+      --shadow-card: rgba(17, 26, 74, 0.1) 0 1px 3px 0,
+        rgba(17, 26, 74, 0.05) 0 1px 0 0,
+        inset rgba(255, 255, 255, 0.5) 0 1px 0 0;
+      --shadow-hairline: rgba(87, 90, 100, 0.12) 0 0 0 1px;
+      --radius: 8px;
+      --font-sans: Inter, "Noto Sans TC", "Microsoft JhengHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --font-mono: "SFMono-Regular", "JetBrains Mono", Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--color-deep-ink);
+      background:
+        radial-gradient(circle at 82% 18%, rgba(193, 232, 239, 0.38), transparent 24rem),
+        var(--color-paper-white);
+      font-family: var(--font-sans);
+      line-height: 1.5;
+    }
+
+    button,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .map-dots {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      opacity: 0.62;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle, rgba(236, 101, 43, 0.55) 0 1.4px, transparent 1.6px),
+        radial-gradient(circle, rgba(126, 167, 233, 0.45) 0 1.2px, transparent 1.5px),
+        radial-gradient(circle, rgba(68, 180, 139, 0.3) 0 1px, transparent 1.4px);
+      background-position: 12% 18%, 74% 24%, 42% 72%;
+      background-size: 34px 34px, 28px 28px, 42px 42px;
+      mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+    }
+
+    .shell {
+      width: min(1200px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 24px 0 48px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 0 32px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--color-deep-indigo);
+      box-shadow: var(--shadow-card);
+      position: relative;
+      flex: 0 0 auto;
+    }
+
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      inset: 7px;
+      border-radius: 999px;
+      border: 2px solid var(--color-pale-cyan);
+    }
+
+    .brand-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .brand-subtitle {
+      margin: 2px 0 0;
+      color: var(--color-slate);
+      font-size: 12px;
+      font-family: var(--font-mono);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+      gap: 32px;
+      align-items: stretch;
+      margin-bottom: 28px;
+    }
+
+    .hero-main {
+      padding: 40px 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 28px;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      background: var(--color-pale-cyan);
+      color: var(--color-forest-teal);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    h1 {
+      margin: 18px 0 16px;
+      max-width: 780px;
+      font-size: clamp(36px, 6vw, 60px);
+      line-height: 1.1;
+      font-weight: 300;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 720px;
+      margin: 0;
+      color: var(--color-slate);
+      font-size: 18px;
+    }
+
+    .summary-card {
+      background: var(--color-card-white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-card);
+      padding: 24px;
+      align-self: center;
+      min-width: 0;
+    }
+
+    .summary-card h2 {
+      margin: 0 0 18px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      padding: 16px;
+      border: 1px solid var(--color-mist);
+      border-radius: var(--radius);
+      min-width: 0;
+    }
+
+    .metric-value {
+      display: block;
+      color: var(--color-deep-ink);
+      font-size: 28px;
+      font-weight: 300;
+      line-height: 1.1;
+    }
+
+    .metric-label {
+      display: block;
+      margin-top: 4px;
+      color: var(--color-slate);
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto auto;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .search,
+    .select {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--color-mist);
+      border-radius: var(--radius);
+      background: var(--color-card-white);
+      color: var(--color-carbon);
+      padding: 10px 12px;
+      box-shadow: var(--shadow-hairline);
+    }
+
+    .segmented {
+      display: flex;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--color-mist);
+      border-radius: var(--radius);
+      background: var(--color-card-white);
+      box-shadow: var(--shadow-hairline);
+    }
+
+    .segment,
+    .ghost-button,
+    .primary-button,
+    .small-button {
+      min-height: 38px;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      padding: 9px 14px;
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .segment {
+      background: transparent;
+      color: var(--color-slate);
+    }
+
+    .segment[aria-pressed="true"] {
+      background: var(--color-deep-indigo);
+      color: #fff;
+      box-shadow: var(--shadow-card);
+    }
+
+    .ghost-button {
+      background: var(--color-card-white);
+      border-color: var(--color-mist);
+      color: var(--color-deep-ink);
+      box-shadow: var(--shadow-hairline);
+    }
+
+    .primary-button {
+      background: var(--color-deep-indigo);
+      color: #fff;
+      box-shadow: var(--shadow-card);
+    }
+
+    .small-button {
+      min-height: 34px;
+      padding: 7px 10px;
+      background: #fff;
+      border-color: var(--color-mist);
+      color: var(--color-carbon);
+    }
+
+    .small-button[data-action="accept"][aria-pressed="true"] {
+      background: var(--color-pale-cyan);
+      color: var(--color-forest-teal);
+      border-color: transparent;
+    }
+
+    .small-button[data-action="defer"][aria-pressed="true"] {
+      background: rgba(236, 101, 43, 0.12);
+      color: var(--color-ember-orange);
+      border-color: transparent;
+    }
+
+    .small-button[data-action="reject"][aria-pressed="true"] {
+      background: var(--color-graphite);
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .board {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .column {
+      min-width: 0;
+    }
+
+    .column-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--color-mist);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--color-carbon);
+      box-shadow: var(--shadow-hairline);
+      text-align: left;
+    }
+
+    .column-toggle:hover {
+      border-color: var(--color-fog);
+      background: #fff;
+    }
+
+    .column-heading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .collapse-icon {
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 9999px;
+      background: var(--color-pale-cyan);
+      color: var(--color-forest-teal);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .column.is-collapsed .collapse-icon {
+      background: rgba(17, 26, 74, 0.1);
+      color: var(--color-deep-indigo);
+    }
+
+    .column-title {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-carbon);
+    }
+
+    .count {
+      flex: 0 0 auto;
+      color: var(--color-slate);
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .column-body {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(300px, 1fr);
+      gap: 14px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      scroll-snap-type: x proximity;
+      overscroll-behavior-x: contain;
+    }
+
+    .column.is-collapsed .column-body {
+      display: none;
+    }
+
+    .decision-card {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin: 0;
+      padding: 20px;
+      border-radius: var(--radius);
+      background: var(--color-card-white);
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(227, 228, 232, 0.72);
+      scroll-snap-align: start;
+    }
+
+    .decision-card.featured {
+      border-top: 4px solid var(--color-ember-orange);
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .decision-id {
+      color: var(--color-slate);
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .severity {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 42px;
+      height: 26px;
+      border-radius: 9999px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      background: var(--color-pale-cyan);
+      color: var(--color-forest-teal);
+    }
+
+    .severity.p0 {
+      background: rgba(236, 101, 43, 0.14);
+      color: var(--color-ember-orange);
+    }
+
+    .severity.p1 {
+      background: rgba(17, 26, 74, 0.1);
+      color: var(--color-deep-indigo);
+    }
+
+    .decision-card h3 {
+      margin: 0;
+      color: var(--color-deep-ink);
+      font-size: 18px;
+      line-height: 1.35;
+      font-weight: 500;
+    }
+
+    .description {
+      margin: 0;
+      color: var(--color-slate);
+      font-size: 14px;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .meta-item {
+      padding: 10px;
+      border: 1px solid var(--color-mist);
+      border-radius: var(--radius);
+      min-width: 0;
+    }
+
+    .meta-label {
+      display: block;
+      color: var(--color-slate);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    .meta-value {
+      display: block;
+      margin-top: 3px;
+      color: var(--color-carbon);
+      font-size: 13px;
+    }
+
+    .recommendation {
+      padding: 12px;
+      border-radius: var(--radius);
+      background: #f8fafb;
+      border: 1px solid var(--color-mist);
+      color: var(--color-midnight-teal);
+      font-size: 13px;
+    }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .comment {
+      width: 100%;
+      min-height: 78px;
+      resize: vertical;
+      border: 1px solid var(--color-mist);
+      border-radius: var(--radius);
+      padding: 10px;
+      color: var(--color-carbon);
+      background: #fff;
+      font-size: 13px;
+    }
+
+    .export-panel {
+      margin-top: 24px;
+      background: var(--color-card-white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-card);
+      padding: 20px;
+    }
+
+    .export-panel h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+    }
+
+    .export-output {
+      width: 100%;
+      min-height: 220px;
+      border: 1px solid var(--color-mist);
+      border-radius: var(--radius);
+      background: var(--color-graphite);
+      color: var(--color-pale-cyan);
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.55;
+      resize: vertical;
+    }
+
+    .empty {
+      padding: 20px;
+      border: 1px dashed var(--color-fog);
+      border-radius: var(--radius);
+      color: var(--color-slate);
+      background: rgba(255, 255, 255, 0.62);
+      font-size: 14px;
+    }
+
+    @media (max-width: 980px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-main {
+        padding: 16px 0 0;
+      }
+
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .segmented,
+      .toolbar {
+        justify-content: stretch;
+      }
+
+      .segment,
+      .toolbar button {
+        flex: 1 1 auto;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .shell {
+        width: min(100vw - 20px, 1200px);
+        padding-bottom: 28px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      h1 {
+        font-size: 34px;
+      }
+
+      .summary-grid,
+      .meta,
+      .action-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="map-dots" aria-hidden="true"></div>
+  <main class="shell">
+    <nav class="topbar" aria-label="Decision board navigation">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <p class="brand-title">翻翻吧決策看板</p>
+          <p class="brand-subtitle">2026-07-07 product polish review</p>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button class="ghost-button" type="button" id="resetBtn">清除決策</button>
+        <button class="primary-button" type="button" id="exportMarkdownBtn">匯出 Markdown</button>
+        <button class="ghost-button" type="button" id="exportJsonBtn">匯出 JSON</button>
+      </div>
+    </nav>
+
+    <section class="hero" aria-labelledby="pageTitle">
+      <div class="hero-main">
+        <span class="pill">Decision review</span>
+        <h1 id="pageTitle">把 review 結論變成可確認、可留言、可交辦的決策頁。</h1>
+        <p class="lead">這是 decision-board skill 的 HTML 模擬版。它把 P0/P1/P2 建議放進同一張看板，讓你先決策，再把同意項目匯出成 Markdown 任務清單。</p>
+      </div>
+      <aside class="summary-card" aria-label="Board summary">
+        <h2>看板總覽</h2>
+        <div class="summary-grid">
+          <div class="metric">
+            <span class="metric-value" id="metricTotal">0</span>
+            <span class="metric-label">總項目</span>
+          </div>
+          <div class="metric">
+            <span class="metric-value" id="metricAccepted">0</span>
+            <span class="metric-label">已同意</span>
+          </div>
+          <div class="metric">
+            <span class="metric-value" id="metricDeferred">0</span>
+            <span class="metric-label">已暫緩</span>
+          </div>
+          <div class="metric">
+            <span class="metric-value" id="metricRejected">0</span>
+            <span class="metric-label">已拒絕</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="controls" aria-label="Filters">
+      <input class="search" id="searchInput" type="search" placeholder="搜尋 title、impact、recommendation">
+      <div class="segmented" role="group" aria-label="Severity filter">
+        <button class="segment" type="button" data-severity="all" aria-pressed="true">All</button>
+        <button class="segment" type="button" data-severity="P0" aria-pressed="false">P0</button>
+        <button class="segment" type="button" data-severity="P1" aria-pressed="false">P1</button>
+        <button class="segment" type="button" data-severity="P2" aria-pressed="false">P2</button>
+      </div>
+      <select class="select" id="statusFilter" aria-label="Status filter">
+        <option value="all">全部狀態</option>
+        <option value="pending">未決</option>
+        <option value="accept">同意</option>
+        <option value="defer">暫緩</option>
+        <option value="reject">拒絕</option>
+      </select>
+    </section>
+
+    <section class="board" aria-label="Decision priority rows">
+      <div class="column" data-column="P0">
+        <button class="column-toggle" type="button" aria-expanded="true" aria-controls="columnP0" data-toggle-column="P0">
+          <span class="column-heading">
+            <span class="collapse-icon" aria-hidden="true">−</span>
+            <span class="column-title">P0 必須先決定</span>
+          </span>
+          <span class="count" id="countP0">0 items</span>
+        </button>
+        <div class="column-body" id="columnP0"></div>
+      </div>
+      <div class="column" data-column="P1">
+        <button class="column-toggle" type="button" aria-expanded="true" aria-controls="columnP1" data-toggle-column="P1">
+          <span class="column-heading">
+            <span class="collapse-icon" aria-hidden="true">−</span>
+            <span class="column-title">P1 高影響改善</span>
+          </span>
+          <span class="count" id="countP1">0 items</span>
+        </button>
+        <div class="column-body" id="columnP1"></div>
+      </div>
+      <div class="column" data-column="P2">
+        <button class="column-toggle" type="button" aria-expanded="true" aria-controls="columnP2" data-toggle-column="P2">
+          <span class="column-heading">
+            <span class="collapse-icon" aria-hidden="true">−</span>
+            <span class="column-title">P2 可排入後續</span>
+          </span>
+          <span class="count" id="countP2">0 items</span>
+        </button>
+        <div class="column-body" id="columnP2"></div>
+      </div>
+    </section>
+
+    <section class="export-panel" aria-labelledby="exportTitle">
+      <h2 id="exportTitle">匯出預覽</h2>
+      <textarea class="export-output" id="exportOutput" readonly>按「匯出 Markdown」或「匯出 JSON」產生輸出。</textarea>
+    </section>
+  </main>
+
+  <!-- ▼▼▼ 只需替換這塊 JSON：填入你的決策項目 ▼▼▼
+       這是純 JSON，不是 JavaScript。中文字串照常寫即可；若值裡要放雙引號用 \" 跳脫。
+       不要用反引號或 ${}，以免整頁變成空白。
+       severity 只認 P0 / P1 / P2，其他值不會顯示。 -->
+  <script type="application/json" id="decision-data">
+[
+  {
+    "id": "P0-001",
+    "severity": "P0",
+    "title": "把主線從上架改成產品打磨優先",
+    "description": "你目前傾向先不上架，因此原本 Phase A v2.0 上架不應再作為下一步主線。Roadmap 需要改成先完成閱讀、學習、穩定性打磨，再保留送審為後續 checkpoint。",
+    "impact": "避免團隊或 agent 每次接手又回到 Chrome Web Store 送審討論，讓後續工作聚焦在真實產品體驗。",
+    "effort": "S",
+    "risk": "若不上架太久，會缺少外部使用者回饋；需要用真機 QA 與自己日常閱讀場景補足回饋來源。",
+    "recommendation": "同意後更新 project-overview.html：Phase A 改名為 Polish Foundation，Chrome Web Store 送審移到 P2 release checkpoint。"
+  },
+  {
+    "id": "P0-002",
+    "severity": "P0",
+    "title": "先補真瀏覽器 QA，而不是再加大功能",
+    "description": "目前自動測試已能覆蓋多數純邏輯，但 MANUAL-QA.md 還有 IndexedDB migration、JSON / XLSX 匯出、單字高亮、今日複習、錯題回看、全文翻譯互動等真瀏覽器項目待驗。",
+    "impact": "這是所有打磨工作的地基；若 QA 沒跑，後續新增入口、provider、TTS 或字幕都可能蓋在不穩的體驗上。",
+    "effort": "M",
+    "risk": "需要可用 API Key、Chrome / Edge 載入 dist/pkg、部分項目可能受本機環境或 OAuth 設定阻塞。",
+    "recommendation": "把第一個實作 slice 定為 QA Hardening：跑 MANUAL-QA、修 P0/P1 缺陷、把結果回填 project-overview.html。"
+  },
+  {
+    "id": "P0-003",
+    "severity": "P0",
+    "title": "收斂成閱讀控制台，而不是功能散落",
+    "description": "翻翻吧已有浮球、選取工具列、結果卡、全文面板、單字本、options。問題不是能力不足，而是使用者在閱讀時要知道下一步該按哪裡。",
+    "impact": "若入口收斂成功，會明顯接近 Shinkansen 的低摩擦閱讀體驗，同時保留翻翻吧自己的學習沉澱特色。",
+    "effort": "M",
+    "risk": "若浮球塞太多選項，會從低摩擦變成干擾；需把常用操作放第一層，進階設定留在 options。",
+    "recommendation": "把浮球改成閱讀控制台：全文翻譯、單段翻譯、雙語 / 譯文 / 原文、停止 / 還原 / 續翻、單字本入口。"
+  },
+  {
+    "id": "P0-004",
+    "severity": "P0",
+    "title": "定義翻翻吧差異化：台灣繁中 + Obsidian 學習工作流",
+    "description": "Read Frog 已經很強在語言學習，Shinkansen 很強在高速翻譯；翻翻吧若只追 provider 數量或字幕，會變成追逐戰。更適合守住台灣繁中語感、工作文件閱讀、Obsidian 週記與單字沉澱。",
+    "impact": "讓功能選擇有判準：會強化閱讀到複習閉環的就做，只是增加展示功能數量的先暫緩。",
+    "effort": "S",
+    "risk": "定位太窄可能降低大眾市場想像，但目前先不上架，先服務核心使用情境反而比較合理。",
+    "recommendation": "同意後把 Roadmap 開頭加上產品原則：閱讀不中斷、學習可沉澱、繁中自然、隱私本機優先。"
+  },
+  {
+    "id": "P1-001",
+    "severity": "P1",
+    "title": "打磨全文 / 單段翻譯的狀態與失敗復原",
+    "description": "目前已有 context digest、batch requests、usage summary、局部重試與 hover 開關，但仍需要把使用者可見狀態整理得更清楚：翻譯中、已停止、可續翻、局部失敗、已還原。",
+    "impact": "這會直接改善長文閱讀信任感，避免使用者不知道現在是卡住、完成、停止，還是可以繼續。",
+    "effort": "M",
+    "risk": "狀態機若補丁式擴充會變難維護；需先盤點 pageTranslationState，再動 UI。",
+    "recommendation": "做一個 Page Translation State Audit，再依結果修面板文案、按鈕 enable/disable、失敗段重試與續翻提示。"
+  },
+  {
+    "id": "P1-002",
+    "severity": "P1",
+    "title": "把單字本從資料清單打磨成每日複習介面",
+    "description": "IndexedDB、SRS、今日複習、錯題回看、XLSX / JSON 已經有基礎，但體驗還需要更像一個每天回來用的學習 surface。",
+    "impact": "這是翻翻吧相對 Shinkansen 的重要差異，也能補上 Read Frog 的 flashcard loop，但走本地與 Obsidian 路線。",
+    "effort": "M",
+    "risk": "若新增太多學習狀態，會跟既有 learning / known / nextReviewAt 平行分裂。",
+    "recommendation": "不新增新資料模型；先優化今日複習排序、空狀態、下一次複習顯示、錯題回看轉出流程。"
+  },
+  {
+    "id": "P1-003",
+    "severity": "P1",
+    "title": "加入台灣繁中品質層：禁用詞與術語表",
+    "description": "Shinkansen 的禁用詞與術語表很符合繁中使用者痛點。翻翻吧目前靠 prompt 與模型品質，還沒有可管理的台灣慣用語 guardrail。",
+    "impact": "可降低軟件、視頻、用戶、質量、默認這類非台灣用語混入，讓翻譯品質更有品牌感。",
+    "effort": "M",
+    "risk": "若做成事後 regex replace，可能誤傷引用或專有名詞；應優先注入 prompt 與偵測 warning。",
+    "recommendation": "先做最小版 forbidden terms：設定頁可編輯，翻譯 prompt 注入，完成後本機掃描漏網詞並在診斷顯示。"
+  },
+  {
+    "id": "P1-004",
+    "severity": "P1",
+    "title": "補低成本翻譯 fallback，而不是先追 20+ provider",
+    "description": "Read Frog 強調 20+ AI providers，Shinkansen 則提供 Google Translate 快速免費 fallback。翻翻吧已有 Groq / Gemini / OpenRouter，下一步更該補低成本 fallback，而不是堆大量 provider UI。",
+    "impact": "使用者可在快、省、品質之間切換，長文翻譯也比較不怕打到 LLM 額度。",
+    "effort": "M",
+    "risk": "非官方 Google Translate 端點可能不穩；Microsoft / DeepL 類服務也會帶來權限與隱私文案調整。",
+    "recommendation": "先評估 Microsoft Translate 或 Google Translate fallback 的權限、品質、穩定性；通過後只做一個 Translation Lite preset。"
+  },
+  {
+    "id": "P1-005",
+    "severity": "P1",
+    "title": "TTS 從單字發音打磨到長句播放",
+    "description": "Read Frog 的 TTS 支援語速、語音、長文本 chunk 與語言偵測。翻翻吧已有 Google Cloud TTS + browser fallback，但目前更偏單字或短句播放。",
+    "impact": "對語言學習、工作文件朗讀、複習單字都有幫助，而且能強化學習閉環。",
+    "effort": "M",
+    "risk": "Google Cloud TTS 成本與 API Key 設定會增加摩擦；browser fallback 在不同系統語音品質不一。",
+    "recommendation": "先補語速控制、長句分段、播放中 / 暫停 / 停止狀態；大型 voice catalog 後排。"
+  },
+  {
+    "id": "P2-001",
+    "severity": "P2",
+    "title": "YouTube 字幕翻譯先放後排探索",
+    "description": "Shinkansen 與 Read Frog 都有 YouTube 字幕能力，但翻翻吧目前文字閱讀與單字學習還沒完全打磨完。字幕會引入 caption 來源、播放器 overlay、時間同步、雙語行距等新複雜度。",
+    "impact": "做成後會提高學習情境完整度，但現在不是最短路徑。",
+    "effort": "L",
+    "risk": "YouTube DOM 與字幕 API 易變；字幕 overlay 若不穩，使用者感受會比沒有功能更糟。",
+    "recommendation": "保留為 v2.x 探索；若提前做，只做 YouTube transcript / caption DOM，不碰燒錄字幕 OCR。"
+  },
+  {
+    "id": "P2-002",
+    "severity": "P2",
+    "title": "PDF / OCR / 圖片翻譯暫不進近期主線",
+    "description": "PDF、canvas、圖片資訊圖與 OCR 都是高成本功能，且容易跟目前文字沉浸式翻譯的 DOM pipeline 分岔。",
+    "impact": "延後可避免過早把架構拉複雜；近期先把普通網頁與文件閱讀做到好用。",
+    "effort": "L",
+    "risk": "若使用者主要讀 PDF，延後會錯過場景；但目前 repo 風險更在一般網頁穩定度。",
+    "recommendation": "v2.x 再評估 PDF / OCR mode；第一版若做也採側邊面板，不做原位替換。"
+  },
+  {
+    "id": "P2-003",
+    "severity": "P2",
+    "title": "Chrome Web Store 送審改成 checkpoint，不當下一階段目標",
+    "description": "既然現在先不上架，送審相關的截圖、商店文案、正式 OAuth client、權限揭露仍要保留，但不應阻擋產品打磨。",
+    "impact": "保留未來發佈能力，同時不打斷目前的產品品質節奏。",
+    "effort": "S",
+    "risk": "若送審準備長期不更新，未來可能需要重新整理 store listing、privacy 與 manifest 權限說明。",
+    "recommendation": "改成每完成一個 polish milestone 才檢查一次 release readiness；不在本輪實作。"
+  }
+]
+  </script>
+  <!-- ▲▲▲ JSON 區塊結束 ▲▲▲ -->
+
+  <script>
+    // localStorage 自動依檔案路徑分鍵，多張看板不會互相覆蓋。
+    const STORAGE_KEY = "decision-board::" + location.pathname;
+    const COLLAPSE_STORAGE_KEY = STORAGE_KEY + "::collapsed";
+    const SEVERITIES = ["P0", "P1", "P2"];
+
+    // 決策資料來自上方的 JSON 區塊，這裡不需要修改。
+    const decisions = JSON.parse(document.getElementById("decision-data").textContent);
+
+    let state = loadState();
+    let collapsedColumns = loadCollapsedColumns();
+    let severityFilter = "all";
+    let searchTerm = "";
+
+    function loadState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        return decisions.reduce((acc, item) => {
+          acc[item.id] = saved[item.id] || { action: "pending", comment: "" };
+          return acc;
+        }, {});
+      } catch {
+        return decisions.reduce((acc, item) => {
+          acc[item.id] = { action: "pending", comment: "" };
+          return acc;
+        }, {});
+      }
+    }
+
+    function saveState() {
+      // localStorage 在 sandbox / 預覽面板 / 無痕等環境可能被封鎖並拋例外。
+      // 存不了就略過持久化，但記憶體狀態與 render() 仍須照跑，否則按鈕會「沒反應」。
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        /* 持久化失敗不致命：本 session 仍可正常決策，只是重整後不保留 */
+      }
+      updateMetrics();
+    }
+
+    function loadCollapsedColumns() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(COLLAPSE_STORAGE_KEY) || "{}");
+        return SEVERITIES.reduce((acc, severity) => {
+          acc[severity] = Boolean(saved[severity]);
+          return acc;
+        }, {});
+      } catch {
+        return SEVERITIES.reduce((acc, severity) => {
+          acc[severity] = false;
+          return acc;
+        }, {});
+      }
+    }
+
+    function saveCollapsedColumns() {
+      try {
+        localStorage.setItem(COLLAPSE_STORAGE_KEY, JSON.stringify(collapsedColumns));
+      } catch (e) {
+        /* 持久化失敗不致命，同 saveState */
+      }
+    }
+
+    function applyCollapsedColumns() {
+      SEVERITIES.forEach((severity) => {
+        const column = document.querySelector(`[data-column="${severity}"]`);
+        const toggle = document.querySelector(`[data-toggle-column="${severity}"]`);
+        const icon = toggle.querySelector(".collapse-icon");
+        const isCollapsed = Boolean(collapsedColumns[severity]);
+
+        column.classList.toggle("is-collapsed", isCollapsed);
+        toggle.setAttribute("aria-expanded", String(!isCollapsed));
+        icon.textContent = isCollapsed ? "+" : "−";
+      });
+    }
+
+    function matchesFilters(item) {
+      const status = document.getElementById("statusFilter").value;
+      const itemState = state[item.id] || { action: "pending", comment: "" };
+      const haystack = [
+        item.id,
+        item.severity,
+        item.title,
+        item.description,
+        item.impact,
+        item.effort,
+        item.risk,
+        item.recommendation,
+        itemState.comment
+      ].join(" ").toLowerCase();
+
+      return (severityFilter === "all" || item.severity === severityFilter)
+        && (status === "all" || itemState.action === status)
+        && haystack.includes(searchTerm);
+    }
+
+    function render() {
+      SEVERITIES.forEach((severity) => {
+        const column = document.getElementById(`column${severity}`);
+        const items = decisions.filter((item) => item.severity === severity && matchesFilters(item));
+        column.innerHTML = items.length ? items.map(renderCard).join("") : '<div class="empty">目前沒有符合條件的項目。</div>';
+        document.getElementById(`count${severity}`).textContent = `${items.length} items`;
+      });
+
+      bindCards();
+      applyCollapsedColumns();
+      updateMetrics();
+    }
+
+    function renderCard(item) {
+      const itemState = state[item.id] || { action: "pending", comment: "" };
+      const severityClass = item.severity.toLowerCase();
+      const featured = item.severity === "P0" ? " featured" : "";
+
+      return `
+        <article class="decision-card${featured}" data-id="${escapeHtml(item.id)}">
+          <div class="card-head">
+            <span class="decision-id">${escapeHtml(item.id)}</span>
+            <span class="severity ${severityClass}">${escapeHtml(item.severity)}</span>
+          </div>
+          <h3>${escapeHtml(item.title)}</h3>
+          <p class="description">${escapeHtml(item.description)}</p>
+          <div class="meta">
+            <div class="meta-item">
+              <span class="meta-label">Impact</span>
+              <span class="meta-value">${escapeHtml(item.impact)}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Effort</span>
+              <span class="meta-value">${escapeHtml(item.effort)}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Risk</span>
+              <span class="meta-value">${escapeHtml(item.risk)}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Status</span>
+              <span class="meta-value">${statusLabel(itemState.action)}</span>
+            </div>
+          </div>
+          <div class="recommendation">${escapeHtml(item.recommendation)}</div>
+          <div class="action-row" role="group" aria-label="${escapeHtml(item.id)} decision action">
+            ${renderActionButton(itemState.action, "accept", "同意")}
+            ${renderActionButton(itemState.action, "defer", "暫緩")}
+            ${renderActionButton(itemState.action, "reject", "拒絕")}
+          </div>
+          <textarea class="comment" placeholder="補充你的理由、條件或待確認事項">${escapeHtml(itemState.comment)}</textarea>
+        </article>
+      `;
+    }
+
+    function renderActionButton(current, action, label) {
+      return `<button class="small-button" type="button" data-action="${action}" aria-pressed="${current === action}">${label}</button>`;
+    }
+
+    function bindCards() {
+      document.querySelectorAll(".decision-card").forEach((card) => {
+        const id = card.dataset.id;
+        card.querySelectorAll("[data-action]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const nextAction = button.dataset.action;
+            const current = state[id].action;
+            state[id].action = current === nextAction ? "pending" : nextAction;
+            saveState();
+            render();
+          });
+        });
+
+        card.querySelector(".comment").addEventListener("input", (event) => {
+          state[id].comment = event.target.value;
+          saveState();
+        });
+      });
+    }
+
+    function updateMetrics() {
+      const values = Object.values(state);
+      document.getElementById("metricTotal").textContent = decisions.length;
+      document.getElementById("metricAccepted").textContent = values.filter((item) => item.action === "accept").length;
+      document.getElementById("metricDeferred").textContent = values.filter((item) => item.action === "defer").length;
+      document.getElementById("metricRejected").textContent = values.filter((item) => item.action === "reject").length;
+    }
+
+    function exportMarkdown() {
+      const groups = ["accept", "defer", "reject", "pending"];
+      const sections = groups.map((group) => {
+        const items = decisions.filter((item) => state[item.id].action === group);
+        if (!items.length) return "";
+
+        const lines = items.flatMap((item) => {
+          const itemState = state[item.id];
+          return [
+            `- [ ] ${item.id} ${item.title}`,
+            `  - Severity: ${item.severity}`,
+            `  - Impact: ${item.impact}`,
+            `  - Effort: ${item.effort}`,
+            `  - Recommendation: ${item.recommendation}`,
+            itemState.comment ? `  - Comment: ${itemState.comment.replace(/\n/g, " ")}` : ""
+          ].filter(Boolean);
+        });
+
+        return [`## ${statusLabel(group)}`, ...lines].join("\n");
+      }).filter(Boolean);
+
+      return ["# 決策看板匯出", "", ...sections].join("\n\n");
+    }
+
+    function exportJson() {
+      return JSON.stringify(decisions.map((item) => ({
+        ...item,
+        decision: state[item.id].action,
+        comment: state[item.id].comment
+      })), null, 2);
+    }
+
+    function statusLabel(action) {
+      return {
+        accept: "同意",
+        defer: "暫緩",
+        reject: "拒絕",
+        pending: "未決"
+      }[action] || "未決";
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    document.querySelectorAll("[data-severity]").forEach((button) => {
+      button.addEventListener("click", () => {
+        severityFilter = button.dataset.severity;
+        document.querySelectorAll("[data-severity]").forEach((item) => {
+          item.setAttribute("aria-pressed", String(item === button));
+        });
+        render();
+      });
+    });
+
+    document.querySelectorAll("[data-toggle-column]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const severity = button.dataset.toggleColumn;
+        collapsedColumns[severity] = !collapsedColumns[severity];
+        saveCollapsedColumns();
+        applyCollapsedColumns();
+      });
+    });
+
+    document.getElementById("statusFilter").addEventListener("change", render);
+    document.getElementById("searchInput").addEventListener("input", (event) => {
+      searchTerm = event.target.value.trim().toLowerCase();
+      render();
+    });
+
+    document.getElementById("exportMarkdownBtn").addEventListener("click", () => {
+      document.getElementById("exportOutput").value = exportMarkdown();
+    });
+
+    document.getElementById("exportJsonBtn").addEventListener("click", () => {
+      document.getElementById("exportOutput").value = exportJson();
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      localStorage.removeItem(STORAGE_KEY);
+      state = loadState();
+      document.getElementById("exportOutput").value = "按「匯出 Markdown」或「匯出 JSON」產生輸出。";
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>
+
