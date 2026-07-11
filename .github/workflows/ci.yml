@@ -1,0 +1,25 @@
+# WS-E T-CI：把既有的 212 個 Jest 測試與打包 smoke 接上自動化，
+# 不再依賴「作者記得跑」。send 審 / merge 前這裡必須綠。
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: 安裝依賴
+        run: npm ci
+      - name: Jest 全套測試
+        run: npm test -- --runInBand
+      - name: 打包 smoke（含 manifest/package.json 版本一致 assert）
+        run: npm run package

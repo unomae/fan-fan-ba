@@ -36,6 +36,14 @@ function readVersion() {
   return JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8')).version;
 }
 
+// 版本雙源（manifest.json / package.json）漂移防呆：不一致就拒絕打包
+function assertVersionConsistency(manifestVersion) {
+  const pkgVersion = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
+  if (manifestVersion !== pkgVersion) {
+    throw new Error(`版本不一致：manifest.json=${manifestVersion}、package.json=${pkgVersion}，請先對齊再打包`);
+  }
+}
+
 function resetStage() {
   fs.rmSync(STAGE, { recursive: true, force: true });
   fs.mkdirSync(STAGE, { recursive: true });
@@ -91,6 +99,7 @@ function zipStage(version) {
 
 function main() {
   const version = readVersion();
+  assertVersionConsistency(version);
   resetStage();
   const copied = copyAllowlisted();
   const zipPath = zipStage(version);

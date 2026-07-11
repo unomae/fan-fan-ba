@@ -7,7 +7,6 @@ const ModelRegistry = globalThis.FanFanBaModels || require('./models');
 const Storage = globalThis.FanFanBaStorage || require('./storage');
 const CloudSync = globalThis.FanFanBaCloudSync || require('./cloud-sync');
 const VocabBackup = globalThis.FanFanBaVocabularyBackup || require('./vocabulary-backup');
-const VOCAB_STORAGE_KEY = 'fanFanBaVocabularyItems';
 const SETTINGS_BACKUP_APP = 'fan-fan-ba';
 const SETTINGS_BACKUP_SCHEMA_VERSION = 1;
 const SECRET_BACKUP_CRYPTO_VERSION = 1;
@@ -30,11 +29,7 @@ const DIAGNOSTICS_SETTING_KEYS = [
   'vocabularyHighlightMode',
   'singleHoverButton'
 ];
-const PROVIDER_NAMES = {
-  gemini: 'Gemini',
-  groq: 'Groq',
-  openrouter: 'OpenRouter'
-};
+// provider 顯示名／key 欄位名／前綴統一取自 ModelRegistry.PROVIDERS（WS-E M3''）
 
 renderModelSelect();
 renderPageTranslationModelSelect();
@@ -46,12 +41,35 @@ initDiagnosticsPanel();
 initVocabularyBackup();
 
 // ── 單字本備份 / 還原（Phase B）──────────────────────
+// A1''' 補償控制（最小版）：mirror-only 後 storage.local 是單一副本，
+// 損毀即全滅。這裡只做「上次備份多久前」的 staleness 提醒，推使用者定期
+// JSON 匯出（完整可還原）。跨裝置 Drive 備份留待另一張 KAKA 決策工單。
+const LAST_VOCAB_BACKUP_KEY = 'lastVocabularyBackupAt';
+const VOCAB_BACKUP_STALE_DAYS = 30;
+
 function initVocabularyBackup() {
   $('btnExportVocabulary')?.addEventListener('click', exportVocabularyBackup);
   $('btnExportVocabularyXlsx')?.addEventListener('click', exportVocabularyXlsx);
   const fileInput = $('vocabularyImportFile');
   $('btnImportVocabulary')?.addEventListener('click', () => fileInput?.click());
   fileInput?.addEventListener('change', importVocabularyBackup);
+  renderVocabularyBackupStaleness();
+}
+
+async function renderVocabularyBackupStaleness() {
+  const el = $('vocabularyBackupReminder');
+  if (!el) return;
+  const { [LAST_VOCAB_BACKUP_KEY]: last } = await chrome.storage.local.get(LAST_VOCAB_BACKUP_KEY);
+  el.textContent = formatVocabularyBackupReminder(last);
+}
+
+function formatVocabularyBackupReminder(lastIso) {
+  const last = Date.parse(lastIso || '');
+  if (!last) return '尚未匯出過單字本備份，建議定期匯出 JSON 以免資料遺失。';
+  const days = Math.floor((Date.now() - last) / (24 * 60 * 60 * 1000));
+  const when = days <= 0 ? '今天' : `${days} 天前`;
+  const tail = days >= VOCAB_BACKUP_STALE_DAYS ? '（已超過 30 天，建議重新匯出）' : '';
+  return `上次備份：${when}${tail}`;
 }
 
 function setVocabularyBackupStatus(text) {
@@ -73,6 +91,9 @@ async function exportVocabularyBackup() {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    // 只在 JSON 匯出（完整可還原）成功後蓋章；XLSX 是 lossy 不算備份
+    await chrome.storage.local.set({ [LAST_VOCAB_BACKUP_KEY]: new Date().toISOString() });
+    renderVocabularyBackupStaleness();
     setVocabularyBackupStatus(`已匯出 ${backup.count} 個單字。`);
   } catch {
     setVocabularyBackupStatus('匯出失敗，請再試一次。');
@@ -123,30 +144,22 @@ async function importVocabularyBackup(event) {
   }
 }
 
+// A1'''：不再 fallback 直讀/直寫 storage——匯入流程的 existing 讀取失敗必須
+// 讓匯入整個中止（若降級成空集，mergeBackup 會退化成 replace、舊備份蓋掉活資料）。
+// 失敗往上拋，由 importVocabularyBackup 的 catch 浮出錯誤。
 async function getVocabularyItemsMap() {
-  try {
-    const response = await requestVocabularyStore('list');
-    if (Array.isArray(response?.items)) {
-      return response.items.reduce((acc, item) => {
-        if (item?.id) acc[item.id] = item;
-        return acc;
-      }, {});
-    }
-  } catch {
-    // fallback to legacy map below
-  }
-  const { [VOCAB_STORAGE_KEY]: items = {} } = await chrome.storage.local.get(VOCAB_STORAGE_KEY);
-  return VocabBackup.normalizeItemsMap(items);
+  const response = await requestVocabularyStore('list');
+  // 非陣列一律視為讀取失敗並中止（絕不降級成空集）：匯入流程若拿到空集，
+  // mergeBackup 會退化成 replace，把舊備份蓋掉整個活單字本（WS-E A1'''）
+  if (!Array.isArray(response.items)) throw new Error('單字本資料讀取失敗');
+  return response.items.reduce((acc, item) => {
+    if (item?.id) acc[item.id] = item;
+    return acc;
+  }, {});
 }
 
 async function replaceVocabularyItemsMap(items) {
-  try {
-    await requestVocabularyStore('replaceAll', { items });
-    return;
-  } catch {
-    // fallback to legacy map below
-  }
-  await chrome.storage.local.set({ [VOCAB_STORAGE_KEY]: VocabBackup.normalizeItemsMap(items) });
+  await requestVocabularyStore('replaceAll', { items });
 }
 
 async function requestVocabularyStore(action, payload = {}) {
@@ -309,13 +322,25 @@ function hasProviderKey(model = {}, secrets = {}) {
 }
 
 function providerApiKeyName(provider = '') {
-  if (provider === 'groq') return 'groqApiKey';
-  if (provider === 'openrouter') return 'openrouterApiKey';
-  return 'apiKey';
+  return (ModelRegistry.PROVIDERS[provider] || ModelRegistry.PROVIDERS.gemini).apiKeyName;
 }
 
 function providerName(provider = '') {
-  return PROVIDER_NAMES[provider] || provider || '未知模型';
+  return ModelRegistry.PROVIDERS[provider]?.label || provider || '未知模型';
+}
+
+// 未在冊的舊版 model id（如 gemini-2.5-flash）：select 沒有對應選項時補一個
+// 保留現行設定，避免 select 落回第一個選項、儲存時被靜默改掉（WS-E M3'' 附帶修復）
+function setModelSelectValue(select, modelId) {
+  if (!select) return;
+  select.value = modelId;
+  if (select.value !== modelId) {
+    const opt = document.createElement('option');
+    opt.value = modelId;
+    opt.textContent = `${ModelRegistry.getModelDisplayName(modelId)}（舊版）`;
+    select.appendChild(opt);
+    select.value = modelId;
+  }
 }
 
 // ── 載入已儲存的設定 ─────────────────────────────────
@@ -324,7 +349,7 @@ async function loadSettings() {
     { model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, singleHoverButton, obsidianVault, obsidianDefaultFolder },
     { apiKey, groqApiKey, openrouterApiKey, ttsApiKey }
   ] = await Promise.all([
-    chrome.storage.sync.get(['model', 'pageTranslationModel', 'targetLanguage', 'explanationLanguage', 'ttsLanguageMode', 'vocabularyHighlightMode', 'singleHoverButton', 'obsidianVault', 'obsidianDefaultFolder']),
+    chrome.storage.sync.get(SYNC_SETTING_KEYS),
     Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', ttsApiKey: '' })
   ]);
 
@@ -333,8 +358,8 @@ async function loadSettings() {
   if (openrouterApiKey)       $('openrouterApiKey').value       = openrouterApiKey;
   // 無儲存紀錄時預設 Groq（免費額度最大方）
   const currentModel = ModelRegistry.normalizeModel(model);
-  $('model').value = currentModel;
-  if ($('pageTranslationModel')) $('pageTranslationModel').value = ModelRegistry.normalizeModel(pageTranslationModel || currentModel);
+  setModelSelectValue($('model'), currentModel);
+  if ($('pageTranslationModel')) setModelSelectValue($('pageTranslationModel'), ModelRegistry.normalizeModel(pageTranslationModel || currentModel));
   if (model && currentModel !== model) chrome.storage.sync.set({ model: currentModel });
   if ($('targetLanguage')) {
     $('targetLanguage').value = ModelRegistry.normalizeLanguage(targetLanguage, 'zh-TW');
@@ -462,16 +487,13 @@ $('btnSave').addEventListener('click', async () => {
   const isGroq           = model.startsWith('groq:');
   const isOpenRouter     = model.startsWith('openrouter:');
 
-  // 依選擇的模型驗證對應 API Key
-  if (isGroq) {
-    if (!groqApiKey) { showStatus('err', '使用 Groq 模型請輸入 Groq API Key'); return; }
-    if (!groqApiKey.startsWith('gsk_')) { showStatus('err', 'Groq API Key 格式不正確，應以 gsk_ 開頭'); return; }
-  } else if (isOpenRouter) {
-    if (!openrouterApiKey) { showStatus('err', '使用 OpenRouter 模型請輸入 OpenRouter API Key'); return; }
-    if (!openrouterApiKey.startsWith('sk-or-')) { showStatus('err', 'OpenRouter API Key 格式不正確，應以 sk-or- 開頭'); return; }
-  } else {
-    if (!apiKey) { showStatus('err', '請輸入 Gemini API Key'); return; }
-    if (!apiKey.startsWith('AIza')) { showStatus('err', 'Gemini API Key 格式不正確，應以 AIza 開頭'); return; }
+  // 依選擇的模型驗證對應 API Key（前綴與顯示名來源：ModelRegistry.PROVIDERS）
+  {
+    const provider = ModelRegistry.getProvider(model);
+    const info = ModelRegistry.PROVIDERS[provider];
+    const keyValue = provider === 'groq' ? groqApiKey : provider === 'openrouter' ? openrouterApiKey : apiKey;
+    if (!keyValue) { showStatus('err', `使用 ${info.label} 模型請輸入 ${info.label} API Key`); return; }
+    if (!keyValue.startsWith(info.keyPrefix)) { showStatus('err', `${info.label} API Key 格式不正確，應以 ${info.keyPrefix} 開頭`); return; }
   }
 
   const obsidianVault         = $('obsidianVault').value.trim();
@@ -487,28 +509,29 @@ $('btnSave').addEventListener('click', async () => {
 
 // ── 測試連線 ─────────────────────────────────────────
 $('btnTest').addEventListener('click', async () => {
-  const model        = $('model').value || 'gemini-3.5-flash';
+  const model        = $('model').value || ModelRegistry.DEFAULT_MODEL;
   const isGroq       = model.startsWith('groq:');
   const isOpenRouter = model.startsWith('openrouter:');
+  const P            = ModelRegistry.PROVIDERS; // URL / 顯示名單一來源（WS-E M3''）
 
   let apiKey, displayName, fetchUrl, fetchBody, fetchHeaders;
 
   if (isGroq) {
     apiKey      = $('groqApiKey').value.trim();
-    displayName = 'Llama 4 Scout (Groq)';
-    fetchUrl    = 'https://api.groq.com/openai/v1/chat/completions';
+    displayName = `${ModelRegistry.getModel(model).name} (${P.groq.label})`;
+    fetchUrl    = `${P.groq.apiBase}/chat/completions`;
     fetchHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
-    fetchBody    = JSON.stringify({ model: model.replace('groq:', ''), messages: [{ role: 'user', content: '回覆 OK 即可' }], max_tokens: 10 });
+    fetchBody    = JSON.stringify({ model: ModelRegistry.toApiModelId(model), messages: [{ role: 'user', content: '回覆 OK 即可' }], max_tokens: 10 });
   } else if (isOpenRouter) {
     apiKey      = $('openrouterApiKey').value.trim();
     displayName = ModelRegistry.toApiModelId(model);
-    fetchUrl    = 'https://openrouter.ai/api/v1/chat/completions';
-    fetchHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'X-Title': 'Fan Fan Ba' };
+    fetchUrl    = `${P.openrouter.apiBase}/chat/completions`;
+    fetchHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, ...P.openrouter.extraHeaders };
     fetchBody    = buildOpenAICompatTestBody(ModelRegistry.toApiModelId(model));
   } else {
     apiKey      = $('apiKey').value.trim();
     displayName = model;
-    fetchUrl    = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    fetchUrl    = `${P.gemini.apiBase}/${model}:generateContent?key=${apiKey}`;
     fetchHeaders = { 'Content-Type': 'application/json' };
     fetchBody    = JSON.stringify({ contents: [{ parts: [{ text: '回覆 OK 即可' }] }], generationConfig: { maxOutputTokens: 10 } });
   }
@@ -1100,6 +1123,8 @@ if (typeof module !== 'undefined' && module.exports) {
     renderDiagnostics,
     renderDiagnosticsSelfCheck,
     formatDiagnosticsSummary,
-    buildDiagnosticsChecklist
+    buildDiagnosticsChecklist,
+    getVocabularyItemsMap,
+    formatVocabularyBackupReminder
   };
 }

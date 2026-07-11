@@ -486,6 +486,48 @@ describe('Options module', () => {
       }
     });
   });
+
+  // WS-E A1'''：匯入流程讀取 existing 單字本失敗時必須中止，絕不降級成空集
+  //（空集會讓 mergeBackup 退化成 replace，舊備份蓋掉整個活單字本）
+  describe('getVocabularyItemsMap 讀取降級防護', () => {
+    it('background 回 { ok:true } 但 items 非陣列 → throw，不當作空集', async () => {
+      chrome.runtime.sendMessage.mockResolvedValueOnce({ ok: true });
+      await expect(optionsModule.getVocabularyItemsMap()).rejects.toThrow('單字本資料讀取失敗');
+    });
+
+    it('background 回錯 → throw（沿用 requestVocabularyStore 契約）', async () => {
+      chrome.runtime.sendMessage.mockResolvedValueOnce({ ok: false, error: '資料層錯誤' });
+      await expect(optionsModule.getVocabularyItemsMap()).rejects.toThrow('資料層錯誤');
+    });
+
+    it('正常回傳陣列 → 轉成 keyed map', async () => {
+      chrome.runtime.sendMessage.mockResolvedValueOnce({
+        ok: true,
+        items: [{ id: 'en:cat', word: 'cat' }, { id: 'en:dog', word: 'dog' }]
+      });
+      const map = await optionsModule.getVocabularyItemsMap();
+      expect(Object.keys(map).sort()).toEqual(['en:cat', 'en:dog']);
+    });
+  });
+
+  // WS-E T-BACKUP：單字本 staleness 提醒（mirror-only 後為單一副本的補償控制）
+  describe('formatVocabularyBackupReminder', () => {
+    it('從未備份 → 提示定期匯出', () => {
+      expect(optionsModule.formatVocabularyBackupReminder('')).toContain('尚未匯出');
+    });
+
+    it('30 天內 → 顯示天數、無過期警告', () => {
+      const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+      const text = optionsModule.formatVocabularyBackupReminder(tenDaysAgo);
+      expect(text).toContain('10 天前');
+      expect(text).not.toContain('已超過');
+    });
+
+    it('超過 30 天 → 附過期建議', () => {
+      const longAgo = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString();
+      expect(optionsModule.formatVocabularyBackupReminder(longAgo)).toContain('已超過 30 天');
+    });
+  });
 });
 
 async function flushPromises(times = 8) {

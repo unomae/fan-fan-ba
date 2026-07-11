@@ -5,6 +5,33 @@
   const OPENROUTER_PRIMARY_MODEL = 'openrouter:deepseek/deepseek-v4-flash:free';
   const OPENROUTER_FALLBACK_MODEL_ID = 'openrouter/free';
 
+  // provider 級靜態資料的單一事實來源（WS-E M3''）：
+  // background 請求路徑、options 測試連線與 key 前綴驗證共用，
+  // 消除 URL / label / apiKeyName / key 前綴的多處硬編碼。
+  // 注意：Gemini 的實際請求 URL 是動態的（model 在 path、key 在 query、
+  // 串流與非串流 endpoint 不同），這裡只共用 base。
+  const PROVIDERS = {
+    groq: {
+      label: 'Groq',
+      apiKeyName: 'groqApiKey',
+      keyPrefix: 'gsk_',
+      apiBase: 'https://api.groq.com/openai/v1'
+    },
+    openrouter: {
+      label: 'OpenRouter',
+      apiKeyName: 'openrouterApiKey',
+      keyPrefix: 'sk-or-',
+      apiBase: 'https://openrouter.ai/api/v1',
+      extraHeaders: { 'X-Title': 'Fan Fan Ba' } // HTTP header 僅允許 ASCII
+    },
+    gemini: {
+      label: 'Gemini',
+      apiKeyName: 'apiKey',
+      keyPrefix: 'AIza',
+      apiBase: 'https://generativelanguage.googleapis.com/v1beta/models'
+    }
+  };
+
   const MODELS = [
     {
       id: DEFAULT_MODEL,
@@ -96,14 +123,6 @@
     return TTS_LANGUAGE_OPTIONS.some(item => item.id === value) ? value : fallback;
   }
 
-  function getLanguageName(language, browserLanguage = '') {
-    const normalized = normalizeLanguage(language, language || 'zh-TW');
-    if (normalized === 'browser') {
-      return browserLanguage ? `瀏覽器語言（${browserLanguage}）` : '瀏覽器語言';
-    }
-    return getLanguageOption(normalized)?.name || normalized;
-  }
-
   function getPromptLanguageName(language, browserLanguage = '') {
     const normalized = normalizeLanguage(language, language || 'zh-TW');
     if (normalized === 'browser') {
@@ -124,7 +143,12 @@
 
   function getModel(model) {
     const normalized = normalizeModel(model);
-    return MODELS.find(item => item.id === normalized) || MODELS[0];
+    // 未在冊 id（史前遺留如 gemini-2.5-flash）依路由 provider 反查同家條目，
+    // 與 getProvider／background 分流的「無前綴＝Gemini」約定同向，
+    // 避免「顯示 Groq、實際打 Gemini」的同畫面分裂（WS-E M3''）
+    return MODELS.find(item => item.id === normalized)
+      || MODELS.find(item => item.provider === getProvider(normalized))
+      || MODELS[0];
   }
 
   function getProvider(model) {
@@ -180,6 +204,7 @@
     DEFAULT_MODEL,
     OPENROUTER_PRIMARY_MODEL,
     OPENROUTER_FALLBACK_MODEL_ID,
+    PROVIDERS,
     MODELS,
     MODEL_MIGRATIONS,
     MODEL_NAME_MAP,
@@ -198,7 +223,6 @@
     normalizeLanguage,
     normalizeExplanationLanguage,
     normalizeTtsLanguageMode,
-    getLanguageName,
     getPromptLanguageName,
     resolveExplanationLanguage
   };

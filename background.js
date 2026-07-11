@@ -19,9 +19,10 @@ chrome.runtime.onInstalled.addListener(details => {
   }
 });
 
-const GEMINI_API_BASE     = 'https://generativelanguage.googleapis.com/v1beta/models';
-const GROQ_API_BASE       = 'https://api.groq.com/openai/v1';
-const OPENROUTER_API_BASE = 'https://openrouter.ai/api/v1';
+// API base 單一來源在 models.js 的 PROVIDERS 表（WS-E M3''），這裡只取用
+const GEMINI_API_BASE     = ModelRegistry.PROVIDERS.gemini.apiBase;
+const GROQ_API_BASE       = ModelRegistry.PROVIDERS.groq.apiBase;
+const OPENROUTER_API_BASE = ModelRegistry.PROVIDERS.openrouter.apiBase;
 const DEFAULT_MODEL       = ModelRegistry.DEFAULT_MODEL; // 預設 Groq（免費額度最大方）
 const ALLOWED_AI_ACTIONS  = new Set(['translate', 'explain', 'optimize']);
 const MAX_SELECTED_TEXT_CHARS = 6000;
@@ -122,7 +123,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       reply({ error: '請求來源不正確' });
       return false;
     }
-    handleAIRequest(validateAIRequest(request))
+    // validate 同步 throw 也要回結構化錯誤，比照 OBSIDIAN_URI／streaming 路徑
+    //（否則呼叫端只收到 "port closed"，WS-E T-CLEAN）
+    let safeAIRequest;
+    try {
+      safeAIRequest = validateAIRequest(request);
+    } catch (error) {
+      reply({ error: error?.message || '請求格式不正確' });
+      return false;
+    }
+    handleAIRequest(safeAIRequest)
       .then(result => { recordAiDiagnostics(request); reply(result); })
       .catch(err => { recordDiagnosticError(); reply({ error: err.message }); });
     return true;
@@ -132,7 +142,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       reply({ error: '請求來源不正確' });
       return false;
     }
-    handleTtsRequest(validateTtsRequest(request))
+    let safeTtsRequest;
+    try {
+      safeTtsRequest = validateTtsRequest(request);
+    } catch (error) {
+      reply({ error: error?.message || '請求格式不正確' });
+      return false;
+    }
+    handleTtsRequest(safeTtsRequest)
       .then(reply)
       .catch(err => reply({ error: err.message }));
     return true;
@@ -385,7 +402,7 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle, mode
       apiKey:  openrouterApiKey,
       baseUrl: `${OPENROUTER_API_BASE}/chat/completions`,
       label:   'OpenRouter',
-      extraHeaders: { 'X-Title': 'Fan Fan Ba' },  // HTTP header 僅允許 ASCII
+      extraHeaders: ModelRegistry.PROVIDERS.openrouter.extraHeaders,
       signal
     });
   }
@@ -495,7 +512,7 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle, mode
       apiKey:       openrouterApiKey,
       baseUrl:      `${OPENROUTER_API_BASE}/chat/completions`,
       label:        'OpenRouter',
-      extraHeaders: { 'X-Title': 'Fan Fan Ba' },
+      extraHeaders: ModelRegistry.PROVIDERS.openrouter.extraHeaders,
       pageTranslation,
       onChunk,
       onStatus,

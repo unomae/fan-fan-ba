@@ -580,12 +580,14 @@ async function initVocabularySaveButton(body, data, selectedText) {
 
   const word = data.word || selectedText;
   const lang = data.lang || '';
-  const saved = await isVocabularySaved(word, lang);
-  setVocabularyButtonState(button, saved ? 'saved' : 'idle');
+  let interacted = false; // 使用者已點擊過就不讓稍後回來的初始查詢覆寫按鈕狀態
 
+  // 先綁 click 再查已收藏狀態：查詢失敗時按鈕仍可用，
+  // 不再因 unhandled rejection 變成沒有任何反應的死按鈕（WS-E A1'''）
   button.addEventListener('click', async e => {
     e.stopPropagation();
     if (button.disabled || typeof saveVocabularyEntry !== 'function') return;
+    interacted = true;
     setVocabularyButtonState(button, 'saving');
 
     try {
@@ -595,6 +597,14 @@ async function initVocabularySaveButton(body, data, selectedText) {
       setVocabularyButtonState(button, 'error');
     }
   });
+
+  try {
+    const saved = await isVocabularySaved(word, lang);
+    // 查詢在飛行中若已被點擊觸發收藏，不得蓋掉 saving/saved 狀態（否則放行第二次收藏）
+    if (!interacted) setVocabularyButtonState(button, saved ? 'saved' : 'idle');
+  } catch {
+    if (!interacted) setVocabularyButtonState(button, 'idle'); // 查詢失敗當未收藏，點擊收藏時再浮出真正錯誤
+  }
 }
 
 function setVocabularyButtonState(button, state, exported = false) {
@@ -668,16 +678,6 @@ function buildOptimizeHTML(raw, original) {
   `;
 }
 
-// ── 折疊 toggle 事件綁定 ──────────────────────────
-function initDeepToggles(el) {
-  el.querySelectorAll('.g-deep-toggle').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      btn.closest('.g-deep-section').classList.toggle('g-deep-open');
-    });
-  });
-}
-
 // ── Tag 點擊事件綁定（點擊後觸發 explain 查詢）────
 function initTagHandlers(el) {
   el.querySelectorAll('.g-tag').forEach(tag => {
@@ -745,25 +745,3 @@ function speakFallback(word, btn, lang = 'en') {
   window.speechSynthesis.speak(utt);
 }
 
-function showRpdLimitWarning({ current, limit, model }) {
-  const body = resultCard?.querySelector('.g-rc-body');
-  if (!body) return;
-  const modelName = MODEL_NAMES[model] || model;
-  body.innerHTML = `
-    <div class="g-rpd-limit">
-      <svg class="g-rpd-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-      </svg>
-      <div class="g-rpd-title">今日已達使用上限</div>
-      <div class="g-rpd-model">${escapeHtml(modelName)}</div>
-      <div class="g-rpd-bar-wrap"><div class="g-rpd-bar-fill"></div></div>
-      <div class="g-rpd-count">${current} / ${limit} 次</div>
-      <button class="g-rpd-settings-btn">調整上限設定 →</button>
-    </div>
-  `;
-  body.querySelector('.g-rpd-settings-btn')?.addEventListener('click', e => {
-    e.stopPropagation();
-    if (chrome.runtime?.id) chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS' });
-  });
-}

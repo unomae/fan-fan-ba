@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const { createVocabularyStoreResponder } = require('./vocab-store-responder');
 
 function runContentScript(file, context) {
   const source = fs.readFileSync(path.join(__dirname, '../../', file), 'utf8');
@@ -9,7 +10,8 @@ function runContentScript(file, context) {
 
 function createVocabularyContext({ syncStore = {} } = {}) {
   const localStore = {};
-  const runtimeSendMessage = jest.fn(() => Promise.resolve());
+  // A1'''：直寫 fallback 已移除，harness 改為忠實模擬 background store 的訊息回應者
+  const runtimeSendMessage = jest.fn(createVocabularyStoreResponder(localStore));
 
   const context = vm.createContext({
     window,

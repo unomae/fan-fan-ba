@@ -72,18 +72,21 @@ describe('vocabulary backup', () => {
           pos: 'noun',
           translations: ['燈塔', '信標'],
           definition: 'A signal light.',
+          status: 'learning',
           sources: [{ title: 'Article', url: 'https://example.com', context: 'shipping lane' }]
         })
       });
 
       expect(rows[0]).toEqual([
         'word', 'lang', 'pos', 'translations', 'definition', 'count', 'createdAt',
-        'lastSeenAt', 'familiarity', 'reviewedAt', 'nextReviewAt', 'sourceTitle',
+        'lastSeenAt', 'status', 'reviewedAt', 'nextReviewAt', 'sourceTitle',
         'sourceUrl', 'sourceContext'
       ]);
       expect(rows[1]).toContain('Beacon');
       expect(rows[1]).toContain('燈塔；信標');
       expect(rows[1]).toContain('https://example.com');
+      // D5：status 欄真的匯出值（原 familiarity 欄無寫入端、恆為空字串）
+      expect(rows[1]).toContain('learning');
     });
 
     it('creates a real XLSX zip package with worksheet XML', () => {

@@ -389,7 +389,18 @@ async function showFloatingVocabularyPanel() {
   const body = resultCard.querySelector('.g-rc-body');
   ffbClear(body).appendChild(ffbEl('div', { class: 'g-hist-empty' }, '讀取單字本中...'));
 
-  const items = typeof listVocabularyItems === 'function' ? await listVocabularyItems() : [];
+  let items;
+  try {
+    items = typeof listVocabularyItems === 'function' ? await listVocabularyItems() : [];
+  } catch {
+    // A1'''：讀取失敗不得渲染成「空單字本」——使用者會誤以為資料被清空
+    // 而恐慌匯入舊備份（那才會真的蓋掉活資料）
+    ffbClear(body).appendChild(ffbEl('div', { class: 'g-hist-empty' },
+      '單字資料暫時無法讀取（資料並未被清空）。請重新整理頁面後再試。'));
+    resultCard.classList.add('g-show');
+    positionResultCardNearFloatingBall();
+    return;
+  }
   renderFloatingVocabularyPanel(body, items);
   resultCard.classList.add('g-show');
   positionResultCardNearFloatingBall();
@@ -436,7 +447,14 @@ function renderFloatingVocabularyPanel(body, initialItems) {
       button.addEventListener('click', async e => {
         e.stopPropagation();
         const id = button.dataset.vocabDelete;
-        await deleteVocabularyEntry?.(id);
+        try {
+          await deleteVocabularyEntry?.(id);
+        } catch {
+          // 刪除失敗要讓使用者看見，不能讓項目留在列表卻零回饋（WS-E A1'''）
+          button.textContent = '刪除失敗';
+          setTimeout(() => { button.textContent = '刪除'; }, 1500);
+          return;
+        }
         items = items.filter(item => item.id !== id);
         render();
       });
@@ -454,11 +472,16 @@ function renderFloatingVocabularyPanel(body, initialItems) {
         e.stopPropagation();
         const id = button.dataset.vocabStatus;
         const nextStatus = button.dataset.nextStatus === 'known' ? 'known' : 'learning';
-        const updated = await updateVocabularyEntryStatus?.(id, nextStatus);
-        if (updated) {
-          const refreshedItems = typeof listVocabularyItems === 'function' ? await listVocabularyItems() : items;
-          items = updateVocabularyPanelItems(refreshedItems, updated);
-          render();
+        try {
+          const updated = await updateVocabularyEntryStatus?.(id, nextStatus);
+          if (updated) {
+            const refreshedItems = typeof listVocabularyItems === 'function' ? await listVocabularyItems() : items;
+            items = updateVocabularyPanelItems(refreshedItems, updated);
+            render();
+          }
+        } catch {
+          button.textContent = '更新失敗';
+          setTimeout(render, 1500); // render 會由 items 重建按鈕文字（WS-E A1'''）
         }
       });
     });
@@ -467,11 +490,16 @@ function renderFloatingVocabularyPanel(body, initialItems) {
         e.stopPropagation();
         const id = button.dataset.vocabReview;
         const status = button.dataset.reviewStatus === 'known' ? 'known' : 'learning';
-        const updated = await updateVocabularyEntryStatus?.(id, status);
-        if (updated) {
-          const refreshedItems = typeof listVocabularyItems === 'function' ? await listVocabularyItems() : items;
-          items = updateVocabularyPanelItems(refreshedItems, updated);
-          render();
+        try {
+          const updated = await updateVocabularyEntryStatus?.(id, status);
+          if (updated) {
+            const refreshedItems = typeof listVocabularyItems === 'function' ? await listVocabularyItems() : items;
+            items = updateVocabularyPanelItems(refreshedItems, updated);
+            render();
+          }
+        } catch {
+          button.textContent = '更新失敗';
+          setTimeout(render, 1500);
         }
       });
     });

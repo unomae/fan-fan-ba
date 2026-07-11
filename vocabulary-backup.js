@@ -21,7 +21,9 @@
     ['count', item => item.count],
     ['createdAt', item => item.createdAt],
     ['lastSeenAt', item => item.lastSeenAt],
-    ['familiarity', item => item.familiarity],
+    // D5（WS-E）：原 'familiarity' 欄是 Phase B 接線錯誤——寫入端從無此欄位，
+    // 實際熟悉度狀態存在 status（'learning'/'known'，content/vocabulary.js 寫入）
+    ['status', item => item.status],
     ['reviewedAt', item => item.reviewedAt],
     ['nextReviewAt', item => item.nextReviewAt],
     ['sourceTitle', item => item.sources?.[0]?.title],

@@ -69,10 +69,8 @@ function selectModel(id, clickedItem) {
 
 function getApiKeyStatus(model, sync) {
   const provider = ModelRegistry.getProvider(model);
-  let hasKey;
-  if (provider === 'groq')             hasKey = !!sync.groqApiKey;
-  else if (provider === 'openrouter')  hasKey = !!sync.openrouterApiKey;
-  else                                 hasKey = !!sync.apiKey;
+  // key 欄位名單一來源：ModelRegistry.PROVIDERS（WS-E M3''）
+  const hasKey = !!sync[ModelRegistry.PROVIDERS[provider].apiKeyName];
   return { provider, hasKey };
 }
 
@@ -98,7 +96,7 @@ function setStatusElement(dotId, textId, state, text) {
 function renderPopupOverview(model, sync = {}) {
   const selected = ModelRegistry.getModel(model);
   const { provider, hasKey } = getApiKeyStatus(model, sync);
-  const providerLabel = { groq: 'Groq', gemini: 'Gemini', openrouter: 'OpenRouter' }[provider] || 'Model';
+  const providerLabel = ModelRegistry.PROVIDERS[provider]?.label || 'Model';
   const hasTts = !!sync.ttsApiKey;
   const hasObsidian = !!(sync.obsidianVault || sync.obsidianDefaultFolder);
 
