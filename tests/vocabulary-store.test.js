@@ -50,6 +50,30 @@ describe('vocabulary store fallback', () => {
     });
   });
 
+  // 與 tests/vocabulary-backup.test.js 的 import hardening 案例同一組危險鍵 fixture，
+  // 鎖住兩份 normalizeItemsMap 的防護語意同步（WS-E M1'）
+  it('filters dangerous ids so prototype keys never reach the stored map', async () => {
+    chrome.storage.local.get.mockResolvedValueOnce({
+      fanFanBaVocabularyItems: {
+        ok: entry('en:anchor', 'Anchor'),
+        '__proto__': { id: '__proto__', word: 'evil', polluted: 'yes' },
+        'constructor': { id: 'constructor', word: 'evil2' },
+        'prototype': { id: 'prototype', word: 'evil3' }
+      }
+    });
+
+    const items = await Store.listItems();
+
+    expect(items.map(item => item.id)).toEqual(['en:anchor']);
+    expect(({}).polluted).toBeUndefined();
+    expect(Object.prototype.polluted).toBeUndefined();
+  });
+
+  it('rejects dangerous-id upserts instead of silently mangling the map', async () => {
+    await expect(Store.upsertItem({ id: '__proto__', word: 'evil' }))
+      .rejects.toThrow('單字資料格式不正確');
+  });
+
   it('replaces all entries through the same message-facing API', async () => {
     await Store.handleMessage({
       action: 'replaceAll',

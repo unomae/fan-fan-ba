@@ -13,14 +13,19 @@
     return typeof global.indexedDB !== 'undefined' && global.indexedDB && typeof global.indexedDB.open === 'function';
   }
 
+  // 不可當成 id 的危險鍵，語意對齊 vocabulary-backup.js 的 DANGEROUS_IDS
+  //（兩份 normalizeItemsMap 是刻意分工：本檔 trim 覆寫 id/word 保 key 一致性、
+  //  backup 檔原樣保留保 round-trip；同步靠兩邊測試的相同危險鍵 fixture 鎖住）
+  const DANGEROUS_IDS = new Set(['__proto__', 'constructor', 'prototype']);
+
   function normalizeItemsMap(input) {
     const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
-    const out = {};
+    const out = Object.create(null); // null prototype：即使 id 是 __proto__ 也不會誤設原型
     Object.values(source).forEach(value => {
       if (!value || typeof value !== 'object') return;
       const id = String(value.id || '').trim();
       const word = String(value.word || '').trim();
-      if (!id || !word) return;
+      if (!id || !word || DANGEROUS_IDS.has(id)) return;
       out[id] = { ...value, id, word };
     });
     return out;
