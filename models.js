@@ -123,14 +123,6 @@
     return TTS_LANGUAGE_OPTIONS.some(item => item.id === value) ? value : fallback;
   }
 
-  function getLanguageName(language, browserLanguage = '') {
-    const normalized = normalizeLanguage(language, language || 'zh-TW');
-    if (normalized === 'browser') {
-      return browserLanguage ? `瀏覽器語言（${browserLanguage}）` : '瀏覽器語言';
-    }
-    return getLanguageOption(normalized)?.name || normalized;
-  }
-
   function getPromptLanguageName(language, browserLanguage = '') {
     const normalized = normalizeLanguage(language, language || 'zh-TW');
     if (normalized === 'browser') {
@@ -231,7 +223,6 @@
     normalizeLanguage,
     normalizeExplanationLanguage,
     normalizeTtsLanguageMode,
-    getLanguageName,
     getPromptLanguageName,
     resolveExplanationLanguage
   };

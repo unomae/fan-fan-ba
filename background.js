@@ -123,7 +123,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       reply({ error: '請求來源不正確' });
       return false;
     }
-    handleAIRequest(validateAIRequest(request))
+    // validate 同步 throw 也要回結構化錯誤，比照 OBSIDIAN_URI／streaming 路徑
+    //（否則呼叫端只收到 "port closed"，WS-E T-CLEAN）
+    let safeAIRequest;
+    try {
+      safeAIRequest = validateAIRequest(request);
+    } catch (error) {
+      reply({ error: error?.message || '請求格式不正確' });
+      return false;
+    }
+    handleAIRequest(safeAIRequest)
       .then(result => { recordAiDiagnostics(request); reply(result); })
       .catch(err => { recordDiagnosticError(); reply({ error: err.message }); });
     return true;
@@ -133,7 +142,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       reply({ error: '請求來源不正確' });
       return false;
     }
-    handleTtsRequest(validateTtsRequest(request))
+    let safeTtsRequest;
+    try {
+      safeTtsRequest = validateTtsRequest(request);
+    } catch (error) {
+      reply({ error: error?.message || '請求格式不正確' });
+      return false;
+    }
+    handleTtsRequest(safeTtsRequest)
       .then(reply)
       .catch(err => reply({ error: err.message }));
     return true;

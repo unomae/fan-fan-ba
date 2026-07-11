@@ -26,5 +26,3 @@ let resultCardAnchorRect = null; // 結果卡優先錨定在觸發時的工具�
 
 // 相同文字快取：key = `${action}:${text}`，tab 生命週期內有效
 const responseCache = new Map();
-
-const MODEL_NAMES = FanFanBaModels.MODEL_NAME_MAP;

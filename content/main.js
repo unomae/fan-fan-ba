@@ -474,11 +474,7 @@ function sendNonStreaming(action, selectedText, context, pageTitle, cacheKey, re
         }
         if (!response)        { setError('無回應，請重試', () => triggerAction(activeAction)); return; }
         if (response.error) {
-          if (response.code === 'RPD_LIMIT') {
-            showRpdLimitWarning(response);
-          } else {
-            setError(response.error, () => triggerAction(activeAction));
-          }
+          setError(response.error, () => triggerAction(activeAction));
           return;
         }
         responseCache.set(cacheKey, response.result);

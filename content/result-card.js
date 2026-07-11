@@ -668,16 +668,6 @@ function buildOptimizeHTML(raw, original) {
   `;
 }
 
-// ── 折疊 toggle 事件綁定 ──────────────────────────
-function initDeepToggles(el) {
-  el.querySelectorAll('.g-deep-toggle').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      btn.closest('.g-deep-section').classList.toggle('g-deep-open');
-    });
-  });
-}
-
 // ── Tag 點擊事件綁定（點擊後觸發 explain 查詢）────
 function initTagHandlers(el) {
   el.querySelectorAll('.g-tag').forEach(tag => {
@@ -745,25 +735,3 @@ function speakFallback(word, btn, lang = 'en') {
   window.speechSynthesis.speak(utt);
 }
 
-function showRpdLimitWarning({ current, limit, model }) {
-  const body = resultCard?.querySelector('.g-rc-body');
-  if (!body) return;
-  const modelName = MODEL_NAMES[model] || model;
-  body.innerHTML = `
-    <div class="g-rpd-limit">
-      <svg class="g-rpd-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-      </svg>
-      <div class="g-rpd-title">今日已達使用上限</div>
-      <div class="g-rpd-model">${escapeHtml(modelName)}</div>
-      <div class="g-rpd-bar-wrap"><div class="g-rpd-bar-fill"></div></div>
-      <div class="g-rpd-count">${current} / ${limit} 次</div>
-      <button class="g-rpd-settings-btn">調整上限設定 →</button>
-    </div>
-  `;
-  body.querySelector('.g-rpd-settings-btn')?.addEventListener('click', e => {
-    e.stopPropagation();
-    if (chrome.runtime?.id) chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS' });
-  });
-}

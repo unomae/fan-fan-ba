@@ -332,7 +332,7 @@ async function loadSettings() {
     { model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, singleHoverButton, obsidianVault, obsidianDefaultFolder },
     { apiKey, groqApiKey, openrouterApiKey, ttsApiKey }
   ] = await Promise.all([
-    chrome.storage.sync.get(['model', 'pageTranslationModel', 'targetLanguage', 'explanationLanguage', 'ttsLanguageMode', 'vocabularyHighlightMode', 'singleHoverButton', 'obsidianVault', 'obsidianDefaultFolder']),
+    chrome.storage.sync.get(SYNC_SETTING_KEYS),
     Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', ttsApiKey: '' })
   ]);
 

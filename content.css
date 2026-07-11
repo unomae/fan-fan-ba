@@ -876,72 +876,6 @@
 .g-text-body .g-list li:last-child { margin-bottom: 0 !important; }
 
 /* ════════════════════════════════════════════════
-   5. RPD 上限警告卡
-   ════════════════════════════════════════════════ */
-.g-rpd-limit {
-  display:        flex !important;
-  flex-direction: column !important;
-  align-items:    center !important;
-  text-align:     center !important;
-  gap:            8px !important;
-  padding:        20px 16px 16px !important;
-}
-
-.g-rpd-icon { color: #f59e0b !important; }
-
-.g-rpd-title {
-  font-size:   14px !important;
-  font-weight: 600 !important;
-  font-family: 'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
-  color:       #1a1a1a !important;
-}
-
-.g-rpd-model {
-  font-size:  11.5px !important;
-  color:      #999 !important;
-  margin-top: -4px !important;
-}
-
-.g-rpd-bar-wrap {
-  width:         100% !important;
-  height:        6px !important;
-  background:    #fee2e2 !important;
-  border-radius: 99px !important;
-  overflow:      hidden !important;
-  margin-top:    4px !important;
-}
-
-.g-rpd-bar-fill {
-  width:         100% !important;
-  height:        100% !important;
-  background:    #ef4444 !important;
-  border-radius: 99px !important;
-}
-
-.g-rpd-count {
-  font-size:   12px !important;
-  color:       #ef4444 !important;
-  font-weight: 600 !important;
-  margin-top:  -2px !important;
-}
-
-.g-rpd-settings-btn {
-  margin-top:    6px !important;
-  padding:       7px 18px !important;
-  background:    #1a73e8 !important;
-  color:         #fff !important;
-  border:        none !important;
-  border-radius: 6px !important;
-  font-size:     12.5px !important;
-  font-weight:   500 !important;
-  cursor:        pointer !important;
-  transition:    background 0.12s !important;
-  outline:       none !important;
-}
-
-.g-rpd-settings-btn:hover { background: #1557b0 !important; }
-
-/* ════════════════════════════════════════════════
    6. Obsidian 儲存面板
    ════════════════════════════════════════════════ */
 
@@ -1205,50 +1139,13 @@
 }
 
 /* ════════════════════════════════════════════════
-   10. 快看 / 深讀折疊層
+   10. 深讀分隔線與 chevron（折疊機制已移除）
    ════════════════════════════════════════════════ */
-.g-deep-section {
-  border-top:  1px solid rgba(0, 0, 0, 0.07) !important;
-  margin-top:  6px !important;
-}
-
-.g-deep-toggle {
-  all:             unset !important;
-  display:         flex !important;
-  align-items:     center !important;
-  gap:             5px !important;
-  width:           100% !important;
-  padding:         7px 0 5px !important;
-  cursor:          pointer !important;
-  font-size:       10.5px !important;
-  font-weight:     700 !important;
-  color:           #999 !important;
-  text-transform:  uppercase !important;
-  letter-spacing:  0.5px !important;
-  box-sizing:      border-box !important;
-}
-
-.g-deep-toggle:hover { color: #555 !important; }
-
 .g-chevron {
   transition:  transform 0.2s ease !important;
   margin-left: auto !important;
   color:       #bbb !important;
   flex-shrink: 0 !important;
-}
-
-.g-deep-section.g-deep-open .g-chevron {
-  transform: rotate(180deg) !important;
-}
-
-.g-deep-content {
-  max-height: 0 !important;
-  overflow:   hidden !important;
-  transition: max-height 0.3s ease !important;
-}
-
-.g-deep-section.g-deep-open .g-deep-content {
-  max-height: 900px !important;
 }
 
 hr.g-deep-divider {
