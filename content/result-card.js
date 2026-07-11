@@ -580,12 +580,14 @@ async function initVocabularySaveButton(body, data, selectedText) {
 
   const word = data.word || selectedText;
   const lang = data.lang || '';
+  let interacted = false; // 使用者已點擊過就不讓稍後回來的初始查詢覆寫按鈕狀態
 
   // 先綁 click 再查已收藏狀態：查詢失敗時按鈕仍可用，
   // 不再因 unhandled rejection 變成沒有任何反應的死按鈕（WS-E A1'''）
   button.addEventListener('click', async e => {
     e.stopPropagation();
     if (button.disabled || typeof saveVocabularyEntry !== 'function') return;
+    interacted = true;
     setVocabularyButtonState(button, 'saving');
 
     try {
@@ -598,9 +600,10 @@ async function initVocabularySaveButton(body, data, selectedText) {
 
   try {
     const saved = await isVocabularySaved(word, lang);
-    setVocabularyButtonState(button, saved ? 'saved' : 'idle');
+    // 查詢在飛行中若已被點擊觸發收藏，不得蓋掉 saving/saved 狀態（否則放行第二次收藏）
+    if (!interacted) setVocabularyButtonState(button, saved ? 'saved' : 'idle');
   } catch {
-    setVocabularyButtonState(button, 'idle'); // 查詢失敗當未收藏，點擊收藏時再浮出真正錯誤
+    if (!interacted) setVocabularyButtonState(button, 'idle'); // 查詢失敗當未收藏，點擊收藏時再浮出真正錯誤
   }
 }
 
