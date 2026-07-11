@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const { createVocabularyStoreResponder } = require('./vocab-store-responder');
 
 function runContentScript(file, context) {
   const source = fs.readFileSync(path.join(__dirname, '../../', file), 'utf8');
@@ -27,6 +28,10 @@ function createHighlighterContext() {
             Object.assign(localStore, values);
           })
         }
+      },
+      // A1'''：單字本讀取走 VOCABULARY_STORE 訊息，掛忠實回應者
+      runtime: {
+        sendMessage: jest.fn(createVocabularyStoreResponder(localStore))
       }
     },
     updateFloatingBallVocabularyHighlightState: jest.fn(),

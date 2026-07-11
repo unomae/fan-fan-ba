@@ -119,30 +119,22 @@ async function importVocabularyBackup(event) {
   }
 }
 
+// A1'''：不再 fallback 直讀/直寫 storage——匯入流程的 existing 讀取失敗必須
+// 讓匯入整個中止（若降級成空集，mergeBackup 會退化成 replace、舊備份蓋掉活資料）。
+// 失敗往上拋，由 importVocabularyBackup 的 catch 浮出錯誤。
 async function getVocabularyItemsMap() {
-  try {
-    const response = await requestVocabularyStore('list');
-    if (Array.isArray(response?.items)) {
-      return response.items.reduce((acc, item) => {
-        if (item?.id) acc[item.id] = item;
-        return acc;
-      }, {});
-    }
-  } catch {
-    // fallback to legacy map below
-  }
-  const { [VOCAB_STORAGE_KEY]: items = {} } = await chrome.storage.local.get(VOCAB_STORAGE_KEY);
-  return VocabBackup.normalizeItemsMap(items);
+  const response = await requestVocabularyStore('list');
+  // 非陣列一律視為讀取失敗並中止（絕不降級成空集）：匯入流程若拿到空集，
+  // mergeBackup 會退化成 replace，把舊備份蓋掉整個活單字本（WS-E A1'''）
+  if (!Array.isArray(response.items)) throw new Error('單字本資料讀取失敗');
+  return response.items.reduce((acc, item) => {
+    if (item?.id) acc[item.id] = item;
+    return acc;
+  }, {});
 }
 
 async function replaceVocabularyItemsMap(items) {
-  try {
-    await requestVocabularyStore('replaceAll', { items });
-    return;
-  } catch {
-    // fallback to legacy map below
-  }
-  await chrome.storage.local.set({ [VOCAB_STORAGE_KEY]: VocabBackup.normalizeItemsMap(items) });
+  await requestVocabularyStore('replaceAll', { items });
 }
 
 async function requestVocabularyStore(action, payload = {}) {
@@ -1106,6 +1098,7 @@ if (typeof module !== 'undefined' && module.exports) {
     renderDiagnostics,
     renderDiagnosticsSelfCheck,
     formatDiagnosticsSummary,
-    buildDiagnosticsChecklist
+    buildDiagnosticsChecklist,
+    getVocabularyItemsMap
   };
 }

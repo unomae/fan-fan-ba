@@ -18,54 +18,26 @@ function getVocabularyId(word, lang) {
   return normalizedWord ? `${normalizedLang}:${normalizedWord}` : '';
 }
 
+// ── 資料存取一律經 background 的 VOCABULARY_STORE 訊息（WS-E A1'''）──
+// 原本的 chrome.storage.local 直寫 fallback 已移除：它只在 background 拒絕請求時
+// 觸發（把被正確拒絕的資料裸寫進去）、寫入的資料又進不了權威 store，之後會被
+// replaceAll 永久抹除。失敗一律往上拋，由 UI 層浮出錯誤讓使用者重試。
+
 async function loadVocabularyItems() {
-  try {
-    const response = await requestVocabularyStore('list');
-    if (Array.isArray(response?.items)) return vocabularyMapFromList(response.items);
-  } catch {
-    // fallback to legacy chrome.storage.local below
-  }
-  try {
-    const { [VOCABULARY_STORAGE_KEY]: items = {} } = await chrome.storage.local.get(VOCABULARY_STORAGE_KEY);
-    return items && typeof items === 'object' && !Array.isArray(items) ? items : {};
-  } catch {
-    return {};
-  }
+  const response = await requestVocabularyStore('list');
+  return vocabularyMapFromList(response.items);
 }
 
 async function getVocabularyEntry(id) {
   const key = String(id || '').trim();
   if (!key) return null;
-  try {
-    const response = await requestVocabularyStore('get', { id: key });
-    if (response?.item) return response.item;
-  } catch {
-    // fallback to legacy map below
-  }
-  const items = await loadVocabularyItemsLegacy();
-  return items[key] || null;
+  const response = await requestVocabularyStore('get', { id: key });
+  return response.item || null;
 }
 
 async function upsertVocabularyEntry(item) {
-  try {
-    const response = await requestVocabularyStore('upsert', { item });
-    if (response?.item) return response.item;
-  } catch {
-    // fallback to legacy map below
-  }
-  const items = await loadVocabularyItemsLegacy();
-  items[item.id] = item;
-  await chrome.storage.local.set({ [VOCABULARY_STORAGE_KEY]: items });
-  return item;
-}
-
-async function loadVocabularyItemsLegacy() {
-  try {
-    const { [VOCABULARY_STORAGE_KEY]: items = {} } = await chrome.storage.local.get(VOCABULARY_STORAGE_KEY);
-    return items && typeof items === 'object' && !Array.isArray(items) ? items : {};
-  } catch {
-    return {};
-  }
+  const response = await requestVocabularyStore('upsert', { item });
+  return response.item;
 }
 
 function vocabularyMapFromList(list) {
@@ -104,17 +76,8 @@ async function listVocabularyItems() {
 }
 
 async function deleteVocabularyEntry(id) {
-  try {
-    const response = await requestVocabularyStore('delete', { id });
-    return Boolean(response?.deleted);
-  } catch {
-    // fallback to legacy map below
-  }
-  const items = await loadVocabularyItemsLegacy();
-  if (!items[id]) return false;
-  delete items[id];
-  await chrome.storage.local.set({ [VOCABULARY_STORAGE_KEY]: items });
-  return true;
+  const response = await requestVocabularyStore('delete', { id });
+  return Boolean(response.deleted);
 }
 
 async function updateVocabularyEntryStatus(id, status) {

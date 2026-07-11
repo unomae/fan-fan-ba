@@ -486,6 +486,29 @@ describe('Options module', () => {
       }
     });
   });
+
+  // WS-E A1'''：匯入流程讀取 existing 單字本失敗時必須中止，絕不降級成空集
+  //（空集會讓 mergeBackup 退化成 replace，舊備份蓋掉整個活單字本）
+  describe('getVocabularyItemsMap 讀取降級防護', () => {
+    it('background 回 { ok:true } 但 items 非陣列 → throw，不當作空集', async () => {
+      chrome.runtime.sendMessage.mockResolvedValueOnce({ ok: true });
+      await expect(optionsModule.getVocabularyItemsMap()).rejects.toThrow('單字本資料讀取失敗');
+    });
+
+    it('background 回錯 → throw（沿用 requestVocabularyStore 契約）', async () => {
+      chrome.runtime.sendMessage.mockResolvedValueOnce({ ok: false, error: '資料層錯誤' });
+      await expect(optionsModule.getVocabularyItemsMap()).rejects.toThrow('資料層錯誤');
+    });
+
+    it('正常回傳陣列 → 轉成 keyed map', async () => {
+      chrome.runtime.sendMessage.mockResolvedValueOnce({
+        ok: true,
+        items: [{ id: 'en:cat', word: 'cat' }, { id: 'en:dog', word: 'dog' }]
+      });
+      const map = await optionsModule.getVocabularyItemsMap();
+      expect(Object.keys(map).sort()).toEqual(['en:cat', 'en:dog']);
+    });
+  });
 });
 
 async function flushPromises(times = 8) {

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const { createVocabularyStoreResponder } = require('./vocab-store-responder');
 
 function runContentScript(file, context) {
   const source = fs.readFileSync(path.join(__dirname, '../../', file), 'utf8');
@@ -54,7 +55,8 @@ function createContentContext() {
     Object.assign(localStore, values);
   });
   context.chrome.storage.sync.get = jest.fn(async () => ({}));
-  context.chrome.runtime.sendMessage = jest.fn(() => Promise.resolve());
+  // A1'''：單字本操作走 VOCABULARY_STORE 訊息，用忠實回應者模擬 background store
+  context.chrome.runtime.sendMessage = jest.fn(createVocabularyStoreResponder(localStore));
   context.globalThis = context;
   return { context, localStore, clipboardWriteText };
 }

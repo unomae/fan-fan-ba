@@ -57,7 +57,13 @@ async function getVocabularyHighlightMode() {
 
 async function applyVocabularyHighlights() {
   clearVocabularyHighlights();
-  const terms = buildVocabularyHighlightTerms(await listVocabularyItems?.());
+  let allItems;
+  try {
+    allItems = await listVocabularyItems?.();
+  } catch {
+    return 0; // 讀取失敗＝跳過高亮（純顯示層降級）；資料層錯誤由主要 UI 浮出（WS-E A1'''）
+  }
+  const terms = buildVocabularyHighlightTerms(allItems);
   if (!terms.length || !document.body) return 0;
 
   const pattern = terms.map(term => escapeVocabularyHighlightRegExp(term.word)).join('|');
