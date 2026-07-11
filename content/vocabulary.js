@@ -1,6 +1,5 @@
 'use strict';
 
-const VOCABULARY_STORAGE_KEY = 'fanFanBaVocabularyItems';
 const VOCABULARY_MAX_SOURCES = 5;
 const VOCABULARY_MAX_CONTEXT_CHARS = 180;
 const VOCABULARY_SRS_INTERVAL_DAYS = {

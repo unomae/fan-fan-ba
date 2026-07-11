@@ -7,7 +7,6 @@ const ModelRegistry = globalThis.FanFanBaModels || require('./models');
 const Storage = globalThis.FanFanBaStorage || require('./storage');
 const CloudSync = globalThis.FanFanBaCloudSync || require('./cloud-sync');
 const VocabBackup = globalThis.FanFanBaVocabularyBackup || require('./vocabulary-backup');
-const VOCAB_STORAGE_KEY = 'fanFanBaVocabularyItems';
 const SETTINGS_BACKUP_APP = 'fan-fan-ba';
 const SETTINGS_BACKUP_SCHEMA_VERSION = 1;
 const SECRET_BACKUP_CRYPTO_VERSION = 1;
@@ -42,12 +41,35 @@ initDiagnosticsPanel();
 initVocabularyBackup();
 
 // ── 單字本備份 / 還原（Phase B）──────────────────────
+// A1''' 補償控制（最小版）：mirror-only 後 storage.local 是單一副本，
+// 損毀即全滅。這裡只做「上次備份多久前」的 staleness 提醒，推使用者定期
+// JSON 匯出（完整可還原）。跨裝置 Drive 備份留待另一張 KAKA 決策工單。
+const LAST_VOCAB_BACKUP_KEY = 'lastVocabularyBackupAt';
+const VOCAB_BACKUP_STALE_DAYS = 30;
+
 function initVocabularyBackup() {
   $('btnExportVocabulary')?.addEventListener('click', exportVocabularyBackup);
   $('btnExportVocabularyXlsx')?.addEventListener('click', exportVocabularyXlsx);
   const fileInput = $('vocabularyImportFile');
   $('btnImportVocabulary')?.addEventListener('click', () => fileInput?.click());
   fileInput?.addEventListener('change', importVocabularyBackup);
+  renderVocabularyBackupStaleness();
+}
+
+async function renderVocabularyBackupStaleness() {
+  const el = $('vocabularyBackupReminder');
+  if (!el) return;
+  const { [LAST_VOCAB_BACKUP_KEY]: last } = await chrome.storage.local.get(LAST_VOCAB_BACKUP_KEY);
+  el.textContent = formatVocabularyBackupReminder(last);
+}
+
+function formatVocabularyBackupReminder(lastIso) {
+  const last = Date.parse(lastIso || '');
+  if (!last) return '尚未匯出過單字本備份，建議定期匯出 JSON 以免資料遺失。';
+  const days = Math.floor((Date.now() - last) / (24 * 60 * 60 * 1000));
+  const when = days <= 0 ? '今天' : `${days} 天前`;
+  const tail = days >= VOCAB_BACKUP_STALE_DAYS ? '（已超過 30 天，建議重新匯出）' : '';
+  return `上次備份：${when}${tail}`;
 }
 
 function setVocabularyBackupStatus(text) {
@@ -69,6 +91,9 @@ async function exportVocabularyBackup() {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    // 只在 JSON 匯出（完整可還原）成功後蓋章；XLSX 是 lossy 不算備份
+    await chrome.storage.local.set({ [LAST_VOCAB_BACKUP_KEY]: new Date().toISOString() });
+    renderVocabularyBackupStaleness();
     setVocabularyBackupStatus(`已匯出 ${backup.count} 個單字。`);
   } catch {
     setVocabularyBackupStatus('匯出失敗，請再試一次。');
@@ -1099,6 +1124,7 @@ if (typeof module !== 'undefined' && module.exports) {
     renderDiagnosticsSelfCheck,
     formatDiagnosticsSummary,
     buildDiagnosticsChecklist,
-    getVocabularyItemsMap
+    getVocabularyItemsMap,
+    formatVocabularyBackupReminder
   };
 }

@@ -509,6 +509,25 @@ describe('Options module', () => {
       expect(Object.keys(map).sort()).toEqual(['en:cat', 'en:dog']);
     });
   });
+
+  // WS-E T-BACKUP：單字本 staleness 提醒（mirror-only 後為單一副本的補償控制）
+  describe('formatVocabularyBackupReminder', () => {
+    it('從未備份 → 提示定期匯出', () => {
+      expect(optionsModule.formatVocabularyBackupReminder('')).toContain('尚未匯出');
+    });
+
+    it('30 天內 → 顯示天數、無過期警告', () => {
+      const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+      const text = optionsModule.formatVocabularyBackupReminder(tenDaysAgo);
+      expect(text).toContain('10 天前');
+      expect(text).not.toContain('已超過');
+    });
+
+    it('超過 30 天 → 附過期建議', () => {
+      const longAgo = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString();
+      expect(optionsModule.formatVocabularyBackupReminder(longAgo)).toContain('已超過 30 天');
+    });
+  });
 });
 
 async function flushPromises(times = 8) {
