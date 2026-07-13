@@ -73,4 +73,8 @@ describe('content CSS UI safeguards', () => {
     expect(css).toMatch(/\.ffb-page-translation-text\s*{[^}]*padding-left:\s*0\s*!important;/);
     expect(css).toMatch(/\.ffb-page-translation-block\s*{[^}]*box-shadow:\s*none\s*!important;/);
   });
+
+  it('does not inject the removed paragraph hover translate button', () => {
+    expect(css).not.toContain('.ffb-single-translate-btn');
+  });
 });

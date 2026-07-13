@@ -1,33 +1,19 @@
 'use strict';
 
-// 全文翻譯 Beta：單段翻譯（hover 浮鈕 + 鍵盤快捷鍵 Alt+T）
+// 全文翻譯 Beta：單段翻譯（鍵盤快捷鍵 Alt+T）
 //
 // 重用整頁翻譯的基礎設施（translatePageItem / pair / renderer / typography /
 // locate），與整頁翻譯共用同一份 pageTranslationState 與控制面板，差別只在
 // 「一次只翻一段、按需加入佇列」。只在 top frame 啟用（與浮球同一 guard）。
 
 const SINGLE_TRANSLATE_BLOCK_SELECTOR = 'h1,h2,h3,h4,h5,h6,p,li,blockquote';
-let ffbSingleTranslateButton = null;
-let ffbSingleHoverBlock = null;     // 目前浮鈕對應的區塊
 let ffbSingleLastBlock = null;      // 最近 hover 到的可翻譯區塊（給快捷鍵 fallback）
-let ffbSingleHideTimer = null;
 let ffbSingleBound = false;
-let ffbSingleHoverEnabled = true; // hover 浮鈕開關（快捷鍵 Alt+T 永遠可用，不受此影響）
 
 function initSingleParagraphTranslate() {
   if (ffbSingleBound) return;
   ffbSingleBound = true;
-  // 讀取 hover 浮鈕設定（預設開；尊重 v1.9.6 降干擾，使用者可關）
-  chrome.storage?.sync?.get?.({ singleHoverButton: true })
-    .then(s => { ffbSingleHoverEnabled = s.singleHoverButton !== false; })
-    .catch(() => {});
-  chrome.storage?.onChanged?.addListener?.((changes, area) => {
-    if (area === 'sync' && changes.singleHoverButton) {
-      ffbSingleHoverEnabled = changes.singleHoverButton.newValue !== false;
-      if (!ffbSingleHoverEnabled) hideSingleTranslateButton();
-    }
-  });
-  document.addEventListener('mouseover', onSingleTranslateHover, true);
+  document.addEventListener('mouseover', trackSingleTranslateTarget, true);
   document.addEventListener('keydown', onSingleTranslateShortcut, true);
 }
 
@@ -35,65 +21,18 @@ function initSingleParagraphTranslate() {
 function findSinglePageTranslatableBlock(node) {
   const start = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
   if (!start?.closest) return null;
-  if (start.closest('#gemini-ai-toolbar, #gemini-result-card, #fanfanba-floating, .ffb-page-translation-panel, .ffb-page-translation-block, .ffb-single-translate-btn')) return null;
+  if (start.closest('#gemini-ai-toolbar, #gemini-result-card, #fanfanba-floating, .ffb-page-translation-panel, .ffb-page-translation-block')) return null;
   const block = start.closest(SINGLE_TRANSLATE_BLOCK_SELECTOR);
   if (!block || !isPageTranslatableElement(block)) return null;
   if (!getElementTranslationText(block)) return null;
   return block;
 }
 
-// ── hover 浮鈕 ───────────────────────────────────────
-function onSingleTranslateHover(e) {
-  if (!ffbSingleHoverEnabled || fanFanBaPaused) { hideSingleTranslateButton(); return; }
+// 只記錄滑鼠所在段落，供 Alt+T 使用；不在網頁上建立浮動按鈕。
+function trackSingleTranslateTarget(e) {
+  if (fanFanBaPaused) return;
   const block = findSinglePageTranslatableBlock(e.target);
-  if (!block) { scheduleHideSingleTranslateButton(); return; }
-  ffbSingleLastBlock = block;
-  if (block === ffbSingleHoverBlock && ffbSingleTranslateButton?.classList.contains('ffb-single-show')) return;
-  ffbSingleHoverBlock = block;
-  showSingleTranslateButtonFor(block);
-}
-
-function ensureSingleTranslateButton() {
-  if (ffbSingleTranslateButton && document.body.contains(ffbSingleTranslateButton)) return ffbSingleTranslateButton;
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'ffb-single-translate-btn';
-  btn.textContent = '譯';
-  btn.title = '翻譯這一段（Alt+T）';
-  btn.setAttribute('aria-label', '翻譯這一段');
-  btn.addEventListener('mousedown', ev => { ev.preventDefault(); ev.stopPropagation(); });
-  btn.addEventListener('mouseenter', () => clearTimeout(ffbSingleHideTimer));
-  btn.addEventListener('mouseleave', scheduleHideSingleTranslateButton);
-  btn.addEventListener('click', ev => {
-    ev.preventDefault();
-    ev.stopPropagation();
-    const target = ffbSingleHoverBlock;
-    hideSingleTranslateButton();
-    if (target) translateSinglePageBlock(target);
-  });
-  document.body.appendChild(btn);
-  ffbSingleTranslateButton = btn;
-  return btn;
-}
-
-function showSingleTranslateButtonFor(block) {
-  clearTimeout(ffbSingleHideTimer);
-  const btn = ensureSingleTranslateButton();
-  const rect = block.getBoundingClientRect();
-  btn.style.top = `${Math.max(4, rect.top + 2)}px`;
-  btn.style.left = `${Math.min(window.innerWidth - 32, rect.right - 26)}px`;
-  btn.classList.add('ffb-single-show');
-}
-
-function scheduleHideSingleTranslateButton() {
-  clearTimeout(ffbSingleHideTimer);
-  ffbSingleHideTimer = setTimeout(hideSingleTranslateButton, 180);
-}
-
-function hideSingleTranslateButton() {
-  clearTimeout(ffbSingleHideTimer);
-  ffbSingleHoverBlock = null;
-  ffbSingleTranslateButton?.classList.remove('ffb-single-show');
+  if (block) ffbSingleLastBlock = block;
 }
 
 // ── 鍵盤快捷鍵 Alt+T ─────────────────────────────────

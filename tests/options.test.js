@@ -256,8 +256,7 @@ describe('Options module', () => {
         model: 'groq:meta-llama/llama-4-scout-17b-16e-instruct',
         pageTranslationModel: 'openrouter:deepseek/deepseek-v4-flash:free',
         targetLanguage: 'en',
-        vocabularyHighlightMode: 'auto',
-        singleHoverButton: true
+        vocabularyHighlightMode: 'auto'
       }, {
         groqApiKey: 'gsk_test'
       }, '1.9.8');
