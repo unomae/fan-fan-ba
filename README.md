@@ -6,6 +6,14 @@
 看到不懂的一劃就翻譯、解釋，還能順手存進筆記，一氣呵成。  
 選取任意網頁文字，一鍵觸發翻譯、解釋、優化——多家 AI 模型驅動，結果即時浮現，不打斷閱讀流。
 
+## 接手須知
+
+> 本節自 CORE_RULES B-2 下放（2026-07-21），此處為細節唯一真相。
+
+- 本專案是 nested repo，曾遇 dubious ownership；結論要回寫 `project-overview.html`，且 local verified 不等於 Chrome Web Store 已發布。
+- 單元測試只寫本機 cache；人工測試會修改瀏覽器 extension／儲存狀態。
+- 沒有自動化 extension e2e；本機測試通過也不代表 Store 已發布，真實 Chrome extension、權限與頁面互動須依 `MANUAL-QA.md` 人工驗證。
+
 ---
 
 ## ✨ 功能亮點
