@@ -1,0 +1,787 @@
+{
+  "project": "fan-fan-ba",
+  "version": "1.9.9",
+  "date": "2026-07-24",
+  "timezone": "Asia/Taipei",
+  "baseline": "b90900a",
+  "qaBase": "/Users/oricorio/dev/0xKAKA-dev/fan-fan-ba",
+  "browser": "Chrome for Testing (Chromium via Playwright)",
+  "extensionId": "kopoiadnhecbcjemoeggmaoekjkpecgo",
+  "profile": "/private/tmp/fan-fan-ba-phase1-2-profile-rerun3",
+  "manualGates": [
+    "真實 Groq／Gemini／OpenRouter／Google Cloud TTS API Key",
+    "Google OAuth、Drive appData 上傳／下載",
+    "Obsidian Advanced URI 與真實測試 Vault",
+    "install/update 事件重放與人工音訊聆聽"
+  ],
+  "summary": {
+    "total": 60,
+    "pass": 32,
+    "fail": 4,
+    "skip": 24
+  },
+  "results": [
+    {
+      "id": "TC-B1-001",
+      "module": "B1",
+      "name": "儲存 Groq 模型與測試連線",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "dummy Key 與設定持久化已驗證；未呼叫真實 Groq 與實際網頁翻譯。 persisted={\"targetLanguage\":\"ja\",\"obsidianVault\":\"QA 測試 Vault\",\"groqMasked\":true}"
+    },
+    {
+      "id": "TC-B1-002",
+      "module": "B1",
+      "name": "Gemini 與 OpenRouter 替代模型",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "三 provider dummy Key 可分離保存；未使用真實 Gemini／OpenRouter Key，未送 provider runtime。"
+    },
+    {
+      "id": "TC-B1-003",
+      "module": "B1",
+      "name": "缺 Key、錯誤 Key 與遮罩",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "缺 Key 顯示錯誤=\"請先輸入 Groq API Key\"；4 個秘密欄位預設皆 password=true。"
+    },
+    {
+      "id": "TC-B1-004",
+      "module": "B1",
+      "name": "特殊字元、超長輸入與連點",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "特殊字元／長輸入未執行腳本，狀態以 textContent 呈現：\"✓ 設定已儲存\"。"
+    },
+    {
+      "id": "TC-B1-005",
+      "module": "B1",
+      "name": "行動版模型與金鑰頁",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [
+        "screenshots/TC-B1-005-model-mobile.png"
+      ],
+      "note": "375px model 面板 scrollWidth=375, clientWidth=375。"
+    },
+    {
+      "id": "TC-B2-001",
+      "module": "B2",
+      "name": "儲存語言、朗讀與高亮偏好",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "語言／朗讀／高亮設定可持久化（target=ja）；未執行 AI 輸出與真實朗讀。"
+    },
+    {
+      "id": "TC-B2-002",
+      "module": "B2",
+      "name": "瀏覽器內建 TTS 替代路徑",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "無人工音訊聆聽證據，不把 speechSynthesis API 存在冒充 TTS 可用。"
+    },
+    {
+      "id": "TC-B2-003",
+      "module": "B2",
+      "name": "無效 TTS Key 與語音權限",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "未向 Google Cloud TTS 傳送 dummy Key；網路拒絕與語音不可用保留 runtime gate。"
+    },
+    {
+      "id": "TC-B2-004",
+      "module": "B2",
+      "name": "語系與特殊內容邊界",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "語系選單與特殊字元輸入穩定；未完成混合語句的翻譯／朗讀輸出。"
+    },
+    {
+      "id": "TC-B2-005",
+      "module": "B2",
+      "name": "行動版語言與朗讀頁",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [
+        "screenshots/TC-B2-005-language-mobile.png"
+      ],
+      "note": "375px language 面板 scrollWidth=375, clientWidth=375。"
+    },
+    {
+      "id": "TC-B3-001",
+      "module": "B3",
+      "name": "設定 Vault 與資料夾後存入筆記",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "未啟動真實 Obsidian 或寫入測試 Vault。"
+    },
+    {
+      "id": "TC-B3-002",
+      "module": "B3",
+      "name": "留空 Vault 與首次記住資料夾",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "未啟動真實 Obsidian，目前 Vault fallback 與最近資料夾需人工驗。"
+    },
+    {
+      "id": "TC-B3-003",
+      "module": "B3",
+      "name": "Advanced URI 缺失與 scheme 白名單",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "未呼叫外部 app；惡意 scheme 白名單由 Jest 與背景訊息測試覆蓋。"
+    },
+    {
+      "id": "TC-B3-004",
+      "module": "B3",
+      "name": "路徑字元與長度邊界",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "Options 可安全儲存 Unicode 路徑；未對外部 Obsidian 執行路徑穿越／URI 寫入。"
+    },
+    {
+      "id": "TC-B3-005",
+      "module": "B3",
+      "name": "行動版 Obsidian 設定",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [
+        "screenshots/TC-B3-005-obsidian-mobile.png"
+      ],
+      "note": "375px obsidian 面板 scrollWidth=375, clientWidth=375。"
+    },
+    {
+      "id": "TC-B4-001",
+      "module": "B4",
+      "name": "一般設定 JSON round-trip",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "一般設定 round-trip=true；匯出檔不含 API Key=true。"
+    },
+    {
+      "id": "TC-B4-002",
+      "module": "B4",
+      "name": "加密 Key 與單字本替代備份",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "API Key 只存在加密 payload=true；單字 JSON count=1；XLSX ZIP magic=true。"
+    },
+    {
+      "id": "TC-B4-003",
+      "module": "B4",
+      "name": "錯誤檔案、密碼與匯入權限",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "損毀 JSON 明確失敗=\"匯入失敗：JSON 格式不正確\"；現有 sync 設定未被部分覆寫=true。"
+    },
+    {
+      "id": "TC-B4-004",
+      "module": "B4",
+      "name": "惡意與極限備份內容",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": ">10MB 明確拒絕=\"檔案太大（上限 10MB），請確認是翻翻吧的單字本備份。\"；Object prototype 未污染=true。"
+    },
+    {
+      "id": "TC-B4-005",
+      "module": "B4",
+      "name": "行動版備份還原頁",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [
+        "screenshots/TC-B4-005-backup-mobile.png"
+      ],
+      "note": "375px backup 面板 scrollWidth=375, clientWidth=375。"
+    },
+    {
+      "id": "TC-B5-001",
+      "module": "B5",
+      "name": "Google 登入、上傳與下載",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [
+        "phase0c-preauth.md"
+      ],
+      "note": "Phase 0-C manual gate：未建立 Google OAuth session，未執行上傳／下載。"
+    },
+    {
+      "id": "TC-B5-002",
+      "module": "B5",
+      "name": "Native Auth 與 Web Auth fallback",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [
+        "phase0c-preauth.md"
+      ],
+      "note": "Phase 0-C manual gate：沒有第二個已授權 profile，未做跨瀏覽器同步。"
+    },
+    {
+      "id": "TC-B5-003",
+      "module": "B5",
+      "name": "未登入、過期 token 與權限拒絕",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [
+        "phase0c-preauth.md"
+      ],
+      "note": "Phase 0-C manual gate：未登入 Google，不模擬撤銷 token。"
+    },
+    {
+      "id": "TC-B5-004",
+      "module": "B5",
+      "name": "覆寫衝突與版本邊界",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [
+        "phase0c-preauth.md"
+      ],
+      "note": "Phase 0-C manual gate：不讀寫 Google Drive appData，未測雲端檔案邊界。"
+    },
+    {
+      "id": "TC-B5-005",
+      "module": "B5",
+      "name": "行動版雲端同步頁",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [
+        "screenshots/TC-B5-005-cloud-mobile.png"
+      ],
+      "note": "375px cloud 面板 scrollWidth=375, clientWidth=375。"
+    },
+    {
+      "id": "TC-B6-001",
+      "module": "B6",
+      "name": "本機診斷計數與自檢",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "隱私頁顯示 v1.9.9；診斷未渲染選取內容／URL=true。"
+    },
+    {
+      "id": "TC-B6-002",
+      "module": "B6",
+      "name": "缺 Key 與補回 Key 的替代狀態",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "隔離 profile 診斷清除後不含測試內容=true。"
+    },
+    {
+      "id": "TC-B6-003",
+      "module": "B6",
+      "name": "清除診斷資料與儲存權限",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "隱私說明涵蓋本機儲存、API Key 與雲端邊界；未發現未宣告權限文案。"
+    },
+    {
+      "id": "TC-B6-004",
+      "module": "B6",
+      "name": "隱私邊界與無 telemetry",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "Options console／pageerror 未含 dummy 選取內容、URL 或 Key=true。"
+    },
+    {
+      "id": "TC-B6-005",
+      "module": "B6",
+      "name": "行動版隱私與診斷頁",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [
+        "screenshots/TC-B6-005-privacy-mobile.png"
+      ],
+      "note": "375px privacy 面板 scrollWidth=375, clientWidth=375。"
+    },
+    {
+      "id": "TC-E1-001",
+      "module": "E1",
+      "name": "Popup 顯示目前模型與 readiness",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "Popup readiness 與模型摘要可見；dummy Key 未明文顯示=true。"
+    },
+    {
+      "id": "TC-E1-002",
+      "module": "E1",
+      "name": "Popup 快速切換模型",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "3 個模型快速切換後最後選擇持久化=openrouter:deepseek/deepseek-v4-flash:free；未送真實 provider request。"
+    },
+    {
+      "id": "TC-E1-003",
+      "module": "E1",
+      "name": "缺設定與完整設定入口",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "缺設定狀態明確；完整設定入口開啟正確 extension context=true（pages 5→5）。"
+    },
+    {
+      "id": "TC-E1-004",
+      "module": "E1",
+      "name": "舊設定、快速連點與 Popup 壽命",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "未知舊模型 normalize 後未出現 undefined/null=true；pageerror=0。"
+    },
+    {
+      "id": "TC-E1-005",
+      "module": "E1",
+      "name": "Popup 375px 與實際工具列尺寸",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [
+        "screenshots/E1-TC-E1-005-popup-mobile.png"
+      ],
+      "note": "375px Popup scrollWidth=375, clientWidth=375。"
+    },
+    {
+      "id": "TC-E2-001",
+      "module": "E2",
+      "name": "首次安裝顯示完整三步導引",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "首次 install 已由 fresh profile 自動開 Welcome；三步內容可讀（step-like=10），設定入口有效=true。"
+    },
+    {
+      "id": "TC-E2-002",
+      "module": "E2",
+      "name": "稍後再說與重新進入",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "稍後再說可關閉分頁=true；direct welcome re-entry 可用=true。"
+    },
+    {
+      "id": "TC-E2-003",
+      "module": "E2",
+      "name": "外部連結與 extension 權限邊界",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "外部連結 2 個，均未帶 API Key/token=true；未登入、未傳送資料。"
+    },
+    {
+      "id": "TC-E2-004",
+      "module": "E2",
+      "name": "重複事件與內容邊界",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "多 Welcome 分頁可開；未重新觸發瀏覽器 install/update 事件，不能宣稱事件去重通過。"
+    },
+    {
+      "id": "TC-E2-005",
+      "module": "E2",
+      "name": "行動版 Welcome",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [
+        "screenshots/E2-TC-E2-005-welcome-mobile.png"
+      ],
+      "note": "375px Welcome scrollWidth=375, clientWidth=375。"
+    },
+    {
+      "id": "TC-E3-001",
+      "module": "E3",
+      "name": "Service Worker 啟動、休眠與喚醒",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "Service Worker 可喚醒=true；本輪 worker console errors=0。"
+    },
+    {
+      "id": "TC-E3-002",
+      "module": "E3",
+      "name": "跨元件請求 correlation",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "無真實 API Key，未做雙分頁並行 AI request correlation。"
+    },
+    {
+      "id": "TC-E3-003",
+      "module": "E3",
+      "name": "Options 啟動不得發生 TDZ 錯誤",
+      "status": "FAIL",
+      "severity": "P2",
+      "evidence": [
+        "screenshots/B1-options-desktop-runtime.png",
+        "screenshots/20260724-p2-options-tdz-error.jpg"
+      ],
+      "note": "Options 啟動重現 TDZ：Cannot access 'LAST_VOCAB_BACKUP_KEY' before initialization"
+    },
+    {
+      "id": "TC-E3-004",
+      "module": "E3",
+      "name": "惡意訊息、重複安裝與權限邊界",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "4 組 malformed／未知訊息均被忽略或結構化拒絕=true；worker 未崩潰。"
+    },
+    {
+      "id": "TC-E3-005",
+      "module": "E3",
+      "name": "雙端 extension page 與背景一致性",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [
+        "screenshots/E1-TC-E1-005-popup-mobile.png",
+        "screenshots/E2-TC-E2-005-welcome-mobile.png"
+      ],
+      "note": "Options／Popup／Welcome 雙端巡覽後仍連到同一 service worker=true；新增 worker error=0。"
+    },
+    {
+      "id": "TC-F1-001",
+      "module": "F1",
+      "name": "選字後完成翻譯、解釋與優化",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [
+        "screenshots/F1-TC-F1-001-selection-toolbar-pass-desktop.png"
+      ],
+      "note": "工具列注入與 3 個操作按鈕已實測（visible=true, buttons=3），但無真實 API Key，未執行翻譯／解釋／優化 runtime。"
+    },
+    {
+      "id": "TC-F1-002",
+      "module": "F1",
+      "name": "iframe 與主頁的替代選字路徑",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "主頁工具列=true、iframe 工具列=true、top-frame 浮球=1；無 Key，未完成 iframe 翻譯 runtime。"
+    },
+    {
+      "id": "TC-F1-003",
+      "module": "F1",
+      "name": "缺 Key、敏感頁與敏感欄位保護",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "缺 Key 顯示可行動提示、未送 AI 請求；password 欄位選取不顯示工具列=true。manifest denylist 另由靜態與 Jest 覆蓋。"
+    },
+    {
+      "id": "TC-F1-004",
+      "module": "F1",
+      "name": "空白、超長與惡意選取內容",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "惡意字串以 host 純文字處理；window.__xssExecuted=false；工具列數=1。"
+    },
+    {
+      "id": "TC-F1-005",
+      "module": "F1",
+      "name": "行動版工具列與結果卡",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [
+        "screenshots/F1-TC-F1-005-toolbar-mobile.png"
+      ],
+      "note": "375px viewport 工具列位於畫面內=true。host 故意有寬內容，不拿整頁 overflow 冒充 extension 缺陷。"
+    },
+    {
+      "id": "TC-F2-001",
+      "module": "F2",
+      "name": "浮球啟動全文翻譯與模式切換",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "全文翻譯入口可觸發，缺 Key 狀態可見=true；未做實際段落翻譯。"
+    },
+    {
+      "id": "TC-F2-002",
+      "module": "F2",
+      "name": "Alt+T 單段翻譯與續翻",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "Alt+T 可觸發前置路徑，但無全文翻譯 Key，未驗證續翻與請求去重。"
+    },
+    {
+      "id": "TC-F2-003",
+      "module": "F2",
+      "name": "缺 Key、站點停用與敏感網域",
+      "status": "PASS",
+      "severity": "",
+      "evidence": [],
+      "note": "缺 Key 不送請求；站點停用狀態寫入隔離 profile 並於 reload 保留=true。敏感網域由 manifest exclude + Jest 覆蓋。"
+    },
+    {
+      "id": "TC-F2-004",
+      "module": "F2",
+      "name": "超長頁、局部失敗與重試",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "已建立 120 段／動態內容測試頁；無 API Key，未注入 429／中斷／局部重試。"
+    },
+    {
+      "id": "TC-F2-005",
+      "module": "F2",
+      "name": "行動版浮球與全文面板",
+      "status": "FAIL",
+      "severity": "P1",
+      "evidence": [
+        "screenshots/F2-TC-F2-005-floating-menu-mobile.png"
+      ],
+      "note": "375px 浮球選單位於 viewport 內=false；無 Key，全文面板內容測試受 manual gate 限制。"
+    },
+    {
+      "id": "TC-F3-001",
+      "module": "F3",
+      "name": "浮球收藏入口顯示學習庫",
+      "status": "FAIL",
+      "severity": "P1",
+      "evidence": [
+        "screenshots/F3-TC-F3-001-library-invisible-fail-desktop.png"
+      ],
+      "note": "收藏面板 state={\"exists\":true,\"opacity\":\"0\",\"visibility\":\"visible\",\"display\":\"flex\",\"showClass\":false}；重現 DOM 已建立但 opacity=0。"
+    },
+    {
+      "id": "TC-F3-002",
+      "module": "F3",
+      "name": "從結果卡與歷史紀錄進入學習流程",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [
+        "screenshots/F3-TC-F3-001-library-invisible-fail-desktop.png"
+      ],
+      "note": "前置的收藏／紀錄面板被 QA-P1-001 阻擋，且無真實翻譯結果可建立歷史。"
+    },
+    {
+      "id": "TC-F3-003",
+      "module": "F3",
+      "name": "Obsidian 不可用與 URI 權限邊界",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [],
+      "note": "未啟動外部 Obsidian／Advanced URI；scheme 白名單改由 Jest 與程式碼稽查證明。"
+    },
+    {
+      "id": "TC-F3-004",
+      "module": "F3",
+      "name": "大量／惡意單字與高亮排除",
+      "status": "SKIP",
+      "severity": "",
+      "evidence": [
+        "screenshots/F3-TC-F3-001-library-invisible-fail-desktop.png"
+      ],
+      "note": "收藏入口被 QA-P1-001 阻擋；5,000 筆邊界保留給修復後回歸。"
+    },
+    {
+      "id": "TC-F3-005",
+      "module": "F3",
+      "name": "行動版學習庫",
+      "status": "FAIL",
+      "severity": "P1",
+      "evidence": [
+        "screenshots/F3-TC-F3-005-library-invisible-fail-mobile.png"
+      ],
+      "note": "375px 由浮球開啟學習庫可見=false；同受 QA-P1-001 阻斷。"
+    }
+  ],
+  "consoleAudit": [
+    {
+      "page": "front-article",
+      "url": "http://127.0.0.1:59411/article",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "networkFails": []
+    },
+    {
+      "page": "options",
+      "url": "chrome-extension://kopoiadnhecbcjemoeggmaoekjkpecgo/options.html",
+      "consoleErrors": [],
+      "pageErrors": [
+        "Cannot access 'LAST_VOCAB_BACKUP_KEY' before initialization",
+        "Cannot access 'LAST_VOCAB_BACKUP_KEY' before initialization",
+        "Cannot access 'LAST_VOCAB_BACKUP_KEY' before initialization",
+        "Cannot access 'LAST_VOCAB_BACKUP_KEY' before initialization",
+        "Cannot access 'LAST_VOCAB_BACKUP_KEY' before initialization",
+        "Cannot access 'LAST_VOCAB_BACKUP_KEY' before initialization",
+        "Cannot access 'LAST_VOCAB_BACKUP_KEY' before initialization"
+      ],
+      "networkFails": []
+    },
+    {
+      "page": "popup",
+      "url": "chrome-extension://kopoiadnhecbcjemoeggmaoekjkpecgo/popup.html",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "networkFails": []
+    },
+    {
+      "page": "welcome",
+      "url": "chrome-extension://kopoiadnhecbcjemoeggmaoekjkpecgo/welcome.html",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "networkFails": []
+    },
+    {
+      "page": "front-article-audit",
+      "url": "http://127.0.0.1:59411/article",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "networkFails": []
+    },
+    {
+      "page": "front-iframe-audit",
+      "url": "http://127.0.0.1:59411/iframe",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "networkFails": []
+    },
+    {
+      "page": "front-form-audit",
+      "url": "http://127.0.0.1:59411/form",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "networkFails": []
+    },
+    {
+      "page": "front-special-audit",
+      "url": "http://127.0.0.1:59411/special",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "networkFails": []
+    },
+    {
+      "page": "front-long-audit",
+      "url": "http://127.0.0.1:59411/long",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "networkFails": []
+    },
+    {
+      "page": "front-dynamic-audit",
+      "url": "http://127.0.0.1:59411/dynamic",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "networkFails": []
+    },
+    {
+      "page": "front-wide-audit",
+      "url": "http://127.0.0.1:59411/wide",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "networkFails": []
+    },
+    {
+      "page": "front-empty-audit",
+      "url": "http://127.0.0.1:59411/empty",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "networkFails": []
+    },
+    {
+      "page": "front-404-audit",
+      "url": "http://127.0.0.1:59411/404",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "pageErrors": [],
+      "networkFails": [
+        "404 http://127.0.0.1:59411/404"
+      ]
+    },
+    {
+      "page": "extension-popup-audit",
+      "url": "chrome-extension://kopoiadnhecbcjemoeggmaoekjkpecgo/popup.html",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "networkFails": []
+    },
+    {
+      "page": "extension-welcome-audit",
+      "url": "chrome-extension://kopoiadnhecbcjemoeggmaoekjkpecgo/welcome.html",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "networkFails": []
+    },
+    {
+      "page": "boundary-form",
+      "url": "http://127.0.0.1:59411/form",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "networkFails": []
+    }
+  ],
+  "security": [
+    {
+      "item": "空白／錯誤 Email／500 字元輸入",
+      "result": "PASS",
+      "note": "頁面穩定=true，XSS 執行=false",
+      "evidence": [
+        "screenshots/Phase2-boundary-host-form.png"
+      ]
+    },
+    {
+      "item": "Options 空白／XSS／500 字元輸入",
+      "result": "PASS",
+      "note": "未送出外部 AI API；輸入沒有被執行成 script。",
+      "evidence": [
+        "screenshots/Phase2-boundary-options.png"
+      ]
+    },
+    {
+      "item": "500 雙重探測",
+      "result": "PASS",
+      "note": "Probe A=200；Probe B=200；network 5xx=false"
+    },
+    {
+      "item": "Console / Network 關鍵 surface",
+      "result": "PASS",
+      "note": "11/11 surface 無非預期 console/page/5xx；404 測試頁的 404 console/network 訊息為預期負向證據。Options TDZ 另列 QA-P2-002。"
+    },
+    {
+      "item": "Phase 3 Mid-Flow",
+      "result": "PASS",
+      "note": "本輪未觸發 mid-flow OTP／金流／CAPTCHA；Google OAuth 已在 Phase 0-C 標記 manual gate。"
+    }
+  ],
+  "artifacts": [
+    "screenshots/B1-options-desktop-runtime.png",
+    "screenshots/E1-TC-E1-005-popup-mobile.png",
+    "screenshots/E2-TC-E2-005-welcome-mobile.png",
+    "screenshots/F1-TC-F1-001-selection-toolbar-pass-desktop.png",
+    "screenshots/F1-TC-F1-005-toolbar-mobile.png",
+    "screenshots/F2-TC-F2-005-floating-menu-mobile.png",
+    "screenshots/F3-TC-F3-001-library-invisible-fail-desktop.png",
+    "screenshots/F3-TC-F3-005-library-invisible-fail-mobile.png",
+    "screenshots/Phase2-boundary-host-form.png",
+    "screenshots/Phase2-boundary-options.png",
+    "screenshots/TC-B1-005-model-mobile.png",
+    "screenshots/TC-B2-005-language-mobile.png",
+    "screenshots/TC-B3-005-obsidian-mobile.png",
+    "screenshots/TC-B4-005-backup-mobile.png",
+    "screenshots/TC-B5-005-cloud-mobile.png",
+    "screenshots/TC-B6-005-privacy-mobile.png"
+  ],
+  "runnerErrors": []
+}

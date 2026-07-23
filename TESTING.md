@@ -3,7 +3,7 @@
 這個專案使用 **Jest 30** + **jsdom** 作為測試框架（早期曾用 Vitest，已全面遷移到 Jest）。
 本檔說明的是**自動化單元測試**；需要在真實瀏覽器執行的**手動驗收**請見 [`MANUAL-QA.md`](MANUAL-QA.md)。
 
-最後更新：2026-06-25 · 20 suites / 200 tests 全綠。
+最後更新：2026-07-24 · 26 suites / 246 tests 全綠（0 failed、0 skipped）。
 
 ---
 

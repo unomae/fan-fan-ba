@@ -395,7 +395,7 @@
           <span class="pill green">目前版本 v1.9.9</span>
           <span class="pill blue">Chrome / Edge Extension</span>
           <span class="pill blue">Manifest V3</span>
-          <span class="pill orange">最後整理 2026-07-07</span>
+          <span class="pill orange">最後整理 2026-07-24</span>
           <span class="pill orange">主線：先打磨，再上架</span>
         </div>
       </header>
@@ -413,7 +413,7 @@
           </div>
           <div class="card">
             <h3>下一步先做什麼</h3>
-            <p>先處理 T7：親自登入 Google Cloud Console 確認 OAuth 同意畫面、Edge redirect URI 白名單與 scope；接著跑 <code>MANUAL-QA.md</code> 的真瀏覽器 QA。</p>
+            <p>先修 2026-07-24 真瀏覽器 QA 找到的 2 個 P1：收藏面板透明、375px 浮球裁切；再修 Options 啟動 TDZ（P2）。修完重跑失敗案例，最後由 KAKA 補 T7 Google OAuth、真實 API Key 與 Obsidian manual gate。</p>
           </div>
         </div>
 
@@ -569,7 +569,7 @@ content/page-translator-single.js</pre>
           <tr><td>T7</td><td>Google Cloud OAuth 同意畫面發佈狀態、Edge redirect URI 白名單、scope。</td><td><span class="pill red">需人工確認</span></td></tr>
         </table>
         <div class="callout" style="margin-top:12px;">
-          驗證紀錄：2026-07-07 遠端已記錄 <code>20 suites / 212 tests</code> 綠燈，並完成 unbranded Chromium 真瀏覽器 smoke test：service worker 註冊、content script 注入、選字工具列、options / popup / welcome console、T4 exclude_matches 都通過。T1 / T3 / T5 的 AI 請求路徑仍需 API Key 實測，單元測試已覆蓋主要防線。
+          驗證紀錄：2026-07-24 fresh run 為 <code>26 suites / 246 tests</code> 全綠，並完成 Phase 0-C～4-B 真瀏覽器稽核：<code>60 TC / 32 PASS / 4 FAIL / 24 SKIP</code>。獨立缺陷為 2 個 P1（收藏面板透明、375px 浮球裁切）與 1 個 P2（Options TDZ）；真實 API Key、Google OAuth 與 Obsidian 仍是 manual gate。完整證據見 <code>qa-reports/fan-fan-ba-qa-report-20260724.html</code>。
         </div>
       </section>
 
@@ -603,7 +603,7 @@ content/page-translator-single.js</pre>
         <div class="grid">
           <div class="card">
             <h3>自動測試</h3>
-            <p>目前測試框架是 Jest 30 + jsdom。遠端 v1.9.9 安全 hardening 基準為 <code>20 suites / 212 tests</code>。</p>
+            <p>目前測試框架是 Jest 30 + jsdom。2026-07-24 fresh run 為 <code>26 suites / 246 tests</code> 全綠。</p>
             <pre>npm test
 npm test -- --runInBand</pre>
           </div>
@@ -620,8 +620,8 @@ npm test -- --runInBand</pre>
 
         <table style="margin-top:12px;">
           <tr><th>發布前 gate</th><th>狀態</th><th>說明</th></tr>
-          <tr><td>Jest</td><td><span class="pill green">遠端基準通過</span></td><td>v1.9.9 記錄為 <code>20 suites / 212 tests</code>；本次 overview 整理沒有重跑。</td></tr>
-          <tr><td>Manual QA</td><td><span class="pill orange">主線下一步</span></td><td>優先跑 <code>MANUAL-QA.md</code>，特別是 v1.9.6 frame split、v1.9.7 單段翻譯、Phase B 單字本。</td></tr>
+          <tr><td>Jest</td><td><span class="pill green">fresh run 通過</span></td><td>2026-07-24：<code>26 suites / 246 tests</code>，0 failed、0 skipped。</td></tr>
+          <tr><td>Manual QA</td><td><span class="pill red">發現 P1 / P2</span></td><td>Phase 0-C～4-B：<code>60 TC / 32 PASS / 4 FAIL / 24 SKIP</code>；先修 QA-P1-001、QA-P1-003、QA-P2-002，再回歸。完整報告見 <code>qa-reports/fan-fan-ba-qa-report-20260724.html</code>。</td></tr>
           <tr><td>OAuth / Cloud Sync</td><td><span class="pill red">T7 待人工</span></td><td>Chrome native auth 與 Edge Web Auth fallback 都要回填結果；Google Cloud Console 設定送審前必查。</td></tr>
           <tr><td>Chrome Web Store</td><td><span class="pill orange">checkpoint</span></td><td>等產品打磨完成後，再依 <code>STORE-SUBMISSION.md</code> 送審。</td></tr>
         </table>
@@ -630,7 +630,7 @@ npm test -- --runInBand</pre>
       <section id="roadmap">
         <h2>後續計劃</h2>
         <div class="callout">
-          推薦順序：先讓已完成的東西變得可信，再做新能力。也就是先處理 T7 / QA Hardening，接著打磨浮球閱讀控制台與學習閉環。
+          推薦順序：先修 QA-P1-001 → QA-P1-003 → QA-P2-002，重跑 4 個失敗案例；接著由 KAKA 完成 T7 / API Key / Obsidian manual gate，通過後才回到浮球閱讀控制台與學習閉環。
         </div>
         <div class="timeline" style="margin-top:12px;">
           <div class="phase">
@@ -640,13 +640,13 @@ npm test -- --runInBand</pre>
           </div>
           <div class="phase">
             <strong>Phase 0.5</strong>
-            <p>Security Hardening：T1-T6 已實作並有 212 tests / Chromium smoke test 紀錄；T7 Google Cloud OAuth 設定需人工確認。</p>
+            <p>Security Hardening：T1-T6 已實作；2026-07-24 fresh run 為 246 tests 全綠。T7 Google Cloud OAuth 設定需人工確認。</p>
             <span class="pill orange">T7 待辦</span>
           </div>
           <div class="phase">
             <strong>Phase 1</strong>
-            <p>QA Hardening：照 <code>MANUAL-QA.md</code> 跑真瀏覽器 QA，修 P0 / P1 缺陷，明確標出 OAuth、商店後台或環境阻塞。</p>
-            <span class="pill orange">下一步</span>
+            <p>QA Hardening：2026-07-24 已完成 Phase 0-C～4-B；60 TC 中 32 PASS、4 FAIL、24 SKIP。待修 2 個 P1、1 個 P2，並補 OAuth / API Key / Obsidian manual gate。</p>
+            <span class="pill red">待修復與回歸</span>
           </div>
           <div class="phase">
             <strong>Phase 2</strong>
@@ -686,6 +686,7 @@ npm test -- --runInBand</pre>
           <li><strong>v1.9.5-v1.9.8：</strong>完成 P0 / P1 hardening、單段翻譯、IndexedDB / SRS、XLSX 匯出、本機診斷摘要。</li>
           <li><strong>v1.9.9：</strong>完成 security hardening T1-T6；T7 Google Cloud OAuth 人工確認留作送審前 gate。</li>
           <li><strong>2026-07-07：</strong>產品決策改為先打磨再上架；送審降為 release checkpoint；下一步主線是 T7 + QA Hardening。</li>
+          <li><strong>2026-07-24：</strong>完成 Phase 0-C～4-B 真瀏覽器 QA；26 suites / 246 tests 全綠，60 TC 為 32 PASS / 4 FAIL / 24 SKIP。送審 gate 改為先修 2 P1 + 1 P2，再補 OAuth、API Key、Obsidian 人工驗證。</li>
         </ul>
 
         <details>

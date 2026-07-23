@@ -1,16 +1,27 @@
 # 手動 QA 檢查表（需在真實 Chrome / Edge 執行）
 
-> 這份是「**人要做**」的手動驗收，與 `npm test`（200 個自動化單元測試）互補。
+> 這份是「**人要做**」的手動驗收，與 `npm test`（246 個自動化單元測試）互補。
 > 自動測試涵蓋純函式邏輯；以下這些只有在真實瀏覽器載入擴充功能才驗得了。
-> 涵蓋版本：v1.9.6（注入面收斂）→ v1.9.8（單段翻譯 / 本機診斷）+ Phase A–D review 修正。
-> 最後更新：2026-06-25。
+> 涵蓋版本：v1.9.6（注入面收斂）→ v1.9.9（security hardening）+ Phase A–D review 修正。
+> 最後更新：2026-07-24。
 
 ---
 
 ## 0. 前置
-- [ ] `npm test` 全綠（20 suites / 200 tests）
-- [ ] `npm run package` 成功產出 `dist/fan-fan-ba-v<版本>.zip`，先用 `dist/pkg/` 在 `chrome://extensions`「載入未封裝」
-- [ ] 擴充功能版本顯示正確、背景 Service Worker console 無紅字錯誤
+- [x] `npm test` 全綠（2026-07-24：26 suites / 246 tests，0 failed、0 skipped）
+- [x] `npm run package` 成功產出 `dist/fan-fan-ba-v1.9.9.zip`（2026-07-24：3027.1 KB），並以 `dist/pkg/` 載入測試
+- [x] 擴充功能顯示 v1.9.9；背景 Service Worker console 本輪 0 error（Options TDZ 另列 `QA-P2-002`）
+
+---
+
+## 2026-07-24 Phase 0-C～4-B 稽核結果
+
+- 結果：60 TC｜32 PASS｜4 FAIL｜24 SKIP。
+- 2 個 P1：`QA-P1-001` 收藏／紀錄面板透明；`QA-P1-003` 375px 浮球展開仍被右側裁切。
+- 1 個 P2：`QA-P2-002` Options 啟動時發生 `LAST_VOCAB_BACKUP_KEY` TDZ。
+- SKIP 不算通過：真實 AI / TTS API Key、Google OAuth / Drive、Obsidian 與 install/update 事件仍待人工。
+- 主整合報告：[`qa-reports/fan-fan-ba-qa-report-20260724.html`](qa-reports/fan-fan-ba-qa-report-20260724.html)
+- 原始結果：[`qa-reports/phase1-2-results.json`](qa-reports/phase1-2-results.json)
 
 ---
 
