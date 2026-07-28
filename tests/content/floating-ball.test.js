@@ -136,6 +136,29 @@ describe('floating ball menu behavior', () => {
   });
 });
 
+describe('floating library panel', () => {
+  // QA-P1-001 回歸：面板建好但少了 g-show，卡片會保持透明且不可操作
+  it('reveals the result card when the library entry opens the panel', () => {
+    const setup = createContentContext();
+    const context = setup.context;
+    runContentScript('content/site-policy.js', context);
+    runContentScript('content/state.js', context);
+    runContentScript('content/dom.js', context);
+    runContentScript('content/utils.js', context);
+    runContentScript('content/vocabulary.js', context);
+    runContentScript('content/result-card.js', context);
+    runContentScript('content/floating-ball.js', context);
+
+    document.getElementById('fanfanba-floating').querySelector('[data-action="library"]').click();
+
+    const card = document.getElementById('gemini-result-card');
+    expect(card).not.toBeNull();
+    expect(card.classList.contains('g-show')).toBe(true);
+    expect(card.querySelector('[data-library-action="vocabulary"]')).not.toBeNull();
+    expect(card.querySelector('[data-library-action="history"]')).not.toBeNull();
+  });
+});
+
 describe('floating vocabulary panel', () => {
   beforeEach(() => {
     jest.resetModules();

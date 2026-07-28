@@ -569,7 +569,7 @@ content/page-translator-single.js</pre>
           <tr><td>T7</td><td>Google Cloud OAuth 同意畫面發佈狀態、Edge redirect URI 白名單、scope。</td><td><span class="pill red">需人工確認</span></td></tr>
         </table>
         <div class="callout" style="margin-top:12px;">
-          驗證紀錄：2026-07-24 fresh run 為 <code>26 suites / 246 tests</code> 全綠，並完成 Phase 0-C～4-B 真瀏覽器稽核：<code>60 TC / 32 PASS / 4 FAIL / 24 SKIP</code>。獨立缺陷為 2 個 P1（收藏面板透明、375px 浮球裁切）與 1 個 P2（Options TDZ）；真實 API Key、Google OAuth 與 Obsidian 仍是 manual gate。完整證據見 <code>qa-reports/fan-fan-ba-qa-report-20260724.html</code>。
+          驗證紀錄：2026-07-24 完成 Phase 0-C～4-B 真瀏覽器稽核：<code>60 TC / 32 PASS / 4 FAIL / 24 SKIP</code>，獨立缺陷為 2 個 P1（收藏面板透明、375px 浮球裁切）與 1 個 P2（Options TDZ）。2026-07-28 三個缺陷**已修並補上回歸測試**，fresh run 為 <code>26 suites / 249 tests</code> 全綠；對應的 4 個失敗 TC 仍待真實瀏覽器重跑（清單見 <code>MANUAL-QA.md</code>）。真實 API Key、Google OAuth 與 Obsidian 仍是 manual gate。完整證據見 <code>qa-reports/fan-fan-ba-qa-report-20260724.html</code>。
         </div>
       </section>
 
@@ -603,7 +603,7 @@ content/page-translator-single.js</pre>
         <div class="grid">
           <div class="card">
             <h3>自動測試</h3>
-            <p>目前測試框架是 Jest 30 + jsdom。2026-07-24 fresh run 為 <code>26 suites / 246 tests</code> 全綠。</p>
+            <p>目前測試框架是 Jest 30 + jsdom。2026-07-28 fresh run 為 <code>26 suites / 249 tests</code> 全綠。</p>
             <pre>npm test
 npm test -- --runInBand</pre>
           </div>
@@ -620,8 +620,8 @@ npm test -- --runInBand</pre>
 
         <table style="margin-top:12px;">
           <tr><th>發布前 gate</th><th>狀態</th><th>說明</th></tr>
-          <tr><td>Jest</td><td><span class="pill green">fresh run 通過</span></td><td>2026-07-24：<code>26 suites / 246 tests</code>，0 failed、0 skipped。</td></tr>
-          <tr><td>Manual QA</td><td><span class="pill red">發現 P1 / P2</span></td><td>Phase 0-C～4-B：<code>60 TC / 32 PASS / 4 FAIL / 24 SKIP</code>；先修 QA-P1-001、QA-P1-003、QA-P2-002，再回歸。完整報告見 <code>qa-reports/fan-fan-ba-qa-report-20260724.html</code>。</td></tr>
+          <tr><td>Jest</td><td><span class="pill green">fresh run 通過</span></td><td>2026-07-28：<code>26 suites / 249 tests</code>，0 failed、0 skipped。</td></tr>
+          <tr><td>Manual QA</td><td><span class="pill red">待真瀏覽器重跑</span></td><td>Phase 0-C～4-B：<code>60 TC / 32 PASS / 4 FAIL / 24 SKIP</code>。QA-P1-001、QA-P1-003、QA-P2-002 已於 2026-07-28 修復並補回歸測試；4 個失敗 TC 的真瀏覽器重跑清單見 <code>MANUAL-QA.md</code>。完整報告見 <code>qa-reports/fan-fan-ba-qa-report-20260724.html</code>。</td></tr>
           <tr><td>OAuth / Cloud Sync</td><td><span class="pill red">T7 待人工</span></td><td>Chrome native auth 與 Edge Web Auth fallback 都要回填結果；Google Cloud Console 設定送審前必查。</td></tr>
           <tr><td>Chrome Web Store</td><td><span class="pill orange">checkpoint</span></td><td>等產品打磨完成後，再依 <code>STORE-SUBMISSION.md</code> 送審。</td></tr>
         </table>
@@ -630,7 +630,7 @@ npm test -- --runInBand</pre>
       <section id="roadmap">
         <h2>後續計劃</h2>
         <div class="callout">
-          推薦順序：先修 QA-P1-001 → QA-P1-003 → QA-P2-002，重跑 4 個失敗案例；接著由 KAKA 完成 T7 / API Key / Obsidian manual gate，通過後才回到浮球閱讀控制台與學習閉環。
+          推薦順序：QA-P1-001 / QA-P1-003 / QA-P2-002 已於 2026-07-28 修完，接著由 KAKA 用真瀏覽器重跑 4 個失敗案例，並完成 T7 / API Key / Obsidian manual gate，通過後才回到浮球閱讀控制台與學習閉環。
         </div>
         <div class="timeline" style="margin-top:12px;">
           <div class="phase">
@@ -687,6 +687,7 @@ npm test -- --runInBand</pre>
           <li><strong>v1.9.9：</strong>完成 security hardening T1-T6；T7 Google Cloud OAuth 人工確認留作送審前 gate。</li>
           <li><strong>2026-07-07：</strong>產品決策改為先打磨再上架；送審降為 release checkpoint；下一步主線是 T7 + QA Hardening。</li>
           <li><strong>2026-07-24：</strong>完成 Phase 0-C～4-B 真瀏覽器 QA；26 suites / 246 tests 全綠，60 TC 為 32 PASS / 4 FAIL / 24 SKIP。送審 gate 改為先修 2 P1 + 1 P2，再補 OAuth、API Key、Obsidian 人工驗證。</li>
+          <li><strong>2026-07-28：</strong>修掉 QA-P1-001（收藏面板缺 <code>g-show</code>）、QA-P1-003（窄螢幕浮球半藏靠 hover 才收回，實測 375px 溢出 24px）、QA-P2-002（Options 常數 TDZ），各補一條回歸測試；26 suites / 249 tests 全綠。4 個失敗 TC 待真瀏覽器重跑。</li>
         </ul>
 
         <details>

@@ -331,6 +331,7 @@ function showFloatingLibraryPanel() {
     showFloatingHistoryPanel();
   });
 
+  resultCard.classList.add('g-show');
   positionResultCardNearFloatingBall();
 }
 

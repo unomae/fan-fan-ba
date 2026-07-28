@@ -1,14 +1,14 @@
 # 手動 QA 檢查表（需在真實 Chrome / Edge 執行）
 
-> 這份是「**人要做**」的手動驗收，與 `npm test`（246 個自動化單元測試）互補。
+> 這份是「**人要做**」的手動驗收，與 `npm test`（249 個自動化單元測試）互補。
 > 自動測試涵蓋純函式邏輯；以下這些只有在真實瀏覽器載入擴充功能才驗得了。
 > 涵蓋版本：v1.9.6（注入面收斂）→ v1.9.9（security hardening）+ Phase A–D review 修正。
-> 最後更新：2026-07-24。
+> 最後更新：2026-07-28。
 
 ---
 
 ## 0. 前置
-- [x] `npm test` 全綠（2026-07-24：26 suites / 246 tests，0 failed、0 skipped）
+- [x] `npm test` 全綠（2026-07-28：26 suites / 249 tests，0 failed、0 skipped）
 - [x] `npm run package` 成功產出 `dist/fan-fan-ba-v1.9.9.zip`（2026-07-24：3027.1 KB），並以 `dist/pkg/` 載入測試
 - [x] 擴充功能顯示 v1.9.9；背景 Service Worker console 本輪 0 error（Options TDZ 另列 `QA-P2-002`）
 
@@ -22,6 +22,37 @@
 - SKIP 不算通過：真實 AI / TTS API Key、Google OAuth / Drive、Obsidian 與 install/update 事件仍待人工。
 - 主整合報告：[`qa-reports/fan-fan-ba-qa-report-20260724.html`](qa-reports/fan-fan-ba-qa-report-20260724.html)
 - 原始結果：[`qa-reports/phase1-2-results.json`](qa-reports/phase1-2-results.json)
+
+---
+
+## 2026-07-28 三缺陷修補與待人工回歸
+
+三個開放缺陷已修，`npm test` 26 suites / 249 tests 全綠（0 failed、0 skipped）。
+自動化能鎖住的部分已進測試，**下列真實瀏覽器回歸只有你能跑**：
+
+- [ ] `TC-F3-001` / `TC-F3-005`：一般 HTTPS 頁 → 浮球 →「收藏 / 紀錄」→ 面板**實心可見且可點**，能進單字本與最近查詢
+      （自動化已鎖：`tests/content/floating-ball.test.js` 驗 `.g-show` 有加上；但透明度是 computed style，jsdom 驗不到）
+- [ ] `TC-F3-002` / `TC-F3-004`：前置被 QA-P1-001 擋住的兩案（歷史紀錄回看、5,000 筆邊界）現在可以重跑
+- [ ] `TC-E3-003`：開 options 頁 → DevTools console **無** `Cannot access 'LAST_VOCAB_BACKUP_KEY' before initialization`，
+      且「單字本備份」區塊看得到「尚未匯出過…」或「上次備份：N 天前」提醒
+      （自動化已鎖：`tests/options.test.js › vocabulary backup startup`）
+- [ ] `TC-F2-005`：375×812 真實裝置 / DevTools 裝置模擬 → 浮球主球與收藏 / 全文翻譯 / 設定鈕**完整在畫面內**，
+      且在 481px 以上的桌機視窗，浮球靜置時仍維持右側半藏（沒被這次修改弄丟）
+
+### QA-P1-003 的量測方式（jsdom 量不到 bounding box，改用瀏覽器實測）
+
+`tests/content/css.test.js` 只能鎖住 CSS 規則沒被刪掉，實際像素位置要這樣量：
+把 `content.css` 與 `content/{site-policy,state,dom,floating-ball}.js` 內嵌成一頁 harness，
+用 Playwright 設 375×812，讀四個控制項的 `getBoundingClientRect().right - window.innerWidth`。
+
+2026-07-28 實測（修前 → 修後）：
+
+| 控制項 | 修前・靜置 | 修後・靜置 | 修後・展開 |
+| --- | --- | --- | --- |
+| 主球 `.ffb-ball-main` | 溢出 +24.0px | 0px | 0px |
+| 收藏 / 全文翻譯 / 設定 | 各溢出 +15.4px | −8.6px（在畫面內） | −8.0px |
+
+桌機 1280px 對照：靜置仍 `translateX(24px)`（半藏保留）、展開 `translateX(0)` 溢出 0px。
 
 ---
 

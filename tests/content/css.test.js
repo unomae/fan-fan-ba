@@ -74,6 +74,14 @@ describe('content CSS UI safeguards', () => {
     expect(css).toMatch(/\.ffb-page-translation-block\s*{[^}]*box-shadow:\s*none\s*!important;/);
   });
 
+  it('stops half-hiding the floating ball where hover cannot reveal it', () => {
+    // QA-P1-003：半藏靠 :hover 才會滑回來，觸控／窄螢幕沒有 hover，
+    // 主球與三顆選單鈕就永遠被右緣裁掉（實測 375px 溢出 24px / 15.4px）
+    expect(css).toMatch(
+      /@media \(hover: none\), \(max-width: 480px\) \{\s*#fanfanba-floating\.ffb-side-right,\s*#fanfanba-floating\.ffb-side-left \{\s*transform: translateX\(0\) !important;/
+    );
+  });
+
   it('does not inject the removed paragraph hover translate button', () => {
     expect(css).not.toContain('.ffb-single-translate-btn');
   });

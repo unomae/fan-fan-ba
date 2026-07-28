@@ -39,6 +39,12 @@ describe('Options module', () => {
       <button id="btnSave"></button>
       <button id="btnTest"></button>
       <div id="status"></div>
+      <button id="btnExportVocabulary"></button>
+      <button id="btnExportVocabularyXlsx"></button>
+      <button id="btnImportVocabulary"></button>
+      <input id="vocabularyImportFile" type="file" />
+      <div id="vocabularyBackupStatus"></div>
+      <div id="vocabularyBackupReminder"></div>
     `;
     global.optionsModule = require('../options');
   });
@@ -82,6 +88,15 @@ describe('Options module', () => {
       expect(el.className).toBe('');
     });
 
+  });
+
+  describe('vocabulary backup startup', () => {
+    // QA-P2-002 回歸：initVocabularyBackup() 若在 LAST_VOCAB_BACKUP_KEY 宣告前跑，
+    // 會在 TDZ 炸掉，提醒欄位就永遠是空字串（開 options 頁噴 uncaught error）
+    it('renders the backup staleness reminder on startup', () => {
+      expect(document.getElementById('vocabularyBackupReminder').textContent)
+        .toBe('尚未匯出過單字本備份，建議定期匯出 JSON 以免資料遺失。');
+    });
   });
 
   describe('settings backup', () => {

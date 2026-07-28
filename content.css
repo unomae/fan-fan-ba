@@ -1563,6 +1563,15 @@ del.g-diff-del {
   transform: translateX(0) !important;
 }
 
+/* 半藏狀態要靠 :hover 才滑回來；觸控裝置與窄螢幕叫不出 hover，
+   主球與選單鈕就一直被視窗邊緣裁掉，這裡直接取消半藏（QA-P1-003）。 */
+@media (hover: none), (max-width: 480px) {
+  #fanfanba-floating.ffb-side-right,
+  #fanfanba-floating.ffb-side-left {
+    transform: translateX(0) !important;
+  }
+}
+
 .ffb-ball-main {
   position: relative !important;
   display: flex !important;

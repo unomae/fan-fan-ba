@@ -27,6 +27,13 @@ const DIAGNOSTICS_SETTING_KEYS = [
   'targetLanguage',
   'vocabularyHighlightMode'
 ];
+// A1''' 補償控制（最小版）：mirror-only 後 storage.local 是單一副本，
+// 損毀即全滅。這裡只做「上次備份多久前」的 staleness 提醒，推使用者定期
+// JSON 匯出（完整可還原）。跨裝置 Drive 備份留待另一張 KAKA 決策工單。
+// 常數必須宣告在下方 initVocabularyBackup() 之前，否則 async 的
+// renderVocabularyBackupStaleness() 會在 TDZ 讀到它而炸掉（QA-P2-002）。
+const LAST_VOCAB_BACKUP_KEY = 'lastVocabularyBackupAt';
+const VOCAB_BACKUP_STALE_DAYS = 30;
 // provider 顯示名／key 欄位名／前綴統一取自 ModelRegistry.PROVIDERS（WS-E M3''）
 
 renderModelSelect();
@@ -39,12 +46,6 @@ initDiagnosticsPanel();
 initVocabularyBackup();
 
 // ── 單字本備份 / 還原（Phase B）──────────────────────
-// A1''' 補償控制（最小版）：mirror-only 後 storage.local 是單一副本，
-// 損毀即全滅。這裡只做「上次備份多久前」的 staleness 提醒，推使用者定期
-// JSON 匯出（完整可還原）。跨裝置 Drive 備份留待另一張 KAKA 決策工單。
-const LAST_VOCAB_BACKUP_KEY = 'lastVocabularyBackupAt';
-const VOCAB_BACKUP_STALE_DAYS = 30;
-
 function initVocabularyBackup() {
   $('btnExportVocabulary')?.addEventListener('click', exportVocabularyBackup);
   $('btnExportVocabularyXlsx')?.addEventListener('click', exportVocabularyXlsx);
