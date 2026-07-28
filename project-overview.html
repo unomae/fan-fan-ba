@@ -392,7 +392,7 @@
           <p class="lead">給工程新手的接手版：先看產品在做什麼、程式分成哪些區塊、目前做到哪裡、下一輪要先做什麼。詳細歷史仍保留在本頁後段與 <code>archive/</code>，但第一屏只放現在最重要的資訊。</p>
         </div>
         <div class="meta-row">
-          <span class="pill green">目前版本 v1.9.9</span>
+          <span class="pill green">目前版本 v1.10.0</span>
           <span class="pill blue">Chrome / Edge Extension</span>
           <span class="pill blue">Manifest V3</span>
           <span class="pill orange">最後整理 2026-07-24</span>
@@ -688,6 +688,7 @@ npm test -- --runInBand</pre>
           <li><strong>2026-07-07：</strong>產品決策改為先打磨再上架；送審降為 release checkpoint；下一步主線是 T7 + QA Hardening。</li>
           <li><strong>2026-07-24：</strong>完成 Phase 0-C～4-B 真瀏覽器 QA；26 suites / 246 tests 全綠，60 TC 為 32 PASS / 4 FAIL / 24 SKIP。送審 gate 改為先修 2 P1 + 1 P2，再補 OAuth、API Key、Obsidian 人工驗證。</li>
           <li><strong>2026-07-28：</strong>修掉 QA-P1-001（收藏面板缺 <code>g-show</code>）、QA-P1-003（窄螢幕浮球半藏靠 hover 才收回，實測 375px 溢出 24px）、QA-P2-002（Options 常數 TDZ），各補一條回歸測試；26 suites / 249 tests 全綠。4 個失敗 TC 待真瀏覽器重跑。</li>
+          <li><strong>v1.10.0：</strong>WS-E 資料層收斂——單字本改 mirror-only（chrome.storage.local 單一權威）+ 啟動一次性 cutover 合併並刪除舊 IndexedDB。<strong>此版是資料層 migration，版號必須 bump 才會在使用者升級時觸發 cutover。</strong>尚未發布，半接線功能接線完工併入同一版。</li>
         </ul>
 
         <details>
