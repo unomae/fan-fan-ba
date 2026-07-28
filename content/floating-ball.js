@@ -3,7 +3,8 @@
 const FLOATING_POSITION_KEY = 'fanFanBaFloatingPosition';
 const FFB_ICON_HISTORY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>';
 const FFB_ICON_NOTEBOOK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9.5 8h5"/><path d="M9.5 12H16"/><path d="M9.5 16H14"/></svg>';
-const FFB_ICON_LANGUAGES = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>';
+const FFB_ICON_HIGHLIGHTER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.83 0l-5.17-5.17a2 2 0 0 1 0-2.83L16 4"/></svg>';
+const FFB_ICON_LANGUAGES ='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>';
 const FFB_ICON_SETTINGS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.52a2 2 0 0 1-1 1.72l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.52a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg>';
 
 // getPauseStorageKey 已移至 content/site-policy.js（all_frames 都載入）。
@@ -33,6 +34,10 @@ function createFloatingBall() {
         <button class="ffb-ball-item" type="button" data-action="library" data-tooltip="收藏 / 紀錄" aria-label="收藏 / 紀錄">
           <span class="ffb-ball-icon">${FFB_ICON_NOTEBOOK}</span>
           <span class="ffb-ball-label">收藏 / 紀錄</span>
+        </button>
+        <button class="ffb-ball-item" type="button" data-action="vocab-highlight" data-tooltip="開啟單字高亮" aria-label="開啟單字高亮">
+          <span class="ffb-ball-icon ffb-vocab-highlight-icon">${FFB_ICON_HIGHLIGHTER}</span>
+          <span class="ffb-ball-label ffb-vocab-highlight-label">開啟單字高亮</span>
         </button>
       </div>
       <div class="ffb-ball-menu-gap" aria-hidden="true"></div>
@@ -82,6 +87,17 @@ function createFloatingBall() {
     el.classList.remove('ffb-menu-open');
     showFloatingLibraryPanel();
   });
+  el.querySelector('[data-action="vocab-highlight"]').addEventListener('click', async e => {
+    e.stopPropagation();
+    el.classList.remove('ffb-menu-open');
+    try {
+      // 高亮 helper 在 vocabulary-highlighter.js（manifest 第一組先載入），
+      // 切換完會自己回呼 updateFloatingBallVocabularyHighlightState 更新按鈕文字
+      await globalThis.toggleVocabularyHighlightForSite?.();
+    } catch {
+      // 切換失敗就維持原狀（按鈕文字沒變＝沒開起來），不在宿主頁丟 unhandled rejection
+    }
+  });
   el.querySelector('[data-action="page-translate"]').addEventListener('click', e => {
     e.stopPropagation();
     el.classList.remove('ffb-menu-open');
@@ -125,7 +141,7 @@ function startFloatingBallPointer(e) {
     drag.moved = true;
     ev.preventDefault();
     const nextLeft = Math.max(8, Math.min(drag.left + dx, window.innerWidth - floatingBall.offsetWidth - 8));
-    const nextTop = Math.max(12, Math.min(drag.top + dy, window.innerHeight - floatingBall.offsetHeight - 12));
+    const nextTop = clampFloatingBallTop(drag.top + dy);
     floatingBall.style.left = `${nextLeft}px`;
     floatingBall.style.top = `${nextTop}px`;
     floatingBall.style.right = 'auto';
@@ -180,7 +196,7 @@ async function restoreFloatingBallPosition() {
     const { [FLOATING_POSITION_KEY]: positions = {} } = await chrome.storage.local.get(FLOATING_POSITION_KEY);
     const top = positions[host]?.top;
     const side = positions[host]?.side || 'right';
-    floatingBall.style.top = `${Math.max(12, Math.min(top || Math.round(window.innerHeight * 0.42), window.innerHeight - 56))}px`;
+    floatingBall.style.top = `${clampFloatingBallTop(top || Math.round(window.innerHeight * 0.42))}px`;
     setFloatingBallSide(side);
   } catch {
     floatingBall.style.top = '42vh';
@@ -202,6 +218,17 @@ async function saveFloatingBallPosition() {
       }
     });
   } catch { /* 不影響主要功能 */ }
+}
+
+// 選單上組往上長、下組往下長；只夾 12px 的話，浮球拖到畫面上下極端時
+// 選單會被裁到看不見（上組加了單字高亮鈕後更明顯）。改成預留實際量到的選單高度，
+// 量不到（尚未 layout / jsdom）就退回原本的 12px 邊界。
+function clampFloatingBallTop(top) {
+  const height = floatingBall?.offsetHeight || 46;
+  const above = Math.max(12, (floatingBall?.querySelector('.ffb-ball-menu-top')?.offsetHeight || 0) + 8);
+  const below = Math.max(12, (floatingBall?.querySelector('.ffb-ball-menu-bottom')?.offsetHeight || 0) + 8);
+  const max = Math.max(above, window.innerHeight - height - below);
+  return Math.round(Math.max(above, Math.min(Number(top) || 0, max)));
 }
 
 function snapFloatingBallToSide() {

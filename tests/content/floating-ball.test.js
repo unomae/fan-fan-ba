@@ -26,6 +26,7 @@ function createContentContext() {
     chrome,
     console,
     Date,
+    NodeFilter,
     setTimeout,
     clearTimeout,
     requestAnimationFrame: cb => cb(),
@@ -103,11 +104,11 @@ describe('floating ball menu behavior', () => {
     const floatingBall = document.getElementById('fanfanba-floating');
 
     expect(floatingBall.querySelector('.ffb-page-model-select')).toBeNull();
-    expect(floatingBall.querySelectorAll('.ffb-ball-item')).toHaveLength(3);
-    expect(floatingBall.querySelectorAll('.ffb-ball-menu-top .ffb-ball-item')).toHaveLength(1);
+    // 單字高亮開關接線後：上組＝收藏 / 紀錄＋單字高亮，下組＝全文翻譯＋設定
+    expect(floatingBall.querySelectorAll('.ffb-ball-item')).toHaveLength(4);
+    expect(floatingBall.querySelectorAll('.ffb-ball-menu-top .ffb-ball-item')).toHaveLength(2);
     expect(floatingBall.querySelectorAll('.ffb-ball-menu-bottom .ffb-ball-item')).toHaveLength(2);
     expect(floatingBall.querySelector('[data-action="library"] svg')).not.toBeNull();
-    expect(floatingBall.querySelector('[data-action="vocab-highlight"]')).toBeNull();
     expect(floatingBall.querySelector('.ffb-pause-x')).not.toBeNull();
     expect(floatingBall.querySelector('[data-action="page-translate"] .ffb-translate-icon')).not.toBeNull();
     expect(floatingBall.querySelector('[data-action="settings"] .ffb-settings-icon')).not.toBeNull();
@@ -156,6 +157,113 @@ describe('floating library panel', () => {
     expect(card.classList.contains('g-show')).toBe(true);
     expect(card.querySelector('[data-library-action="vocabulary"]')).not.toBeNull();
     expect(card.querySelector('[data-library-action="history"]')).not.toBeNull();
+  });
+});
+
+// 半接線接完工：toggleVocabularyHighlightForSite 之前零 production caller，
+// 浮球上根本沒有可以按到它的入口。
+describe('floating vocabulary highlight toggle', () => {
+  function mountHighlightBall() {
+    const setup = createContentContext();
+    const context = setup.context;
+    runContentScript('content/site-policy.js', context);
+    runContentScript('content/state.js', context);
+    runContentScript('content/dom.js', context);
+    runContentScript('content/utils.js', context);
+    runContentScript('content/vocabulary.js', context);
+    runContentScript('content/vocabulary-highlighter.js', context);
+    runContentScript('content/floating-ball.js', context);
+    return setup;
+  }
+
+  async function settle() {
+    for (let i = 0; i < 20; i += 1) await Promise.resolve();
+  }
+
+  it('把開關放進會被選單展開露出來的位置，而不只是掛在 DOM 上', () => {
+    mountHighlightBall();
+    const floatingBall = document.getElementById('fanfanba-floating');
+    const button = floatingBall.querySelector('.ffb-ball-menu [data-action="vocab-highlight"]');
+
+    // QA-P1-001 教訓：元素存在 ≠ 使用者看得到。這顆鈕必須落在 .ffb-ball-menu 裡，
+    // 才會吃到 `#fanfanba-floating.ffb-menu-open .ffb-ball-menu { opacity:1; pointer-events:auto }`
+    expect(button).not.toBeNull();
+    expect(button.classList.contains('ffb-ball-item')).toBe(true);
+    expect(button.closest('.ffb-ball-menu-top')).not.toBeNull();
+    expect(button.disabled).toBe(false);
+    expect(button.hasAttribute('hidden')).toBe(false);
+    expect(button.querySelector('svg')).not.toBeNull();
+    expect(button.getAttribute('aria-label')).toBe('開啟單字高亮');
+    expect(button.dataset.tooltip).toBe('開啟單字高亮');
+    expect(button.querySelector('.ffb-vocab-highlight-label').textContent).toBe('開啟單字高亮');
+  });
+
+  it('點擊真的會切換高亮模式並回寫按鈕狀態，再點一次關掉', async () => {
+    const setup = mountHighlightBall();
+    const floatingBall = document.getElementById('fanfanba-floating');
+    const button = floatingBall.querySelector('[data-action="vocab-highlight"]');
+    floatingBall.classList.add('ffb-menu-open');
+
+    button.click();
+    await settle();
+
+    expect(setup.context.chrome.storage.sync.set).toHaveBeenCalledWith({ vocabularyHighlightMode: 'auto' });
+    expect(floatingBall.classList.contains('ffb-vocab-highlight-on')).toBe(true);
+    expect(button.getAttribute('aria-label')).toBe('關閉單字高亮');
+    expect(button.querySelector('.ffb-vocab-highlight-label').textContent).toBe('關閉單字高亮');
+    expect(floatingBall.classList.contains('ffb-menu-open')).toBe(false);
+
+    button.click();
+    await settle();
+
+    expect(setup.context.chrome.storage.sync.set).toHaveBeenLastCalledWith({ vocabularyHighlightMode: 'off' });
+    expect(floatingBall.classList.contains('ffb-vocab-highlight-on')).toBe(false);
+    expect(button.querySelector('.ffb-vocab-highlight-label').textContent).toBe('開啟單字高亮');
+  });
+
+  it('真的把已收藏單字標成 mark，關掉時還原原文', async () => {
+    const setup = mountHighlightBall();
+    setup.localStore.fanFanBaVocabularyItems = {
+      'en:allocation': {
+        id: 'en:allocation',
+        word: 'allocation',
+        lang: 'en',
+        translations: ['配置'],
+        count: 2
+      }
+    };
+    document.body.insertAdjacentHTML('beforeend', '<div id="highlight-target">Regional allocation rules changed.</div>');
+    const button = document.getElementById('fanfanba-floating').querySelector('[data-action="vocab-highlight"]');
+
+    button.click();
+    await settle();
+
+    const mark = document.querySelector('#highlight-target mark.g-vocab-highlight');
+    expect(mark).not.toBeNull();
+    expect(mark.textContent).toBe('allocation');
+
+    button.click();
+    await settle();
+
+    expect(document.querySelector('mark.g-vocab-highlight')).toBeNull();
+    expect(document.getElementById('highlight-target').textContent).toBe('Regional allocation rules changed.');
+  });
+
+  it('浮球位置夾在畫面內時預留選單高度，選單不會被裁到畫面外（QA-P1-003 同型風險）', () => {
+    const setup = mountHighlightBall();
+    const floatingBall = document.getElementById('fanfanba-floating');
+    Object.defineProperty(window, 'innerHeight', { value: 812, configurable: true });
+    // jsdom 沒有 layout，手動餵入真實瀏覽器量到的高度：主球 46、上下組各 2 顆 30px + 8px gap
+    Object.defineProperty(floatingBall, 'offsetHeight', { value: 46, configurable: true });
+    Object.defineProperty(floatingBall.querySelector('.ffb-ball-menu-top'), 'offsetHeight', { value: 68, configurable: true });
+    Object.defineProperty(floatingBall.querySelector('.ffb-ball-menu-bottom'), 'offsetHeight', { value: 68, configurable: true });
+
+    // 拖到最上緣：上組 68px + 8px 間距必須完整留在畫面內
+    expect(setup.context.clampFloatingBallTop(0)).toBe(76);
+    // 拖到最下緣：下組同樣不能被畫面底部裁掉
+    expect(setup.context.clampFloatingBallTop(10000)).toBe(812 - 46 - 76);
+    // 中間位置不受影響
+    expect(setup.context.clampFloatingBallTop(400)).toBe(400);
   });
 });
 
