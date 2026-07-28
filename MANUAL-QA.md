@@ -36,7 +36,8 @@
 - [ ] `TC-E3-003`：開 options 頁 → DevTools console **無** `Cannot access 'LAST_VOCAB_BACKUP_KEY' before initialization`，
       且「單字本備份」區塊看得到「尚未匯出過…」或「上次備份：N 天前」提醒
       （自動化已鎖：`tests/options.test.js › vocabulary backup startup`）
-- [ ] `TC-F2-005`：375×812 真實裝置 / DevTools 裝置模擬 → 浮球主球與收藏 / 全文翻譯 / 設定鈕**完整在畫面內**，
+- [ ] `TC-F2-005`：375×812 真實裝置 / DevTools 裝置模擬 → 浮球主球與收藏 / **單字高亮** / 全文翻譯 / 設定鈕**完整在畫面內**，
+      （2026-07-28 接線輪新增第 4 顆鈕；量測 harness 的控制項清單要一起改成四顆）
       且在 481px 以上的桌機視窗，浮球靜置時仍維持右側半藏（沒被這次修改弄丟）
 
 ### QA-P1-003 的量測方式（jsdom 量不到 bounding box，改用瀏覽器實測）
