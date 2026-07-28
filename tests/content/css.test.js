@@ -82,6 +82,14 @@ describe('content CSS UI safeguards', () => {
     );
   });
 
+  it('keeps the page learning summary visible (not just present) in the panel', () => {
+    // QA-P1-001 教訓：建出來 ≠ 看得見。預設 display 必須是 block，只有 [hidden] 才收起來
+    expect(css).toMatch(/\.ffb-page-learning-summary \{[^}]*display: block !important;/);
+    expect(css).toMatch(/\.ffb-page-learning-summary\[hidden\] \{[^}]*display: none !important;/);
+    expect(css).toContain('.ffb-page-learning-sentences');
+    expect(css).toContain('.ffb-page-learning-vocab');
+  });
+
   it('keeps the vocabulary highlight toggle styled as an on/off floating action', () => {
     expect(css).toContain('#fanfanba-floating.ffb-vocab-highlight-on [data-action="vocab-highlight"]');
   });

@@ -1266,3 +1266,89 @@ describe('page translator collection wiring (半接線接線完工)', () => {
     expect(targets.svgTexts).toEqual([expect.objectContaining({ text: 'Quarterly profit', kind: 'title' })]);
   });
 });
+
+// 半接線接線完工：buildPageLearningSummary 之前零 production caller，
+// 算得出摘要卻沒有任何 UI 顯示位置。
+describe('page learning summary wiring (半接線接線完工)', () => {
+  let origCS, origRect;
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    origCS = window.getComputedStyle;
+    origRect = HTMLElement.prototype.getBoundingClientRect;
+    installPageTranslationDomMocks();
+    resetPageTranslationState();
+  });
+
+  afterEach(() => {
+    restorePageTranslationBeta();
+    window.getComputedStyle = origCS;
+    HTMLElement.prototype.getBoundingClientRect = origRect;
+  });
+
+  function learningEl() {
+    return document.querySelector('.ffb-page-translation-panel .ffb-page-learning-summary');
+  }
+
+  it('翻譯完成後在面板長出可見的學習摘要（關鍵句 ＋ 生字）', async () => {
+    document.body.innerHTML = `
+      <main>
+        <p>Supply planners reduced allocation risk after volatility increased sharply.</p>
+      </main>`;
+    installStreamingPort({
+      chunks: ['Allocation planning improved after repeated scenario reviews. Regional teams rebuilt allocation buffers.']
+    });
+
+    startPageTranslationBeta();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const learning = learningEl();
+    expect(learning).not.toBeNull();
+    expect(learning.hidden).toBe(false);
+    expect(learning.querySelector('.ffb-page-learning-title').textContent).toBe('本頁重點 · 已譯 1 段');
+    expect([...learning.querySelectorAll('.ffb-page-learning-sentences li')].map(li => li.textContent)).toEqual([
+      'Allocation planning improved after repeated scenario reviews.',
+      'Regional teams rebuilt allocation buffers.'
+    ]);
+    expect(learning.querySelector('.ffb-page-learning-vocab').textContent).toContain('allocation ×2');
+  });
+
+  it('還沒有任何譯文時摘要維持隱藏', () => {
+    document.body.innerHTML = '<main><p>Supply planners reduced allocation risk after volatility increased sharply.</p></main>';
+    installStreamingPort({ chunks: ['譯文'] });
+
+    startPageTranslationBeta();
+
+    expect(learningEl().hidden).toBe(true);
+    expect(learningEl().textContent).toBe('');
+  });
+
+  it('摘要內容一律走 ffbEl 建 DOM，頁面塞標籤不會變成節點', async () => {
+    document.body.innerHTML = '<main><p>Supply planners reduced allocation risk after volatility increased sharply.</p></main>';
+    installStreamingPort({
+      chunks: ['<img src=x onerror=alert(1)> allocation scenarios were reviewed again by the team.']
+    });
+
+    startPageTranslationBeta();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const learning = learningEl();
+    expect(learning.hidden).toBe(false);
+    expect(learning.querySelector('img')).toBeNull();
+    expect(learning.textContent).toContain('<img src=x onerror=alert(1)>');
+  });
+
+  it('翻譯進行中不先亮摘要，跑完才出現', async () => {
+    document.body.innerHTML = '<main><p>Supply planners reduced allocation risk after volatility increased sharply.</p></main>';
+    installStreamingPort({ chunks: ['Allocation planning improved after repeated scenario reviews.'] });
+
+    startPageTranslationBeta();
+    expect(ctxRun('pageTranslationState.running')).toBe(true);
+    expect(learningEl().hidden).toBe(true);
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(ctxRun('pageTranslationState.running')).toBe(false);
+    expect(learningEl().hidden).toBe(false);
+  });
+});
