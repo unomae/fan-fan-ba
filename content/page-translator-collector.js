@@ -47,28 +47,8 @@ function collectVisibleTranslatableBlocks() {
   return items;
 }
 
-// 全文翻譯真正取用的收集入口：一般 DOM 區塊 ＋ open Shadow DOM 區塊，
-// 兩者共用同一份 maxBlocks / maxChars 預算，shadow 內容不另開額度。
-function collectPageTranslationItems(root = document) {
-  const items = collectVisibleTranslatableBlocks();
-  const seenTexts = new Set(items.map(item => normalizePageTranslationComparableText(item.text)));
-  let charCount = items.reduce((sum, item) => sum + item.text.length, 0);
-
-  collectOpenShadowDomTranslationBlocks(root).forEach(item => {
-    if (items.length >= PAGE_TRANSLATION_LIMITS.maxBlocks) return;
-    const normalized = normalizePageTranslationComparableText(item.text);
-    if (seenTexts.has(normalized)) return;
-    if (charCount + item.text.length > PAGE_TRANSLATION_LIMITS.maxChars) return;
-    seenTexts.add(normalized);
-    charCount += item.text.length;
-    items.push(item);
-  });
-
-  return items;
-}
-
 function hasVisibleTranslatableBlocks() {
-  return collectPageTranslationItems().length > 0;
+  return collectVisibleTranslatableBlocks().length > 0;
 }
 
 function hasSelectedPageTranslationAncestor(el, items) {
@@ -226,11 +206,13 @@ function detectEmbeddedTranslationTargets(root = document) {
   };
 }
 
-// 嵌入內容不在頁面上就地翻譯，但要收集出來讓面板講清楚「哪些沒被翻到」
+// 嵌入內容一律不就地翻譯（shadow root 吃不到 content.css、跨來源 frame 讀不到），
+// 只收集出來讓面板講清楚「哪些沒被翻到」
 function collectEmbeddedTranslationTargets(root = document, options = {}) {
   return {
     frames: collectEmbeddedFrameTranslationTargets(root, options),
-    svgTexts: collectSvgTextTranslationTargets(root)
+    svgTexts: collectSvgTextTranslationTargets(root),
+    shadowBlocks: collectOpenShadowDomTranslationBlocks(root)
   };
 }
 
@@ -366,19 +348,23 @@ function buildEmbeddedTranslationSummaryText(summary, targets = null) {
   const userVisibleEmbeddedCount = Number(summary.iframeCount || 0)
     + Number(summary.svgTextCount || 0)
     + Number(summary.canvasCount || 0);
-  if (!userVisibleEmbeddedCount) return '';
-  const base = '本頁有部分圖表或互動內容目前無法全文翻譯，可改用選取翻譯。';
   const detail = buildEmbeddedTranslationTargetDetail(targets);
+  // 只有 openShadowRootCount 的頁面不報（任何 web component 都有 shadow root，那是雜訊）；
+  // 但 shadow root 內真的有可讀段落時要報，那是使用者看得到卻沒被翻到的內容。
+  if (!userVisibleEmbeddedCount && !detail) return '';
+  const base = '本頁有部分圖表或互動內容目前無法全文翻譯，可改用選取翻譯。';
   return detail ? `${base}（${detail}）` : base;
 }
 
 function buildEmbeddedTranslationTargetDetail(targets) {
   const frames = Array.isArray(targets?.frames) ? targets.frames : [];
   const svgTexts = Array.isArray(targets?.svgTexts) ? targets.svgTexts : [];
+  const shadowBlocks = Array.isArray(targets?.shadowBlocks) ? targets.shadowBlocks : [];
   const blockedFrames = frames.filter(frame => frame.status === 'blocked').length;
   return [
     frames.length ? `嵌入框架 ${frames.length} 個${blockedFrames ? `（${blockedFrames} 個讀不到）` : ''}` : '',
-    svgTexts.length ? `圖表文字 ${svgTexts.length} 段` : ''
+    svgTexts.length ? `圖表文字 ${svgTexts.length} 段` : '',
+    shadowBlocks.length ? `web component 內文 ${shadowBlocks.length} 段` : ''
   ].filter(Boolean).join('、');
 }
 

@@ -89,7 +89,6 @@ const {
   collectEmbeddedTranslationTargets,
   collectSvgTextTranslationTargets,
   collectOpenShadowDomTranslationBlocks,
-  collectPageTranslationItems,
   buildPageLearningSummary,
   locatePageTranslationSource,
   getPageTranslationContrastTheme,
@@ -1153,7 +1152,7 @@ describe('page translator collection wiring (半接線接線完工)', () => {
     return host;
   }
 
-  it('把 open Shadow DOM 區塊併進同一個收集結果', () => {
+  it('Shadow DOM 內文只被收集成回報目標，不進翻譯佇列', () => {
     document.body.innerHTML = `
       <main>
         <p>Supply planners reduced allocation risk after volatility increased sharply.</p>
@@ -1161,61 +1160,49 @@ describe('page translator collection wiring (半接線接線完工)', () => {
       </main>`;
     attachShadowArticle('host', '<article><p>Inventory planning inside a web component needs its own review.</p></article>');
 
-    const items = collectPageTranslationItems();
+    const targets = collectEmbeddedTranslationTargets();
 
-    expect(items.map(item => item.source || 'light-dom')).toEqual(['light-dom', 'open-shadow-dom']);
-    expect(items[1].host.id).toBe('host');
+    expect(collectVisibleTranslatableBlocks()).toHaveLength(1);
+    expect(targets.shadowBlocks.map(block => block.text)).toEqual([
+      'Inventory planning inside a web component needs its own review.'
+    ]);
+    expect(targets.shadowBlocks[0].host.id).toBe('host');
   });
 
-  it('Shadow DOM 區塊吃同一份 maxBlocks 預算，不另開額度', () => {
-    const maxBlocks = ctxRun('PAGE_TRANSLATION_LIMITS.maxBlocks');
-    const paragraphs = Array.from({ length: maxBlocks }, (_, index) =>
-      `<p>Regional allocation review number ${index} needed a longer sentence here.</p>`).join('');
-    document.body.innerHTML = `<main>${paragraphs}<custom-card id="host"></custom-card></main>`;
-    attachShadowArticle('host', '<article><p>Inventory planning inside a web component needs its own review.</p></article>');
-
-    const items = collectPageTranslationItems();
-
-    expect(items).toHaveLength(maxBlocks);
-    expect(items.some(item => item.source === 'open-shadow-dom')).toBe(false);
-  });
-
-  it('Shadow DOM 區塊與一般區塊重複的文字只收一次', () => {
-    const shared = 'Supply planners reduced allocation risk after volatility increased sharply.';
-    document.body.innerHTML = `<main><p>${shared}</p><custom-card id="host"></custom-card></main>`;
-    attachShadowArticle('host', `<article><p>${shared}</p></article>`);
-
-    expect(collectPageTranslationItems()).toHaveLength(1);
-  });
-
-  it('startPageTranslationBeta 真的把 Shadow DOM 區塊送進翻譯佇列並插入譯文節點', async () => {
-    document.body.innerHTML = '<main><custom-card id="host"></custom-card></main>';
-    const host = attachShadowArticle('host', '<article><p>Inventory planning inside a web component needs its own review.</p></article>');
-    installStreamingPort({ chunks: ['網頁元件裡的庫存規劃需要獨立檢視。'] });
-
-    startPageTranslationBeta();
-    await new Promise(resolve => setTimeout(resolve, 0));
-
-    const block = host.shadowRoot.querySelector('.ffb-page-translation-block');
-    expect(block).not.toBeNull();
-    expect(block.textContent).toContain('網頁元件裡的庫存規劃需要獨立檢視。');
-    expect(host.shadowRoot.querySelector('p').classList.contains('ffb-page-source-translated')).toBe(true);
-    expect(ctxRun('pageTranslationState.total')).toBe(1);
-  });
-
-  it('還原時連 Shadow DOM 內的譯文節點一起清掉（document.querySelectorAll 掃不到）', async () => {
-    document.body.innerHTML = '<main><custom-card id="host"></custom-card></main>';
+  it('startPageTranslationBeta 不把譯文塞進 shadow root，只在面板提示', async () => {
+    document.body.innerHTML = `
+      <main>
+        <p>Supply planners reduced allocation risk after volatility increased sharply.</p>
+        <custom-card id="host"></custom-card>
+      </main>`;
     const host = attachShadowArticle('host', '<article><p>Inventory planning inside a web component needs its own review.</p></article>');
     installStreamingPort({ chunks: ['譯文'] });
 
     startPageTranslationBeta();
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(host.shadowRoot.querySelector('.ffb-page-translation-block')).not.toBeNull();
 
-    restorePageTranslationBeta();
-
+    // shadow root 吃不到 content.css，塞進去只會是沒樣式的裸文字 → 一律不塞
     expect(host.shadowRoot.querySelector('.ffb-page-translation-block')).toBeNull();
     expect(host.shadowRoot.querySelector('p').classList.contains('ffb-page-source-translated')).toBe(false);
+    expect(ctxRun('pageTranslationState.total')).toBe(1); // 只有 light DOM 那一段
+
+    const embedded = document.querySelector('.ffb-page-translation-panel .ffb-page-embedded-summary');
+    expect(embedded.hidden).toBe(false);
+    expect(embedded.textContent).toContain('web component 內文 1 段');
+  });
+
+  it('只有 shadow root 存在、內文讀不出東西時不多嘴', () => {
+    document.body.innerHTML = `
+      <main>
+        <p>Supply planners reduced allocation risk after volatility increased sharply.</p>
+        <custom-card id="host"></custom-card>
+      </main>`;
+    attachShadowArticle('host', '<div><button type="button">Expand</button></div>');
+    installStreamingPort({ chunks: ['譯文'] });
+
+    startPageTranslationBeta();
+
+    expect(document.querySelector('.ffb-page-translation-panel .ffb-page-embedded-summary').hidden).toBe(true);
   });
 
   it('startPageTranslationBeta 收集 iframe / SVG 目標，並在面板上顯示得出來', () => {
@@ -1253,17 +1240,20 @@ describe('page translator collection wiring (半接線接線完工)', () => {
     expect(embedded.textContent).toBe('');
   });
 
-  it('collectEmbeddedTranslationTargets 直接回傳 frames / svgTexts 兩組結果', () => {
+  it('collectEmbeddedTranslationTargets 回傳 frames / svgTexts / shadowBlocks 三組結果', () => {
     document.body.innerHTML = `
       <main>
         <iframe title="cross origin chart" src="https://charts.example.com/embed"></iframe>
         <svg><title>Quarterly profit</title></svg>
+        <custom-card id="host"></custom-card>
       </main>`;
+    attachShadowArticle('host', '<article><p>Inventory planning inside a web component needs its own review.</p></article>');
 
     const targets = collectEmbeddedTranslationTargets(document, { currentOrigin: 'http://localhost' });
 
     expect(targets.frames).toEqual([expect.objectContaining({ bridgeMode: 'frame-script' })]);
     expect(targets.svgTexts).toEqual([expect.objectContaining({ text: 'Quarterly profit', kind: 'title' })]);
+    expect(targets.shadowBlocks).toEqual([expect.objectContaining({ source: 'open-shadow-dom' })]);
   });
 });
 

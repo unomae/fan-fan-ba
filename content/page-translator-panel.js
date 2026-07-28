@@ -11,7 +11,7 @@ function startPageTranslationBeta() {
     return;
   }
 
-  const items = collectPageTranslationItems();
+  const items = collectVisibleTranslatableBlocks();
   const embeddedSummary = detectEmbeddedTranslationTargets();
   const embeddedTargets = collectEmbeddedTranslationTargets();
   ensurePageTranslationPanel();
@@ -312,11 +312,6 @@ function restorePageTranslationBeta() {
   pageTranslationState.running = false;
   cancelActivePageTranslationRequest();
   if (pageTranslationState.scrollTimer) clearTimeout(pageTranslationState.scrollTimer);
-  // 先按 item 清一輪：shadow root 內的譯文節點 document.querySelectorAll 掃不到
-  pageTranslationState.items.forEach(item => {
-    item.translationNode?.remove();
-    item.el?.classList.remove('ffb-page-source-translated');
-  });
   document.querySelectorAll('.ffb-page-translation-block').forEach(node => node.remove());
   document.querySelectorAll('.ffb-page-source-translated').forEach(node => node.classList.remove('ffb-page-source-translated'));
   document.documentElement.classList.remove(
