@@ -41,6 +41,7 @@ let pageTranslationState = {
   density: 'compact',
   items: [],
   embeddedSummary: null,
+  embeddedTargets: null,
   usage: createPageTranslationUsageSummary(0),
   done: 0,
   errors: 0,

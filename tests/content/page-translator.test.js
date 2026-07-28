@@ -86,8 +86,10 @@ const {
   detectEmbeddedTranslationTargets,
   buildEmbeddedTranslationSummaryText,
   collectEmbeddedFrameTranslationTargets,
+  collectEmbeddedTranslationTargets,
   collectSvgTextTranslationTargets,
   collectOpenShadowDomTranslationBlocks,
+  collectPageTranslationItems,
   buildPageLearningSummary,
   locatePageTranslationSource,
   getPageTranslationContrastTheme,
@@ -634,7 +636,7 @@ function resetPageTranslationState() {
   ctxRun(`pageTranslationState = {
     running: false, stopped: false, stopping: false, activated: false, canContinue: false,
     scrollBound: false, scrollTimer: null, selectionBound: false, activePairId: null,
-    mode: 'bilingual', density: 'compact', items: [], embeddedSummary: null,
+    mode: 'bilingual', density: 'compact', items: [], embeddedSummary: null, embeddedTargets: null,
     usage: createPageTranslationUsageSummary(0), done: 0, errors: 0, total: 0
   };
   pageTranslationActivePort = null;
@@ -1120,5 +1122,147 @@ describe('single-paragraph translate — context digest (v1.9.7 / Phase C)', () 
     expect(context).toContain('After:');
     expect(context).toContain('First paragraph');
     expect(context).toContain('Third paragraph');
+  });
+});
+
+// ── 半接線接線完工：三個 collector 之前零 production caller ────────────
+// collectOpenShadowDomTranslationBlocks / collectEmbeddedFrameTranslationTargets /
+// collectSvgTextTranslationTargets 原本只有測試在呼叫，全文翻譯流程完全沒接。
+// 這段鎖的是「呼叫端真的會呼叫它」與「結果真的被使用者看得到」。
+describe('page translator collection wiring (半接線接線完工)', () => {
+  let origCS, origRect;
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    origCS = window.getComputedStyle;
+    origRect = HTMLElement.prototype.getBoundingClientRect;
+    installPageTranslationDomMocks();
+    resetPageTranslationState();
+  });
+
+  afterEach(() => {
+    restorePageTranslationBeta();
+    window.getComputedStyle = origCS;
+    HTMLElement.prototype.getBoundingClientRect = origRect;
+  });
+
+  function attachShadowArticle(hostId, html) {
+    const host = document.getElementById(hostId);
+    host.attachShadow({ mode: 'open' });
+    host.shadowRoot.innerHTML = html;
+    return host;
+  }
+
+  it('把 open Shadow DOM 區塊併進同一個收集結果', () => {
+    document.body.innerHTML = `
+      <main>
+        <p>Supply planners reduced allocation risk after volatility increased sharply.</p>
+        <custom-card id="host"></custom-card>
+      </main>`;
+    attachShadowArticle('host', '<article><p>Inventory planning inside a web component needs its own review.</p></article>');
+
+    const items = collectPageTranslationItems();
+
+    expect(items.map(item => item.source || 'light-dom')).toEqual(['light-dom', 'open-shadow-dom']);
+    expect(items[1].host.id).toBe('host');
+  });
+
+  it('Shadow DOM 區塊吃同一份 maxBlocks 預算，不另開額度', () => {
+    const maxBlocks = ctxRun('PAGE_TRANSLATION_LIMITS.maxBlocks');
+    const paragraphs = Array.from({ length: maxBlocks }, (_, index) =>
+      `<p>Regional allocation review number ${index} needed a longer sentence here.</p>`).join('');
+    document.body.innerHTML = `<main>${paragraphs}<custom-card id="host"></custom-card></main>`;
+    attachShadowArticle('host', '<article><p>Inventory planning inside a web component needs its own review.</p></article>');
+
+    const items = collectPageTranslationItems();
+
+    expect(items).toHaveLength(maxBlocks);
+    expect(items.some(item => item.source === 'open-shadow-dom')).toBe(false);
+  });
+
+  it('Shadow DOM 區塊與一般區塊重複的文字只收一次', () => {
+    const shared = 'Supply planners reduced allocation risk after volatility increased sharply.';
+    document.body.innerHTML = `<main><p>${shared}</p><custom-card id="host"></custom-card></main>`;
+    attachShadowArticle('host', `<article><p>${shared}</p></article>`);
+
+    expect(collectPageTranslationItems()).toHaveLength(1);
+  });
+
+  it('startPageTranslationBeta 真的把 Shadow DOM 區塊送進翻譯佇列並插入譯文節點', async () => {
+    document.body.innerHTML = '<main><custom-card id="host"></custom-card></main>';
+    const host = attachShadowArticle('host', '<article><p>Inventory planning inside a web component needs its own review.</p></article>');
+    installStreamingPort({ chunks: ['網頁元件裡的庫存規劃需要獨立檢視。'] });
+
+    startPageTranslationBeta();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const block = host.shadowRoot.querySelector('.ffb-page-translation-block');
+    expect(block).not.toBeNull();
+    expect(block.textContent).toContain('網頁元件裡的庫存規劃需要獨立檢視。');
+    expect(host.shadowRoot.querySelector('p').classList.contains('ffb-page-source-translated')).toBe(true);
+    expect(ctxRun('pageTranslationState.total')).toBe(1);
+  });
+
+  it('還原時連 Shadow DOM 內的譯文節點一起清掉（document.querySelectorAll 掃不到）', async () => {
+    document.body.innerHTML = '<main><custom-card id="host"></custom-card></main>';
+    const host = attachShadowArticle('host', '<article><p>Inventory planning inside a web component needs its own review.</p></article>');
+    installStreamingPort({ chunks: ['譯文'] });
+
+    startPageTranslationBeta();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(host.shadowRoot.querySelector('.ffb-page-translation-block')).not.toBeNull();
+
+    restorePageTranslationBeta();
+
+    expect(host.shadowRoot.querySelector('.ffb-page-translation-block')).toBeNull();
+    expect(host.shadowRoot.querySelector('p').classList.contains('ffb-page-source-translated')).toBe(false);
+  });
+
+  it('startPageTranslationBeta 收集 iframe / SVG 目標，並在面板上顯示得出來', () => {
+    document.body.innerHTML = `
+      <main>
+        <p>Supply planners reduced allocation risk after volatility increased sharply.</p>
+        <iframe title="same origin chart" src="/chart.html"></iframe>
+        <iframe title="unsupported widget" src="chrome://extensions"></iframe>
+        <svg><text>Revenue</text></svg>
+      </main>`;
+    installStreamingPort({ chunks: ['譯文'] });
+
+    startPageTranslationBeta();
+
+    const targets = ctxRun('pageTranslationState.embeddedTargets');
+    expect(targets.frames.map(frame => frame.status)).toEqual(['ready', 'blocked']);
+    expect(targets.svgTexts.map(target => target.text)).toEqual(['Revenue']);
+
+    // 只存在 state 不算接線：面板那一行必須真的看得到（hidden 被拿掉且有文字）
+    const embedded = document.querySelector('.ffb-page-translation-panel .ffb-page-embedded-summary');
+    expect(embedded).not.toBeNull();
+    expect(embedded.hidden).toBe(false);
+    expect(embedded.textContent).toContain('嵌入框架 2 個（1 個讀不到）');
+    expect(embedded.textContent).toContain('圖表文字 1 段');
+  });
+
+  it('沒有嵌入內容時面板那一行維持隱藏，不多嘴', () => {
+    document.body.innerHTML = '<main><p>Supply planners reduced allocation risk after volatility increased sharply.</p></main>';
+    installStreamingPort({ chunks: ['譯文'] });
+
+    startPageTranslationBeta();
+
+    const embedded = document.querySelector('.ffb-page-translation-panel .ffb-page-embedded-summary');
+    expect(embedded.hidden).toBe(true);
+    expect(embedded.textContent).toBe('');
+  });
+
+  it('collectEmbeddedTranslationTargets 直接回傳 frames / svgTexts 兩組結果', () => {
+    document.body.innerHTML = `
+      <main>
+        <iframe title="cross origin chart" src="https://charts.example.com/embed"></iframe>
+        <svg><title>Quarterly profit</title></svg>
+      </main>`;
+
+    const targets = collectEmbeddedTranslationTargets(document, { currentOrigin: 'http://localhost' });
+
+    expect(targets.frames).toEqual([expect.objectContaining({ bridgeMode: 'frame-script' })]);
+    expect(targets.svgTexts).toEqual([expect.objectContaining({ text: 'Quarterly profit', kind: 'title' })]);
   });
 });

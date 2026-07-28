@@ -47,8 +47,28 @@ function collectVisibleTranslatableBlocks() {
   return items;
 }
 
+// 全文翻譯真正取用的收集入口：一般 DOM 區塊 ＋ open Shadow DOM 區塊，
+// 兩者共用同一份 maxBlocks / maxChars 預算，shadow 內容不另開額度。
+function collectPageTranslationItems(root = document) {
+  const items = collectVisibleTranslatableBlocks();
+  const seenTexts = new Set(items.map(item => normalizePageTranslationComparableText(item.text)));
+  let charCount = items.reduce((sum, item) => sum + item.text.length, 0);
+
+  collectOpenShadowDomTranslationBlocks(root).forEach(item => {
+    if (items.length >= PAGE_TRANSLATION_LIMITS.maxBlocks) return;
+    const normalized = normalizePageTranslationComparableText(item.text);
+    if (seenTexts.has(normalized)) return;
+    if (charCount + item.text.length > PAGE_TRANSLATION_LIMITS.maxChars) return;
+    seenTexts.add(normalized);
+    charCount += item.text.length;
+    items.push(item);
+  });
+
+  return items;
+}
+
 function hasVisibleTranslatableBlocks() {
-  return collectVisibleTranslatableBlocks().length > 0;
+  return collectPageTranslationItems().length > 0;
 }
 
 function hasSelectedPageTranslationAncestor(el, items) {
@@ -206,6 +226,14 @@ function detectEmbeddedTranslationTargets(root = document) {
   };
 }
 
+// 嵌入內容不在頁面上就地翻譯，但要收集出來讓面板講清楚「哪些沒被翻到」
+function collectEmbeddedTranslationTargets(root = document, options = {}) {
+  return {
+    frames: collectEmbeddedFrameTranslationTargets(root, options),
+    svgTexts: collectSvgTextTranslationTargets(root)
+  };
+}
+
 function collectEmbeddedFrameTranslationTargets(root = document, options = {}) {
   return Array.from(root.querySelectorAll?.('iframe') || [])
     .map(frame => describeEmbeddedFrameTranslationTarget(frame, options))
@@ -333,13 +361,25 @@ function isVisiblePageTranslationEmbeddedNode(node) {
   return !(style && (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0'));
 }
 
-function buildEmbeddedTranslationSummaryText(summary) {
+function buildEmbeddedTranslationSummaryText(summary, targets = null) {
   if (!summary) return '';
   const userVisibleEmbeddedCount = Number(summary.iframeCount || 0)
     + Number(summary.svgTextCount || 0)
     + Number(summary.canvasCount || 0);
   if (!userVisibleEmbeddedCount) return '';
-  return '本頁有部分圖表或互動內容目前無法全文翻譯，可改用選取翻譯。';
+  const base = '本頁有部分圖表或互動內容目前無法全文翻譯，可改用選取翻譯。';
+  const detail = buildEmbeddedTranslationTargetDetail(targets);
+  return detail ? `${base}（${detail}）` : base;
+}
+
+function buildEmbeddedTranslationTargetDetail(targets) {
+  const frames = Array.isArray(targets?.frames) ? targets.frames : [];
+  const svgTexts = Array.isArray(targets?.svgTexts) ? targets.svgTexts : [];
+  const blockedFrames = frames.filter(frame => frame.status === 'blocked').length;
+  return [
+    frames.length ? `嵌入框架 ${frames.length} 個${blockedFrames ? `（${blockedFrames} 個讀不到）` : ''}` : '',
+    svgTexts.length ? `圖表文字 ${svgTexts.length} 段` : ''
+  ].filter(Boolean).join('、');
 }
 
 function buildPageLearningSummary(items = [], options = {}) {

@@ -11,8 +11,9 @@ function startPageTranslationBeta() {
     return;
   }
 
-  const items = collectVisibleTranslatableBlocks();
+  const items = collectPageTranslationItems();
   const embeddedSummary = detectEmbeddedTranslationTargets();
+  const embeddedTargets = collectEmbeddedTranslationTargets();
   ensurePageTranslationPanel();
   pageTranslationState = {
     running: items.length > 0,
@@ -28,6 +29,7 @@ function startPageTranslationBeta() {
     density: pageTranslationState.density || 'compact',
     items,
     embeddedSummary,
+    embeddedTargets,
     usage: createPageTranslationUsageSummary(items.length),
     done: 0,
     errors: 0,
@@ -137,7 +139,10 @@ function updatePageTranslationPanel(message = '') {
   if (count) count.textContent = `${done}/${total}`;
   status.textContent = getPageTranslationStatusText(pageTranslationState, message);
   if (embedded) {
-    const embeddedText = buildEmbeddedTranslationSummaryText(pageTranslationState.embeddedSummary);
+    const embeddedText = buildEmbeddedTranslationSummaryText(
+      pageTranslationState.embeddedSummary,
+      pageTranslationState.embeddedTargets
+    );
     embedded.hidden = !embeddedText;
     embedded.textContent = embeddedText;
     embedded.title = embeddedText;
@@ -279,6 +284,11 @@ function restorePageTranslationBeta() {
   pageTranslationState.running = false;
   cancelActivePageTranslationRequest();
   if (pageTranslationState.scrollTimer) clearTimeout(pageTranslationState.scrollTimer);
+  // 先按 item 清一輪：shadow root 內的譯文節點 document.querySelectorAll 掃不到
+  pageTranslationState.items.forEach(item => {
+    item.translationNode?.remove();
+    item.el?.classList.remove('ffb-page-source-translated');
+  });
   document.querySelectorAll('.ffb-page-translation-block').forEach(node => node.remove());
   document.querySelectorAll('.ffb-page-source-translated').forEach(node => node.classList.remove('ffb-page-source-translated'));
   document.documentElement.classList.remove(
@@ -306,6 +316,7 @@ function restorePageTranslationBeta() {
     density: 'compact',
     items: [],
     embeddedSummary: null,
+    embeddedTargets: null,
     usage: createPageTranslationUsageSummary(0),
     done: 0,
     errors: 0,
