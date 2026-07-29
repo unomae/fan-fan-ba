@@ -593,6 +593,10 @@ async function initVocabularySaveButton(body, data, selectedText) {
     try {
       const { item } = await saveVocabularyEntry(data, selectedText);
       setVocabularyButtonState(button, 'saved');
+      // 匯出是收藏之後的加值步驟，成功才把按鈕升級成「已收藏並匯出」
+      if (await exportSavedVocabularyEntryToObsidian(item)) {
+        setVocabularyButtonState(button, 'saved', true);
+      }
     } catch {
       setVocabularyButtonState(button, 'error');
     }
@@ -604,6 +608,20 @@ async function initVocabularySaveButton(body, data, selectedText) {
     if (!interacted) setVocabularyButtonState(button, saved ? 'saved' : 'idle');
   } catch {
     if (!interacted) setVocabularyButtonState(button, 'idle'); // 查詢失敗當未收藏，點擊收藏時再浮出真正錯誤
+  }
+}
+
+// 收藏成功後才嘗試 Obsidian 匯出：沒設定資料夾就靜默跳過（vocabulary.js 回 missing-folder），
+// 已匯出過的單字不重複 append，否則同一個字每次重新收藏都會再塞一次週記。
+async function exportSavedVocabularyEntryToObsidian(item) {
+  if (!item?.id || typeof exportVocabularyEntryToObsidianIfConfigured !== 'function') return false;
+  if (item.obsidianExportedAt) return true;
+
+  try {
+    const result = await exportVocabularyEntryToObsidianIfConfigured(item);
+    return Boolean(result?.exported);
+  } catch {
+    return false; // 匯出失敗不得把「已收藏」回捲成錯誤：單字本那筆已經寫進去了
   }
 }
 

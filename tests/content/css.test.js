@@ -82,6 +82,30 @@ describe('content CSS UI safeguards', () => {
     );
   });
 
+  it('keeps the page learning summary visible (not just present) in the panel', () => {
+    // QA-P1-001 教訓：建出來 ≠ 看得見。預設 display 必須是 block，只有 [hidden] 才收起來
+    expect(css).toMatch(/\.ffb-page-learning-summary \{[^}]*display: block !important;/);
+    expect(css).toMatch(/\.ffb-page-learning-summary\[hidden\] \{[^}]*display: none !important;/);
+    expect(css).toContain('.ffb-page-learning-sentences');
+    expect(css).toContain('.ffb-page-learning-vocab');
+  });
+
+  it('keeps the vocabulary highlight toggle styled as an on/off floating action', () => {
+    expect(css).toContain('#fanfanba-floating.ffb-vocab-highlight-on [data-action="vocab-highlight"]');
+  });
+
+  it('keeps floating menu items stacked and centred so extra buttons add no width', () => {
+    // QA-P1-003 同型風險：浮球加第四顆鈕不得讓 375px 重新溢出。
+    // 選單群組絕對定位並水平置中於主球，寬度由固定 30px 的按鈕決定，加鈕只長高不長寬。
+    expect(css).toMatch(
+      /\.ffb-ball-menu-top,\s*\.ffb-ball-menu-bottom \{[^}]*left: 50% !important;[^}]*transform: translateX\(-50%\) !important;/
+    );
+    expect(css).toMatch(/\.ffb-ball-menu-group \{[^}]*flex-direction: column !important;/);
+    expect(css).toMatch(/\.ffb-ball-item \{[^}]*width: 30px !important;/);
+    // 選單本體不得裁切溢出的群組，否則多出來的按鈕會被切掉
+    expect(css).not.toMatch(/\.ffb-ball-menu \{[^}]*overflow:\s*hidden/);
+  });
+
   it('does not inject the removed paragraph hover translate button', () => {
     expect(css).not.toContain('.ffb-single-translate-btn');
   });

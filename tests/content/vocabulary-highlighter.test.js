@@ -131,6 +131,42 @@ describe('Vocabulary highlighter', () => {
     expect(context.updateFloatingBallVocabularyHighlightState).toHaveBeenLastCalledWith(false);
   });
 
+  it('restores a stored auto highlight state on load', async () => {
+    const { context, localStore } = createHighlighterContext();
+    localStore[context.getVocabularyHighlightStorageKey()] = true;
+    localStore.fanFanBaVocabularyItems = {
+      'en:beacon': { id: 'en:beacon', word: 'Beacon', lang: 'en', translations: ['燈塔'], count: 1 }
+    };
+
+    await context.restoreVocabularyHighlightState();
+
+    expect(document.querySelectorAll('mark.g-vocab-highlight')).toHaveLength(1);
+    expect(context.updateFloatingBallVocabularyHighlightState).toHaveBeenLastCalledWith(true);
+  });
+
+  // 浮球高亮開關接線後才碰得到的 race：開關可以在初始讀取回來之前就被按下。
+  it('初始讀取回來時不得覆寫使用者已手動切換的高亮狀態', async () => {
+    const { context, localStore } = createHighlighterContext();
+    const key = context.getVocabularyHighlightStorageKey();
+    localStore[key] = false; // 儲存的是「關」
+    localStore.fanFanBaVocabularyItems = {
+      'en:beacon': { id: 'en:beacon', word: 'Beacon', lang: 'en', translations: ['燈塔'], count: 1 }
+    };
+
+    const restoring = context.restoreVocabularyHighlightState(); // 讀取飛行中
+    await context.toggleVocabularyHighlightForSite();            // 使用者按下開關
+    await restoring;
+
+    expect(localStore[key]).toBe(true);
+    expect(context.updateFloatingBallVocabularyHighlightState).toHaveBeenLastCalledWith(true);
+    expect(document.querySelectorAll('mark.g-vocab-highlight')).toHaveLength(1);
+
+    // 內部狀態沒被蓋回 false：再按一次要真的關掉，而不是又開一次
+    await context.toggleVocabularyHighlightForSite();
+    expect(localStore[key]).toBe(false);
+    expect(document.querySelectorAll('mark.g-vocab-highlight')).toHaveLength(0);
+  });
+
   it('caps the number of inserted marks', async () => {
     document.body.innerHTML = `<main><p>${Array(100).fill('Beacon').join(' ')}</p></main>`;
     const { context, localStore } = createHighlighterContext();

@@ -80,3 +80,95 @@ describe('收藏按鈕 state-clobber race（WS-E A1\'\'\'）', () => {
     expect(button.classList.contains('g-vocab-saved')).toBe(true);
   });
 });
+
+// 半接線接完工：exportVocabularyEntryToObsidianIfConfigured 之前零 production caller，
+// obsidianExportedAt 恆為 null、單字面板的「已匯出」badge 永遠不會亮。
+describe('收藏成功後的 Obsidian 匯出接線', () => {
+  function mountSaveButton(overrides) {
+    const context = createContext({
+      isVocabularySaved: jest.fn(async () => false),
+      saveVocabularyEntry: jest.fn(async () => ({ item: { id: 'en:harbor', word: 'Harbor' } })),
+      ...overrides
+    });
+    document.body.innerHTML = '<div class="g-body"><button class="g-vocab-save-btn"><span></span></button></div>';
+    return {
+      context,
+      body: document.querySelector('.g-body'),
+      button: document.querySelector('.g-vocab-save-btn')
+    };
+  }
+
+  async function clickAndSettle(button) {
+    button.click();
+    for (let i = 0; i < 10; i += 1) await Promise.resolve();
+  }
+
+  it('收藏成功會呼叫匯出，按鈕升級成「已收藏並匯出」', async () => {
+    const exportEntry = jest.fn(async () => ({ exported: true, folder: 'Learning' }));
+    const { context, body, button } = mountSaveButton({
+      exportVocabularyEntryToObsidianIfConfigured: exportEntry
+    });
+
+    await context.initVocabularySaveButton(body, { word: 'Harbor', lang: 'en' }, 'Harbor');
+    await clickAndSettle(button);
+
+    expect(exportEntry).toHaveBeenCalledWith({ id: 'en:harbor', word: 'Harbor' });
+    expect(button.querySelector('span').textContent).toBe('已收藏並匯出');
+    expect(button.title).toBe('已收藏到單字本並匯出 Obsidian');
+  });
+
+  it('沒設定 Obsidian 資料夾時停在「已收藏」，不謊報匯出', async () => {
+    const exportEntry = jest.fn(async () => ({ exported: false, reason: 'missing-folder' }));
+    const { context, body, button } = mountSaveButton({
+      exportVocabularyEntryToObsidianIfConfigured: exportEntry
+    });
+
+    await context.initVocabularySaveButton(body, { word: 'Harbor', lang: 'en' }, 'Harbor');
+    await clickAndSettle(button);
+
+    expect(exportEntry).toHaveBeenCalledTimes(1);
+    expect(button.querySelector('span').textContent).toBe('已收藏');
+    expect(button.classList.contains('g-vocab-error')).toBe(false);
+  });
+
+  it('匯出丟錯時不得把「已收藏」回捲成錯誤（單字本那筆已經寫進去了）', async () => {
+    const { context, body, button } = mountSaveButton({
+      exportVocabularyEntryToObsidianIfConfigured: jest.fn(async () => {
+        throw new Error('OBSIDIAN_URI_FAILED');
+      })
+    });
+
+    await context.initVocabularySaveButton(body, { word: 'Harbor', lang: 'en' }, 'Harbor');
+    await clickAndSettle(button);
+
+    expect(button.classList.contains('g-vocab-saved')).toBe(true);
+    expect(button.classList.contains('g-vocab-error')).toBe(false);
+    expect(button.querySelector('span').textContent).toBe('已收藏');
+  });
+
+  it('已匯出過的單字不重複 append 週記，但仍顯示已匯出', async () => {
+    const exportEntry = jest.fn(async () => ({ exported: true }));
+    const { context, body, button } = mountSaveButton({
+      saveVocabularyEntry: jest.fn(async () => ({
+        item: { id: 'en:harbor', word: 'Harbor', obsidianExportedAt: '2026-07-20T04:00:00.000Z' }
+      })),
+      exportVocabularyEntryToObsidianIfConfigured: exportEntry
+    });
+
+    await context.initVocabularySaveButton(body, { word: 'Harbor', lang: 'en' }, 'Harbor');
+    await clickAndSettle(button);
+
+    expect(exportEntry).not.toHaveBeenCalled();
+    expect(button.querySelector('span').textContent).toBe('已收藏並匯出');
+  });
+
+  it('沒有匯出 helper 時（舊 context）仍正常收藏', async () => {
+    const { context, body, button } = mountSaveButton({});
+
+    await context.initVocabularySaveButton(body, { word: 'Harbor', lang: 'en' }, 'Harbor');
+    await clickAndSettle(button);
+
+    expect(button.classList.contains('g-vocab-saved')).toBe(true);
+    expect(button.querySelector('span').textContent).toBe('已收藏');
+  });
+});

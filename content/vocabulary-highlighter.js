@@ -9,6 +9,7 @@ const VOCABULARY_HIGHLIGHT_LIMITS = {
 
 let vocabularyHighlightEnabled = false;
 let vocabularyHighlightTooltip = null;
+let vocabularyHighlightUserToggled = false; // 使用者按過浮球開關就不讓初始讀取蓋回去
 
 function getVocabularyHighlightStorageKey() {
   const host = location.hostname || 'local-file';
@@ -17,15 +18,20 @@ function getVocabularyHighlightStorageKey() {
 
 async function restoreVocabularyHighlightState() {
   try {
-    vocabularyHighlightEnabled = (await getVocabularyHighlightMode()) === 'auto';
+    const restored = (await getVocabularyHighlightMode()) === 'auto';
+    // 讀取飛行中使用者可能已按過浮球開關，此時不得把手動狀態蓋回去
+    // （與收藏按鈕的 state-clobber race 同型，WS-E A1'''）
+    if (vocabularyHighlightUserToggled) return;
+    vocabularyHighlightEnabled = restored;
     if (vocabularyHighlightEnabled) await applyVocabularyHighlights();
     globalThis.updateFloatingBallVocabularyHighlightState?.(vocabularyHighlightEnabled);
   } catch {
-    vocabularyHighlightEnabled = false;
+    if (!vocabularyHighlightUserToggled) vocabularyHighlightEnabled = false;
   }
 }
 
 async function toggleVocabularyHighlightForSite() {
+  vocabularyHighlightUserToggled = true;
   const next = !vocabularyHighlightEnabled;
   await setVocabularyHighlightMode(next ? 'auto' : 'off');
   return vocabularyHighlightEnabled;

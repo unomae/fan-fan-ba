@@ -86,6 +86,7 @@ const {
   detectEmbeddedTranslationTargets,
   buildEmbeddedTranslationSummaryText,
   collectEmbeddedFrameTranslationTargets,
+  collectEmbeddedTranslationTargets,
   collectSvgTextTranslationTargets,
   collectOpenShadowDomTranslationBlocks,
   buildPageLearningSummary,
@@ -634,7 +635,7 @@ function resetPageTranslationState() {
   ctxRun(`pageTranslationState = {
     running: false, stopped: false, stopping: false, activated: false, canContinue: false,
     scrollBound: false, scrollTimer: null, selectionBound: false, activePairId: null,
-    mode: 'bilingual', density: 'compact', items: [], embeddedSummary: null,
+    mode: 'bilingual', density: 'compact', items: [], embeddedSummary: null, embeddedTargets: null,
     usage: createPageTranslationUsageSummary(0), done: 0, errors: 0, total: 0
   };
   pageTranslationActivePort = null;
@@ -1120,5 +1121,224 @@ describe('single-paragraph translate — context digest (v1.9.7 / Phase C)', () 
     expect(context).toContain('After:');
     expect(context).toContain('First paragraph');
     expect(context).toContain('Third paragraph');
+  });
+});
+
+// ── 半接線接線完工：三個 collector 之前零 production caller ────────────
+// collectOpenShadowDomTranslationBlocks / collectEmbeddedFrameTranslationTargets /
+// collectSvgTextTranslationTargets 原本只有測試在呼叫，全文翻譯流程完全沒接。
+// 這段鎖的是「呼叫端真的會呼叫它」與「結果真的被使用者看得到」。
+describe('page translator collection wiring (半接線接線完工)', () => {
+  let origCS, origRect;
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    origCS = window.getComputedStyle;
+    origRect = HTMLElement.prototype.getBoundingClientRect;
+    installPageTranslationDomMocks();
+    resetPageTranslationState();
+  });
+
+  afterEach(() => {
+    restorePageTranslationBeta();
+    window.getComputedStyle = origCS;
+    HTMLElement.prototype.getBoundingClientRect = origRect;
+  });
+
+  function attachShadowArticle(hostId, html) {
+    const host = document.getElementById(hostId);
+    host.attachShadow({ mode: 'open' });
+    host.shadowRoot.innerHTML = html;
+    return host;
+  }
+
+  it('Shadow DOM 內文只被收集成回報目標，不進翻譯佇列', () => {
+    document.body.innerHTML = `
+      <main>
+        <p>Supply planners reduced allocation risk after volatility increased sharply.</p>
+        <custom-card id="host"></custom-card>
+      </main>`;
+    attachShadowArticle('host', '<article><p>Inventory planning inside a web component needs its own review.</p></article>');
+
+    const targets = collectEmbeddedTranslationTargets();
+
+    expect(collectVisibleTranslatableBlocks()).toHaveLength(1);
+    expect(targets.shadowBlocks.map(block => block.text)).toEqual([
+      'Inventory planning inside a web component needs its own review.'
+    ]);
+    expect(targets.shadowBlocks[0].host.id).toBe('host');
+  });
+
+  it('startPageTranslationBeta 不把譯文塞進 shadow root，只在面板提示', async () => {
+    document.body.innerHTML = `
+      <main>
+        <p>Supply planners reduced allocation risk after volatility increased sharply.</p>
+        <custom-card id="host"></custom-card>
+      </main>`;
+    const host = attachShadowArticle('host', '<article><p>Inventory planning inside a web component needs its own review.</p></article>');
+    installStreamingPort({ chunks: ['譯文'] });
+
+    startPageTranslationBeta();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // shadow root 吃不到 content.css，塞進去只會是沒樣式的裸文字 → 一律不塞
+    expect(host.shadowRoot.querySelector('.ffb-page-translation-block')).toBeNull();
+    expect(host.shadowRoot.querySelector('p').classList.contains('ffb-page-source-translated')).toBe(false);
+    expect(ctxRun('pageTranslationState.total')).toBe(1); // 只有 light DOM 那一段
+
+    const embedded = document.querySelector('.ffb-page-translation-panel .ffb-page-embedded-summary');
+    expect(embedded.hidden).toBe(false);
+    expect(embedded.textContent).toContain('web component 內文 1 段');
+  });
+
+  it('只有 shadow root 存在、內文讀不出東西時不多嘴', () => {
+    document.body.innerHTML = `
+      <main>
+        <p>Supply planners reduced allocation risk after volatility increased sharply.</p>
+        <custom-card id="host"></custom-card>
+      </main>`;
+    attachShadowArticle('host', '<div><button type="button">Expand</button></div>');
+    installStreamingPort({ chunks: ['譯文'] });
+
+    startPageTranslationBeta();
+
+    expect(document.querySelector('.ffb-page-translation-panel .ffb-page-embedded-summary').hidden).toBe(true);
+  });
+
+  it('startPageTranslationBeta 收集 iframe / SVG 目標，並在面板上顯示得出來', () => {
+    document.body.innerHTML = `
+      <main>
+        <p>Supply planners reduced allocation risk after volatility increased sharply.</p>
+        <iframe title="same origin chart" src="/chart.html"></iframe>
+        <iframe title="unsupported widget" src="chrome://extensions"></iframe>
+        <svg><text>Revenue</text></svg>
+      </main>`;
+    installStreamingPort({ chunks: ['譯文'] });
+
+    startPageTranslationBeta();
+
+    const targets = ctxRun('pageTranslationState.embeddedTargets');
+    expect(targets.frames.map(frame => frame.status)).toEqual(['ready', 'blocked']);
+    expect(targets.svgTexts.map(target => target.text)).toEqual(['Revenue']);
+
+    // 只存在 state 不算接線：面板那一行必須真的看得到（hidden 被拿掉且有文字）
+    const embedded = document.querySelector('.ffb-page-translation-panel .ffb-page-embedded-summary');
+    expect(embedded).not.toBeNull();
+    expect(embedded.hidden).toBe(false);
+    expect(embedded.textContent).toContain('嵌入框架 2 個（1 個讀不到）');
+    expect(embedded.textContent).toContain('圖表文字 1 段');
+  });
+
+  it('沒有嵌入內容時面板那一行維持隱藏，不多嘴', () => {
+    document.body.innerHTML = '<main><p>Supply planners reduced allocation risk after volatility increased sharply.</p></main>';
+    installStreamingPort({ chunks: ['譯文'] });
+
+    startPageTranslationBeta();
+
+    const embedded = document.querySelector('.ffb-page-translation-panel .ffb-page-embedded-summary');
+    expect(embedded.hidden).toBe(true);
+    expect(embedded.textContent).toBe('');
+  });
+
+  it('collectEmbeddedTranslationTargets 回傳 frames / svgTexts / shadowBlocks 三組結果', () => {
+    document.body.innerHTML = `
+      <main>
+        <iframe title="cross origin chart" src="https://charts.example.com/embed"></iframe>
+        <svg><title>Quarterly profit</title></svg>
+        <custom-card id="host"></custom-card>
+      </main>`;
+    attachShadowArticle('host', '<article><p>Inventory planning inside a web component needs its own review.</p></article>');
+
+    const targets = collectEmbeddedTranslationTargets(document, { currentOrigin: 'http://localhost' });
+
+    expect(targets.frames).toEqual([expect.objectContaining({ bridgeMode: 'frame-script' })]);
+    expect(targets.svgTexts).toEqual([expect.objectContaining({ text: 'Quarterly profit', kind: 'title' })]);
+    expect(targets.shadowBlocks).toEqual([expect.objectContaining({ source: 'open-shadow-dom' })]);
+  });
+});
+
+// 半接線接線完工：buildPageLearningSummary 之前零 production caller，
+// 算得出摘要卻沒有任何 UI 顯示位置。
+describe('page learning summary wiring (半接線接線完工)', () => {
+  let origCS, origRect;
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    origCS = window.getComputedStyle;
+    origRect = HTMLElement.prototype.getBoundingClientRect;
+    installPageTranslationDomMocks();
+    resetPageTranslationState();
+  });
+
+  afterEach(() => {
+    restorePageTranslationBeta();
+    window.getComputedStyle = origCS;
+    HTMLElement.prototype.getBoundingClientRect = origRect;
+  });
+
+  function learningEl() {
+    return document.querySelector('.ffb-page-translation-panel .ffb-page-learning-summary');
+  }
+
+  it('翻譯完成後在面板長出可見的學習摘要（關鍵句 ＋ 生字）', async () => {
+    document.body.innerHTML = `
+      <main>
+        <p>Supply planners reduced allocation risk after volatility increased sharply.</p>
+      </main>`;
+    installStreamingPort({
+      chunks: ['Allocation planning improved after repeated scenario reviews. Regional teams rebuilt allocation buffers.']
+    });
+
+    startPageTranslationBeta();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const learning = learningEl();
+    expect(learning).not.toBeNull();
+    expect(learning.hidden).toBe(false);
+    expect(learning.querySelector('.ffb-page-learning-title').textContent).toBe('本頁重點 · 已譯 1 段');
+    expect([...learning.querySelectorAll('.ffb-page-learning-sentences li')].map(li => li.textContent)).toEqual([
+      'Allocation planning improved after repeated scenario reviews.',
+      'Regional teams rebuilt allocation buffers.'
+    ]);
+    expect(learning.querySelector('.ffb-page-learning-vocab').textContent).toContain('allocation ×2');
+  });
+
+  it('還沒有任何譯文時摘要維持隱藏', () => {
+    document.body.innerHTML = '<main><p>Supply planners reduced allocation risk after volatility increased sharply.</p></main>';
+    installStreamingPort({ chunks: ['譯文'] });
+
+    startPageTranslationBeta();
+
+    expect(learningEl().hidden).toBe(true);
+    expect(learningEl().textContent).toBe('');
+  });
+
+  it('摘要內容一律走 ffbEl 建 DOM，頁面塞標籤不會變成節點', async () => {
+    document.body.innerHTML = '<main><p>Supply planners reduced allocation risk after volatility increased sharply.</p></main>';
+    installStreamingPort({
+      chunks: ['<img src=x onerror=alert(1)> allocation scenarios were reviewed again by the team.']
+    });
+
+    startPageTranslationBeta();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const learning = learningEl();
+    expect(learning.hidden).toBe(false);
+    expect(learning.querySelector('img')).toBeNull();
+    expect(learning.textContent).toContain('<img src=x onerror=alert(1)>');
+  });
+
+  it('翻譯進行中不先亮摘要，跑完才出現', async () => {
+    document.body.innerHTML = '<main><p>Supply planners reduced allocation risk after volatility increased sharply.</p></main>';
+    installStreamingPort({ chunks: ['Allocation planning improved after repeated scenario reviews.'] });
+
+    startPageTranslationBeta();
+    expect(ctxRun('pageTranslationState.running')).toBe(true);
+    expect(learningEl().hidden).toBe(true);
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(ctxRun('pageTranslationState.running')).toBe(false);
+    expect(learningEl().hidden).toBe(false);
   });
 });

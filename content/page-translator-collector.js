@@ -206,6 +206,16 @@ function detectEmbeddedTranslationTargets(root = document) {
   };
 }
 
+// 嵌入內容一律不就地翻譯（shadow root 吃不到 content.css、跨來源 frame 讀不到），
+// 只收集出來讓面板講清楚「哪些沒被翻到」
+function collectEmbeddedTranslationTargets(root = document, options = {}) {
+  return {
+    frames: collectEmbeddedFrameTranslationTargets(root, options),
+    svgTexts: collectSvgTextTranslationTargets(root),
+    shadowBlocks: collectOpenShadowDomTranslationBlocks(root)
+  };
+}
+
 function collectEmbeddedFrameTranslationTargets(root = document, options = {}) {
   return Array.from(root.querySelectorAll?.('iframe') || [])
     .map(frame => describeEmbeddedFrameTranslationTarget(frame, options))
@@ -333,13 +343,29 @@ function isVisiblePageTranslationEmbeddedNode(node) {
   return !(style && (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0'));
 }
 
-function buildEmbeddedTranslationSummaryText(summary) {
+function buildEmbeddedTranslationSummaryText(summary, targets = null) {
   if (!summary) return '';
   const userVisibleEmbeddedCount = Number(summary.iframeCount || 0)
     + Number(summary.svgTextCount || 0)
     + Number(summary.canvasCount || 0);
-  if (!userVisibleEmbeddedCount) return '';
-  return '本頁有部分圖表或互動內容目前無法全文翻譯，可改用選取翻譯。';
+  const detail = buildEmbeddedTranslationTargetDetail(targets);
+  // 只有 openShadowRootCount 的頁面不報（任何 web component 都有 shadow root，那是雜訊）；
+  // 但 shadow root 內真的有可讀段落時要報，那是使用者看得到卻沒被翻到的內容。
+  if (!userVisibleEmbeddedCount && !detail) return '';
+  const base = '本頁有部分圖表或互動內容目前無法全文翻譯，可改用選取翻譯。';
+  return detail ? `${base}（${detail}）` : base;
+}
+
+function buildEmbeddedTranslationTargetDetail(targets) {
+  const frames = Array.isArray(targets?.frames) ? targets.frames : [];
+  const svgTexts = Array.isArray(targets?.svgTexts) ? targets.svgTexts : [];
+  const shadowBlocks = Array.isArray(targets?.shadowBlocks) ? targets.shadowBlocks : [];
+  const blockedFrames = frames.filter(frame => frame.status === 'blocked').length;
+  return [
+    frames.length ? `嵌入框架 ${frames.length} 個${blockedFrames ? `（${blockedFrames} 個讀不到）` : ''}` : '',
+    svgTexts.length ? `圖表文字 ${svgTexts.length} 段` : '',
+    shadowBlocks.length ? `web component 內文 ${shadowBlocks.length} 段` : ''
+  ].filter(Boolean).join('、');
 }
 
 function buildPageLearningSummary(items = [], options = {}) {

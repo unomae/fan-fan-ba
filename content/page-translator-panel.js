@@ -13,6 +13,7 @@ function startPageTranslationBeta() {
 
   const items = collectVisibleTranslatableBlocks();
   const embeddedSummary = detectEmbeddedTranslationTargets();
+  const embeddedTargets = collectEmbeddedTranslationTargets();
   ensurePageTranslationPanel();
   pageTranslationState = {
     running: items.length > 0,
@@ -28,6 +29,7 @@ function startPageTranslationBeta() {
     density: pageTranslationState.density || 'compact',
     items,
     embeddedSummary,
+    embeddedTargets,
     usage: createPageTranslationUsageSummary(items.length),
     done: 0,
     errors: 0,
@@ -83,6 +85,7 @@ function ensurePageTranslationPanel() {
     <div class="ffb-page-panel-status"></div>
     <div class="ffb-page-embedded-summary" hidden></div>
     <div class="ffb-page-usage-summary" hidden></div>
+    <div class="ffb-page-learning-summary" hidden></div>
     <div class="ffb-page-panel-controls">
       <div class="ffb-page-panel-modes" aria-label="全文翻譯顯示模式">
         <button type="button" data-mode="bilingual" title="雙語" aria-label="顯示雙語">雙</button>
@@ -137,7 +140,10 @@ function updatePageTranslationPanel(message = '') {
   if (count) count.textContent = `${done}/${total}`;
   status.textContent = getPageTranslationStatusText(pageTranslationState, message);
   if (embedded) {
-    const embeddedText = buildEmbeddedTranslationSummaryText(pageTranslationState.embeddedSummary);
+    const embeddedText = buildEmbeddedTranslationSummaryText(
+      pageTranslationState.embeddedSummary,
+      pageTranslationState.embeddedTargets
+    );
     embedded.hidden = !embeddedText;
     embedded.textContent = embeddedText;
     embedded.title = embeddedText;
@@ -148,10 +154,37 @@ function updatePageTranslationPanel(message = '') {
     usage.textContent = usageText;
     usage.title = usageText;
   }
+  renderPageLearningSummary(pageTranslationPanel.querySelector('.ffb-page-learning-summary'));
   modeButtons.forEach(btn => btn.classList.toggle('ffb-page-active', btn.dataset.mode === pageTranslationState.mode));
   densityButtons.forEach(btn => btn.classList.toggle('ffb-page-active', btn.dataset.density === pageTranslationState.density));
   if (stopButton) stopButton.disabled = !pageTranslationState.running && !pageTranslationState.stopping;
   copyButtons.forEach(btn => { btn.disabled = !hasCompletedPageTranslationItems(); });
+}
+
+// 全文翻譯跑完後在面板底部給一份本機學習摘要（關鍵句 ＋ 生字候選）。
+// 內容來自頁面／譯文文字，一律走 ffbEl/ffbText 建 DOM，不進 innerHTML。
+function renderPageLearningSummary(container) {
+  if (!container) return;
+  const completed = getCompletedPageTranslationItems();
+  const summary = !pageTranslationState.running && completed.length
+    ? buildPageLearningSummary(completed)
+    : null;
+  const keySentences = summary?.keySentences || [];
+  const vocabulary = summary?.vocabularyCandidates || [];
+
+  ffbClear(container);
+  container.hidden = !(keySentences.length || vocabulary.length);
+  if (container.hidden) return;
+
+  container.appendChild(ffbEl('div', { class: 'ffb-page-learning-title' }, `本頁重點 · 已譯 ${summary.sourceCount} 段`));
+  if (keySentences.length) {
+    container.appendChild(ffbEl('ul', { class: 'ffb-page-learning-sentences' },
+      keySentences.map(sentence => ffbEl('li', null, sentence))));
+  }
+  if (vocabulary.length) {
+    container.appendChild(ffbEl('div', { class: 'ffb-page-learning-vocab' },
+      `生字：${vocabulary.map(({ word, count }) => `${word} ×${count}`).join('、')}`));
+  }
 }
 
 function getPageTranslationStatusText(state, message = '') {
@@ -306,6 +339,7 @@ function restorePageTranslationBeta() {
     density: 'compact',
     items: [],
     embeddedSummary: null,
+    embeddedTargets: null,
     usage: createPageTranslationUsageSummary(0),
     done: 0,
     errors: 0,
