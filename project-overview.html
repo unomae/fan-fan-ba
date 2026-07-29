@@ -395,7 +395,7 @@
           <span class="pill green">目前版本 v1.10.0</span>
           <span class="pill blue">Chrome / Edge Extension</span>
           <span class="pill blue">Manifest V3</span>
-          <span class="pill orange">最後整理 2026-07-24</span>
+          <span class="pill orange">最後整理 2026-07-28</span>
           <span class="pill orange">主線：先打磨，再上架</span>
         </div>
       </header>
@@ -413,7 +413,7 @@
           </div>
           <div class="card">
             <h3>下一步先做什麼</h3>
-            <p>先修 2026-07-24 真瀏覽器 QA 找到的 2 個 P1：收藏面板透明、375px 浮球裁切；再修 Options 啟動 TDZ（P2）。修完重跑失敗案例，最後由 KAKA 補 T7 Google OAuth、真實 API Key 與 Obsidian manual gate。</p>
+            <p>2026-07-24 QA 的 2 P1 + 1 P2 已修，半接線 6 條也已接線完工（<code>26 suites / 273 tests</code>）。下一步是 <strong>KAKA 用真瀏覽器跑 <code>MANUAL-QA.md</code></strong>：4 個失敗 TC 重跑 + 接線輪 6 條新驗收（Obsidian 匯出是 manual gate）。之後才是剩下兩塊開發：<code>vocabulary-backup.js</code> 的 <code>mergeEntry</code> 既有 bug、單字本本機另鍵自動快照。</p>
           </div>
         </div>
 
@@ -544,9 +544,9 @@ content/page-translator-single.js</pre>
           <tr><td>選字翻譯 / 解釋 / 優化</td><td><span class="pill green">已實作</span> 核心流程完整，支援 streaming、重試、pin、歷史紀錄。</td><td>真瀏覽器回歸 QA。</td></tr>
           <tr><td>整頁翻譯</td><td><span class="pill green">已實作</span> 支援雙語卡、停止、還原、續翻、定位原文、複製。</td><td>針對 Gmail / Notion / Google Docs / 長文 / iframe 頁測互動狀態。</td></tr>
           <tr><td>單段翻譯</td><td><span class="pill green">v1.9.7 完成</span> 使用 <code>Alt+T</code> 翻譯游標／選取所在段落；會遮擋原文的 hover 浮鈕已移除。</td><td>驗證快捷鍵、局部重試、與整頁翻譯混用。</td></tr>
-          <tr><td>單字本 / SRS</td><td><span class="pill green">Phase B 完成</span> IndexedDB、今日複習、錯題回看、JSON / XLSX。</td><td>用真 Excel / Google Sheets 開 XLSX，測公式注入防護。</td></tr>
+          <tr><td>單字本 / SRS</td><td><span class="pill green">Phase B 完成</span> IndexedDB、今日複習、錯題回看、JSON / XLSX；2026-07-28 起浮球選單有「單字高亮」開關（頁面內已收藏單字標黃底）。</td><td>用真 Excel / Google Sheets 開 XLSX，測公式注入防護；375px 驗浮球四顆鈕沒被裁切。</td></tr>
           <tr><td>資安 hardening</td><td><span class="pill green">v1.9.9 完成</span> T1-T6 已實作，包含 prompt 圍欄、錯誤去識別、敏感站降 context、OAuth state 亂數。</td><td>T7 需人工登入 Google Cloud Console 確認 OAuth 設定。</td></tr>
-          <tr><td>Obsidian</td><td><span class="pill green">已實作</span> Advanced URI 存入，資料夾依使用者設定。</td><td>手動確認跨平台 URI 與回到原分頁流程。</td></tr>
+          <tr><td>Obsidian</td><td><span class="pill green">已實作</span> Advanced URI 存入，資料夾依使用者設定；2026-07-28 起<strong>收藏單字成功會自動 append 週記</strong>（已匯出過不重複、匯出失敗不回捲「已收藏」）。</td><td><span class="pill red">manual gate</span> 手動確認跨平台 URI、回到原分頁流程，以及週記真的多出該單字區塊。</td></tr>
           <tr><td>Cloud Sync</td><td><span class="pill green">v1.7.5 完成</span> 一般設定同步到 Drive appData；API Key 不自動雲端同步，加密備份需使用者密碼。</td><td>Chrome / Edge OAuth 實機回填。</td></tr>
           <tr><td>本機診斷</td><td><span class="pill green">v1.9.8 完成</span> 只記操作次數與錯誤數，不記原文、譯文、URL、API Key、個資。</td><td>DevTools Network 確認沒有 telemetry。</td></tr>
           <tr><td>Chrome Web Store</td><td><span class="pill orange">暫緩</span> 送審不是現在主線。</td><td>等 QA Hardening 和產品打磨完成後再當 checkpoint。</td></tr>
@@ -569,7 +569,7 @@ content/page-translator-single.js</pre>
           <tr><td>T7</td><td>Google Cloud OAuth 同意畫面發佈狀態、Edge redirect URI 白名單、scope。</td><td><span class="pill red">需人工確認</span></td></tr>
         </table>
         <div class="callout" style="margin-top:12px;">
-          驗證紀錄：2026-07-24 完成 Phase 0-C～4-B 真瀏覽器稽核：<code>60 TC / 32 PASS / 4 FAIL / 24 SKIP</code>，獨立缺陷為 2 個 P1（收藏面板透明、375px 浮球裁切）與 1 個 P2（Options TDZ）。2026-07-28 三個缺陷**已修並補上回歸測試**，fresh run 為 <code>26 suites / 249 tests</code> 全綠；對應的 4 個失敗 TC 仍待真實瀏覽器重跑（清單見 <code>MANUAL-QA.md</code>）。真實 API Key、Google OAuth 與 Obsidian 仍是 manual gate。完整證據見 <code>qa-reports/fan-fan-ba-qa-report-20260724.html</code>。
+          驗證紀錄：2026-07-24 完成 Phase 0-C～4-B 真瀏覽器稽核：<code>60 TC / 32 PASS / 4 FAIL / 24 SKIP</code>，獨立缺陷為 2 個 P1（收藏面板透明、375px 浮球裁切）與 1 個 P2（Options TDZ）。2026-07-28 三個缺陷**已修並補上回歸測試**（<code>249 tests</code>），同日再把半接線 6 條接線完工，fresh run 為 <code>26 suites / 273 tests</code> 全綠；對應的 4 個失敗 TC 仍待真實瀏覽器重跑（清單見 <code>MANUAL-QA.md</code>）。真實 API Key、Google OAuth 與 Obsidian 仍是 manual gate。完整證據見 <code>qa-reports/fan-fan-ba-qa-report-20260724.html</code>。
         </div>
       </section>
 
@@ -603,9 +603,9 @@ content/page-translator-single.js</pre>
         <div class="grid">
           <div class="card">
             <h3>自動測試</h3>
-            <p>目前測試框架是 Jest 30 + jsdom。2026-07-28 fresh run 為 <code>26 suites / 249 tests</code> 全綠。</p>
+            <p>目前測試框架是 Jest 30 + jsdom。2026-07-28 fresh run 為 <code>26 suites / 273 tests</code> 全綠。<strong>專案內若有 <code>.claude/worktrees/</code>，jest 會連 worktree 的 <code>tests/</code> 一起掃、筆數灌水一倍</strong>，驗收前先 <code>git worktree list</code>，並用下面第二條指令取值。</p>
             <pre>npm test
-npm test -- --runInBand</pre>
+npx jest --testPathIgnorePatterns='/node_modules/' '/\.claude/'</pre>
           </div>
           <div class="card">
             <h3>打包</h3>
@@ -620,8 +620,8 @@ npm test -- --runInBand</pre>
 
         <table style="margin-top:12px;">
           <tr><th>發布前 gate</th><th>狀態</th><th>說明</th></tr>
-          <tr><td>Jest</td><td><span class="pill green">fresh run 通過</span></td><td>2026-07-28：<code>26 suites / 249 tests</code>，0 failed、0 skipped。</td></tr>
-          <tr><td>Manual QA</td><td><span class="pill red">待真瀏覽器重跑</span></td><td>Phase 0-C～4-B：<code>60 TC / 32 PASS / 4 FAIL / 24 SKIP</code>。QA-P1-001、QA-P1-003、QA-P2-002 已於 2026-07-28 修復並補回歸測試；4 個失敗 TC 的真瀏覽器重跑清單見 <code>MANUAL-QA.md</code>。完整報告見 <code>qa-reports/fan-fan-ba-qa-report-20260724.html</code>。</td></tr>
+          <tr><td>Jest</td><td><span class="pill green">fresh run 通過</span></td><td>2026-07-28：<code>26 suites / 273 tests</code>，0 failed、0 skipped（於 worktree <code>affectionate-sinoussi-06a2b2</code> 實跑；主樹取值請帶 <code>--testPathIgnorePatterns '/\.claude/'</code>）。</td></tr>
+          <tr><td>Manual QA</td><td><span class="pill red">待真瀏覽器重跑</span></td><td>Phase 0-C～4-B：<code>60 TC / 32 PASS / 4 FAIL / 24 SKIP</code>。QA-P1-001、QA-P1-003、QA-P2-002 已於 2026-07-28 修復並補回歸測試；4 個失敗 TC 的真瀏覽器重跑清單、加上同日接線輪 6 條的新驗收項，都在 <code>MANUAL-QA.md</code>。完整報告見 <code>qa-reports/fan-fan-ba-qa-report-20260724.html</code>。</td></tr>
           <tr><td>OAuth / Cloud Sync</td><td><span class="pill red">T7 待人工</span></td><td>Chrome native auth 與 Edge Web Auth fallback 都要回填結果；Google Cloud Console 設定送審前必查。</td></tr>
           <tr><td>Chrome Web Store</td><td><span class="pill orange">checkpoint</span></td><td>等產品打磨完成後，再依 <code>STORE-SUBMISSION.md</code> 送審。</td></tr>
         </table>
@@ -688,6 +688,7 @@ npm test -- --runInBand</pre>
           <li><strong>2026-07-07：</strong>產品決策改為先打磨再上架；送審降為 release checkpoint；下一步主線是 T7 + QA Hardening。</li>
           <li><strong>2026-07-24：</strong>完成 Phase 0-C～4-B 真瀏覽器 QA；26 suites / 246 tests 全綠，60 TC 為 32 PASS / 4 FAIL / 24 SKIP。送審 gate 改為先修 2 P1 + 1 P2，再補 OAuth、API Key、Obsidian 人工驗證。</li>
           <li><strong>2026-07-28：</strong>修掉 QA-P1-001（收藏面板缺 <code>g-show</code>）、QA-P1-003（窄螢幕浮球半藏靠 hover 才收回，實測 375px 溢出 24px）、QA-P2-002（Options 常數 TDZ），各補一條回歸測試；26 suites / 249 tests 全綠。4 個失敗 TC 待真瀏覽器重跑。</li>
+          <li><strong>2026-07-28（接線輪）：</strong>半接線 6 條全部接線完工（KAKA 裁決全接不刪）——收藏成功自動 Obsidian 匯出、浮球單字高亮開關、全文翻譯面板回報 iframe / SVG / web component 目標、翻譯完成後的本頁學習摘要。<strong>Shadow DOM 一度改成注入譯文，同日裁決回退為「只回報、不注入」</strong>（shadow root 吃不到 <code>content.css</code>，注入只會是沒樣式的裸文字、且顯示模式對它不生效）。順帶修一個接線後才碰得到的 race（初始高亮狀態讀取會蓋掉使用者剛按下的開關）。<code>249 → 273 tests</code>，分支 <code>claude/affectionate-sinoussi-06a2b2</code>，未合併 master。</li>
           <li><strong>v1.10.0：</strong>WS-E 資料層收斂——單字本改 mirror-only（chrome.storage.local 單一權威）+ 啟動一次性 cutover 合併並刪除舊 IndexedDB。<strong>此版是資料層 migration，版號必須 bump 才會在使用者升級時觸發 cutover。</strong>尚未發布，半接線功能接線完工併入同一版。</li>
         </ul>
 
