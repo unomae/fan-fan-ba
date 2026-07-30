@@ -45,6 +45,8 @@ describe('Options module', () => {
       <input id="vocabularyImportFile" type="file" />
       <div id="vocabularyBackupStatus"></div>
       <div id="vocabularyBackupReminder"></div>
+      <div id="vocabularySnapshotActions"></div>
+      <p id="vocabularySnapshotNote"></p>
     `;
     global.optionsModule = require('../options');
   });
@@ -521,6 +523,92 @@ describe('Options module', () => {
       });
       const map = await optionsModule.getVocabularyItemsMap();
       expect(Object.keys(map).sort()).toEqual(['en:cat', 'en:dog']);
+    });
+  });
+
+  // red-team F3：本機快照還原入口。核心契約＝**合併不取代**，
+  // 且 existing 讀取失敗必須中止（沿用匯入流程的 A1''' 防護）
+  describe('本機快照還原', () => {
+    const routeStore = routes => {
+      chrome.runtime.sendMessage.mockImplementation(async request => {
+        const handler = routes[request.action];
+        if (!handler) return { ok: false, error: `未預期的 action: ${request.action}` };
+        return handler(request);
+      });
+    };
+
+    it('有快照 → 每槽一顆按鈕，標示時戳與筆數', async () => {
+      routeStore({
+        snapshots: () => ({
+          ok: true,
+          snapshots: [
+            { slot: 'current', savedAt: '2026-07-30T02:00:00.000Z', count: 12 },
+            { slot: 'prev', savedAt: '2026-07-29T02:00:00.000Z', count: 11 }
+          ]
+        })
+      });
+
+      await optionsModule.renderVocabularySnapshots();
+
+      const container = document.getElementById('vocabularySnapshotActions');
+      expect(container.hidden).toBe(false);
+      expect(container.querySelectorAll('button')).toHaveLength(2);
+      expect(container.textContent).toContain('最近');
+      expect(container.textContent).toContain('較舊');
+      expect(container.textContent).toContain('12 個單字');
+      expect(document.getElementById('vocabularySnapshotNote').hidden).toBe(false);
+    });
+
+    it('沒有快照 → 按鈕區與說明都藏起來', async () => {
+      routeStore({ snapshots: () => ({ ok: true, snapshots: [] }) });
+
+      await optionsModule.renderVocabularySnapshots();
+
+      expect(document.getElementById('vocabularySnapshotActions').hidden).toBe(true);
+      expect(document.getElementById('vocabularySnapshotNote').hidden).toBe(true);
+    });
+
+    it('還原走合併：補回缺少的字，且不回滾現有較新的複習進度', async () => {
+      let replaced = null;
+      routeStore({
+        snapshot: () => ({
+          ok: true,
+          snapshot: {
+            savedAt: '2026-07-29T02:00:00.000Z',
+            items: {
+              'en:cat': { id: 'en:cat', word: 'cat', count: 3, status: 'learning', reviewedAt: '2026-07-20T00:00:00.000Z' },
+              'en:gone': { id: 'en:gone', word: 'gone', count: 1 }
+            }
+          }
+        }),
+        list: () => ({
+          ok: true,
+          items: [{ id: 'en:cat', word: 'cat', count: 5, status: 'known', reviewedAt: '2026-07-28T00:00:00.000Z' }]
+        }),
+        replaceAll: request => { replaced = request.items; return { ok: true, count: 2 }; },
+        snapshots: () => ({ ok: true, snapshots: [] })
+      });
+
+      await optionsModule.restoreVocabularySnapshot('prev');
+
+      expect(Object.keys(replaced).sort()).toEqual(['en:cat', 'en:gone']); // 聯集，不是取代
+      expect(replaced['en:cat'].status).toBe('known');                     // 現有較新的沒被回滾
+      expect(document.getElementById('vocabularyBackupStatus').textContent).toContain('已從快照還原');
+    });
+
+    it('existing 讀取失敗 → 中止，絕不呼叫 replaceAll', async () => {
+      routeStore({
+        snapshot: () => ({ ok: true, snapshot: { savedAt: '2026-07-29T02:00:00.000Z', items: { 'en:cat': { id: 'en:cat', word: 'cat' } } } }),
+        list: () => ({ ok: true }), // items 非陣列＝讀取失敗
+        snapshots: () => ({ ok: true, snapshots: [] })
+      });
+      chrome.runtime.sendMessage.mockClear();
+
+      await optionsModule.restoreVocabularySnapshot('current');
+
+      const actions = chrome.runtime.sendMessage.mock.calls.map(([request]) => request.action);
+      expect(actions).not.toContain('replaceAll');
+      expect(document.getElementById('vocabularyBackupStatus').textContent).toContain('還原失敗');
     });
   });
 

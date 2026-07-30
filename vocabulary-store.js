@@ -298,6 +298,34 @@
     });
   }
 
+  // ── 快照讀取（給 options 頁的還原入口用；仍不在主讀寫路徑上）──────────
+  // 走佇列：避免在輪替寫入的中間讀到半套狀態。
+  const SNAPSHOT_SLOTS = [['current', LOCAL_SNAPSHOT_KEY], ['prev', LOCAL_SNAPSHOT_PREV_KEY]];
+
+  async function listSnapshots() {
+    return enqueue(async () => {
+      const stored = await getLocal(SNAPSHOT_SLOTS.map(([, key]) => key));
+      return SNAPSHOT_SLOTS
+        .map(([slot, key]) => ({
+          slot,
+          savedAt: stored[key]?.savedAt || null,
+          count: Object.keys(normalizeItemsMap(stored[key]?.items || {})).length
+        }))
+        .filter(entry => entry.count > 0);
+    });
+  }
+
+  async function getSnapshot(slot) {
+    const match = SNAPSHOT_SLOTS.find(([name]) => name === String(slot || ''));
+    if (!match) throw new Error('未知的快照槽位');
+    return enqueue(async () => {
+      const stored = await getLocal(match[1]);
+      const record = stored[match[1]];
+      if (!record) return null;
+      return { savedAt: record.savedAt || null, items: normalizeItemsMap(record.items || {}) };
+    });
+  }
+
   function normalizeList(items, options = {}) {
     const limit = Number(options.limit || 0);
     const list = (Array.isArray(items) ? items : []).filter(item => item?.id && item?.word);
@@ -317,6 +345,8 @@
     if (action === 'delete') return { ok: true, deleted: await deleteItem(request.id) };
     if (action === 'replaceAll') return { ok: true, ...(await replaceAll(request.items || {})) };
     if (action === 'merge') return { ok: true, ...(await mergeItems(request.items || {})) };
+    if (action === 'snapshots') return { ok: true, snapshots: await listSnapshots() };
+    if (action === 'snapshot') return { ok: true, snapshot: await getSnapshot(request.slot) };
     throw new Error('未知的單字本操作');
   }
 
@@ -336,6 +366,8 @@
     deleteItem,
     replaceAll,
     mergeItems,
+    listSnapshots,
+    getSnapshot,
     handleMessage,
     // 測試用：手動重跑 cutover（生產路徑只在模組載入時自動執行一次）
     _runCutoverForTests: () => {

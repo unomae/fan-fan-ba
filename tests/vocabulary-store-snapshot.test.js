@@ -203,6 +203,29 @@ describe('本機自動快照', () => {
     expect(data[PREV_KEY]).toBeUndefined();   // 超過 TTL → 清掉
   });
 
+  it('讀取端：列出兩槽的時戳與筆數，空槽不列', async () => {
+    installStatefulLocalStorage({
+      [KEY]: { 'en:cat': entry('en:cat', 'cat') },
+      [SNAPSHOT_KEY]: { savedAt: iso(T0 - HOUR_MS), items: { 'en:a': entry('en:a', 'a'), 'en:b': entry('en:b', 'b') } },
+      [PREV_KEY]: { savedAt: iso(T0 - DAY_MS), items: {} }
+    });
+
+    const snapshots = await freshStore().listSnapshots();
+
+    expect(snapshots).toEqual([{ slot: 'current', savedAt: iso(T0 - HOUR_MS), count: 2 }]);
+  });
+
+  it('讀取端：取單一槽位，未知槽位要擋掉', async () => {
+    installStatefulLocalStorage({
+      [PREV_KEY]: { savedAt: iso(T0 - DAY_MS), items: { 'en:a': entry('en:a', 'a') } }
+    });
+    const Store = freshStore();
+
+    await expect(Store.getSnapshot('prev')).resolves.toMatchObject({ savedAt: iso(T0 - DAY_MS) });
+    await expect(Store.getSnapshot('current')).resolves.toBeNull();
+    await expect(Store.getSnapshot('../evil')).rejects.toThrow('未知的快照槽位');
+  });
+
   it('使用者清空後不再使用單字本，含 URL 的舊快照也會過期消失', async () => {
     const { data } = installStatefulLocalStorage({
       [KEY]: {},

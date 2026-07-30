@@ -53,6 +53,62 @@ function initVocabularyBackup() {
   $('btnImportVocabulary')?.addEventListener('click', () => fileInput?.click());
   fileInput?.addEventListener('change', importVocabularyBackup);
   renderVocabularyBackupStaleness();
+  renderVocabularySnapshots();
+}
+
+// ── 本機自動快照還原（red-team F3）─────────────────────
+// 快照本身在 vocabulary-store.js 自動輪替；這裡只給讀取與還原入口。
+// **一律走 mergeBackup 合併、絕不 replace**：快照是過去狀態，replace 會把快照
+// 之後新增的單字砍掉。合併方向由 mergeEntry 的時鐘決定，所以現有較新的複習進度
+// 不會被快照回滾（見 vocabulary-backup.js mergeClock）。
+function formatSnapshotLabel({ slot, savedAt, count }) {
+  const when = Date.parse(savedAt || '') ? new Date(savedAt).toLocaleString() : '時間未知';
+  const which = slot === 'prev' ? '較舊' : '最近';
+  return `還原${which}快照（${when}・${count} 個單字）`;
+}
+
+async function renderVocabularySnapshots() {
+  const container = $('vocabularySnapshotActions');
+  const note = $('vocabularySnapshotNote');
+  if (!container) return;
+  let snapshots = [];
+  try {
+    const response = await requestVocabularyStore('snapshots');
+    snapshots = Array.isArray(response.snapshots) ? response.snapshots : [];
+  } catch {
+    snapshots = []; // 讀不到就當沒有快照可還原，不吵使用者
+  }
+  container.textContent = '';
+  snapshots.forEach(snapshot => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn-test';
+    button.textContent = formatSnapshotLabel(snapshot);
+    button.addEventListener('click', () => restoreVocabularySnapshot(snapshot.slot));
+    container.appendChild(button);
+  });
+  container.hidden = snapshots.length === 0;
+  if (note) note.hidden = snapshots.length === 0;
+}
+
+async function restoreVocabularySnapshot(slot) {
+  try {
+    const { snapshot } = await requestVocabularyStore('snapshot', { slot });
+    const incoming = VocabBackup.normalizeItemsMap(snapshot?.items || {});
+    if (!Object.keys(incoming).length) {
+      setVocabularyBackupStatus('這份快照沒有可還原的單字。');
+      await renderVocabularySnapshots();
+      return;
+    }
+    // 與匯入同一條路：existing 讀取失敗必須中止（空集會讓 mergeBackup 退化成 replace）
+    const existing = await getVocabularyItemsMap();
+    const { items, summary } = VocabBackup.mergeBackup(existing, incoming, 'merge');
+    await replaceVocabularyItemsMap(items);
+    setVocabularyBackupStatus(`已從快照還原：補回 ${summary.added}、更新 ${summary.updated}，目前共 ${summary.total} 個單字。`);
+    await renderVocabularySnapshots();
+  } catch (error) {
+    setVocabularyBackupStatus(`還原失敗：${error?.message || '請再試一次'}`);
+  }
 }
 
 async function renderVocabularyBackupStaleness() {
@@ -1111,6 +1167,9 @@ if (typeof module !== 'undefined' && module.exports) {
     formatDiagnosticsSummary,
     buildDiagnosticsChecklist,
     getVocabularyItemsMap,
-    formatVocabularyBackupReminder
+    formatVocabularyBackupReminder,
+    formatSnapshotLabel,
+    renderVocabularySnapshots,
+    restoreVocabularySnapshot
   };
 }

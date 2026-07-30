@@ -1002,8 +1002,10 @@
                 <button class="btn-test" id="btnImportVocabulary" type="button">匯入單字本</button>
                 <input class="file-input" id="vocabularyImportFile" type="file" accept="application/json,.json">
               </div>
+              <div class="backup-actions" id="vocabularySnapshotActions" style="margin-top:8px;" hidden></div>
               <div id="vocabularyBackupStatus" aria-live="polite" style="margin-top:8px;font-size:12px;color:#666;"></div>
               <div id="vocabularyBackupReminder" aria-live="polite" style="margin-top:4px;font-size:12px;color:#999;"></div>
+              <p class="field-note" id="vocabularySnapshotNote" hidden>本機自動快照：每天最多留一份、共兩份（約可回到 24–48 小時前），逾 30 天自動清除。還原採<strong>合併</strong>，只補回缺少的單字，不會蓋掉快照之後的新增與複習進度。在此頁清空單字本時，快照會一併移除。快照只存在這台裝置的瀏覽器，不上傳雲端，<strong>不能取代 JSON 匯出</strong>。</p>
               <p class="field-note">完整備份請用 JSON（含遇到次數、來源、熟悉度），換裝置 / 重新安裝後可匯入。XLSX 適合用 Excel / Google Sheets 檢視與整理，不作為還原格式。匯入採<strong>合併</strong>：同一單字保留較高的遇到次數，不會覆蓋既有資料。單字本存在本機瀏覽器，建議定期匯出 JSON 備份。</p>
             </div>
 
