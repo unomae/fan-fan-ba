@@ -52,6 +52,16 @@
     return map;
   }
 
+  // 零有效條目的檔案不是合法匯入來源。**兩個分支都要擋**（2026-07-30 red-team F1）：
+  // 原本只有裸 map 分支擋，帶 schema 的備份（`{"schema":"vocabulary","items":{}}`、
+  // `items: null`、或條目全缺 word/id 的舊檔）會回一個空 map、一路走到
+  // replaceAll({})，被下游判成「使用者要清空」而刪掉救援快照。
+  // 匯入零個字沒有任何合法用途，在門口擋掉最省事。
+  function assertNonEmpty(map) {
+    if (!Object.keys(map).length) throw new Error('備份內沒有可匯入的單字');
+    return map;
+  }
+
   function buildBackup(itemsMap) {
     const items = normalizeItemsMap(itemsMap);
     return {
@@ -74,12 +84,10 @@
     if (!data || typeof data !== 'object') throw new Error('備份內容格式不正確');
     if (data.items || data.schema === BACKUP_SCHEMA) {
       if (data.app && data.app !== BACKUP_APP) throw new Error('這不是翻翻吧的單字本備份');
-      return assertImportSize(normalizeItemsMap(data.items));
+      return assertImportSize(assertNonEmpty(normalizeItemsMap(data.items)));
     }
     // 容錯：直接給裸 keyed map
-    const fallback = normalizeItemsMap(data);
-    if (!Object.keys(fallback).length) throw new Error('備份內沒有可匯入的單字');
-    return assertImportSize(fallback);
+    return assertImportSize(assertNonEmpty(normalizeItemsMap(data)));
   }
 
   function entryTime(item) {

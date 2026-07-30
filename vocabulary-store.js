@@ -107,12 +107,31 @@
   }
 
   // SW 啟動掃一次：兩槽各自獨立判斷過期（寫入稀疏時 prev 可能比 current 老很多）
+  // 未來時戳要重新錨定（2026-07-30 red-team F2）：`now - savedAt` 是負數，永遠不會
+  // 大於 TTL，那筆快照會**永久掃不掉**，含來源 URL 的舊資料無限期留著——直接牴觸
+  // options 頁對使用者的「逾 30 天自動清除」承諾。prepareSnapshot 早就把未來時戳
+  // 當 stale（:93），這裡漏了。
+  //
+  // 為什麼是重錨不是刪：savedAt > now 只發生在「寫入時時鐘超前、之後被校正回來」
+  // （RTC 沒電、VM resume、手動改日期），那筆的真實年齡不可知——但它可能是使用者
+  // **唯一的救援資料**。同一天 red-team F1 的教訓就是別在救命繩上做不可逆的破壞。
+  // 把 savedAt 重錨到現在：TTL 重新開始跑（30 天上限確實生效、承諾兌現），
+  // 資料留著，之後照常輪替。代價是最多多留 30 天，換不弄丟資料，划算。
   async function sweepExpiredSnapshots() {
     const keys = [LOCAL_SNAPSHOT_KEY, LOCAL_SNAPSHOT_PREV_KEY];
     const stored = await getLocal(keys);
     const now = Date.now();
-    const expired = keys.filter(key => stored[key] && now - snapshotSavedAt(stored[key]) > LOCAL_SNAPSHOT_TTL_MS);
+    const expired = [];
+    const reanchored = {};
+    for (const key of keys) {
+      const record = stored[key];
+      if (!record) continue;
+      const savedAt = snapshotSavedAt(record);
+      if (savedAt > now) reanchored[key] = { ...record, savedAt: new Date(now).toISOString() };
+      else if (now - savedAt > LOCAL_SNAPSHOT_TTL_MS) expired.push(key);
+    }
     if (expired.length) await removeLocal(expired);
+    if (Object.keys(reanchored).length) await setLocal(reanchored);
   }
 
   async function writeLegacyMap(items, { snapshot = true } = {}) {
@@ -276,12 +295,17 @@
     });
   }
 
-  async function replaceAll(itemsMap) {
+  // 清空＝使用者明確要求刪除，隱私優先於救援：不留快照，連既有兩槽一併移除。
+  // **意圖必須由呼叫端宣告，不從資料形狀推論**（2026-07-30 red-team F1）：
+  // 原本用 `Object.keys(items).length === 0` 推論，於是「使用者把單字刪光後，
+  // 想匯入備份救回來、但那份備份零有效條目」會一路走到 replaceAll({})，被判成
+  // 「明確清空」而清掉兩槽——**正好在快照唯一該發揮作用的時刻把它刪掉**，
+  // 而且畫面只顯示「新增 0、更新 0」，看起來像什麼都沒發生。
+  // 現況全 repo 沒有任何「清空單字本」控制項，clearing 因此沒有真實觸發者；
+  // 保留這個參數是為了讓將來要加清空鈕的人有明確的接法，不必再走形狀推論。
+  // 逐一 delete 不算清空宣告，仍會留快照——那才是誤刪救回的主場。
+  async function replaceAll(itemsMap, { clearing = false } = {}) {
     const items = normalizeItemsMap(itemsMap);
-    // 清空＝使用者明確要求刪除（options 頁的說法是「可隨時修改或清空刪除」），
-    // 隱私優先於救援：不留快照，連既有兩槽一併移除。
-    // 單字被逐一 delete 不算清空宣告，仍會留快照——那才是誤刪救回的主場。
-    const clearing = Object.keys(items).length === 0;
     return enqueue(async () => {
       await writeLegacyMap(items, { snapshot: !clearing });
       if (clearing) await removeLocal([LOCAL_SNAPSHOT_KEY, LOCAL_SNAPSHOT_PREV_KEY]);

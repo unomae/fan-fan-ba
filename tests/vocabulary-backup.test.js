@@ -35,6 +35,21 @@ describe('vocabulary backup', () => {
       expect(() => Backup.parseBackup({ app: 'other-app', schema: 'vocabulary', items: {} })).toThrow('翻翻吧');
       expect(() => Backup.parseBackup({})).toThrow('沒有可匯入');
     });
+
+    // red-team F1（2026-07-30）：帶 schema 的空備份原本只有裸 map 分支在擋，
+    // 於是它會回一個空 map、一路走到 replaceAll({})，被下游判成「使用者要清空」
+    // 而刪掉救援快照——正好發生在「單字刪光了想匯入救回」的時刻。
+    it('rejects a schema-tagged backup that yields zero usable entries', () => {
+      expect(() => Backup.parseBackup({ app: 'fan-fan-ba', schema: 'vocabulary', items: {} }))
+        .toThrow('沒有可匯入');
+      expect(() => Backup.parseBackup('{"app":"fan-fan-ba","schema":"vocabulary","items":{}}'))
+        .toThrow('沒有可匯入');
+      expect(() => Backup.parseBackup({ schema: 'vocabulary', items: [] })).toThrow('沒有可匯入');
+      expect(() => Backup.parseBackup({ schema: 'vocabulary', items: null })).toThrow('沒有可匯入');
+      // 條目在，但全部缺 id/word → normalize 後同樣是零有效條目
+      expect(() => Backup.parseBackup({ schema: 'vocabulary', items: { a: { id: 'a' }, b: { word: 'b' } } }))
+        .toThrow('沒有可匯入');
+    });
   });
 
   describe('mergeBackup', () => {
@@ -79,6 +94,27 @@ describe('vocabulary backup', () => {
         nextReviewAt: '2026-07-20T00:00:00.000Z'
       });
       expect(items['en:cat'].count).toBe(8);
+    });
+
+    // 裁決明文：`entryTime` 原樣保留給 lastSeenAt 選擇，**不跟著勝方整組走**。
+    // （2026-07-30 突變測試發現這條契約當時沒有任何測試咬住：把 lastSeenAt 改成
+    //  base.lastSeenAt 後全套依然全綠。）
+    // 造一個「勝方是 existing、但 incoming 的 lastSeenAt 較新」的局：
+    // existing 剛複習過（reviewedAt 最新 → mergeClock 勝），incoming 剛遇到過。
+    it('picks lastSeenAt independently of the merge winner', () => {
+      const existing = { 'en:cat': entry('en:cat', 'cat', {
+        lastSeenAt: '2026-06-01T00:00:00.000Z',
+        status: 'known', reviewedAt: '2026-06-25T00:00:00.000Z'
+      }) };
+      const incoming = { 'en:cat': entry('en:cat', 'cat', {
+        lastSeenAt: '2026-06-10T00:00:00.000Z',
+        status: 'learning', reviewedAt: '2026-06-02T00:00:00.000Z'
+      }) };
+      const { items } = Backup.mergeBackup(existing, incoming);
+      // 複習三欄跟著勝方（existing）整組走
+      expect(items['en:cat']).toMatchObject({ status: 'known', reviewedAt: '2026-06-25T00:00:00.000Z' });
+      // 但「最後遇到」取兩邊較新者，不因為輸掉就被回滾
+      expect(items['en:cat'].lastSeenAt).toBe('2026-06-10T00:00:00.000Z');
     });
 
     it('replace mode discards existing entries', () => {
