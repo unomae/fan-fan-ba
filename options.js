@@ -1167,6 +1167,7 @@ if (typeof module !== 'undefined' && module.exports) {
     formatDiagnosticsSummary,
     buildDiagnosticsChecklist,
     getVocabularyItemsMap,
+    importVocabularyBackup,
     formatVocabularyBackupReminder,
     formatSnapshotLabel,
     renderVocabularySnapshots,

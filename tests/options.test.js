@@ -526,6 +526,51 @@ describe('Options module', () => {
     });
   });
 
+  // 匯入與還原共用「合併不取代」契約，但匯入這側的 `'merge'` 原本零覆蓋：
+  // 2026-07-30 突變測試把 options.js:194 改成 `'replace'`，全套 31 passed 零失敗，
+  // 而同檔 :204-206 註解特地警告過這個退化風險（註解寫了不等於測試鎖了）。
+  describe('單字本匯入的合併語意', () => {
+    const changeEventWith = payload => ({
+      target: {
+        files: [{ size: 100, text: async () => JSON.stringify(payload) }],
+        value: 'fan-fan-ba-vocabulary.json'
+      }
+    });
+
+    it('匯入採合併：既有獨有的字不會被備份取代掉，複習進度也不回滾', async () => {
+      let replaced = null;
+      chrome.runtime.sendMessage.mockImplementation(async request => {
+        if (request.action === 'list') {
+          return {
+            ok: true,
+            items: [
+              // 同 id 但複習進度較新 → 不該被較舊的備份蓋掉
+              { id: 'en:cat', word: 'cat', count: 5, status: 'known', reviewedAt: '2026-07-28T00:00:00.000Z' },
+              // 備份裡沒有這個字 → replace 會把它整個抹掉，merge 必須留著
+              { id: 'en:owl', word: 'owl', count: 1 }
+            ]
+          };
+        }
+        if (request.action === 'replaceAll') { replaced = request.items; return { ok: true, count: 3 }; }
+        return { ok: true };
+      });
+
+      await optionsModule.importVocabularyBackup(changeEventWith({
+        app: 'fan-fan-ba',
+        schema: 'vocabulary',
+        version: 1,
+        items: {
+          'en:cat': { id: 'en:cat', word: 'cat', count: 2, status: 'learning', reviewedAt: '2026-07-01T00:00:00.000Z' },
+          'en:dog': { id: 'en:dog', word: 'dog', count: 1 }
+        }
+      }));
+
+      expect(Object.keys(replaced).sort()).toEqual(['en:cat', 'en:dog', 'en:owl']); // 聯集
+      expect(replaced['en:cat'].status).toBe('known');                              // 沒被回滾
+      expect(document.getElementById('vocabularyBackupStatus').textContent).toContain('匯入完成');
+    });
+  });
+
   // red-team F3：本機快照還原入口。核心契約＝**合併不取代**，
   // 且 existing 讀取失敗必須中止（沿用匯入流程的 A1''' 防護）
   describe('本機快照還原', () => {
