@@ -304,10 +304,15 @@
   // 現況全 repo 沒有任何「清空單字本」控制項，clearing 因此沒有真實觸發者；
   // 保留這個參數是為了讓將來要加清空鈕的人有明確的接法，不必再走形狀推論。
   // 逐一 delete 不算清空宣告，仍會留快照——那才是誤刪救回的主場。
-  async function replaceAll(itemsMap, { clearing = false } = {}) {
+  // `snapshot: false` 給「還原快照」用（2026-07-30 red-team F4）：還原走 mergeBackup
+  // 'merge'，只會補字與取較新的複習進度、不刪不回滾，所以還原**前**的狀態沒有備份
+  // 價值；而使用者通常隔天才發現資料沒了，此時 current 已 stale → 一還原就輪替，
+  // 把還原前的壞狀態寫進 current、好快照擠到 prev，再過一天再還原一次就全沒了。
+  // 拿救援槽去備份一個非破壞性動作的前態，是把救命繩換成雜訊。
+  async function replaceAll(itemsMap, { clearing = false, snapshot = !clearing } = {}) {
     const items = normalizeItemsMap(itemsMap);
     return enqueue(async () => {
-      await writeLegacyMap(items, { snapshot: !clearing });
+      await writeLegacyMap(items, { snapshot });
       if (clearing) await removeLocal([LOCAL_SNAPSHOT_KEY, LOCAL_SNAPSHOT_PREV_KEY]);
       return { count: Object.keys(items).length };
     });
@@ -367,7 +372,11 @@
     if (action === 'get') return { ok: true, item: await getItem(request.id) };
     if (action === 'upsert') return { ok: true, item: await upsertItem(request.item) };
     if (action === 'delete') return { ok: true, deleted: await deleteItem(request.id) };
-    if (action === 'replaceAll') return { ok: true, ...(await replaceAll(request.items || {})) };
+    // 只轉發 snapshot（要不要順手備份），**不轉發 clearing** —— 刪快照是不可逆的，
+    // 不開放給訊息端；將來要加清空鈕時另開一個明確的 action。
+    if (action === 'replaceAll') {
+      return { ok: true, ...(await replaceAll(request.items || {}, { snapshot: request.snapshot !== false })) };
+    }
     if (action === 'merge') return { ok: true, ...(await mergeItems(request.items || {})) };
     if (action === 'snapshots') return { ok: true, snapshots: await listSnapshots() };
     if (action === 'snapshot') return { ok: true, snapshot: await getSnapshot(request.slot) };

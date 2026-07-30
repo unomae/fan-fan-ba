@@ -259,6 +259,54 @@ describe('本機自動快照', () => {
     expect(data[PREV_KEY].items['en:ancient']).toBeDefined();
   });
 
+  // red-team F4（2026-07-30）：還原路徑要能寫入而不消耗救援槽。
+  it('snapshot=false 的寫入不輪替快照（還原用）', async () => {
+    const { data } = installStatefulLocalStorage({
+      [KEY]: { 'en:cat': entry('en:cat', 'cat') },
+      [SNAPSHOT_KEY]: { savedAt: iso(T0 - DAY_MS * 2), items: { 'en:good': entry('en:good', 'good') } }
+    });
+
+    await freshStore().replaceAll({ 'en:cat': entry('en:cat', 'cat'), 'en:dog': entry('en:dog', 'dog') },
+      { snapshot: false });
+
+    expect(data[KEY]['en:dog']).toBeDefined();                    // 寫入照常
+    expect(data[SNAPSHOT_KEY].items['en:good']).toBeDefined();    // 好快照沒被擠掉
+    expect(data[PREV_KEY]).toBeUndefined();                       // 沒有發生輪替
+  });
+
+  // 鏈路中間那一段：options 送 snapshot=false、store 端也吃這個參數，但如果
+  // handleMessage 沒把它轉發過去，F4 就原樣復活——兩端各自有測試也擋不住。
+  // （2026-07-30 突變測試就是這樣抓到這條沒被咬住的。）
+  it('message 層要把 snapshot 旗標轉發下去', async () => {
+    const { data } = installStatefulLocalStorage({
+      [KEY]: { 'en:cat': entry('en:cat', 'cat') },
+      [SNAPSHOT_KEY]: { savedAt: iso(T0 - DAY_MS * 2), items: { 'en:good': entry('en:good', 'good') } }
+    });
+    const Store = freshStore();
+
+    await Store.handleMessage({
+      action: 'replaceAll',
+      items: { 'en:cat': entry('en:cat', 'cat'), 'en:dog': entry('en:dog', 'dog') },
+      snapshot: false
+    });
+
+    expect(data[KEY]['en:dog']).toBeDefined();
+    expect(data[PREV_KEY]).toBeUndefined();                     // 沒輪替＝旗標有到位
+    expect(data[SNAPSHOT_KEY].items['en:good']).toBeDefined();  // 好快照還在
+  });
+
+  it('message 層預設仍會備份（沒帶旗標＝照常留一份）', async () => {
+    const { data } = installStatefulLocalStorage({
+      [KEY]: { 'en:cat': entry('en:cat', 'cat') },
+      [SNAPSHOT_KEY]: { savedAt: iso(T0 - DAY_MS * 2), items: { 'en:good': entry('en:good', 'good') } }
+    });
+
+    await freshStore().handleMessage({ action: 'replaceAll', items: { 'en:dog': entry('en:dog', 'dog') } });
+
+    expect(data[PREV_KEY].items['en:good']).toBeDefined();      // 有輪替
+    expect(data[SNAPSHOT_KEY].items['en:cat']).toBeDefined();
+  });
+
   // red-team F1（2026-07-30）：清空意圖改為呼叫端顯式宣告，不再從「空 map」推論。
   it('意外收到空 map 不算清空宣告：快照兩槽必須留著', async () => {
     const { data } = installStatefulLocalStorage({

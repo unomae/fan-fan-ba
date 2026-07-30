@@ -569,6 +569,24 @@ describe('Options module', () => {
       expect(replaced['en:cat'].status).toBe('known');                              // 沒被回滾
       expect(document.getElementById('vocabularyBackupStatus').textContent).toContain('匯入完成');
     });
+
+    // 還原的對照組（red-team F4）：還原帶 snapshot=false，匯入**不**帶——
+    // 匯入會帶進外部資料，前態值得留一份。兩條一起改才防得住「順手統一」。
+    it('匯入照樣備份前態：不得跟著還原一起關掉', async () => {
+      let sent = null;
+      chrome.runtime.sendMessage.mockImplementation(async request => {
+        if (request.action === 'list') return { ok: true, items: [] };
+        if (request.action === 'replaceAll') { sent = request; return { ok: true, count: 1 }; }
+        return { ok: true };
+      });
+
+      await optionsModule.importVocabularyBackup(changeEventWith({
+        app: 'fan-fan-ba', schema: 'vocabulary', version: 1,
+        items: { 'en:dog': { id: 'en:dog', word: 'dog' } }
+      }));
+
+      expect(sent.snapshot).not.toBe(false);
+    });
   });
 
   // red-team F3：本機快照還原入口。核心契約＝**合併不取代**，
@@ -639,6 +657,26 @@ describe('Options module', () => {
       expect(Object.keys(replaced).sort()).toEqual(['en:cat', 'en:gone']); // 聯集，不是取代
       expect(replaced['en:cat'].status).toBe('known');                     // 現有較新的沒被回滾
       expect(document.getElementById('vocabularyBackupStatus').textContent).toContain('已從快照還原');
+    });
+
+    // red-team F4（2026-07-30）：還原若走 replaceAll 的預設備份，會把還原**前**的
+    // 壞狀態寫進 current、好快照擠到 prev；隔天再還原一次就兩槽全壞。還原是
+    // 非破壞性合併，前態沒有備份價值。
+    it('還原不消耗救援槽：帶 snapshot=false', async () => {
+      let sent = null;
+      routeStore({
+        snapshot: () => ({
+          ok: true,
+          snapshot: { savedAt: '2026-07-29T02:00:00.000Z', items: { 'en:cat': { id: 'en:cat', word: 'cat' } } }
+        }),
+        list: () => ({ ok: true, items: [] }),
+        replaceAll: request => { sent = request; return { ok: true, count: 1 }; },
+        snapshots: () => ({ ok: true, snapshots: [] })
+      });
+
+      await optionsModule.restoreVocabularySnapshot('prev');
+
+      expect(sent.snapshot).toBe(false);
     });
 
     it('existing 讀取失敗 → 中止，絕不呼叫 replaceAll', async () => {

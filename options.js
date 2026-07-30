@@ -103,7 +103,8 @@ async function restoreVocabularySnapshot(slot) {
     // 與匯入同一條路：existing 讀取失敗必須中止（空集會讓 mergeBackup 退化成 replace）
     const existing = await getVocabularyItemsMap();
     const { items, summary } = VocabBackup.mergeBackup(existing, incoming, 'merge');
-    await replaceVocabularyItemsMap(items);
+    // 還原不備份前態：不然這一下就把好快照擠到 prev、壞狀態寫進 current（red-team F4）
+    await replaceVocabularyItemsMap(items, { snapshot: false });
     setVocabularyBackupStatus(`已從快照還原：補回 ${summary.added}、更新 ${summary.updated}，目前共 ${summary.total} 個單字。`);
     await renderVocabularySnapshots();
   } catch (error) {
@@ -213,8 +214,11 @@ async function getVocabularyItemsMap() {
   }, {});
 }
 
-async function replaceVocabularyItemsMap(items) {
-  await requestVocabularyStore('replaceAll', { items });
+// snapshot=false 只給還原用：還原是非破壞性的合併，備份它的前態沒有價值，
+// 卻會佔掉一個救援槽（red-team F4）。匯入維持預設 true——匯入會帶進外部資料，
+// 前態值得留一份。
+async function replaceVocabularyItemsMap(items, { snapshot = true } = {}) {
+  await requestVocabularyStore('replaceAll', { items, snapshot });
 }
 
 async function requestVocabularyStore(action, payload = {}) {
