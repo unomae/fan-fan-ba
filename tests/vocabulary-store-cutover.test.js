@@ -8,6 +8,7 @@ const DB_NAME = 'fan-fan-ba-vocabulary';
 const KEY = 'fanFanBaVocabularyItems';
 const BACKUP_KEY = 'fanFanBaVocabularyItemsPreCutoverBackup';
 const MARKER_KEY = 'fanFanBaVocabularyIndexedDbMigratedAt';
+const SNAPSHOT_KEY = 'fanFanBaVocabularyItemsSnapshot';
 
 const entry = (id, word, over = {}) => ({ id, word, lang: 'en', ...over });
 
@@ -97,6 +98,8 @@ describe('cutover：IDB → mirror-only', () => {
     // pre-cutover 備份 = 合併前的鏡像快照（不含 IDB-only 條目）
     expect(data[BACKUP_KEY].items['en:idbnewer']).toBeUndefined();
     expect(data[BACKUP_KEY].items['en:apple']).toBeDefined();
+    // cutover 走 { snapshot: false }：它自己已有 BACKUP_KEY，不再多寫一份日常快照
+    expect(data[SNAPSHOT_KEY]).toBeUndefined();
   });
 
   it('冪等重試不覆寫備份鍵（write-if-absent）', async () => {

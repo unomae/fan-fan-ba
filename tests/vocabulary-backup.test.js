@@ -56,6 +56,31 @@ describe('vocabulary backup', () => {
       expect(summary).toMatchObject({ added: 0, updated: 1, total: 1 });
     });
 
+    // 回歸：舊版勝方判定先比 count，count 高的一方會整組蓋掉另一方較新的複習進度
+    it('keeps the newer review progress even when the other side has a larger count', () => {
+      const existing = { 'en:cat': entry('en:cat', 'cat', { count: 9, status: 'learning', reviewedAt: '2026-06-01T00:00:00.000Z', nextReviewAt: '2026-06-03T00:00:00.000Z' }) };
+      const incoming = { 'en:cat': entry('en:cat', 'cat', { count: 2, status: 'known', reviewedAt: '2026-06-20T00:00:00.000Z', nextReviewAt: '2026-07-20T00:00:00.000Z' }) };
+      const { items } = Backup.mergeBackup(existing, incoming);
+      expect(items['en:cat']).toMatchObject({
+        status: 'known',
+        reviewedAt: '2026-06-20T00:00:00.000Z',
+        nextReviewAt: '2026-07-20T00:00:00.000Z'
+      });
+      expect(items['en:cat'].count).toBe(9); // count 仍取較大值
+    });
+
+    it('does not let a stale import roll back local review progress', () => {
+      const existing = { 'en:cat': entry('en:cat', 'cat', { count: 1, status: 'known', reviewedAt: '2026-06-20T00:00:00.000Z', nextReviewAt: '2026-07-20T00:00:00.000Z' }) };
+      const incoming = { 'en:cat': entry('en:cat', 'cat', { count: 8, status: 'learning', reviewedAt: '2026-06-01T00:00:00.000Z', nextReviewAt: '2026-06-03T00:00:00.000Z' }) };
+      const { items } = Backup.mergeBackup(existing, incoming);
+      expect(items['en:cat']).toMatchObject({
+        status: 'known',
+        reviewedAt: '2026-06-20T00:00:00.000Z',
+        nextReviewAt: '2026-07-20T00:00:00.000Z'
+      });
+      expect(items['en:cat'].count).toBe(8);
+    });
+
     it('replace mode discards existing entries', () => {
       const existing = { 'en:cat': entry('en:cat', 'cat') };
       const incoming = { 'en:dog': entry('en:dog', 'dog') };

@@ -86,12 +86,19 @@
     return Date.parse(item?.lastSeenAt || item?.createdAt || 0) || 0;
   }
 
-  // 衝突（同 id）取「遇到次數較多」者為主，平手取較新；count 取較大值
+  // 勝方判定時鐘：entryTime 再與 reviewedAt 取較新者（語意對齊 vocabulary-store.js 的 effectiveTimestamp）
+  // 只複習、沒再遇到的條目 lastSeenAt 不會動，光看 entryTime 會把它誤判成「舊的」。
+  function mergeClock(item) {
+    return Math.max(entryTime(item), Date.parse(item?.reviewedAt) || 0);
+  }
+
+  // 衝突（同 id）取「同步時鐘較新」者為主，平手取匯入方；count 只取較大值、不參與勝方判定
+  //（count＝遇到次數，與複習進度獨立演進；舊版先比 count，會讓另一台裝置較新的
+  //  status / reviewedAt / nextReviewAt 在匯入時靜默倒退）
+  // status / reviewedAt / nextReviewAt 三欄刻意跟著勝方整組走，不各自取新——
+  // 拆開會併出「status 來自 A、nextReviewAt 來自 B」這種不一致的複習狀態。
   function mergeEntry(existing, incoming) {
-    const base = (Number(incoming.count || 1) > Number(existing.count || 1)
-      || (Number(incoming.count || 1) === Number(existing.count || 1) && entryTime(incoming) >= entryTime(existing)))
-      ? incoming
-      : existing;
+    const base = mergeClock(incoming) >= mergeClock(existing) ? incoming : existing;
     return {
       ...base,
       count: Math.max(Number(existing.count || 1), Number(incoming.count || 1)),

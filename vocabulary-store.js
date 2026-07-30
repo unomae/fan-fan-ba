@@ -16,6 +16,10 @@
   const VOCABULARY_MIGRATION_KEY = 'fanFanBaVocabularyIndexedDbMigratedAt'; // 舊雙存放時代的 marker，cutover 完成後清除
   const PRE_CUTOVER_BACKUP_KEY = 'fanFanBaVocabularyItemsPreCutoverBackup';
   const PRE_CUTOVER_BACKUP_TTL_MS = 30 * 24 * 60 * 60 * 1000; // cutover 完成 30 天後清備份
+  const LOCAL_SNAPSHOT_KEY = 'fanFanBaVocabularyItemsSnapshot';
+  const LOCAL_SNAPSHOT_PREV_KEY = 'fanFanBaVocabularyItemsSnapshotPrev'; // 上一份，把救援窗從 24h 拉到 48h
+  const LOCAL_SNAPSHOT_INTERVAL_MS = 24 * 60 * 60 * 1000; // 每 24 小時最多輪替一次
+  const LOCAL_SNAPSHOT_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 保留上限，比照 PRE_CUTOVER_BACKUP_TTL_MS
   const DB_NAME = 'fan-fan-ba-vocabulary';
   const STORE_NAME = 'items';
 
@@ -61,8 +65,67 @@
     return normalizeItemsMap(items);
   }
 
-  async function writeLegacyMap(items) {
+  // ── 本機自動快照（純附加；主讀寫路徑不讀它）───────────────────────
+  // 誤刪 / 匯入蓋掉後的救命繩：留的是「寫入前的舊值」。存新值沒有意義——
+  // 真正要救的那次寫入，存下來的就已經是壞掉的狀態。
+  // 設計條款（2026-07-30 red-team 一鏡頭複查後定案）：
+  // - **兩槽輪替**：單槽 write-if-stale 會在 24h 後被自己覆寫（Day0 誤刪、Day1 隨手
+  //   存一個字就把唯一的好備份輾掉）。輪替後救援窗 = 24–48h，**這是明確上限、不是無限**。
+  // - **未來時戳視為 stale**：時鐘超前時 `now - savedAt` 為負，若當成「還很新」會讓快照
+  //   永久凍結，且校正回來也不會恢復。
+  // - **主寫入先落地、快照才寫**：空間 / IO 只夠一次時，備份不得把使用者的寫入擠掉。
+  // - **TTL 由 SW 啟動掃描執行**：maybeWriteSnapshot 只在有寫入時才跑，使用者清空後
+  //   不再用單字本的話它永遠不會被觸發，含 URL 的舊資料會無限期留著。
+  // - cutover 不走這裡（它另有 PRE_CUTOVER_BACKUP_KEY 專屬備份，重複寫只是多耗配額）。
+  let snapshotCheckedAt = 0; // in-memory：SW 存活期間免每次寫入都多讀一次 storage
+
+  function snapshotSavedAt(record) {
+    return Date.parse(record?.savedAt) || 0;
+  }
+
+  // 判斷這次要不要輪替；要的話回傳待寫的 payload（主寫入之後才真的寫進去）
+  async function prepareSnapshot() {
+    const now = Date.now();
+    if (now - snapshotCheckedAt < LOCAL_SNAPSHOT_INTERVAL_MS) return null;
+    const stored = await getLocal([LOCAL_SNAPSHOT_KEY, VOCABULARY_STORAGE_KEY]);
+    const current = stored[LOCAL_SNAPSHOT_KEY];
+    const savedAt = snapshotSavedAt(current);
+    const fresh = savedAt <= now && now - savedAt < LOCAL_SNAPSHOT_INTERVAL_MS; // 未來時戳＝stale
+    if (fresh) {
+      snapshotCheckedAt = savedAt; // 對齊既有快照時戳，避免每次 SW 重啟都把下一份往後推
+      return null;
+    }
+    const items = normalizeItemsMap(stored[VOCABULARY_STORAGE_KEY] || {});
+    if (!Object.keys(items).length) return null; // 空的不留，免得首裝就寫一份空快照
+    const next = { savedAt: new Date(now).toISOString(), items };
+    return {
+      at: now,
+      values: current
+        ? { [LOCAL_SNAPSHOT_KEY]: next, [LOCAL_SNAPSHOT_PREV_KEY]: current }
+        : { [LOCAL_SNAPSHOT_KEY]: next }
+    };
+  }
+
+  // SW 啟動掃一次：兩槽各自獨立判斷過期（寫入稀疏時 prev 可能比 current 老很多）
+  async function sweepExpiredSnapshots() {
+    const keys = [LOCAL_SNAPSHOT_KEY, LOCAL_SNAPSHOT_PREV_KEY];
+    const stored = await getLocal(keys);
+    const now = Date.now();
+    const expired = keys.filter(key => stored[key] && now - snapshotSavedAt(stored[key]) > LOCAL_SNAPSHOT_TTL_MS);
+    if (expired.length) await removeLocal(expired);
+  }
+
+  async function writeLegacyMap(items, { snapshot = true } = {}) {
+    const pending = snapshot ? await prepareSnapshot().catch(() => null) : null;
     await setLocal({ [VOCABULARY_STORAGE_KEY]: normalizeItemsMap(items) });
+    if (!pending) return;
+    // 主寫入已落地，快照才寫；失敗吞掉但要留訊號，否則「一直寫失敗」與「有備份」無法區分
+    try {
+      await setLocal(pending.values);
+      snapshotCheckedAt = pending.at;
+    } catch (error) {
+      console.warn('[fan-fan-ba] 單字本本機快照寫入失敗，這次沒有備份', error);
+    }
   }
 
   // 同步時鐘：取 lastSeenAt / reviewedAt 較大者（cutover 合併衝突判準）
@@ -74,8 +137,9 @@
   // mirror-only 後所有寫入都是同一 key 的 read-modify-write，並發 handleMessage
   // 會互丟條目；佇列逐 op 隔離 rejection（q.then(run, run)），單一 op 失敗不
   // 餓死後續。cutover 掛佇列頭，保證先於任何 CRUD（禁 lazy——否則匯入後殭屍復活）。
-  let queue = cutoverFromIndexedDb();
-  queue.catch(() => {}); // cutover 失敗不阻塞 CRUD，下次 SW 啟動冪等重試
+  // 快照 TTL 掃描接在 cutover 之後：兩者都在任何 CRUD 之前，且互不影響成敗
+  let queue = cutoverFromIndexedDb().then(sweepExpiredSnapshots, sweepExpiredSnapshots);
+  queue.catch(() => {}); // cutover / 掃描失敗不阻塞 CRUD，下次 SW 啟動冪等重試
 
   function enqueue(task) {
     const run = queue.then(task, task);
@@ -132,7 +196,7 @@
       }
     });
 
-    await writeLegacyMap(merged);
+    await writeLegacyMap(merged, { snapshot: false }); // cutover 已有 PRE_CUTOVER_BACKUP_KEY
 
     // 守門：通過才觸發不可逆的刪庫
     const readBack = await loadLegacyMap();
@@ -214,8 +278,13 @@
 
   async function replaceAll(itemsMap) {
     const items = normalizeItemsMap(itemsMap);
+    // 清空＝使用者明確要求刪除（options 頁的說法是「可隨時修改或清空刪除」），
+    // 隱私優先於救援：不留快照，連既有兩槽一併移除。
+    // 單字被逐一 delete 不算清空宣告，仍會留快照——那才是誤刪救回的主場。
+    const clearing = Object.keys(items).length === 0;
     return enqueue(async () => {
-      await writeLegacyMap(items);
+      await writeLegacyMap(items, { snapshot: !clearing });
+      if (clearing) await removeLocal([LOCAL_SNAPSHOT_KEY, LOCAL_SNAPSHOT_PREV_KEY]);
       return { count: Object.keys(items).length };
     });
   }
@@ -255,6 +324,8 @@
     VOCABULARY_STORAGE_KEY,
     VOCABULARY_MIGRATION_KEY,
     PRE_CUTOVER_BACKUP_KEY,
+    LOCAL_SNAPSHOT_KEY,
+    LOCAL_SNAPSHOT_PREV_KEY,
     DB_NAME,
     STORE_NAME,
     normalizeItemsMap,
