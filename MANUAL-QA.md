@@ -9,17 +9,19 @@
 
 ## ⚠️ 執行順序（2026-08-10 排定，先讀這段再開工）
 
-全表 **78 項未勾**（2026-08-10 重數：原 71 項 ＋ 新增 cutover 6 項與 Tier 0 前置 2 項，
-− §6 那條被 TC-CUT-001 取代的舊遷移項）。**順序不是建議、是約束**——Tier 1 一旦錯過就補不回來：
+**進度：Tier 0、Tier 1 已於 2026-08-10 完成（8/78），剩 70 項。**
+下一個要跑的是 **Tier 2**。順序不是建議、是約束——不過 Tier 1 那道「一旦錯過就補不回來」的閘已經過了。
 
-| Tier | 章節 | 項數 | 估時 | 為什麼排這裡 |
-| :-- | :-- | --: | :-- | :-- |
-| **0** | §0 前置 | 2 | 15 分 | 舊 zip 是 v1.9.9，不重打包後面全部白測 |
-| **1** | ⭐〈cutover 一次性資料層遷移〉 | 6 | 40 分 | **單向不可逆、每個 profile 只發生一次**，必須最先且用專用 profile |
-| **2** | 〈2026-07-30 單字本資料層〉 | 17 | 60 分 | 資料遺失類 |
-| **3** | 〈2026-07-28 三缺陷回歸〉4 ＋〈半接線 6 條〉15 | 19 | 90 分 | 功能面送審阻塞；Obsidian 那節要外部 App 配合 |
-| **4** | §1–§7 legacy 回歸 | 31 | 90 分 | 廣度回歸，風險最低 |
-| **5** | §8 送審前 gating | 3 | 另計 | 非 code，最後做 |
+| Tier | 章節 | 項數 | 估時 | 狀態 | 為什麼排這裡 |
+| :-- | :-- | --: | :-- | :-- | :-- |
+| **0** | §0 前置 | 2 | 15 分 | ✅ 08-10 | 版本號相同不代表內容新，一律重打包 |
+| **1** | ⭐〈cutover 一次性資料層遷移〉 | 6 | 40 分 | ✅ 08-10 **6/6 PASS** | **單向不可逆、每個 profile 只發生一次** |
+| **2** | 〈2026-07-30 單字本資料層〉 | 17 | 60 分 | ⬜ **下一個** | 資料遺失類 |
+| **3** | 〈2026-07-28 三缺陷回歸〉4 ＋〈半接線 6 條〉15 | 19 | 90 分 | ⬜ | 功能面送審阻塞；Obsidian 那節要外部 App 配合 |
+| **4** | §1–§7 legacy 回歸 | 31 | 90 分 | ⬜ | 廣度回歸，風險最低 |
+| **5** | §8 送審前 gating | 3 | 另計 | ⬜ | 非 code，最後做 |
+
+原始計數 78 ＝ 舊有 71 ＋ 新增 cutover 6 與 Tier 0 前置 2，− §6 那條被 TC-CUT-001 取代的舊遷移項。
 
 > 章節編號沿用舊有 §1–§8 未動（qa-reports 與藍圖有引用）；cutover 區塊改用不編號的 ⭐ 標題插在 §0 之後。
 
@@ -33,9 +35,12 @@
 
 ## 0. 前置（Tier 0）
 - [x] `npm test` 全綠（2026-08-10 複驗：**27 suites / 304 tests**，0 failed、0 skipped，exit 0）
-- [ ] `npm run package` 重新產出 **`dist/fan-fan-ba-v1.10.0.zip`**，並以 `dist/pkg/` 載入測試
-      （舊紀錄：2026-07-24 的 `v1.9.9.zip` / 3027.1 KB —— **版本已 bump 到 1.10.0，那包不可再用**）
-- [ ] 擴充功能顯示 **v1.10.0**；背景 Service Worker console 0 error
+- [x] `npm run package` 重新產出 **`dist/fan-fan-ba-v1.10.0.zip`**，並以 `dist/pkg/` 載入測試
+      → 2026-08-10 13:24 重打包，3104471 bytes；`diff -rq . dist/pkg` **逐檔與工作區一致**
+      ⚠️ **陷阱**：`dist/` 原本就有一顆 2026-07-29 的 `v1.10.0.zip`，manifest 版本號看起來對，
+      但 `vocabulary-store.js` / `options.js` 落後 07-30 那輪。**版本號相同不代表內容是新的，一律重打包。**
+- [x] 擴充功能顯示 **v1.10.0**；背景 Service Worker console 0 error
+      → pkg manifest 為 1.10.0；p1/p2/p3 三個 profile 的 SW console 皆無紅色錯誤（DevTools 顯示 `No Issues`）
 
 ---
 
@@ -76,21 +81,39 @@ chrome.storage.local.set({ fanFanBaVocabularyItems: {
 
 ### 檢查項
 
-- [ ] **TC-CUT-001 合併正確**：reload 後查 `fanFanBaVocabularyItems` → 三筆都在；
+- [x] **TC-CUT-001 合併正確**：reload 後查 `fanFanBaVocabularyItems` → 三筆都在；
       `en:shared` 的 word 是 **`shared`（IDB 較新的那版）**、不是 `shared-OLD`；`en:idbonly` 沒有消失
-- [ ] **TC-CUT-002 舊庫已刪**：DevTools → Application → IndexedDB → **`fan-fan-ba-vocabulary` 不存在**；
+- [x] **TC-CUT-002 舊庫已刪**：DevTools → Application → IndexedDB → **`fan-fan-ba-vocabulary` 不存在**；
       且 `fanFanBaVocabularyIndexedDbMigratedAt` 這個 marker 也被清掉
-- [ ] **TC-CUT-003 合併前快照有寫**：`fanFanBaVocabularyItemsPreCutoverBackup` 存在，
+- [x] **TC-CUT-003 合併前快照有寫**：`fanFanBaVocabularyItemsPreCutoverBackup` 存在，
       `items` 是**合併前的鏡像內容**（只有 `en:shared`(OLD) 與 `en:mirroronly`，**不含** IDB 的兩筆），`savedAt` 是剛才
-- [ ] **TC-CUT-004 平手時鏡像勝**：另起乾淨 profile，兩邊放**同 id 且時戳完全相同**的條目（值不同）→ reload
+- [x] **TC-CUT-004 平手時鏡像勝**：另起乾淨 profile，兩邊放**同 id 且時戳完全相同**的條目（值不同）→ reload
       → 留下來的是**鏡像那版**（嚴格較新才換人，平手不動）
-- [ ] **TC-CUT-005 冪等重試**：reload 後 IDB 已刪 → **再 reload 一次** → 不報錯、單字本內容不變、
+- [x] **TC-CUT-005 冪等重試**：reload 後 IDB 已刪 → **再 reload 一次** → 不報錯、單字本內容不變、
       不會又生出一份 PreCutover 快照（write-if-absent）
-- [ ] **TC-CUT-006 全新安裝不受影響**：全新 profile 直接裝 v1.10.0（沒有舊 IDB）→
+- [x] **TC-CUT-006 全新安裝不受影響**：全新 profile 直接裝 v1.10.0（沒有舊 IDB）→
       單字本可正常存取，**不會憑空生出** `fan-fan-ba-vocabulary` 這個 DB，也不會寫 PreCutover 快照
 
 > **跑完 Tier 1 才能往下做**——TC-CUT-002 一旦通過，這個 profile 的 IDB 就不存在了，
 > 004/005/006 各自需要新的乾淨 profile。
+
+### 2026-08-10 執行結果：**6/6 PASS**（真實 Chrome 151.0.7922.77，三個拋棄式 profile）
+
+profile 用 `--user-data-dir="C:\tmp\ffb-qa\p{1,2,3}"` 開，擴充以「載入未封裝項目」指向 `dist/pkg`。
+（`--load-extension` 這個 flag **Chrome 151 已不支援**、靜默忽略，只能走 UI 載入。）
+
+| profile | TC | 實測 |
+| :-- | :-- | :-- |
+| p1 | 001 | 合併後 `en:idbonly,en:mirroronly,en:shared` 三筆齊；`en:shared.word === 'shared'`（IDB 較新版勝出）|
+| p1 | 002 | `indexedDB.databases()` 已無 `fan-fan-ba-vocabulary`；marker 為 `undefined` |
+| p1 | 003 | 快照存在且內容為合併前鏡像（`en:mirroronly,en:shared` 且 word 是 `shared-OLD`）；`savedAt=2026-08-10T06:11:09.769Z`（UTC，台北 14:11）|
+| p1 | 005 | 二次 reload 後 `savedAt` **未變**（write-if-absent 有效）、單字本內容不變、未重建庫 |
+| p2 | 004 | 同 id 同時戳 `2026-07-15T00:00:00.000Z`，留下的是 `from-MIRROR` → 比較確為嚴格 `>`；舊庫仍被刪 |
+| p3 | 006 | `存在的 DB = []`；PreCutover 與 marker 皆 `undefined`；`upsertItem`→`listItems` 讀寫往返正常 |
+
+**還沒驗到的**：`onblocked`（有其他分頁佔住舊 DB 時 `deleteDatabase` 會卡住）走的是
+fire-and-forget 出佇列鏈、下次啟動補刪的路徑——三個 profile 都只有單一 SW context，沒有觸發到。
+屬低機率且設計上已不阻塞 CRUD，未另闢 TC。
 
 ---
 
