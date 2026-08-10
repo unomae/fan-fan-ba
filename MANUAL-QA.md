@@ -1,16 +1,96 @@
 # 手動 QA 檢查表（需在真實 Chrome / Edge 執行）
 
-> 這份是「**人要做**」的手動驗收，與 `npm test`（273 個自動化單元測試）互補。
+> 這份是「**人要做**」的手動驗收，與 `npm test`（304 個自動化單元測試）互補。
 > 自動測試涵蓋純函式邏輯；以下這些只有在真實瀏覽器載入擴充功能才驗得了。
-> 涵蓋版本：v1.9.6（注入面收斂）→ v1.9.9（security hardening）+ Phase A–D review 修正。
-> 最後更新：2026-07-28。
+> 涵蓋版本：v1.9.6（注入面收斂）→ v1.9.9（security hardening）→ **v1.10.0（WS-E 資料層 migration）** + Phase A–D review 修正。
+> 最後更新：2026-08-10（補 Tier 排序與 §1 cutover 區塊）。
 
 ---
 
-## 0. 前置
-- [x] `npm test` 全綠（2026-07-28 接線輪：26 suites / 273 tests，0 failed、0 skipped）
-- [x] `npm run package` 成功產出 `dist/fan-fan-ba-v1.9.9.zip`（2026-07-24：3027.1 KB），並以 `dist/pkg/` 載入測試
-- [x] 擴充功能顯示 v1.9.9；背景 Service Worker console 本輪 0 error（Options TDZ 另列 `QA-P2-002`）
+## ⚠️ 執行順序（2026-08-10 排定，先讀這段再開工）
+
+全表 **78 項未勾**（2026-08-10 重數：原 71 項 ＋ 新增 cutover 6 項與 Tier 0 前置 2 項，
+− §6 那條被 TC-CUT-001 取代的舊遷移項）。**順序不是建議、是約束**——Tier 1 一旦錯過就補不回來：
+
+| Tier | 章節 | 項數 | 估時 | 為什麼排這裡 |
+| :-- | :-- | --: | :-- | :-- |
+| **0** | §0 前置 | 2 | 15 分 | 舊 zip 是 v1.9.9，不重打包後面全部白測 |
+| **1** | ⭐〈cutover 一次性資料層遷移〉 | 6 | 40 分 | **單向不可逆、每個 profile 只發生一次**，必須最先且用專用 profile |
+| **2** | 〈2026-07-30 單字本資料層〉 | 17 | 60 分 | 資料遺失類 |
+| **3** | 〈2026-07-28 三缺陷回歸〉4 ＋〈半接線 6 條〉15 | 19 | 90 分 | 功能面送審阻塞；Obsidian 那節要外部 App 配合 |
+| **4** | §1–§7 legacy 回歸 | 31 | 90 分 | 廣度回歸，風險最低 |
+| **5** | §8 送審前 gating | 3 | 另計 | 非 code，最後做 |
+
+> 章節編號沿用舊有 §1–§8 未動（qa-reports 與藍圖有引用）；cutover 區塊改用不編號的 ⭐ 標題插在 §0 之後。
+
+> **Tier 1 的專用 profile 規則**：cutover 只在「偵測到舊 IDB 存在」時跑一次，跑完就 `deleteDatabase`。
+> 若先做 Tier 2 的匯入／還原測試，同一 profile 的 IDB 早被清掉，Tier 1 就再也測不到。
+> → 開一個乾淨的 Chrome 使用者設定檔專跑 Tier 1，其餘 Tier 用另一個 profile。
+
+建議切三次做：**第一次 Tier 0+1（約 55 分）** → 第二次 Tier 2+3（約 2.5 小時）→ 第三次 Tier 4+5。
+
+---
+
+## 0. 前置（Tier 0）
+- [x] `npm test` 全綠（2026-08-10 複驗：**27 suites / 304 tests**，0 failed、0 skipped，exit 0）
+- [ ] `npm run package` 重新產出 **`dist/fan-fan-ba-v1.10.0.zip`**，並以 `dist/pkg/` 載入測試
+      （舊紀錄：2026-07-24 的 `v1.9.9.zip` / 3027.1 KB —— **版本已 bump 到 1.10.0，那包不可再用**）
+- [ ] 擴充功能顯示 **v1.10.0**；背景 Service Worker console 0 error
+
+---
+
+## ⭐ Tier 1 — cutover 一次性資料層遷移（v1.10.0，**不可逆**）
+
+> 2026-08-10 新增。WS-E 的 T-A1 把單字本從「IndexedDB ＋ storage.local 鏡像」雙存放收斂成
+> **mirror-only**，升級後第一次啟動 Service Worker 會把舊 IDB 併進鏡像然後 `deleteDatabase`。
+> 這是整個 v1.10.0 唯一**弄錯就真的丟使用者單字本**的路徑，而先前的 QA 輪完全沒有覆蓋它。
+>
+> **實作對照**（`vocabulary-store.js`，寫這節時逐行核對過）：
+> - IDB：DB `fan-fan-ba-vocabulary` / object store `items`（keyPath `id`）
+> - 鏡像鍵 `fanFanBaVocabularyItems`／舊 marker `fanFanBaVocabularyIndexedDbMigratedAt`
+> - 合併前快照 `fanFanBaVocabularyItemsPreCutoverBackup`（**write-if-absent**，30 天 TTL）
+> - 勝負規則：`effectiveTimestamp = max(lastSeenAt, reviewedAt)`，**嚴格較新才勝**（平手鏡像勝）
+> - 守門：寫回後比對 key 集合相等 ＋ IDB 勝出條目時戳相符，**通過才刪庫**；不過則不刪、下次啟動重試
+
+### 造舊 IDB 狀態（背景 Service Worker 的 DevTools console）
+
+```js
+// 造一顆「升級前」的舊 IDB：一筆兩邊都有（IDB 較新）、一筆只有 IDB
+const db = await new Promise(res => {
+  const r = indexedDB.open('fan-fan-ba-vocabulary');
+  r.onupgradeneeded = () => r.result.createObjectStore('items', { keyPath: 'id' });
+  r.onsuccess = () => res(r.result);
+});
+const tx = db.transaction('items', 'readwrite').objectStore('items');
+tx.put({ id: 'en:shared', word: 'shared', lastSeenAt: '2026-08-01T00:00:00.000Z' });  // 較新，應勝出
+tx.put({ id: 'en:idbonly', word: 'idbonly', lastSeenAt: '2026-01-01T00:00:00.000Z' }); // 只有 IDB，應併入
+db.close();
+// 鏡像端放同 id 的較舊版本
+chrome.storage.local.set({ fanFanBaVocabularyItems: {
+  'en:shared':  { id: 'en:shared',  word: 'shared-OLD', lastSeenAt: '2026-07-01T00:00:00.000Z' },
+  'en:mirroronly': { id: 'en:mirroronly', word: 'mirroronly', lastSeenAt: '2026-07-01T00:00:00.000Z' }
+} });
+```
+
+造完 **reload extension**（`chrome://extensions` → 重新整理鈕）觸發 SW 啟動掃描。
+
+### 檢查項
+
+- [ ] **TC-CUT-001 合併正確**：reload 後查 `fanFanBaVocabularyItems` → 三筆都在；
+      `en:shared` 的 word 是 **`shared`（IDB 較新的那版）**、不是 `shared-OLD`；`en:idbonly` 沒有消失
+- [ ] **TC-CUT-002 舊庫已刪**：DevTools → Application → IndexedDB → **`fan-fan-ba-vocabulary` 不存在**；
+      且 `fanFanBaVocabularyIndexedDbMigratedAt` 這個 marker 也被清掉
+- [ ] **TC-CUT-003 合併前快照有寫**：`fanFanBaVocabularyItemsPreCutoverBackup` 存在，
+      `items` 是**合併前的鏡像內容**（只有 `en:shared`(OLD) 與 `en:mirroronly`，**不含** IDB 的兩筆），`savedAt` 是剛才
+- [ ] **TC-CUT-004 平手時鏡像勝**：另起乾淨 profile，兩邊放**同 id 且時戳完全相同**的條目（值不同）→ reload
+      → 留下來的是**鏡像那版**（嚴格較新才換人，平手不動）
+- [ ] **TC-CUT-005 冪等重試**：reload 後 IDB 已刪 → **再 reload 一次** → 不報錯、單字本內容不變、
+      不會又生出一份 PreCutover 快照（write-if-absent）
+- [ ] **TC-CUT-006 全新安裝不受影響**：全新 profile 直接裝 v1.10.0（沒有舊 IDB）→
+      單字本可正常存取，**不會憑空生出** `fan-fan-ba-vocabulary` 這個 DB，也不會寫 PreCutover 快照
+
+> **跑完 Tier 1 才能往下做**——TC-CUT-002 一旦通過，這個 profile 的 IDB 就不存在了，
+> 004/005/006 各自需要新的乾淨 profile。
 
 ---
 
@@ -25,7 +105,7 @@
 
 ---
 
-## 2026-07-28 三缺陷修補與待人工回歸
+## 2026-07-28 三缺陷修補與待人工回歸（Tier 3）
 
 三個開放缺陷已修，`npm test` 26 suites / 249 tests 全綠（0 failed、0 skipped）。
 自動化能鎖住的部分已進測試，**下列真實瀏覽器回歸只有你能跑**：
@@ -57,7 +137,7 @@
 
 ---
 
-## 2026-07-28 半接線 6 條接線完工 — 待人工驗
+## 2026-07-28 半接線 6 條接線完工 — 待人工驗（Tier 3）
 
 六個原本零 production caller 的函式已接上呼叫端，`npm test` 249 → 273（26 suites 全綠、0 skipped）。
 **自動化只驗到「有呼叫、狀態有寫入、UI 入口存在且可見」；下面這些只有真實瀏覽器 / 外部 App 驗得了。**
@@ -98,7 +178,7 @@
 
 ---
 
-## 2026-07-30 單字本資料層三塊 — 待人工驗
+## 2026-07-30 單字本資料層三塊 — 待人工驗（Tier 2，資料遺失類）
 
 `mergeEntry` 勝方判定改時間優先、本機兩槽自動快照、options 頁快照還原入口。
 `npm test` 273 → 304（27 suites 全綠、0 skipped），且兩輪 red-team 打出來的邊界都有測試鎖住。
@@ -147,20 +227,20 @@
 
 ---
 
-## 1. v1.9.6 — frame-split（最高風險，重點測）
+## 1. v1.9.6 — frame-split（Tier 4；legacy 批次內最高風險）
 - [ ] 開含**跨來源 iframe** 的長文頁（嵌 YouTube / 廣告 / Disqus 的新聞）：浮球**只在主頁面一顆**，iframe 內不長球
 - [ ] 在 **iframe 內選取文字** → 工具列仍跳出、能翻譯（frame-split 不該弄壞這條）
 - [ ] 主頁選取文字 → 工具列 / 結果卡正常
 - [ ] 敏感頁（accounts.google.com 登入頁）→ 整支不啟用、無浮球
 
-## 2. v1.9.6 — 訊息硬化
+## 2. v1.9.6 — 訊息硬化（Tier 4）
 - [ ] 設定 Obsidian Vault → 結果卡存入 Obsidian → 正常開啟、存入後切回原分頁（只允許 `obsidian://`）
 - [ ] 浮球「設定」→ 正常開設定頁
 
-## 3. v1.9.6 — web_accessible_resources（`use_dynamic_url`）
+## 3. v1.9.6 — web_accessible_resources（`use_dynamic_url`）（Tier 4）
 - [ ] 結果卡 / 浮球品牌字型（jf-openhuninn）正常載入、浮球 icon 正常（沒變系統預設醜字）
 
-## 4. v1.9.7 / Phase C — 單段翻譯
+## 4. v1.9.7 / Phase C — 單段翻譯（Tier 4）
 - [ ] 滑過一般段落時不會出現浮動翻譯鈕，也不會遮住原文
 - [ ] 游標放在某段（或選取該段）→ 按 **Alt+T** → 翻譯該段
 - [ ] 對**已翻譯過**的段落再觸發 → 應「定位」而非重複請求
@@ -168,14 +248,20 @@
 - [ ] **局部重試**（Phase C）：段落翻譯失敗時出現「重試此段」→ 點擊可重翻、失敗計數正確扣回
 - [ ] 與整頁翻譯混用：雙語 / 譯文 / 原文模式切換、複製譯文 / 雙語、定位原文都正常
 
-## 5. v1.9.8 — 本機診斷 / 自檢表
+## 5. v1.9.8 — 本機診斷 / 自檢表（Tier 4）
 - [ ] 做幾次翻譯 / 解釋 / 優化 / 整頁翻譯 → 設定頁「隱私與功能說明」分頁 →「本機診斷摘要」數字有累加，並顯示版本、模型 API Key、高亮設定、使用紀錄與隱私邊界自檢
 - [ ] 刻意清空目前模型 API Key → 自檢表顯示需要處理；補回 API Key 後顯示正常
 - [ ] 按「清除診斷資料」→ 歸零
 - [ ] DevTools Network：操作時**只有對 AI API 的請求**，無其他上傳（確認真的無 telemetry）
 
-## 6. Phase B — 單字本 IndexedDB / SRS / 備份
-- [ ] 從舊版 local storage 單字本升級後，單字本面板仍看得到既有單字
+## 6. Phase B — 單字本 SRS / 備份（Tier 4）
+
+> 2026-08-10 更名：原標題寫「IndexedDB」，但 v1.10.0 的 T-A1 已把 IDB 層整個移除、改 mirror-only。
+> 遷移本身改由上方〈⭐ Tier 1 — cutover〉負責，本節只留 SRS 與匯出／匯入。
+
+> ~~從舊版 local storage 單字本升級後，單字本面板仍看得到既有單字~~
+> → **已由 TC-CUT-001 取代**（v1.10.0 的升級路徑是 IDB → 鏡像，不再是 local storage → IDB）。
+> 不列為待辦項，避免與 Tier 1 重複計數。
 - [ ] 浮球 → 單字本，預設顯示「今日複習」；到期單字排序合理
 - [ ] 在「今日複習」點「記得」→ 狀態變已記得，下一次複習約 7 天後
 - [ ] 在「今日複習」點「還不熟」→ 狀態維持還不熟，下一次複習約 1 天後
@@ -187,7 +273,7 @@
 - [ ] **匯入硬化**（review 🔴1/🟡2）：匯入一個內含 `"__proto__"` 當 key 的惡意 JSON → 不崩潰、該筆被忽略、其他單字正常匯入
 - [ ] 匯入超過 10MB 的檔 → 顯示「檔案太大」而非卡死
 
-## 7. 回歸（確認沒弄壞既有功能）
+## 7. 回歸（確認沒弄壞既有功能）（Tier 4）
 - [ ] **選取長段落 → 翻譯 / 解釋 / 優化（streaming）正常逐字顯示，不再報「請求 ID格式不正確」**（2026-06-20 修正：requestId 數字→字串 correlation id 容錯）
 - [ ] 字典卡（選短單字）、段落串流翻譯、解釋、優化、朗讀
 - [ ] 釘住結果卡、最近查詢、單字本面板、單字高亮
@@ -195,7 +281,7 @@
 
 ---
 
-## 8. 送審前 gating（非 code，需你確認）
+## 8. 送審前 gating（Tier 5；非 code，需你確認）
 - [ ] 確認 manifest `oauth2.client_id` 是**正式**的 Google OAuth Client ID（非 placeholder）
 - [ ] 1280×800 截圖（至少 1 張）
 - [ ] 依 `STORE-SUBMISSION.md` 打包 → 上傳 Developer Dashboard → 填文案 → 送審
