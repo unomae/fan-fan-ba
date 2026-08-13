@@ -330,8 +330,14 @@ function getVocabularyNextReviewAt(item, reviewedAt = new Date().toISOString()) 
   return new Date(reviewedTime + intervalDays * 24 * 60 * 60 * 1000).toISOString();
 }
 
+// CSV 公式注入防護（2026-08-13 TC-F3-004 實測抓到）：Excel／Sheets 會把
+// `=` `+` `-` `@`（含前導 tab / CR）開頭的儲存格當公式算，單字本的 word 與
+// definition 都是從網頁抓來的外部文字，`=cmd|' /C calc'!A0` 這種值一路貼進
+// 試算表就會被執行。補一個單引號讓它維持純文字（試算表顯示時不會出現該引號）。
+// 順序重要：先補前綴、再做引號包裹，含逗號的惡意值才會變成 "'=..." 而不是 "..."。
 function escapeVocabularyCsvCell(value) {
-  const text = String(value ?? '');
+  let text = String(value ?? '');
+  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
   if (/[",\r\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
   return text;
 }

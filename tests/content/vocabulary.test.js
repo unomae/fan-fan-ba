@@ -264,6 +264,25 @@ describe('Vocabulary storage helper', () => {
     expect(csv).toContain('Vocabulary Test Page');
   });
 
+  it('prefixes formula-leading CSV cells so spreadsheets keep them as text', async () => {
+    const { context } = createVocabularyContext();
+    const { item } = await context.saveVocabularyEntry({
+      word: "=cmd|' /C calc'!A0",
+      lang: 'en',
+      translations: ['@SUM(1+1)*cmd'],
+      definition: '-2+3, plus a comma'
+    }, 'Hostile context');
+
+    const csv = context.buildVocabularyCsvExport([item]);
+
+    // 公式字元開頭一律補 '；含逗號者先補前綴再包引號
+    expect(csv).toContain("'=cmd|' /C calc'!A0");
+    expect(csv).toContain("'@SUM(1+1)*cmd");
+    expect(csv).toContain(`"'-2+3, plus a comma"`);
+    // 反向：一般值不得被亂加前綴
+    expect(csv).not.toContain("'en");
+  });
+
   it('appends a configured vocabulary entry to the exact Obsidian folder once', async () => {
     const { context, runtimeSendMessage } = createVocabularyContext({
       syncStore: {
