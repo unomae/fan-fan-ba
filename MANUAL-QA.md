@@ -9,8 +9,10 @@
 
 ## ⚠️ 執行順序（2026-08-10 排定，先讀這段再開工）
 
-**進度（2026-08-13）：Tier 0、1、2 全部完成（17/17）→ 全表剩 53 項未跑。**
-下一個是 **Tier 3**：三缺陷回歸 4 項 ＋ 半接線 6 條 15 項（Obsidian 那節要外部 App 配合）。
+**進度（2026-08-13）：Tier 0、1、2 完成；Tier 3 完成 13/19 → 全表剩 40 項未跑（含 1 格半完成）。**
+Tier 3 剩下的 6 格**只有你能跑**：TC-F3-004（5,000 筆／惡意字串邊界，那格與已過的 TC-F3-002 綁在一起）、
+Obsidian 週記落檔 2 格（要真的 App 接 `obsidian://`）、本頁學習摘要 3 格（要真的譯出結果＝需 API key）。
+之後是 **Tier 4**（§1–§7 legacy 回歸 31 項）。
 Tier 1 那道「一旦錯過就補不回來」的閘已經過了，之後都可隨時中斷再續。
 
 | Tier | 章節 | 項數 | 估時 | 狀態 | 為什麼排這裡 |
@@ -18,7 +20,7 @@ Tier 1 那道「一旦錯過就補不回來」的閘已經過了，之後都可�
 | **0** | §0 前置 | 2 | 15 分 | ✅ 08-10 | 版本號相同不代表內容新，一律重打包 |
 | **1** | ⭐〈cutover 一次性資料層遷移〉 | 6 | 40 分 | ✅ 08-10 **6/6 PASS** | **單向不可逆、每個 profile 只發生一次** |
 | **2** | 〈2026-07-30 單字本資料層〉 | 17 | 60 分 | ✅ 08-13 **16 PASS＋1 跳過**（快照還原 7・DevTools 2＋1 跳過・匯入 7）| 資料遺失類 |
-| **3** | 〈2026-07-28 三缺陷回歸〉4 ＋〈半接線 6 條〉15 | 19 | 90 分 | ⬜ | 功能面送審阻塞；Obsidian 那節要外部 App 配合 |
+| **3** | 〈2026-07-28 三缺陷回歸〉4 ＋〈半接線 6 條〉15 | 19 | 90 分 | 🔶 **13/19**（08-13 automation-driven）| 剩 6 格＝TC-F3-004 邊界、Obsidian 落檔 2、摘要 3（需 API key／外部 App）|
 | **4** | §1–§7 legacy 回歸 | 31 | 90 分 | ⬜ | 廣度回歸，風險最低 |
 | **5** | §8 送審前 gating | 3 | 另計 | ⬜ | 非 code，最後做 |
 
@@ -134,13 +136,15 @@ fire-and-forget 出佇列鏈、下次啟動補刪的路徑——三個 profile �
 三個開放缺陷已修，`npm test` 26 suites / 249 tests 全綠（0 failed、0 skipped）。
 自動化能鎖住的部分已進測試，**下列真實瀏覽器回歸只有你能跑**：
 
-- [ ] `TC-F3-001` / `TC-F3-005`：一般 HTTPS 頁 → 浮球 →「收藏 / 紀錄」→ 面板**實心可見且可點**，能進單字本與最近查詢
+- [x] `TC-F3-001` / `TC-F3-005`：一般 HTTPS 頁 → 浮球 →「收藏 / 紀錄」→ 面板**實心可見且可點**，能進單字本與最近查詢
       （自動化已鎖：`tests/content/floating-ball.test.js` 驗 `.g-show` 有加上；但透明度是 computed style，jsdom 驗不到）
-- [ ] `TC-F3-002` / `TC-F3-004`：前置被 QA-P1-001 擋住的兩案（歷史紀錄回看、5,000 筆邊界）現在可以重跑
-- [ ] `TC-E3-003`：開 options 頁 → DevTools console **無** `Cannot access 'LAST_VOCAB_BACKUP_KEY' before initialization`，
+- [ ] `TC-F3-002` **已補驗通過**（2026-08-13，歷史回看＋SRS）；**`TC-F3-004` 仍未跑**
+      （5,000 筆／emoji／RTL／`=cmd`／HTML 惡意字串邊界＋高亮排除表單與程式碼）。
+      **這格綁兩案，只做完一半，故維持未勾**
+- [x] `TC-E3-003`：開 options 頁 → DevTools console **無** `Cannot access 'LAST_VOCAB_BACKUP_KEY' before initialization`，
       且「單字本備份」區塊看得到「尚未匯出過…」或「上次備份：N 天前」提醒
       （自動化已鎖：`tests/options.test.js › vocabulary backup startup`）
-- [ ] `TC-F2-005`：375×812 真實裝置 / DevTools 裝置模擬 → 浮球主球與收藏 / **單字高亮** / 全文翻譯 / 設定鈕**完整在畫面內**，
+- [x] `TC-F2-005`：375×812 真實裝置 / DevTools 裝置模擬 → 浮球主球與收藏 / **單字高亮** / 全文翻譯 / 設定鈕**完整在畫面內**，
       （2026-07-28 接線輪新增第 4 顆鈕；量測 harness 的控制項清單要一起改成四顆）
       且在 481px 以上的桌機視窗，浮球靜置時仍維持右側半藏（沒被這次修改弄丟）
 
@@ -170,15 +174,16 @@ fire-and-forget 出佇列鏈、下次啟動補刪的路徑——三個 profile �
 - [ ] 設定頁填好 Obsidian Vault 與資料夾 → 選字翻譯 → 結果卡按「收藏」
       → 按鈕變「**已收藏並匯出**」，且 Obsidian 週記 `YYYY-W##.md` **真的多出**該單字區塊
       （自動化只鎖到：收藏成功會呼叫匯出、狀態機正確；`obsidian://` URI 有沒有真的被 Obsidian 接走驗不到）
-- [ ] 未設定資料夾時按鈕停在「已收藏」，不謊報匯出
+- [x] 未設定資料夾時按鈕停在「已收藏」，不謊報匯出
 - [ ] 同一個字在別的頁面再收藏一次 → **週記不會多出第二份**（已匯出過就不重複 append）
-- [ ] 浮球 →「收藏 / 紀錄」→ 單字本，該筆顯示「已匯出」badge
+- [x] 浮球 →「收藏 / 紀錄」→ 單字本，該筆顯示「已匯出」badge
 
 ### 浮球單字高亮開關
-- [ ] 浮球展開 → 上組出現 🖍 高亮鈕（在「收藏 / 紀錄」下方），點一下頁面內已收藏單字變黃底 `mark`，
+- [x] 浮球展開 → 上組出現 🖍 高亮鈕（在「收藏 / 紀錄」下方），點一下頁面內已收藏單字變黃底 `mark`，
       hover 顯示釋義 tooltip；再點一下還原原文
-- [ ] 重新整理頁面後高亮狀態被記住（存 `chrome.storage.sync` 的 `vocabularyHighlightMode`）
-- [ ] **375×812 回歸**：浮球展開時四顆鈕（收藏 / 高亮 / 全文翻譯 / 設定）**完整在畫面內**，
+      → **驗這條前先確認 `vocabularyHighlightMode` 是關的**，否則第一次點其實是關閉、會拿到假 FAIL（2026-08-13 踩過）
+- [x] 重新整理頁面後高亮狀態被記住（存 `chrome.storage.sync` 的 `vocabularyHighlightMode`）
+- [x] **375×812 回歸**：浮球展開時四顆鈕（收藏 / 高亮 / 全文翻譯 / 設定）**完整在畫面內**，
       沒有重演 QA-P1-003；把浮球拖到畫面最上緣與最下緣，選單也**不被裁掉**
 
 ### 全文翻譯：Shadow DOM / iframe / SVG 收集（一律只回報，不就地翻譯）
@@ -186,13 +191,47 @@ fire-and-forget 出佇列鏈、下次啟動補刪的路徑——三個 profile �
 > 2026-07-28 產品裁決：shadow root 吃不到 `content.css`，塞譯文進去只會是沒樣式的裸文字、
 > 且「只看譯文 / 只看原文」模式對它不生效，因此**不注入譯文，只在面板提示**。
 
-- [ ] 開含 open Shadow DOM 內文的網頁（web component 文件站）→ 全文翻譯 →
+- [x] 開含 open Shadow DOM 內文的網頁（web component 文件站）→ 全文翻譯 →
       **web component 內不出現任何譯文區塊**，面板嵌入提示顯示「web component 內文 N 段」
-- [ ] 該提示的 N 與頁面實際可讀段落數相符；用選取翻譯仍能翻 web component 內的文字
-- [ ] 只有 shadow root、內容全是按鈕 / 控制項的頁 → 提示列**不出現**（不多嘴）
-- [ ] 開含跨來源 iframe ＋ SVG 圖表的頁 → 面板嵌入提示顯示
+- [x] 該提示的 N 與頁面實際可讀段落數相符；~~用選取翻譯仍能翻 web component 內的文字~~
+      → **後半句未涵蓋**（選取翻譯要真的打 API），只驗了 N 相符
+- [x] 只有 shadow root、內容全是按鈕 / 控制項的頁 → 提示列**不出現**（不多嘴）
+- [x] 開含跨來源 iframe ＋ SVG 圖表的頁 → 面板嵌入提示顯示
       「嵌入框架 N 個（M 個讀不到）、圖表文字 K 段」，數字與頁面實際情況相符
-- [ ] 沒有嵌入內容的純文字頁 → 該提示列**不出現**
+      → **「讀不到」只算 `data:`／`about:` 這類 unsupported-scheme**；跨來源 http iframe 被判 `ready`
+      （走 frame-script bridge，擴充也注入該 frame），要驗 M>0 得放一個 `data:` iframe
+- [x] 沒有嵌入內容的純文字頁 → 該提示列**不出現**
+
+### 2026-08-13 執行結果（Tier 3 可自動化部分）：**13 格打勾＋1 格半完成**
+
+**⚠️ 證據等級同 Tier 2 後半：automation-driven（Playwright 驅動 p2 已載入的擴充），不是人眼手動 QA。**
+**前提：p2 沒有設定任何 API key／provider／Obsidian vault**（只驗存在、未讀值），所以全文翻譯請求全數失敗
+（面板顯示「已完成 0/4 · 失敗 4」）——但嵌入提示是 `startPageTranslationBeta()` 一開頭就跑 collector 產生的，
+**在任何 API 呼叫之前**，因此 5 條嵌入提示驗得成立。
+
+| 案 | 對應清單項 | 結果 | 實測證據 |
+| :-- | :-- | :-- | :-- |
+| T1 | TC-F3-001/005 | **PASS** | 桌機與 375 皆 `opacity=1`（QA-P1-001 當時是 0）；單字本與最近查詢都進得去 |
+| T2 | TC-F3-002 | **PASS** | 歷史 3 筆、回開結果卡渲染字典卡；點「已記得」後 `learning→known`、`reviewedAt`／`nextReviewAt`（+7 天）同步更新 |
+| T3 | TC-E3-003 | **PASS** | 載入到切分頁全程 console error 0 筆（TDZ 0 筆）；備份提醒文字可見 |
+| T4 | TC-F2-005 | **PASS** | 375 靜置主球溢出 0px；展開五控制項 −2〜−8px（全在畫面內）。桌機 1280 靜置主球右緣**超出 24px＝半藏仍在** |
+| T5 | 高亮鈕開關 | **PASS** | `mode {}→auto`；mark 2 個、tooltip 出現、再點歸 0；**表單與 `<pre><code>` 內 0 個**（高亮沒污染互動元件）|
+| T6 | 高亮狀態記憶 | **PASS** | `storage.sync.vocabularyHighlightMode="auto"`；重整後自動高亮 2 個 |
+| T7 | 高亮 375 回歸＋拖曳 | **PASS** | 四鈕溢出 −8.1〜−8.5px；拖到上緣選單 `top=76`（未裁）、拖到下緣底部溢出 −690px（未裁）|
+| T8 | Obsidian 不謊報 | **PASS** | vault/folder 皆未設定；按前「收藏」（enabled）→ 按後「**已收藏**」，未出現「已收藏並匯出」，且字確實寫進單字本 |
+| T9 | 已匯出 badge | **PASS** | 有 `obsidianExportedAt` 的顯示 badge、沒有的不顯示 |
+| B1 | shadow 不注入譯文＋提示 | **PASS** | 提示「web component 內文 3 段」；shadow root 內譯文區塊 **0 個** |
+| B2 | N 與實際相符 | **PASS** | N=3＝fixture 實際 3 段（選取翻譯子條未涵蓋）|
+| B3 | 只有控制項 → 不多嘴 | **PASS** | 提示未出現 |
+| B4 | iframe＋SVG 數字 | **PASS** | 「嵌入框架 2 個（1 個讀不到）、圖表文字 2 段」＝fixture 實際（http iframe 1＋`data:` iframe 1＋SVG 文字 2）|
+| B5 | 純文字頁 → 不出現 | **PASS** | 提示未出現 |
+
+**這輪三個假 FAIL 全是 harness 問題，記著別重犯**：①高亮案沒先歸零 `vocabularyHighlightMode`，第一次點變成「關閉」→ mark 0
+②Obsidian 案用了**已在單字本裡**的字，字典卡開場就是 disabled 的「已收藏」，按不下去 ③歷史 fixture 沒給可 JSON parse 的
+`dictData`，結果卡 fallback 成純文字版面、根本沒有收藏鈕（收藏鈕只在 `action=translate` ＋選字 ≤20 字 ＋ result 可 parse 時才渲染）。
+
+**剩下 5 項（2 格 Obsidian ＋ 3 格摘要）＋ 半格 TC-F3-004 需要你**：Obsidian 那兩條要真的 App 接 `obsidian://`；
+摘要三條要真的譯出 N 段＝需要 API key（計費＋外連），屬你的決定。
 
 ### 全文翻譯：本頁學習摘要
 - [ ] 全文翻譯跑完 → 面板下方出現「本頁重點 · 已譯 N 段」，含 ≤3 條關鍵句與生字候選，
