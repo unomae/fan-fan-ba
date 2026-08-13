@@ -10,8 +10,8 @@
 ## ⚠️ 執行順序（2026-08-10 排定，先讀這段再開工）
 
 **進度（2026-08-13）：Tier 0、1、2 完成；Tier 3 完成 13/19 → 全表剩 40 項未跑（含 1 格半完成）。**
-Tier 3 剩下的 6 格**只有你能跑**：TC-F3-004（5,000 筆／惡意字串邊界，那格與已過的 TC-F3-002 綁在一起）、
-Obsidian 週記落檔 2 格（要真的 App 接 `obsidian://`）、本頁學習摘要 3 格（要真的譯出結果＝需 API key）。
+Tier 3 剩下的 6 格：TC-F3-004 那格**已跑但 4/5**（CSV 公式注入 FAIL，待裁決修不修）；
+Obsidian 週記落檔 2 格（要真的 App 接 `obsidian://`）、本頁學習摘要 3 格（要真的譯出結果＝需 API key）**只有你能跑**。
 之後是 **Tier 4**（§1–§7 legacy 回歸 31 項）。
 Tier 1 那道「一旦錯過就補不回來」的閘已經過了，之後都可隨時中斷再續。
 
@@ -138,9 +138,8 @@ fire-and-forget 出佇列鏈、下次啟動補刪的路徑——三個 profile �
 
 - [x] `TC-F3-001` / `TC-F3-005`：一般 HTTPS 頁 → 浮球 →「收藏 / 紀錄」→ 面板**實心可見且可點**，能進單字本與最近查詢
       （自動化已鎖：`tests/content/floating-ball.test.js` 驗 `.g-show` 有加上；但透明度是 computed style，jsdom 驗不到）
-- [ ] `TC-F3-002` **已補驗通過**（2026-08-13，歷史回看＋SRS）；**`TC-F3-004` 仍未跑**
-      （5,000 筆／emoji／RTL／`=cmd`／HTML 惡意字串邊界＋高亮排除表單與程式碼）。
-      **這格綁兩案，只做完一半，故維持未勾**
+- [ ] `TC-F3-002` **已補驗通過**（2026-08-13，歷史回看＋SRS）；`TC-F3-004` **已跑，4/5 子檢查過、1 條 FAIL**
+      （CSV 公式注入，見下方〈2026-08-13 TC-F3-004 執行結果〉）。**這格因 TC-F3-004 未全過而維持未勾**
 - [x] `TC-E3-003`：開 options 頁 → DevTools console **無** `Cannot access 'LAST_VOCAB_BACKUP_KEY' before initialization`，
       且「單字本備份」區塊看得到「尚未匯出過…」或「上次備份：N 天前」提醒
       （自動化已鎖：`tests/options.test.js › vocabulary backup startup`）
@@ -201,6 +200,28 @@ fire-and-forget 出佇列鏈、下次啟動補刪的路徑——三個 profile �
       → **「讀不到」只算 `data:`／`about:` 這類 unsupported-scheme**；跨來源 http iframe 被判 `ready`
       （走 frame-script bridge，擴充也注入該 frame），要驗 M>0 得放一個 `data:` iframe
 - [x] 沒有嵌入內容的純文字頁 → 該提示列**不出現**
+
+### 2026-08-13 TC-F3-004 執行結果：**4/5 子檢查 PASS，1 條 FAIL（CSV 公式注入）**
+
+環境同下節（automation-driven，p2 profile）。前置＝5,000 筆單字本，含 7 顆惡意樣本：
+emoji、RTL override（`‮`）、`=cmd|' /C calc'!A0`、`<img src=x onerror=...>`、`<script>`、5,000 字超長字串、`a,b"c`。
+
+| 子檢查 | 結果 | 實測數字 |
+| :-- | :-- | :-- |
+| 5,000 筆下 UI 不卡死 | **PASS** | 開「全部」分頁 2,989ms／渲染 5,000 列；搜尋 515ms→1 筆；切複習狀態 917ms |
+| UI 不執行惡意內容 | **PASS** | `window.__ffbXss`／`__ffbXss2` 皆 `undefined`；結果卡內注入 `img` 0 個、`script` 0 個；HTML 以字面文字顯示 |
+| 快速重複收藏不爆增 | **PASS** | 20 次**並發** upsert 同一 id → 總筆數僅 +1（5000→5001），`count` 依規則合併成 20（序列化佇列有效）|
+| 高亮不污染互動元件 | **PASS** | 文章內 2 個；表單 0／`<pre><code>` 0／翻翻吧自身 UI 0；未超過 `maxMarks=80` |
+| CSV 公式前綴防護 | **FAIL** | 見下 |
+
+**🔴 已重現的缺陷：「複製今日 CSV」沒有公式注入防護**
+
+- **觸發**：單字本存在 word 為 `=cmd|' /C calc'!A0` 的條目（createdAt 為今日）→ 浮球 → 單字本 → 按「複製今日 CSV」
+- **剪貼簿輸出原文**：`=cmd|' /C calc'!A0,,,惡意樣本,,,2026-08-13T07:52:20.141Z,1`
+- **根因**：`content/vocabulary.js` 的 `escapeVocabularyCsvCell` 只處理 `"`／`,`／換行，**未對 `=` `+` `-` `@` 開頭的值加 `'` 前綴**
+- **界線（別誇大）**：只驗到**輸出層無防護**，**沒有**在 Excel 實際執行那條 DDE，也不打算做；風險路徑是「使用者自己把 CSV 貼進 Excel／Sheets」
+- **XLSX 匯出無此問題**：`buildXlsxWorkbook` 以 `t="inlineStr"` 寫格，Excel 一律當字串
+- **處置未定**：修不修屬 KAKA 決定（改動會影響匯出內容格式，且與送審時程相關）
 
 ### 2026-08-13 執行結果（Tier 3 可自動化部分）：**13 格打勾＋1 格半完成**
 
