@@ -45,6 +45,16 @@ function renderModels(currentId) {
     item.addEventListener('click', () => selectModel(m.id, item));
     list.appendChild(item);
   });
+
+  // 清單超過可視高度時會自己捲，這裡把目前選用的模型帶進視野，
+  // 否則選到第 6 個之後開 popup 會看不到自己選的是哪個。
+  // 不用 scrollIntoView：它會沿祖先鏈一路捲，把 header 推出視野（實測過）。
+  const active = list.querySelector('.model-item.active');
+  if (active && list.scrollHeight > list.clientHeight) {
+    const listBox   = list.getBoundingClientRect();
+    const activeBox = active.getBoundingClientRect();
+    list.scrollTop += activeBox.top - listBox.top - (list.clientHeight - activeBox.height) / 2;
+  }
 }
 
 // ── 切換模型 ──────────────────────────────────────────

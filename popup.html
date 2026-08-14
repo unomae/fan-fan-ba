@@ -14,7 +14,9 @@
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    html { overflow: hidden; } /* 封鎖 html 元素的預設捲動列 */
+    /* 只封鎖水平捲動列（原意）。垂直不再封死：模型清單有自己的捲動區，
+       但萬一其他區塊撐高（字體放大、頁面縮放），仍要讓 popup 捲得到底部 */
+    html { overflow-x: hidden; }
 
     body {
       font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
@@ -22,7 +24,7 @@
       background: #fbfcf8;
       color: #1a1a1a;
       font-size: 13px;
-      overflow: hidden;
+      overflow-x: hidden;
     }
 
     /* ── 標題列 ─────────────────────────── */
@@ -180,10 +182,26 @@
       margin-bottom: 8px;
     }
 
+    /* 模型清單自己捲，header／footer 保持常駐（「完整設定」不會被捲走）。
+       max-height 抓 5 項多一點，故意露出下一項的一角當作「還有更多」的提示；
+       模型少於 5 個時 max-height 不生效，不會留白。 */
     .model-list {
       display: flex;
       flex-direction: column;
       gap: 3px;
+      max-height: 268px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: #cdd8c2 transparent;
+    }
+
+    /* Windows 原生捲動列有 17px 寬，在 304px 的 popup 裡會很搶戲 */
+    .model-list::-webkit-scrollbar       { width: 6px; }
+    .model-list::-webkit-scrollbar-track { background: transparent; }
+    .model-list::-webkit-scrollbar-thumb {
+      background: #cdd8c2;
+      border-radius: 99px;
     }
 
     .model-item {
