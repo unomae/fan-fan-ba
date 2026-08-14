@@ -61,6 +61,8 @@ node e2e/run.js --list
 
 - **任何需要 API key 的路徑**：翻譯／解釋／優化／串流／Alt+T 單段／本頁學習摘要。
   沒有 key 時全文翻譯必然失敗，我們反而利用這點驗「失敗態 UI」。
+  > **⛔ 2026-08-14 KAKA 裁決：測試 profile 不配 API key**（計費＋外連）。
+  > 這類項目**永久不在本 e2e 範圍內**，要驗只能人工拿真 key 跑。不要再提「配一顆 key 就能自動化」。
 - **需要外部 App／帳號**：Obsidian 週記落檔（`obsidian://`）、Excel 開 XLSX、Cloud Sync 登入。
 - **人眼觀感**：版面美醜、譯文品質、字型是否「好看」。這裡只驗客觀值（載入狀態、溢出像素、DOM 結構）。
 - **真正的移除擴充再重裝**：`legacy-regression` 只用「清空 `storage.local`」模擬。

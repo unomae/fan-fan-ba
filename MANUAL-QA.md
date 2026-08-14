@@ -7,7 +7,10 @@
 
 > 這份是「**人要做**」的手動驗收，與 `npm test`（305 個自動化單元測試）互補。
 > 自動測試涵蓋純函式邏輯；以下這些只有在真實瀏覽器載入擴充功能才驗得了。
-> 涵蓋版本：v1.9.6（注入面收斂）→ v1.9.9（security hardening）→ **v1.10.0（WS-E 資料層 migration）** + Phase A–D review 修正。
+> 涵蓋版本：v1.9.6（注入面收斂）→ v1.9.9（security hardening）→ **v1.10.0（WS-E 資料層 migration）** + Phase A–D review 修正
+> → **v1.10.1（2026-08-14 bump：CSV 公式注入防護）**。
+> ⚠️ 下面 Tier 0／Tier 1 的打勾與數字是 **2026-08-10 對 v1.10.0 跑的歷史紀錄**，不隨版號改寫；
+> v1.10.1 只動 `escapeVocabularyCsvCell` 一處，cutover 路徑未變，故不重跑 Tier 1。
 > 最後更新：2026-08-10（補 Tier 排序與 §1 cutover 區塊）。
 
 ---
@@ -268,6 +271,10 @@ emoji、RTL override（`‮`）、`=cmd|' /C calc'!A0`、`<img src=x onerror=...
 
 **剩下 5 項（2 格 Obsidian ＋ 3 格摘要）＋ 半格 TC-F3-004 需要你**：Obsidian 那兩條要真的 App 接 `obsidian://`；
 摘要三條要真的譯出 N 段＝需要 API key（計費＋外連），屬你的決定。
+
+> **⛔ 2026-08-14 KAKA 裁決：QA profile 不配 API key。** 下面這節（以及其他需要真實翻譯結果的項目）
+> **不會被 e2e 涵蓋，也不會有人幫你自動化**——要驗只能你本機拿真 key 手動跑，或接受長期不驗。
+> 別再把它們當「等配了 key 就能收掉」的待辦。
 
 ### 全文翻譯：本頁學習摘要
 - [ ] 全文翻譯跑完 → 面板下方出現「本頁重點 · 已譯 N 段」，含 ≤3 條關鍵句與生字候選，
