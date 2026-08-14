@@ -134,7 +134,7 @@ describe('Options module', () => {
       });
 
       expect(settings).toEqual({
-        model: 'openrouter:deepseek/deepseek-v4-flash:free',
+        model: 'openrouter:google/gemma-4-31b-it:free',
         targetLanguage: 'zh-TW',
         explanationLanguage: 'en',
         ttsLanguageMode: 'auto',

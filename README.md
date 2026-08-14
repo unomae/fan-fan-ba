@@ -45,9 +45,9 @@
 
 | 模型 | Provider | 說明 |
 |------|----------|------|
-| **Llama 4 Scout** ⭐ | Groq | Meta 最新 MoE 模型，Groq 極速推論，**免費額度最大方，預設推薦** |
+| **GPT-OSS 120B** ⭐ | Groq | OpenAI 開源模型，Groq 極速推論，**免費額度最大方，預設推薦** |
 | Gemini 3.5 Flash | Google | 最新穩定 Flash 模型，適合日常翻譯、解釋與優化 |
-| DeepSeek V4 Flash | OpenRouter | 免費模型，中文、推理與程式任務表現佳 |
+| Gemma 4 31B | OpenRouter | 免費模型，Google 多語調校，翻譯表現穩定 |
 
 ---
 

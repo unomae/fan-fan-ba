@@ -49,7 +49,7 @@
 
 ⭐ Groq（推薦）— 免費、極速，預設模型
 • Google Gemini — Gemini 3.5 Flash（免費基本額度）
-• OpenRouter — DeepSeek V4 Flash（免費模型）
+• OpenRouter — Gemma 4 31B（免費模型）
 
 **隱私安全**
 

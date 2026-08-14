@@ -39,6 +39,45 @@ describe('model registry 閉合性', () => {
   });
 });
 
+describe('模型備援觸發條件（Groq／OpenRouter 共用）', () => {
+  const withFallback = [
+    ['Groq', M.DEFAULT_MODEL, M.GROQ_FALLBACK_MODEL_ID],
+    ['OpenRouter', M.OPENROUTER_PRIMARY_MODEL, M.OPENROUTER_FALLBACK_MODEL_ID]
+  ];
+
+  test.each(withFallback)('%s 主模型被下架（404）要退到備援，不能直接爆給使用者', (_label, model, fallbackId) => {
+    expect(M.getFallbackModelId(model)).toBe(fallbackId);
+    expect(M.shouldFallbackModel(model, 404, 'The model does not exist')).toBe(true);
+  });
+
+  test.each(withFallback)('%s 節點忙碌（502/503）與 provider 字樣一樣備援', (_label, model) => {
+    expect(M.shouldFallbackModel(model, 502, '')).toBe(true);
+    expect(M.shouldFallbackModel(model, 503, '')).toBe(true);
+    expect(M.shouldFallbackModel(model, 500, 'no available model provider')).toBe(true);
+  });
+
+  test.each(withFallback)('%s 的 401/429 不備援（key 無效與額度用完必須如實回報）', (_label, model) => {
+    expect(M.shouldFallbackModel(model, 401, 'invalid api key')).toBe(false);
+    expect(M.shouldFallbackModel(model, 429, 'rate limit exceeded')).toBe(false);
+  });
+
+  test('Gemini 沒有登記備援模型：任何錯誤都不備援', () => {
+    expect(M.getFallbackModelId('gemini-3.5-flash')).toBe('');
+    expect(M.shouldFallbackModel('gemini-3.5-flash', 404, '')).toBe(false);
+  });
+
+  test('備援模型自己掛掉不再往下備援（目前靠備援 id 不在 MODELS 冊上擋掉）', () => {
+    expect(M.shouldFallbackModel(`groq:${M.GROQ_FALLBACK_MODEL_ID}`, 404, '')).toBe(false);
+    expect(M.shouldFallbackModel(M.OPENROUTER_FALLBACK_MODEL_ID, 404, '')).toBe(false);
+  });
+
+  test('每個登記的 fallbackModelId 都跟主模型不同家、不同 id', () => {
+    M.MODELS.filter(entry => entry.fallbackModelId).forEach(entry => {
+      expect(entry.fallbackModelId).not.toBe(M.toApiModelId(entry.id));
+    });
+  });
+});
+
 describe('PROVIDERS ⟺ manifest host_permissions 對賬', () => {
   test('每個 provider apiBase 的 origin 都被 host_permissions 覆蓋', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf8'));

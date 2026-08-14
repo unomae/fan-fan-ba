@@ -1,9 +1,12 @@
 (function initFanFanBaModels(global) {
   'use strict';
 
-  const DEFAULT_MODEL = 'groq:meta-llama/llama-4-scout-17b-16e-instruct';
-  const OPENROUTER_PRIMARY_MODEL = 'openrouter:deepseek/deepseek-v4-flash:free';
+  const DEFAULT_MODEL = 'groq:openai/gpt-oss-120b';
+  const OPENROUTER_PRIMARY_MODEL = 'openrouter:google/gemma-4-31b-it:free';
   const OPENROUTER_FALLBACK_MODEL_ID = 'openrouter/free';
+  // Groq 會定期清掉舊模型（2026-07 Scout、2026-08 llama-3.3/3.1 陸續下架），
+  // 主模型 404 時退到同家另一個 production 模型，翻譯不至於整條斷掉
+  const GROQ_FALLBACK_MODEL_ID = 'openai/gpt-oss-20b';
 
   // provider 級靜態資料的單一事實來源（WS-E M3''）：
   // background 請求路徑、options 測試連線與 key 前綴驗證共用，
@@ -37,8 +40,9 @@
       id: DEFAULT_MODEL,
       provider: 'groq',
       apiKeyName: 'groqApiKey',
-      name: 'Llama 4 Scout',
-      desc: 'Meta 最新 · Groq 極速・免費',
+      fallbackModelId: GROQ_FALLBACK_MODEL_ID,
+      name: 'GPT-OSS 120B',
+      desc: 'OpenAI 開源 · Groq 極速・免費',
       badge: 'Groq',
       badgeClass: 'badge-groq'
     },
@@ -56,8 +60,8 @@
       provider: 'openrouter',
       apiKeyName: 'openrouterApiKey',
       fallbackModelId: OPENROUTER_FALLBACK_MODEL_ID,
-      name: 'DeepSeek V4 Flash',
-      desc: 'OpenRouter 免費 · 中文/推理強',
+      name: 'Gemma 4 31B',
+      desc: 'OpenRouter 免費 · Google 多語',
       badge: 'OR',
       badgeClass: 'badge-or'
     }
@@ -66,6 +70,12 @@
   const MODEL_MIGRATIONS = {
     'gemini-3-flash-preview': 'gemini-3.5-flash',
     'gemini-3.1-flash-lite-preview': 'gemini-3.5-flash',
+    // Groq 於 2026-07-17 下架 Llama 4 Scout（打舊 id 直接 HTTP 404），
+    // 官方建議替代即 gpt-oss-120b；已存 storage 的舊值必須在這裡接住
+    'groq:meta-llama/llama-4-scout-17b-16e-instruct': DEFAULT_MODEL,
+    'groq:meta-llama/llama-4-maverick-17b-128e-instruct': DEFAULT_MODEL,
+    // OpenRouter 已無 DeepSeek 的 :free 變體（只剩付費版），同樣會 404
+    'openrouter:deepseek/deepseek-v4-flash:free': OPENROUTER_PRIMARY_MODEL,
     'openrouter/free': OPENROUTER_PRIMARY_MODEL,
     'openrouter:deepseek/deepseek-chat-v3-0324': OPENROUTER_PRIMARY_MODEL,
     'openrouter:qwen/qwen3-30b-a3b': OPENROUTER_PRIMARY_MODEL,
@@ -169,10 +179,25 @@
     return normalized;
   }
 
-  function shouldFallbackOpenRouter(status, message, modelId) {
-    if (modelId !== toApiModelId(OPENROUTER_PRIMARY_MODEL)) return false;
+  // 在冊模型的備援 id（沒設＝該模型不做備援，例如 Gemini 兩家 endpoint 形狀不同）
+  function getFallbackModelId(model) {
+    return MODELS.find(item => item.id === normalizeModel(model))?.fallbackModelId || '';
+  }
+
+  // Groq 與 OpenRouter 共用：免費模型池變動頻繁（2026-07 Groq 下架 Llama 4 Scout、
+  // 2026-08 OpenRouter 的 DeepSeek :free 整個消失），主模型掛掉時退到同家備援模型。
+  // 404＝模型已下架／改名；baseUrl 是常數，所以 404 只會來自 model id。
+  // 401/429 不在此列：key 無效與額度用完必須如實回報，不能被備援蓋掉。
+  function shouldFallbackModel(model, status, message) {
+    const fallbackModelId = getFallbackModelId(model);
+    if (!fallbackModelId) return false;
+    // 備援模型自己掛掉不再往下備援。要用「未 normalize 的原值」也比一次：
+    // openrouter/free 既是備援 id、又是 MODEL_MIGRATIONS 裡會被遷回主模型的舊 id，
+    // 只比 normalize 後的值會讓備援模型被誤判成主模型
+    if (model === fallbackModelId || toApiModelId(model) === fallbackModelId) return false;
     const text = (message || '').toLowerCase();
-    return status === 502 ||
+    return status === 404 ||
+           status === 502 ||
            status === 503 ||
            text.includes('provider') ||
            text.includes('no available model provider') ||
@@ -204,6 +229,7 @@
     DEFAULT_MODEL,
     OPENROUTER_PRIMARY_MODEL,
     OPENROUTER_FALLBACK_MODEL_ID,
+    GROQ_FALLBACK_MODEL_ID,
     PROVIDERS,
     MODELS,
     MODEL_MIGRATIONS,
@@ -216,7 +242,8 @@
     getProvider,
     getModelDisplayName,
     toApiModelId,
-    shouldFallbackOpenRouter,
+    getFallbackModelId,
+    shouldFallbackModel,
     stableHash,
     buildCacheKey,
     getLanguageOption,

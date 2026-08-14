@@ -383,20 +383,20 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle, mode
 
   if (selectedModel.startsWith('groq:')) {
     if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
-    return handleOpenAICompatRequest({
+    return handleWithModelFallback({
       action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage, pageTranslation,
       modelId: ModelRegistry.toApiModelId(selectedModel),
       apiKey:  groqApiKey,
       baseUrl: `${GROQ_API_BASE}/chat/completions`,
       label:   'Groq',
       signal
-    });
+    }, selectedModel);
   }
 
   if (selectedModel.startsWith('openrouter:')) {
     if (!openrouterApiKey) throw new Error('請先在設定頁面輸入 OpenRouter API Key');
     const modelId = ModelRegistry.toApiModelId(selectedModel);
-    return handleOpenRouterRequestWithFallback({
+    return handleWithModelFallback({
       action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage, pageTranslation,
       modelId,
       apiKey:  openrouterApiKey,
@@ -404,7 +404,7 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle, mode
       label:   'OpenRouter',
       extraHeaders: ModelRegistry.PROVIDERS.openrouter.extraHeaders,
       signal
-    });
+    }, selectedModel);
   }
 
   if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
@@ -433,18 +433,24 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle, mode
   return { result };
 }
 
-async function handleOpenRouterRequestWithFallback(params) {
+// Groq／OpenRouter 共用備援：主模型被下架（404）或節點掛掉（502/503）時，
+// 退到 models.js 為該模型登記的 fallbackModelId，翻譯不至於整條斷掉
+function buildFallbackNotice(label) {
+  return `原模型暫時無法使用，已自動改用 ${label} 備援模型。`;
+}
+
+async function handleWithModelFallback(params, model) {
   try {
     return await handleOpenAICompatRequest(params);
   } catch (err) {
-    if (!ModelRegistry.shouldFallbackOpenRouter(err.status, err.message, params.modelId)) throw err;
+    if (!ModelRegistry.shouldFallbackModel(model, err.status, err.message)) throw err;
     const result = await handleOpenAICompatRequest({
       ...params,
-      modelId: ModelRegistry.OPENROUTER_FALLBACK_MODEL_ID
+      modelId: ModelRegistry.getFallbackModelId(model)
     });
     return {
       ...result,
-      notice: 'DeepSeek 免費節點忙碌，已改用 OpenRouter Free 備援。'
+      notice: buildFallbackNotice(params.label)
     };
   }
 }
@@ -491,7 +497,7 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle, mode
 
   if (selectedModel.startsWith('groq:')) {
     if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
-    return streamOpenAICompat({
+    return streamWithModelFallback({
       prompt, action,
       modelId:   ModelRegistry.toApiModelId(selectedModel),
       apiKey:    groqApiKey,
@@ -499,14 +505,15 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle, mode
       label:     'Groq',
       pageTranslation,
       onChunk,
+      onStatus,
       signal
-    });
+    }, selectedModel);
   }
 
   if (selectedModel.startsWith('openrouter:')) {
     if (!openrouterApiKey) throw new Error('請先在設定頁面輸入 OpenRouter API Key');
     const modelId = ModelRegistry.toApiModelId(selectedModel);
-    return streamOpenRouterWithFallback({
+    return streamWithModelFallback({
       prompt, action,
       modelId,
       apiKey:       openrouterApiKey,
@@ -517,14 +524,14 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle, mode
       onChunk,
       onStatus,
       signal
-    });
+    }, selectedModel);
   }
 
   if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
   return streamGemini({ prompt, apiKey, model: selectedModel, action, pageTranslation, onChunk, signal });
 }
 
-async function streamOpenRouterWithFallback(params) {
+async function streamWithModelFallback(params, model) {
   let streamed = false;
   try {
     return await streamOpenAICompat({
@@ -535,11 +542,12 @@ async function streamOpenRouterWithFallback(params) {
       }
     });
   } catch (err) {
-    if (streamed || !ModelRegistry.shouldFallbackOpenRouter(err.status, err.message, params.modelId)) throw err;
-    params.onStatus?.('DeepSeek 免費節點忙碌，已改用 OpenRouter Free 備援。');
+    // 已經吐過字就不重跑：重跑會讓使用者看到同一段譯文接兩次
+    if (streamed || !ModelRegistry.shouldFallbackModel(model, err.status, err.message)) throw err;
+    params.onStatus?.(buildFallbackNotice(params.label));
     return streamOpenAICompat({
       ...params,
-      modelId: ModelRegistry.OPENROUTER_FALLBACK_MODEL_ID
+      modelId: ModelRegistry.getFallbackModelId(model)
     });
   }
 }

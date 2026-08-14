@@ -570,7 +570,7 @@ $('btnTest').addEventListener('click', async () => {
     displayName = `${ModelRegistry.getModel(model).name} (${P.groq.label})`;
     fetchUrl    = `${P.groq.apiBase}/chat/completions`;
     fetchHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
-    fetchBody    = JSON.stringify({ model: ModelRegistry.toApiModelId(model), messages: [{ role: 'user', content: '回覆 OK 即可' }], max_tokens: 10 });
+    fetchBody    = buildOpenAICompatTestBody(ModelRegistry.toApiModelId(model));
   } else if (isOpenRouter) {
     apiKey      = $('openrouterApiKey').value.trim();
     displayName = ModelRegistry.toApiModelId(model);
@@ -596,13 +596,15 @@ $('btnTest').addEventListener('click', async () => {
   try {
     let res = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body: fetchBody });
     let fallbackUsed = false;
-    if (isOpenRouter && !res.ok) {
+    // Groq／OpenRouter 共用：主模型被下架時測試連線也要試備援，
+    // 否則會出現「測試連線失敗、實際翻譯卻正常」的分裂結果
+    if ((isGroq || isOpenRouter) && !res.ok) {
       const err = await res.clone().json().catch(() => ({}));
-      const modelId = ModelRegistry.toApiModelId(model);
-      if (ModelRegistry.shouldFallbackOpenRouter(res.status, err.error?.message, modelId)) {
+      const fallbackModelId = ModelRegistry.getFallbackModelId(model);
+      if (ModelRegistry.shouldFallbackModel(model, res.status, err.error?.message)) {
         fallbackUsed = true;
-        displayName = ModelRegistry.OPENROUTER_FALLBACK_MODEL_ID;
-        fetchBody = buildOpenAICompatTestBody(ModelRegistry.OPENROUTER_FALLBACK_MODEL_ID);
+        displayName = fallbackModelId;
+        fetchBody = buildOpenAICompatTestBody(fallbackModelId);
         res = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body: fetchBody });
       }
     }
