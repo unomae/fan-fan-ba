@@ -56,6 +56,15 @@
       badgeClass: 'badge-fast'
     },
     {
+      id: 'gemini-3.5-flash-lite',
+      provider: 'gemini',
+      apiKeyName: 'apiKey',
+      name: 'Gemini 3.5 Flash-Lite',
+      desc: '輕量極速 · 與 Flash 共用同一把 Key',
+      badge: '極速',
+      badgeClass: 'badge-fast'
+    },
+    {
       id: OPENROUTER_PRIMARY_MODEL,
       provider: 'openrouter',
       apiKeyName: 'openrouterApiKey',

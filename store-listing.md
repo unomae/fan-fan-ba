@@ -48,7 +48,7 @@
 **支援多家 AI 模型**
 
 ⭐ Groq（推薦）— 免費、極速，預設模型
-• Google Gemini — Gemini 3.5 Flash（免費基本額度）
+• Google Gemini — Gemini 3.5 Flash／Flash-Lite（免費基本額度，共用同一把 Key）
 • OpenRouter — Gemma 4 31B（免費模型）
 
 **隱私安全**

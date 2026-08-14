@@ -47,6 +47,7 @@
 |------|----------|------|
 | **GPT-OSS 120B** ⭐ | Groq | OpenAI 開源模型，Groq 極速推論，**免費額度最大方，預設推薦** |
 | Gemini 3.5 Flash | Google | 最新穩定 Flash 模型，適合日常翻譯、解釋與優化 |
+| Gemini 3.5 Flash-Lite | Google | 輕量極速版，與 Flash 共用同一把 API Key |
 | Gemma 4 31B | OpenRouter | 免費模型，Google 多語調校，翻譯表現穩定 |
 
 ---
