@@ -1,0 +1,11 @@
+{
+  "app": "fan-fan-ba",
+  "schema": "vocabulary",
+  "version": 1,
+  "exportedAt": "2026-08-10T00:00:00.000Z",
+  "count": 2,
+  "items": {
+    "en:ghost1": { "id": "en:ghost1", "definition": "沒有 word 欄位的舊格式條目", "count": 3 },
+    "en:ghost2": { "id": "en:ghost2", "word": "   ", "definition": "word 只有空白也算無效" }
+  }
+}

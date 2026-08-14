@@ -15,3 +15,6 @@ vitest.config.js
 
 # Claude Code 工作目錄
 .claude/
+
+# e2e 產物（截圖／下載／暫存 fixture），不進版控
+e2e/.artifacts/

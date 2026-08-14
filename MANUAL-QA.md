@@ -1,6 +1,11 @@
 # 手動 QA 檢查表（需在真實 Chrome / Edge 執行）
 
-> 這份是「**人要做**」的手動驗收，與 `npm test`（304 個自動化單元測試）互補。
+> **⚙️ 2026-08-14 起，本表打勾過的項目多數已收成常駐 e2e**：`npm run e2e`（見 `e2e/README.md`）
+> 用 Playwright 驅動真 Chrome ＋ 真擴充跑 45 案。**改完 code 先 `npm run package` 再跑**，
+> 否則驗到的是舊版擴充。e2e 全綠**不等於**可以送審——需要 API key、Obsidian App、Excel
+> 或人眼觀感的項目它一律驗不到，那些仍在本表、仍要人工跑。
+
+> 這份是「**人要做**」的手動驗收，與 `npm test`（305 個自動化單元測試）互補。
 > 自動測試涵蓋純函式邏輯；以下這些只有在真實瀏覽器載入擴充功能才驗得了。
 > 涵蓋版本：v1.9.6（注入面收斂）→ v1.9.9（security hardening）→ **v1.10.0（WS-E 資料層 migration）** + Phase A–D review 修正。
 > 最後更新：2026-08-10（補 Tier 排序與 §1 cutover 區塊）。

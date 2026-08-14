@@ -1,0 +1,18 @@
+{
+  "app": "fan-fan-ba",
+  "schema": "vocabulary",
+  "version": 1,
+  "exportedAt": "2026-08-10T00:00:00.000Z",
+  "count": 1,
+  "items": {
+    "en:control": {
+      "id": "en:control",
+      "word": "control",
+      "definition": "對照組：正常有內容的備份",
+      "count": 1,
+      "status": "learning",
+      "createdAt": "2026-08-10T00:00:00.000Z",
+      "lastSeenAt": "2026-08-10T00:00:00.000Z"
+    }
+  }
+}
