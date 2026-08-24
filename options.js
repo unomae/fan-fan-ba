@@ -537,12 +537,19 @@ $('btnSave').addEventListener('click', async () => {
   const isOpenRouter     = model.startsWith('openrouter:');
 
   // 依選擇的模型驗證對應 API Key（前綴與顯示名來源：ModelRegistry.PROVIDERS）
+  let removedProviderLabel = '';
   {
     const provider = ModelRegistry.getProvider(model);
     const info = ModelRegistry.PROVIDERS[provider];
     const keyValue = provider === 'groq' ? groqApiKey : provider === 'openrouter' ? openrouterApiKey : apiKey;
-    if (!keyValue) { showStatus('err', `使用 ${info.label} 模型請輸入 ${info.label} API Key`); return; }
-    if (!keyValue.startsWith(info.keyPrefix)) { showStatus('err', `${info.label} API Key 格式不正確，應以 ${info.keyPrefix} 開頭`); return; }
+    if (!keyValue) {
+      if (confirmRemoveProviderKey(info.label)) {
+        removedProviderLabel = info.label;
+      } else {
+        showStatus('err', `使用 ${info.label} 模型請輸入 ${info.label} API Key`);
+        return;
+      }
+    } else if (!keyValue.startsWith(info.keyPrefix)) { showStatus('err', `${info.label} API Key 格式不正確，應以 ${info.keyPrefix} 開頭`); return; }
   }
 
   const obsidianVault         = $('obsidianVault').value.trim();
@@ -553,7 +560,7 @@ $('btnSave').addEventListener('click', async () => {
     chrome.storage.sync.set({ model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder }),
     Storage.setSecrets({ apiKey, groqApiKey, openrouterApiKey, ttsApiKey })
   ]);
-  showStatus('ok', '✓ 設定已儲存');
+  showStatus('ok', removedProviderLabel ? `✓ 設定已儲存（${removedProviderLabel} API Key 已移除）` : '✓ 設定已儲存');
 });
 
 // ── 測試連線 ─────────────────────────────────────────
@@ -1128,6 +1135,11 @@ function confirmSecretsExport() {
   return window.confirm('API Keys 會用你輸入的密碼加密後匯出。請記住密碼，忘記後無法還原。確定要匯出嗎？');
 }
 
+function confirmRemoveProviderKey(label) {
+  if (typeof window === 'undefined' || typeof window.confirm !== 'function') return false;
+  return window.confirm(`${label} API Key 欄位目前是空的。要移除已儲存的 ${label} API Key 嗎？移除後翻譯功能會要求重新設定金鑰。`);
+}
+
 function confirmCloudUploadOverwrite(file = {}) {
   if (typeof window === 'undefined' || typeof window.confirm !== 'function') return true;
   const modifiedTime = file.modifiedTime ? `\n雲端檔案最後修改：${file.modifiedTime}` : '';
@@ -1161,6 +1173,7 @@ if (typeof module !== 'undefined' && module.exports) {
     resolveImportedBackupSecrets,
     formatImportSettingsStatus,
     confirmSecretsExport,
+    confirmRemoveProviderKey,
     confirmCloudUploadOverwrite,
     confirmCloudDownloadOverwrite,
     bindCloudSyncControls,

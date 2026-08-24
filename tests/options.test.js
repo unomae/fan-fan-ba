@@ -262,6 +262,75 @@ describe('Options module', () => {
     });
   });
 
+  // QA（2026-08-13，MANUAL-QA.md §5）發現：清空目前模型的 key 欄位按儲存會被必填驗證擋下，
+  // UI 永遠清不掉金鑰（當時只能直接刪 storage）。契約＝空欄位＋confirm 確認 → 移除；取消 → 維持必填錯誤。
+  describe('API Key 移除（清空欄位＋確認）', () => {
+    const GROQ_MODEL = 'groq:meta-llama/llama-4-scout-17b-16e-instruct';
+
+    const saveCurrentSettings = async () => {
+      global.optionsModule.renderModelSelect();
+      document.getElementById('model').value = GROQ_MODEL;
+      document.getElementById('btnSave').click();
+      await flushPromises();
+    };
+
+    afterEach(() => {
+      document.getElementById('groqApiKey').value = '';
+    });
+
+    it('空欄位＋confirm 確認 → 寫入空值移除金鑰，狀態列明說已移除', async () => {
+      const originalConfirm = window.confirm;
+      window.confirm = jest.fn(() => true);
+
+      try {
+        await saveCurrentSettings();
+
+        expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('移除'));
+        expect(chrome.storage.local.set).toHaveBeenCalledWith(expect.objectContaining({ groqApiKey: '' }));
+        expect(document.getElementById('status').textContent).toContain('Groq API Key 已移除');
+        expect(document.getElementById('status').className).toBe('ok');
+      } finally {
+        window.confirm = originalConfirm;
+      }
+    });
+
+    it('空欄位＋confirm 取消 → 維持必填錯誤，不寫入任何設定', async () => {
+      const originalConfirm = window.confirm;
+      window.confirm = jest.fn(() => false);
+      chrome.storage.sync.set.mockClear();
+
+      try {
+        await saveCurrentSettings();
+
+        expect(document.getElementById('status').textContent).toBe('使用 Groq 模型請輸入 Groq API Key');
+        expect(document.getElementById('status').className).toBe('err');
+        expect(chrome.storage.sync.set).not.toHaveBeenCalled();
+        expect(chrome.storage.local.set).not.toHaveBeenCalled();
+      } finally {
+        window.confirm = originalConfirm;
+      }
+    });
+
+    it('非空但前綴錯誤 → 仍被格式驗證擋下（不該被移除路徑繞過）', async () => {
+      const originalConfirm = window.confirm;
+      window.confirm = jest.fn(() => true);
+      document.getElementById('groqApiKey').value = 'not-a-groq-key';
+      chrome.storage.sync.set.mockClear();
+
+      try {
+        await saveCurrentSettings();
+
+        expect(window.confirm).not.toHaveBeenCalled();
+        expect(document.getElementById('status').textContent).toContain('API Key 格式不正確');
+        expect(chrome.storage.sync.set).not.toHaveBeenCalled();
+        expect(chrome.storage.local.set).not.toHaveBeenCalled();
+      } finally {
+        window.confirm = originalConfirm;
+        document.getElementById('groqApiKey').value = '';
+      }
+    });
+  });
+
   describe('local diagnostics self-check', () => {
     it('builds a checklist with actionable warnings for missing provider keys', () => {
       const rows = global.optionsModule.buildDiagnosticsChecklist({

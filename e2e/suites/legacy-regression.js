@@ -187,20 +187,26 @@ module.exports = {
       await opt.waitForTimeout(1500);
       await opt.reload({ waitUntil: 'domcontentloaded' }); await opt.waitForTimeout(1500);
       const withKey = await summary();
-      // 清空欄位再存檔會被必填驗證擋下、金鑰不會被清除，所以「回到無 key」只能繞過 UI 刪 storage
+      // 2026-08-25 起：清空欄位＋儲存會跳 confirm，accept＝透過 UI 真正移除金鑰
+      // （舊行為是被必填驗證擋下、只能繞道刪 storage；此案現在鎖的是新契約）
+      let removeConfirmText = '';
+      opt.once('dialog', d => { removeConfirmText = d.message(); d.accept(); });
       await H.openOptionsPanel(opt, 'model');
       await opt.fill('#groqApiKey', '');
-      const uiBlocked = await opt.evaluate(() => { document.getElementById('btnSave').click();
-        return new Promise(r => setTimeout(() => r(document.body.innerText.includes('請輸入 Groq API Key')), 1200)); });
+      await opt.evaluate(() => document.getElementById('btnSave').click());
+      await opt.waitForTimeout(1200);
+      const uiRemoved = await opt.evaluate(async () =>
+        ((await chrome.storage.local.get(['groqApiKey'])).groqApiKey || '') === '');
+      // 保險起見仍直接清一次 storage，確保下一步量到的是純「無 key」狀態
       await opt.evaluate(async () => { await chrome.storage.local.remove(['groqApiKey']); await chrome.storage.sync.remove(['groqApiKey']); });
       await opt.reload({ waitUntil: 'domcontentloaded' }); await opt.waitForTimeout(1500);
       const cleared = await summary();
       await s.shot(opt, 'legacy-diagnostics');
       const miss = t => /缺 API Key/.test(t);
       rec.pass('§5-2 自檢表反映 API Key 有無',
-        miss(initial) && !miss(withKey) && miss(cleared),
-        `無 key「${line(initial)}」→ 補 dummy「${line(withKey)}」→ 移除後「${line(cleared)}」`
-        + `／⚠️ UI 清空目前模型的 key 會被必填驗證擋下（畫面回「請輸入 Groq API Key」=${uiBlocked}），本案的移除是直接刪 storage`);
+        miss(initial) && !miss(withKey) && miss(cleared) && uiRemoved,
+        `無 key「${line(initial)}」→ 補 dummy「${line(withKey)}」→ UI 移除後「${line(cleared)}」`
+        + `／confirm 文案含「移除」=${removeConfirmText.includes('移除')}／UI 移除後 storage 已清空=${uiRemoved}`);
     } catch (e) { rec.fail('§5-2 自檢表反映 API Key 有無', 'EXCEPTION ' + e.message); }
 
     // ── §5-3 清除診斷資料 ──

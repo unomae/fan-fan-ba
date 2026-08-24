@@ -690,6 +690,7 @@ npx jest --testPathIgnorePatterns='/node_modules/' '/\.claude/'</pre>
           <li><strong>2026-07-28：</strong>修掉 QA-P1-001（收藏面板缺 <code>g-show</code>）、QA-P1-003（窄螢幕浮球半藏靠 hover 才收回，實測 375px 溢出 24px）、QA-P2-002（Options 常數 TDZ），各補一條回歸測試；26 suites / 249 tests 全綠。4 個失敗 TC 待真瀏覽器重跑。</li>
           <li><strong>2026-07-28（接線輪）：</strong>半接線 6 條全部接線完工（KAKA 裁決全接不刪）——收藏成功自動 Obsidian 匯出、浮球單字高亮開關、全文翻譯面板回報 iframe / SVG / web component 目標、翻譯完成後的本頁學習摘要。<strong>Shadow DOM 一度改成注入譯文，同日裁決回退為「只回報、不注入」</strong>（shadow root 吃不到 <code>content.css</code>，注入只會是沒樣式的裸文字、且顯示模式對它不生效）。順帶修一個接線後才碰得到的 race（初始高亮狀態讀取會蓋掉使用者剛按下的開關）。<code>249 → 273 tests</code>，分支 <code>claude/affectionate-sinoussi-06a2b2</code>，未合併 master。</li>
           <li><strong>v1.10.0：</strong>WS-E 資料層收斂——單字本改 mirror-only（chrome.storage.local 單一權威）+ 啟動一次性 cutover 合併並刪除舊 IndexedDB。<strong>此版是資料層 migration，版號必須 bump 才會在使用者升級時觸發 cutover。</strong>尚未發布，半接線功能接線完工併入同一版。</li>
+          <li><strong>2026-08-25：</strong>修掉 <code>MANUAL-QA.md</code> §5 記錄的「UI 清不掉目前模型的 API Key」——清空欄位＋儲存改跳 confirm，確認後即透過 UI 真正移除金鑰、取消維持必填錯誤。27 suites / 317 tests 全綠（含 3 條新回歸測試＋反向驗），e2e legacy §5-2 改鎖新契約。</li>
         </ul>
 
         <details>
