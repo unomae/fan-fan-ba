@@ -80,11 +80,11 @@ https://unomae.github.io/fan-fan-ba/privacy-policy.html
 ## 上架 Checklist
 
 - [ ] Chrome Developer 帳號已註冊（$5 USD 一次性）
-- [ ] ZIP 依 manifest 版本重新打包：fan-fan-ba-v1.9.6.zip
-- [ ] 隱私政策 URL：https://unomae.github.io/fan-fan-ba/privacy-policy.html（已揭露 storage / identity / &lt;all_urls&gt; / AI API host / Google Drive API host）
+- [ ] ZIP 依 manifest 版本重新打包：fan-fan-ba-v&lt;manifest 版本&gt;.zip
+- [ ] 隱私政策 URL：https://unomae.github.io/fan-fan-ba/privacy-policy.html（已揭露 storage / unlimitedStorage / identity / &lt;all_urls&gt; / AI API host / Google Drive API host）
 - [ ] Privacy / README / Store listing 的 API Key local storage 文案一致
 - [ ] 若啟用 Cloud Sync，manifest 已換成正式 Google OAuth Client ID，且 Edge redirect URL 已加入 Google Cloud OAuth 設定
-- [ ] v1.9.6 實站 QA：frame-split（iframe 頁浮球只在主頁、iframe 內選取仍可翻譯）、Cloud Sync Chrome / Edge、Gmail、Notion、Google Docs、新聞長文、一般文件頁
+- [ ] 實站 QA（送審版）：frame-split（iframe 頁浮球只在主頁、iframe 內選取仍可翻譯）、Cloud Sync Chrome / Edge、Gmail、Notion、Google Docs、新聞長文、一般文件頁
 - [ ] 截圖 1280×800（至少 1 張，待手動截圖）
 - [ ] 上傳 ZIP 到 Developer Dashboard
 - [ ] 填入商店文案

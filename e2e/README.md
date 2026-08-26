@@ -16,8 +16,9 @@
    ```
 3. `npm run package` 產出 `dist/pkg/`，到 `chrome://extensions` 開開發人員模式 →
    **「載入未封裝項目」指向 `dist/pkg`**。
-   > `--load-extension` 命令列參數在 Chrome 151 起會被**靜默忽略**，所以這步只能人工點。
-   > 這也是本 e2e 唯一無法自動化的前置。
+   > 品牌版 Chrome 137 起封鎖 `--load-extension`，這步只能人工點。
+   > **自動化替代路**：設 `FFB_E2E_EXECUTABLE` 指向 Chrome for Testing（或任何未封鎖該參數的
+   > Chromium），harness 會以 `--load-extension` 自動安裝擴充，免掉步驟 2-4 的整個人工前置。
 4. 記下擴充 ID（預設值 `cegcbfkgfobpoiaobdedldlabbddbghk`；不同就用 `FFB_E2E_EXT_ID` 覆寫）。
 
 ## 跑

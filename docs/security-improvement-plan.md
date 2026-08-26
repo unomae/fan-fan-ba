@@ -100,7 +100,7 @@ AI 被指揮輸出誘導內容（假「系統警告」、釣魚指示、被竄�
 - **怎麼驗**：Console 畫面自檢；實機 Chrome + Edge 各跑一次登入。
 - **影響面**：雲端設定，無程式碼改動。**工時：S（但需人工登入）**。
 
-> **Informational（非工單）**：Gemini 走 URL query `?key=`（background.js:397/533）是 Google 官方要求用法，僅送已宣告的 `generativelanguage.googleapis.com` over HTTPS，無中介，不構成可利用洩漏。無需處理，僅記錄。
+> **Informational（2026-08-26 已處理）**：Gemini／TTS 的 API key 原走 URL query `?key=`，雖僅送已宣告的 Google API host over HTTPS，但 query 會進各層 proxy／server 存取日誌。Google 官方同樣支援 `x-goog-api-key` header（原「官方要求 query」的裁決有誤），已於 v1.11.1 後改為 header 傳送（background.js generateContent／streamGenerateContent／TTS 三處＋options.js 測試連線），並由 `tests/provider-endpoints.test.js` 鎖住契約。
 
 ## 4. 分派表
 
