@@ -1,8 +1,9 @@
 // e2e 共用骨架：設定解析、瀏覽器啟動、fixture 站、常用 UI 操作、結果記錄。
 // 設計前提（讀 e2e/README.md 有完整說明）：
-// - 用「已經手動載入未封裝擴充」的拋棄式 profile；Chrome 151 起 --load-extension 會被靜默忽略，
-//   所以無法在此自動安裝擴充，profile 是一次性人工前置。
-// - 用 playwright-core + channel:'chrome'（系統 Chrome），不下載瀏覽器。
+// - 優先路徑：FFB_E2E_EXECUTABLE 指向 Chrome for Testing → --load-extension 自動安裝，免人工前置。
+// - 備援路徑：品牌版 Chrome + 「已經手動載入未封裝擴充」的拋棄式 profile（Chrome 137 封鎖
+//   --load-extension、133 起 unpacked 綁開發人員模式開關，自動化重啟會把擴充停用／移除）。
+// - 用 playwright-core，不下載瀏覽器。
 // - 測試會改寫該 profile 的擴充資料，**只能指向拋棄式 profile**，絕不可指向日常瀏覽器。
 const { chromium } = require('playwright-core');
 const http = require('http');
@@ -20,10 +21,13 @@ function loadConfig() {
       + '  前置步驟見 e2e/README.md。絕對不要指向你日常在用的 profile。');
   }
   if (!fs.existsSync(profile)) throw new Error(`FFB_E2E_PROFILE 指到不存在的路徑：${profile}`);
+  const executable = process.env.FFB_E2E_EXECUTABLE;
+  if (executable && !fs.existsSync(executable)) throw new Error(`FFB_E2E_EXECUTABLE 指到不存在的路徑：${executable}`);
   return {
     profile,
     extId: process.env.FFB_E2E_EXT_ID || DEFAULT_EXT_ID,
     channel: process.env.FFB_E2E_CHANNEL || 'chrome',
+    executable,
     port: Number(process.env.FFB_E2E_PORT || 4801),
     artifacts: process.env.FFB_E2E_ARTIFACTS || path.join(__dirname, '..', '.artifacts'),
   };
@@ -145,13 +149,25 @@ function createRecorder() {
 }
 
 async function launch(cfg) {
-  const ctx = await chromium.launchPersistentContext(cfg.profile, {
-    channel: cfg.channel,
-    headless: false, // MV3 擴充在 headless 下不載入
-    // Playwright 預設會關擴充，逐項丟掉才載得起 profile 內已安裝的未封裝擴充
-    ignoreDefaultArgs: ['--disable-extensions', '--disable-component-extensions-with-background-pages'],
-    args: ['--no-first-run'],
-  });
+  const extDir = path.join(__dirname, '..', '..', 'dist', 'pkg');
+  // FFB_E2E_EXECUTABLE（建議指向 Chrome for Testing）：用 --load-extension 自動安裝，
+  // 免人工前置。品牌版 Chrome 137 起封鎖 --load-extension、133 起 unpacked 擴充只在
+  // 開發人員模式開啟時啟用（自動化重啟會把擴充停用／移除），所以品牌版 Chrome
+  // 只能走「手動載入未封裝」的舊路。
+  const launchOpts = cfg.executable
+    ? {
+        executablePath: cfg.executable,
+        headless: false,
+        args: ['--no-first-run', `--load-extension=${extDir}`, `--disable-extensions-except=${extDir}`],
+      }
+    : {
+        channel: cfg.channel,
+        headless: false, // MV3 擴充在 headless 下不載入
+        // Playwright 預設會關擴充，逐項丟掉才載得起 profile 內已安裝的未封裝擴充
+        ignoreDefaultArgs: ['--disable-extensions', '--disable-component-extensions-with-background-pages'],
+        args: ['--no-first-run'],
+      };
+  const ctx = await chromium.launchPersistentContext(cfg.profile, launchOpts);
   // 先確認擴充真的裝在這個 profile，否則後面每案都會以難懂的方式失敗。
   // 判準用「options 頁載得起來、讀得到 manifest」——**不要用 service worker 是否存在**：
   // MV3 背景閒置就會停，剛啟動時常常還沒醒，會誤判成沒安裝（開發時踩過）。
