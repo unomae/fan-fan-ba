@@ -15,11 +15,11 @@
 
 ## 最近完成
 
-- 2026-08-26：Sprint 1 上架 blocker 完工（5/6，截圖待人工）＋e2e 全綠 41 PASS / 0 FAIL / 4 PARTIAL；單元測試 318 全綠。commit 待 KAKA 指示。
+- 2026-08-26：Sprint 1 上架 blocker 完工（5/6，截圖待人工）＋e2e 全綠 41 PASS / 0 FAIL / 4 PARTIAL；單元測試 318 全綠。2026-08-27 自 ox-sandbox 併回正本並 push（cherry-pick 5 筆，`5007074`..`f725b43`）。
 
 - 2026-08-26：Ox Alpha 四路全面審查（code review／UI/UX／使用者與開發流程），產出 Sprint 1-3 優化路線圖，發現已併入下方「下一步」與風險表。
 
-- 2026-08-25：修掉「UI 清不掉目前模型 API Key」（`options.js` 清空欄位＋confirm 即移除），3 條回歸測試＋反向驗；e2e legacy §5-2 改鎖新契約。commit `c20639f`。
+- 2026-08-25：修掉「UI 清不掉目前模型 API Key」（`options.js` 清空欄位＋confirm 即移除），3 條回歸測試＋反向驗；e2e legacy §5-2 改鎖新契約。正本 commit `5007074`（原 sandbox `c20639f`）。
 - v1.10.x：WS-E mirror-only cutover（Tier 1 六案 6/6 PASS）、CSV 公式注入防護（v1.10.1）、半接線 6 條接線完工。
 
 ## 下一步（依序）— 2026-08-26 審查後重排
