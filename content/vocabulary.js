@@ -179,7 +179,12 @@ async function exportVocabularyEntryToObsidianIfConfigured(item) {
   if (!baseFolder) return { exported: false, reason: 'missing-folder' };
 
   const folder = baseFolder.replace(/\/+$/, '');
-  await appendVocabularyEntryToObsidian(item, folder);
+  const response = await appendVocabularyEntryToObsidian(item, folder);
+  // 只有 background 確認已開啟 URI（ok !== false）才蓋 exported 章，
+  // 失敗的單字保持未匯出，之後才能重試（review 2026-08-26：原實作吞錯造成假成功）
+  if (response?.ok === false) {
+    return { exported: false, reason: response.error || 'obsidian-error', folder };
+  }
   await markVocabularyEntryExported(item.id);
   return { exported: true, folder };
 }
@@ -207,8 +212,13 @@ async function appendVocabularyEntryToObsidian(item, folderPath) {
   if (obsidianVault?.trim()) encParts.push(`vault=${encodeURIComponent(obsidianVault.trim())}`);
 
   obsidianSaving = true;
-  chrome.runtime.sendMessage({ type: 'OBSIDIAN_URI', url: `obsidian://advanced-uri?${encParts.join('&')}` }).catch(() => {});
-  setTimeout(() => { obsidianSaving = false; }, 4000);
+  try {
+    return await chrome.runtime
+      .sendMessage({ type: 'OBSIDIAN_URI', url: `obsidian://advanced-uri?${encParts.join('&')}` })
+      .catch(error => ({ ok: false, error: error?.message || 'sendMessage failed' }));
+  } finally {
+    setTimeout(() => { obsidianSaving = false; }, 4000);
+  }
 }
 
 function buildVocabularyObsidianBlock(item) {

@@ -587,8 +587,8 @@ $('btnTest').addEventListener('click', async () => {
   } else {
     apiKey      = $('apiKey').value.trim();
     displayName = model;
-    fetchUrl    = `${P.gemini.apiBase}/${model}:generateContent?key=${apiKey}`;
-    fetchHeaders = { 'Content-Type': 'application/json' };
+    fetchUrl    = `${P.gemini.apiBase}/${model}:generateContent`;
+    fetchHeaders = { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey };
     fetchBody    = JSON.stringify({ contents: [{ parts: [{ text: '回覆 OK 即可' }] }], generationConfig: { maxOutputTokens: 10 } });
   }
 

@@ -309,4 +309,30 @@ describe('Vocabulary storage helper', () => {
     expect(decodeURIComponent(url)).toContain('vault=Main Vault');
     expect(decodeURIComponent(url)).toContain('### Compass');
   });
+
+  it('does not mark entry exported when Obsidian URI fails', async () => {
+    const { context, runtimeSendMessage } = createVocabularyContext({
+      syncStore: { obsidianDefaultFolder: 'Learning' }
+    });
+    const { item } = await context.saveVocabularyEntry({
+      word: 'Fiasco',
+      lang: 'en',
+      translations: ['慘敗']
+    }, 'Fiasco context');
+
+    // 存入時的自動匯出（sendMessage 回 undefined＝成功）已蓋過一次章，先記下時間戳
+    const before = await context.getVocabularyEntry(item.id);
+
+    runtimeSendMessage.mockImplementationOnce(async request => {
+      if (request?.type === 'OBSIDIAN_URI') return { ok: false, error: '無法開啟 Obsidian URI' };
+      return undefined;
+    });
+
+    const result = await context.exportVocabularyEntryToObsidianIfConfigured(item);
+    const updated = (await context.listVocabularyItems())[0];
+
+    expect(result.exported).toBe(false);
+    // 明確失敗不得更新 obsidianExportedAt，之後才能重試
+    expect(updated.obsidianExportedAt).toBe(before.obsidianExportedAt);
+  });
 });

@@ -28,8 +28,12 @@ function renderModels(currentId) {
   list.innerHTML = '';
 
   MODELS.forEach(m => {
-    const item = document.createElement('div');
+    const item = document.createElement('button');
+    item.type = 'button';
     item.className = 'model-item' + (m.id === currentId ? ' active' : '');
+    // radiogroup 語意：鍵盤／螢幕閱讀器使用者也要能切換模型（review 2026-08-26）
+    item.setAttribute('role', 'radio');
+    item.setAttribute('aria-checked', m.id === currentId ? 'true' : 'false');
 
     item.innerHTML = `
       <div class="model-dot"></div>
@@ -60,8 +64,12 @@ function renderModels(currentId) {
 // ── 切換模型 ──────────────────────────────────────────
 function selectModel(id, clickedItem) {
   chrome.storage.sync.set({ model: id }, async () => {
-    document.querySelectorAll('.model-item').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.model-item').forEach(el => {
+      el.classList.remove('active');
+      el.setAttribute('aria-checked', 'false');
+    });
     clickedItem.classList.add('active');
+    clickedItem.setAttribute('aria-checked', 'true');
 
     const msg = document.getElementById('save-msg');
     msg.classList.add('show');

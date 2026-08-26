@@ -4,20 +4,20 @@ function createToolbar() {
   const el = document.createElement('div');
   el.id = 'gemini-ai-toolbar';
   el.innerHTML = `
-    <button class="g-btn" data-action="translate" data-tooltip="翻譯">
+    <button class="g-btn" data-action="translate" data-tooltip="翻譯" aria-label="翻譯">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/>
         <path d="m22 22-5-10-5 10"/><path d="M14 18h6"/>
       </svg>
     </button>
     <span class="g-sep"></span>
-    <button class="g-btn" data-action="explain" data-tooltip="解釋這個">
+    <button class="g-btn" data-action="explain" data-tooltip="解釋這個" aria-label="解釋這個">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
       </svg>
     </button>
     <span class="g-sep"></span>
-    <button class="g-btn" data-action="optimize" data-tooltip="優化精進">
+    <button class="g-btn" data-action="optimize" data-tooltip="優化精進" aria-label="優化精進">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
       </svg>

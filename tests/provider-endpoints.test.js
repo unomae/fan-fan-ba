@@ -32,10 +32,11 @@ describe('provider endpoint URL 斷言', () => {
     expect(global.fetch.mock.calls[0][1].headers['X-Title']).toBe('Fan Fan Ba');
   });
 
-  test('gemini 模型 → generativelanguage generateContent', async () => {
+  test('gemini 模型 → generativelanguage generateContent，key 走 header 不進 URL', async () => {
     global.fetch.mockResolvedValue(okGemini);
     await handleAIRequest({ action: 'translate', selectedText: 'hi', model: 'gemini-3.5-flash' });
-    expect(global.fetch.mock.calls[0][0]).toBe(`${M.PROVIDERS.gemini.apiBase}/gemini-3.5-flash:generateContent?key=AIza-dummy`);
+    expect(global.fetch.mock.calls[0][0]).toBe(`${M.PROVIDERS.gemini.apiBase}/gemini-3.5-flash:generateContent`);
+    expect(global.fetch.mock.calls[0][1].headers['x-goog-api-key']).toBe('AIza-dummy');
   });
 
   test('遺留 no-prefix id（gemini-2.5-flash）仍走 Gemini 端點（路由約定鎖）', async () => {

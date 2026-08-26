@@ -412,11 +412,11 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle, mode
   const prompt   = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage, pageTranslation });
   const maxOutputTokens = getPromptMaxOutputTokens(action, pageTranslation);
   const response = await withRetry(() => checkedFetch(
-    `${GEMINI_API_BASE}/${selectedModel}:generateContent?key=${apiKey}`,
+    `${GEMINI_API_BASE}/${selectedModel}:generateContent`,
     {
       method:  'POST',
       signal,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
@@ -556,11 +556,11 @@ async function streamWithModelFallback(params, model) {
 async function streamGemini({ prompt, apiKey, model, action, pageTranslation, onChunk, signal }) {
   const maxOutputTokens = getPromptMaxOutputTokens(action, pageTranslation);
   const response = await withRetry(() => checkedFetch(
-    `${GEMINI_API_BASE}/${model}:streamGenerateContent?key=${apiKey}&alt=sse`,
+    `${GEMINI_API_BASE}/${model}:streamGenerateContent?alt=sse`,
     {
       method:  'POST',
       signal,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
@@ -671,10 +671,10 @@ async function handleTtsRequest({ text, lang }) {
   const voice    = CHIRP_VOICE_MAP[langCode] || CHIRP_VOICE_MAP['en'];
 
   const res = await fetch(
-    `https://texttospeech.googleapis.com/v1/text:synthesize?key=${ttsApiKey}`,
+    'https://texttospeech.googleapis.com/v1/text:synthesize',
     {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': ttsApiKey },
       body: JSON.stringify({
         input:       { text },
         voice:       { languageCode: voice.lang, name: voice.name },

@@ -213,6 +213,12 @@
       cursor: pointer;
       border: 1.5px solid transparent;
       transition: background 0.15s, border-color 0.15s;
+      /* button 化 a11y 重置：吃掉瀏覽器預設外觀，維持原本 div 版面 */
+      width: 100%;
+      font: inherit;
+      color: inherit;
+      text-align: left;
+      background: transparent;
     }
 
     .model-item:hover { background: #f5fbee; }
@@ -448,7 +454,7 @@
   <!-- 模型選擇 -->
   <div class="section">
     <div class="section-label">選擇模型</div>
-    <div class="model-list" id="modelList">
+    <div class="model-list" id="modelList" role="radiogroup" aria-label="AI 模型">
       <!-- 由 popup.js 動態渲染 -->
     </div>
   </div>
