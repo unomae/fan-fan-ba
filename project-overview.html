@@ -392,11 +392,11 @@
           <p class="lead">給工程新手的接手版：先看產品在做什麼、程式分成哪些區塊、目前做到哪裡、下一輪要先做什麼。詳細歷史仍保留在本頁後段與 <code>archive/</code>，但第一屏只放現在最重要的資訊。</p>
         </div>
         <div class="meta-row">
-          <span class="pill green">目前版本 v1.10.0</span>
+          <span class="pill green">原始碼版本 v1.11.1（線上版本未確認）</span>
           <span class="pill blue">Chrome / Edge Extension</span>
           <span class="pill blue">Manifest V3</span>
-          <span class="pill orange">最後整理 2026-07-28</span>
-          <span class="pill orange">主線：先打磨，再上架</span>
+          <span class="pill orange">最後整理 2026-09-08</span>
+          <span class="pill orange">主線：收斂本版並上線</span>
         </div>
       </header>
 
@@ -409,16 +409,16 @@
           </div>
           <div class="card">
             <h3>現在做到哪裡</h3>
-            <p>核心功能、設定頁、Cloud Sync、單字本 IndexedDB / SRS、XLSX 匯出、單段翻譯、本機診斷與 v1.9.9 資安 hardening T1-T6 都已實作。</p>
+            <p>本機 package.json／manifest.json 都是 v1.11.1；線上版本尚未核對。下方功能與測試數含歷史紀錄，未於本輪重驗；當前驗收需對照 MANUAL-QA.md 與實際候選包。</p>
           </div>
           <div class="card">
             <h3>下一步先做什麼</h3>
-            <p>2026-07-24 QA 的 2 P1 + 1 P2 已修，半接線 6 條也已接線完工（<code>26 suites / 273 tests</code>）。下一步是 <strong>KAKA 用真瀏覽器跑 <code>MANUAL-QA.md</code></strong>：4 個失敗 TC 重跑 + 接線輪 6 條新驗收（Obsidian 匯出是 manual gate）。之後才是剩下兩塊開發：<code>vocabulary-backup.js</code> 的 <code>mergeEntry</code> 既有 bug、單字本本機另鍵自動快照。</p>
+            <p><strong>先確認本版範圍、發布管道與阻塞清單</strong>，每次完成一個可驗收的發布工作包。必要檢查以 <code>MANUAL-QA.md</code> 與當前實作為準；舊 bug／待辦先核對是否仍存在，不自動全部納入本版。</p>
           </div>
         </div>
 
         <div class="callout warning" style="margin-top:12px;">
-          目前決策：2026-07-07 已確認「打磨完再上架」。Chrome Web Store 送審保留為 release checkpoint，不是下一輪主線。
+          目前決策（2026-09-08）：優先推進新版本上線，先收斂本版範圍並解除發布阻塞。必要品質與人工驗收仍保留；候選包、已送審、已上線分別記錄，不以測試通過代替發布。
         </div>
 
         <table style="margin-top:12px;">
@@ -630,7 +630,7 @@ npx jest --testPathIgnorePatterns='/node_modules/' '/\.claude/'</pre>
       <section id="roadmap">
         <h2>後續計劃</h2>
         <div class="callout">
-          推薦順序：QA-P1-001 / QA-P1-003 / QA-P2-002 已於 2026-07-28 修完，接著由 KAKA 用真瀏覽器重跑 4 個失敗案例，並完成 T7 / API Key / Obsidian manual gate，通過後才回到浮球閱讀控制台與學習閉環。
+          目前順序（2026-09-08）：確認本版範圍／版本與發布管道 → 核對必要 QA 與真實阻塞 → 逐項修復並驗收 → 候選包確認 → 經核准送審／發布 → 驗證線上版本。下列 Phase 為既有規劃脈絡，未納入本版的延伸功能不自動成為發布前置。
         </div>
         <div class="timeline" style="margin-top:12px;">
           <div class="phase">
@@ -690,6 +690,7 @@ npx jest --testPathIgnorePatterns='/node_modules/' '/\.claude/'</pre>
           <li><strong>2026-07-28：</strong>修掉 QA-P1-001（收藏面板缺 <code>g-show</code>）、QA-P1-003（窄螢幕浮球半藏靠 hover 才收回，實測 375px 溢出 24px）、QA-P2-002（Options 常數 TDZ），各補一條回歸測試；26 suites / 249 tests 全綠。4 個失敗 TC 待真瀏覽器重跑。</li>
           <li><strong>2026-07-28（接線輪）：</strong>半接線 6 條全部接線完工（KAKA 裁決全接不刪）——收藏成功自動 Obsidian 匯出、浮球單字高亮開關、全文翻譯面板回報 iframe / SVG / web component 目標、翻譯完成後的本頁學習摘要。<strong>Shadow DOM 一度改成注入譯文，同日裁決回退為「只回報、不注入」</strong>（shadow root 吃不到 <code>content.css</code>，注入只會是沒樣式的裸文字、且顯示模式對它不生效）。順帶修一個接線後才碰得到的 race（初始高亮狀態讀取會蓋掉使用者剛按下的開關）。<code>249 → 273 tests</code>，分支 <code>claude/affectionate-sinoussi-06a2b2</code>，未合併 master。</li>
           <li><strong>v1.10.0：</strong>WS-E 資料層收斂——單字本改 mirror-only（chrome.storage.local 單一權威）+ 啟動一次性 cutover 合併並刪除舊 IndexedDB。<strong>此版是資料層 migration，版號必須 bump 才會在使用者升級時觸發 cutover。</strong>尚未發布，半接線功能接線完工併入同一版。</li>
+          <li><strong>2026-09-08：</strong>優先方向調整為新版上線：先核定本版範圍與發布管道，再解除必要阻塞；保留人工 QA 與發布核准，未執行送審或發布。</li>
           <li><strong>2026-08-25：</strong>修掉 <code>MANUAL-QA.md</code> §5 記錄的「UI 清不掉目前模型的 API Key」——清空欄位＋儲存改跳 confirm，確認後即透過 UI 真正移除金鑰、取消維持必填錯誤。27 suites / 317 tests 全綠（含 3 條新回歸測試＋反向驗），e2e legacy §5-2 改鎖新契約。</li>
         </ul>
 
@@ -726,7 +727,7 @@ npx jest --testPathIgnorePatterns='/node_modules/' '/\.claude/'</pre>
             <ul>
               <li>自動測試結果寫在「測試與發布」。</li>
               <li>真瀏覽器 QA 結果回填 <code>MANUAL-QA.md</code>，摘要再寫回本頁。</li>
-              <li>Chrome Web Store 送審只在打磨完成後進行，不提前宣稱已上架。</li>
+              <li>發布依已確認的本版範圍、必要 gate 與人工核准進行；送審收件不等於已上架。</li>
             </ul>
           </div>
         </div>
