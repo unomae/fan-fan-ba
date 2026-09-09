@@ -1,4 +1,9 @@
 // Mock Chrome API
+// 版本直接讀 manifest.json，不寫死——寫死的話每次 release 都要記得同步，
+// 而漏同步不會有任何測試變紅（各測試都自己 mockReturnValue 覆寫），
+// 只會留下一個沉默的錯誤數字（2026-09-09 修正時它還停在 1.7.2）。
+const { version: MANIFEST_VERSION } = require('./manifest.json');
+
 global.chrome = {
   runtime: {
     onInstalled: { addListener: jest.fn() },
@@ -8,7 +13,7 @@ global.chrome = {
     getURL: jest.fn((path) => `chrome-extension://mock-id/${path}`),
     openOptionsPage: jest.fn(),
     getManifest: jest.fn(() => ({
-      version: '1.7.2',
+      version: MANIFEST_VERSION,
       oauth2: {
         client_id: 'REPLACE_WITH_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com',
         scopes: ['https://www.googleapis.com/auth/drive.appdata']

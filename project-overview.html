@@ -409,7 +409,7 @@
           </div>
           <div class="card">
             <h3>現在做到哪裡</h3>
-            <p>本機 package.json／manifest.json 都是 v1.11.1；線上版本尚未核對。下方功能與測試數含歷史紀錄，未於本輪重驗；當前驗收需對照 MANUAL-QA.md 與實際候選包。</p>
+            <p>本機 package.json／manifest.json 都是 v1.11.1；線上版本尚未核對。Jest 現況數字為 2026-09-09 主樹實跑；下方功能說明與「里程碑」段的歷史測試數（246／249／273）是當時紀錄，未於本輪重驗。當前驗收需對照 MANUAL-QA.md 與實際候選包。</p>
           </div>
           <div class="card">
             <h3>下一步先做什麼</h3>
@@ -603,7 +603,7 @@ content/page-translator-single.js</pre>
         <div class="grid">
           <div class="card">
             <h3>自動測試</h3>
-            <p>目前測試框架是 Jest 30 + jsdom。2026-07-28 fresh run 為 <code>26 suites / 273 tests</code> 全綠。<strong>專案內若有 <code>.claude/worktrees/</code>，jest 會連 worktree 的 <code>tests/</code> 一起掃、筆數灌水一倍</strong>，驗收前先 <code>git worktree list</code>，並用下面第二條指令取值。</p>
+            <p>目前測試框架是 Jest 30 + jsdom。2026-09-09 fresh run 為 <code>27 suites / 324 tests</code> 全綠。<strong>專案內若有 <code>.claude/worktrees/</code>，jest 會連 worktree 的 <code>tests/</code> 一起掃、筆數灌水一倍</strong>，驗收前先 <code>git worktree list</code>，並用下面第二條指令取值。</p>
             <pre>npm test
 npx jest --testPathIgnorePatterns='/node_modules/' '/\.claude/'</pre>
           </div>
@@ -620,7 +620,7 @@ npx jest --testPathIgnorePatterns='/node_modules/' '/\.claude/'</pre>
 
         <table style="margin-top:12px;">
           <tr><th>發布前 gate</th><th>狀態</th><th>說明</th></tr>
-          <tr><td>Jest</td><td><span class="pill green">fresh run 通過</span></td><td>2026-07-28：<code>26 suites / 273 tests</code>，0 failed、0 skipped（於 worktree <code>affectionate-sinoussi-06a2b2</code> 實跑；主樹取值請帶 <code>--testPathIgnorePatterns '/\.claude/'</code>）。</td></tr>
+          <tr><td>Jest</td><td><span class="pill green">fresh run 通過</span></td><td>2026-09-09：<code>27 suites / 324 tests</code>，0 failed、0 skipped（主樹實跑，取值請帶 <code>--testPathIgnorePatterns '/\.claude/'</code>）。</td></tr>
           <tr><td>Manual QA</td><td><span class="pill red">待真瀏覽器重跑</span></td><td>Phase 0-C～4-B：<code>60 TC / 32 PASS / 4 FAIL / 24 SKIP</code>。QA-P1-001、QA-P1-003、QA-P2-002 已於 2026-07-28 修復並補回歸測試；4 個失敗 TC 的真瀏覽器重跑清單、加上同日接線輪 6 條的新驗收項，都在 <code>MANUAL-QA.md</code>。完整報告見 <code>qa-reports/fan-fan-ba-qa-report-20260724.html</code>。</td></tr>
           <tr><td>OAuth / Cloud Sync</td><td><span class="pill red">T7 待人工</span></td><td>Chrome native auth 與 Edge Web Auth fallback 都要回填結果；Google Cloud Console 設定送審前必查。</td></tr>
           <tr><td>Chrome Web Store</td><td><span class="pill orange">checkpoint</span></td><td>等產品打磨完成後，再依 <code>STORE-SUBMISSION.md</code> 送審。</td></tr>

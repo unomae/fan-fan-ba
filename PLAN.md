@@ -37,7 +37,7 @@
 | body 級錯誤的 string `code` 塞進 `err.status`，429 重試／404 fallback 失效 | background.js:479-481 | `Number()` 轉換並分欄保存原始 code |
 | 浮球三面板假 `savedSel` 會把面板名當原文存進 Obsidian 週記 | floating-ball.js:329-410 | 加面板模式旗標，非翻譯模式擋存入或隱藏寶石鈕 |
 | innerHTML 主流路徑遇 Trusted Types 頁面（Google 系）UI 全滅 | content/*.js 多處；dom.js 安全 builder 遷移不到一半 | 完成 ffbEl 遷移，過渡期包 createPolicy fallback |
-| 文件版號腐化（**2026-09-09 已修一部分**）：`TESTING.md`／`MANUAL-QA.md` 測試數已同步 324、e2e README 的 `--load-extension` 描述已校正；**未修**＝`project-overview.html` 仍寫 v1.10.0「尚未發布」、`jest.setup.js:11` mock 版本停在 1.7.2 | 各檔標頭與內文 | release checklist 加「grep 舊版號」；數字類資訊考慮由 CI 生成 |
+| 文件數字腐化（2026-09-09 這輪已清完已知項）：`TESTING.md`／`MANUAL-QA.md`／`project-overview.html` 測試數同步 324、e2e README 校正、`jest.setup.js` 改讀 `manifest.json` 不再寫死版本。**殘留風險是機制不是資料**——現況數字仍靠人工同步，漏改不會有任何測試變紅 | 各檔標頭與內文 | release checklist 加「grep 舊版號」；現況數字考慮由 CI 生成或加一條 lint |
 
 ## 驗證指令速查
 
