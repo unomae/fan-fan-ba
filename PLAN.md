@@ -1,5 +1,7 @@
 # PLAN.md — 翻翻吧施工計劃（活文件）
 
+> 排版：主題分組＋目的／現況／接續／詳情四欄；原優先序、核准與待驗狀態不變，本輪未重驗產品。維護時保留四欄，舊紀錄以各指標核對。
+
 > 建立於 2026-08-25，由 Ox Alpha 接手輪整理。事實來源以 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史為準；本檔只放「現在與下一步」；**完成項一律搬 `CHANGELOG.md`**，更早的歷史脈絡留在上述正本。
 
 ## 現況快照
@@ -15,29 +17,127 @@
 
 ## 下一步（依序）— 2026-08-26 審查後重排
 
-1. **Sprint 1 上架 blocker**：
-   - [ ] 1280×800 截圖產出（Tier 5 gating，需人工）
-2. **Sprint 2 結構債**：抽 `resolveRoute()` 消 AI 路由雙軌、migrationPromise 可重試、XLSX 公式防護、onboarding 閉環、CI 加 workflow_dispatch e2e job＋release 打 tag。
-3. **清 Tier 3／4 剩餘項**：需要 KAKA 決定是否配真實 API key（2026-08-14 裁決：QA profile 不配 key，這些項不會被自動化涵蓋）；Obsidian 落檔需真 App。
-   ⚠️ **根 PLAN P-16 的①預設模型能實際翻譯、③404 備援實跑，兩項卡在同一個裁決上**（②四顆模型清冊已於 2026-09-09 用測試鎖住，見 `CHANGELOG.md` 2026-09-09）。維持不配 key 就只能由 KAKA 本人拿自己的 key 手動跑一次；`check-models.js` 也因此只涵蓋 OpenRouter、蓋不到預設模型。
-4. **Tier 5 送審前 gating**：正式 OAuth client_id 確認（T7，需人工進 Google Cloud Console）、依 `STORE-SUBMISSION.md` 打包送審。
-5. **Sprint 3 中期**：dom.js innerHTML 遷移完成、高亮／全文翻譯接 DOM 變更感知層、dark mode 第一階段、design token 收斂（error/focus 色、glass 參數）＋術語表。
-6. **同類專案調研的兩條待裁線索**（2026-09-09，**皆未評估可行性，不是已排定的工作**）：
-   - **Chrome 內建 AI 翻譯**：`kiss-translator` 的引擎清單有 `BuiltinAI`。若可行則**免 API key**，同時打到「23 項手動 QA 卡無 key」與「新使用者要先申請金鑰」兩個結構性痛點。只確認同儕在用，**能力邊界與瀏覽器版本要求全未驗**。
-   - **自訂 OpenAI 相容端點**：`kiss-translator`／`MTranServer` 顯示這是本品類標配，加一個欄位即可讓模型下架時使用者自救。與 `check-models.js` 是互補而非重疊（一個偵測、一個逃生）。
+### 上架準備與驗收
 
-## 已知風險／技術債（有證據）
+- **1. Sprint 1 上架 blocker**
 
-| 風險 | 證據 | 處置建議 |
-|------|------|----------|
-| cutover 刪庫的 `onblocked` 路徑從未驗證（舊 DB 被佔住時 fire-and-forget，靠下次啟動補刪） | `vocabulary-store.js:229`、`MANUAL-QA.md`〈還沒驗到的〉段 | 低機率；可補一條多 context 的 e2e 或接受現狀並記錄 |
-| `replaceAll({clearing:true})` 無 production 觸發者，handleMessage 不轉發 clearing | `vocabulary-store.js:304`、`:375` | 未來加「清空單字本」鈕時必須一起接線＋補驗，否則快照刪除語意靜默失效 |
-| `content.css` 整理（2708 行）deferred | `MANUAL-QA.md` 末節 | 維持 deferred，動它前先讀更新規則 |
-| storage.js `migrationPromise` reject 後永久快取，一次暫時 IO 錯誤掛掉全部翻譯 | storage.js:36-55 | `.catch` 後清 null 允許下次重試 |
-| body 級錯誤的 string `code` 塞進 `err.status`，429 重試／404 fallback 失效 | background.js:479-481 | `Number()` 轉換並分欄保存原始 code |
-| 浮球三面板假 `savedSel` 會把面板名當原文存進 Obsidian 週記 | floating-ball.js:329-410 | 加面板模式旗標，非翻譯模式擋存入或隱藏寶石鈕 |
-| innerHTML 主流路徑遇 Trusted Types 頁面（Google 系）UI 全滅 | content/*.js 多處；dom.js 安全 builder 遷移不到一半 | 完成 ffbEl 遷移，過渡期包 createPolicy fallback |
-| 文件數字腐化（2026-09-09 已加 lint 收斂）：9 處現況數字上標記、`check-docs` 守著；`jest.setup.js` 改讀 `manifest.json`。**殘留缺口**＝lint 未接進任何自動關卡（無 pre-commit／CI），要人記得跑；且新增的現況宣稱若忘了加標記，lint 看不見它 | `scripts/check-doc-numbers.js`；標記見 `FILES` 列的 4 個檔 | 接進 CI（`--verify`）或 pre-commit（預設模式）；歷史數字刻意不管 |
+  - **目的**：補齊擴充功能上架前的阻塞項。
+  - **現況**：**Sprint 1 上架 blocker**： - [ ] 1280×800 截圖產出（Tier 5 gating，需人工）
+  - **接續**：依 Sprint 1 順序補商店截圖及剩餘人工驗收。
+  - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
+
+### 翻譯與資料可靠性
+
+- **2. Sprint 2 結構債**
+
+  - **目的**：收斂翻譯與儲存路徑的結構債。
+  - **現況**：**Sprint 2 結構債**：抽 `resolveRoute()` 消 AI 路由雙軌、migrationPromise 可重試、XLSX 公式防護、onboarding 閉環、CI 加 workflow_dispatch e2e job＋release 打 tag。
+  - **接續**：依 Sprint 2 已核准範圍逐項接續，保留現況中的測試條件。
+  - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
+
+- **3. 清 Tier 3／4 剩餘項**
+
+  - **目的**：補上自動測試無法代替的真實情境。
+  - **現況**：**清 Tier 3／4 剩餘項**：需要 KAKA 決定是否配真實 API key（2026-08-14 裁決：QA profile 不配 key，這些項不會被自動化涵蓋）；Obsidian 落檔需真 App。 ⚠️ **根 PLAN P-16 的①預設模型能實際翻譯、③404 備援實跑，兩項卡在同一個裁決上**（②四顆模型清冊已於 2026-09-09 用測試鎖住，見 `CHANGELOG.md` 2026-09-09）。維持不配 key 就只能由 KAKA 本人拿自己的 key 手動跑一次；`check-models.js` 也因此只涵蓋 OpenRouter、蓋不到預設模型。
+  - **接續**：KAKA 用真 key 完成 Tier 3／4；候選修改先裁決。
+  - **詳情**：`CHANGELOG.md`；`check-models.js`
+
+### 上架準備與驗收（續 2）
+
+- **4. Tier 5 送審前 gating**
+
+  - **目的**：達到送審前的 OAuth 與商店條件。
+  - **現況**：**Tier 5 送審前 gating**：正式 OAuth client_id 確認（T7，需人工進 Google Cloud Console）、依 `STORE-SUBMISSION.md` 打包送審。
+  - **接續**：KAKA 處理 client ID 與 console／商店人工項，再核對 Tier 5。
+  - **詳情**：`STORE-SUBMISSION.md`
+
+### 介面與操作體驗
+
+- **5. Sprint 3 中期**
+
+  - **目的**：改善中期介面與 DOM 維護。
+  - **現況**：**Sprint 3 中期**：dom.js innerHTML 遷移完成、高亮／全文翻譯接 DOM 變更感知層、dark mode 第一階段、design token 收斂（error/focus 色、glass 參數）＋術語表。
+  - **接續**：依 Sprint 3 原優先序處理，先核對研究與施工界線。
+  - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
+
+### 待評估構想
+
+- **6. 同類專案調研的兩條待裁線索**
+
+  - **目的**：判斷同類專案線索是否值得採用。
+  - **現況**：**同類專案調研的兩條待裁線索**（2026-09-09，**皆未評估可行性，不是已排定的工作**）： - **Chrome 內建 AI 翻譯**：`kiss-translator` 的引擎清單有 `BuiltinAI`。若可行則**免 API key**，同時打到「23 項手動 QA 卡無 key」與「新使用者要先申請金鑰」兩個結構性痛點。只確認同儕在用，**能力邊界與瀏覽器版本要求全未驗**。 - **自訂 OpenAI 相容端點**：`kiss-translator`／`MTranServer` 顯示這是本品類標配，加一個欄位即可讓模型下架時使用者自救。與 `check-models.js` 是互補而非重疊（一個偵測、一個逃生）。
+  - **接續**：先評估兩條研究線索，未裁決前不排成施工。
+  - **詳情**：`check-models.js`
+
+## 缺資料／風險處置待決
+
+### 已知風險／技術債（有證據）
+
+### 翻譯與資料可靠性（續 2）
+
+- **cutover｜舊 DB 佔用情境未驗**
+
+  - **目的**：釐清舊 DB 被佔用時的清理風險。
+  - **現況**：風險：cutover 刪庫的 `onblocked` 路徑從未驗證（舊 DB 被佔住時 fire-and-forget，靠下次啟動補刪） | 證據：`vocabulary-store.js:229`、`MANUAL-QA.md`〈還沒驗到的〉段 | 處置建議：低機率；可補一條多 context 的 e2e 或接受現狀並記錄
+  - **接續**：先補 onblocked 自然情境證據，再決定處置；不直接刪庫。
+  - **詳情**：`vocabulary-store.js:229`；`MANUAL-QA.md`
+
+- **replaceAll({clearing:true}) 無 production 觸發者，handleMessage 不轉發 clearing**
+
+  - **目的**：確認 clearing 介面是否有正式用途。
+  - **現況**：風險：`replaceAll({clearing:true})` 無 production 觸發者，handleMessage 不轉發 clearing | 證據：`vocabulary-store.js:304`、`:375` | 處置建議：未來加「清空單字本」鈕時必須一起接線＋補驗，否則快照刪除語意靜默失效
+  - **接續**：先追 production caller 與 handleMessage 契約，再決定保留或處置。
+  - **詳情**：`vocabulary-store.js:304`
+
+### 介面與操作體驗（續 2）
+
+- **content.css 整理（2708 行）deferred**
+
+  - **目的**：保留 CSS 整理的延後決策。
+  - **現況**：風險：`content.css` 整理（2708 行）deferred | 證據：`MANUAL-QA.md` 末節 | 處置建議：維持 deferred，動它前先讀更新規則
+  - **接續**：維持 deferred，等明確核准再整理。
+  - **詳情**：`MANUAL-QA.md`
+
+### 翻譯與資料可靠性（續 3）
+
+- **storage.js migrationPromise reject 後永久快取，一次暫時 IO 錯誤掛掉全部翻譯**
+
+  - **目的**：避免暫時 IO 錯誤永久中斷翻譯。
+  - **現況**：風險：storage.js `migrationPromise` reject 後永久快取，一次暫時 IO 錯誤掛掉全部翻譯 | 證據：storage.js:36-55 | 處置建議：`.catch` 後清 null 允許下次重試
+  - **接續**：依原證據核對 migrationPromise reject 與重試邊界，再接已核准修復範圍。
+  - **詳情**：` reject 後永久快取，一次暫時 IO 錯誤掛掉全部翻譯 storage.js:36-55 `
+
+- **body 級錯誤的 string code 塞進 err.status，429 重試／404 fallback 失效**
+
+  - **目的**：讓重試與 fallback 能辨識錯誤類型。
+  - **現況**：風險：body 級錯誤的 string `code` 塞進 `err.status`，429 重試／404 fallback 失效 | 證據：background.js:479-481 | 處置建議：`Number()` 轉換並分欄保存原始 code
+  - **接續**：核對 string code 與 HTTP status 的區分，再依原處置建議接續。
+  - **詳情**：`，429 重試／404 fallback 失效 background.js:479-481 `
+
+### 介面與操作體驗（續 3）
+
+- **浮球三面板假 savedSel 會把面板名當原文存進 Obsidian 週記**
+
+  - **目的**：避免把面板名稱當翻譯原文匯出。
+  - **現況**：風險：浮球三面板假 `savedSel` 會把面板名當原文存進 Obsidian 週記 | 證據：floating-ball.js:329-410 | 處置建議：加面板模式旗標，非翻譯模式擋存入或隱藏寶石鈕
+  - **接續**：用三面板操作核對 savedSel，依原處置建議接續。
+  - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
+
+- **innerHTML 主流路徑遇 Trusted Types 頁面（Google 系）UI 全滅**
+
+  - **目的**：確認嚴格 Trusted Types 頁面仍能操作。
+  - **現況**：風險：innerHTML 主流路徑遇 Trusted Types 頁面（Google 系）UI 全滅 | 證據：content/*.js 多處；dom.js 安全 builder 遷移不到一半 | 處置建議：完成 ffbEl 遷移，過渡期包 createPolicy fallback
+  - **接續**：先以指定頁面重現與界定 DOM 注入路徑，再接原處置建議。
+  - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
+
+### 文件與驗證
+
+- **現況數字｜lint 尚未接自動關卡**
+
+  - **目的**：讓現況數字維護有持續檢查。
+  - **現況**：風險：文件數字腐化（2026-09-09 已加 lint 收斂）：9 處現況數字上標記、`check-docs` 守著；`jest.setup.js` 改讀 `manifest.json`。**殘留缺口**＝lint 未接進任何自動關卡（無 pre-commit／CI），要人記得跑；且新增的現況宣稱若忘了加標記，lint 看不見它 | 證據：`scripts/check-doc-numbers.js`；標記見 `FILES` 列的 4 個檔 | 處置建議：接進 CI（`--verify`）或 pre-commit（預設模式）；歷史數字刻意不管
+  - **接續**：保留已加標記與 lint 證據；另核准自動關卡整合，未標記的新宣稱仍需人工核對。
+  - **詳情**：`jest.setup.js`；`manifest.json`；`scripts/check-doc-numbers.js`
 
 ## 驗證指令速查
 
