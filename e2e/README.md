@@ -21,6 +21,11 @@
    > Chromium），harness 會以 `--load-extension` 自動安裝擴充，免掉步驟 2-4 的整個人工前置。
 4. 記下擴充 ID（預設值 `cegcbfkgfobpoiaobdedldlabbddbghk`；不同就用 `FFB_E2E_EXT_ID` 覆寫）。
 
+> **踩雷記錄（2026-09-09 Win 實測）**
+> - **擴充 ID 由「載入路徑」雜湊產生，換 checkout 就換 ID。** 從正本 `C:\dev\0xKAKA-dev\fan-fan-ba` 跑，ID 就是上面那個預設值——**此時不要覆寫 `FFB_E2E_EXT_ID`**。舊筆記裡的 `aniccnioenbpamjknkmeafcgdodpedma` 是已收掉的 ox-sandbox 路徑算出來的，照設會直接啟動失敗（`profile 裡讀不到擴充`）。
+> - **ID 查法**：先讓 harness 啟動一次（失敗也沒關係，profile 會建好），再讀 `<profile>/Default/Preferences` 的 `extensions.settings`，找 `path` 指向你的 `dist/pkg` 那筆，它的 key 就是 ID。
+> - **`FFB_E2E_EXECUTABLE` 挑哪顆**：本機實測 `ms-playwright/chromium-1161/chrome-win/chrome.exe` 可跑；`chromium-1228/chrome-win64/chrome.exe` 直接回 **Permission denied**（疑似防毒攔截，非版本問題——`playwright-core` 期望的 revision 其實是 1234，1161 照樣跑得起來）。
+
 ## 跑
 
 ```bash
