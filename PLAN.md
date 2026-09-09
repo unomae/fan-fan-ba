@@ -7,13 +7,15 @@
 | 項目 | 狀態 |
 |------|------|
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
-| 自動化單元測試 | 27 suites / 318 tests 全綠（2026-08-26，含 Obsidian 匯出失敗路徑回歸） |
+| 自動化單元測試 | 27 suites / 324 tests 全綠（2026-09-09，含模型清冊完整性鎖） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-08-26；改 code 先 `npm run package`） |
 | 手動 QA | 全表 55/78；剩 23 項幾乎全卡「無 API key」或「需外部 App／帳號」（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | 決策＝打磨完再送審；Chrome Web Store 為 release checkpoint |
 | 2026-08-26 全面審查 | 四路平行審查完成：code（30+ 項）、UI/UX（30 項）、流程（A1-A6＋B1-B5）；總評＝工程底子前段班，上架 blocker 集中在安全 P1×2、a11y、上架材料 |
 
 ## 最近完成
+
+- 2026-09-09：**模型清冊防呆**——清冊原本零保護（`popup.test.js` 只驗 `MODELS.length > 0`，少一顆照樣綠）。新增 `models-registry.test.js`〈模型清冊完整性〉把四顆的 id／顯示名／provider／備援登記逐一寫死，popup 端改比對同一份清單；fail-then-pass 實測刪掉 Flash-Lite 後**正好 3 條新斷言變紅、其餘 21 條全綠**。並補 `scripts/check-models.js`（`npm run check-models`）對 OpenRouter 線上清單做離線對賬，exit 0/1/2 三態、含 7 案 `--selftest`，0/1/2 三條路徑皆反向驗過。單元測試 318 → 324 全綠。
 
 - 2026-08-26：Sprint 1 上架 blocker 完工（5/6，截圖待人工）＋e2e 全綠 41 PASS / 0 FAIL / 4 PARTIAL；單元測試 318 全綠。2026-08-27 自 ox-sandbox 併回正本並 push（cherry-pick 5 筆，`5007074`..`f725b43`）。
 
@@ -25,7 +27,7 @@
 ## 下一步（依序）— 2026-08-26 審查後重排
 
 1. ~~**真瀏覽器跑 e2e 一輪**~~ ✅ 2026-08-26：41 PASS / 0 FAIL / 4 PARTIAL（PARTIAL 皆為無 key／外部帳號項）。§5-2 新契約驗過。
-   ⚠️ 踩雷記錄：舊拋棄式 profile（p2）載入的未封裝擴充指向**舊 checkout** `C:\dev\0xKAKA-dev\fan-fan-ba\dist\pkg`，會驗到舊版程式（§5-2 假 FAIL）。全自動替代路：`FFB_E2E_EXECUTABLE` 指向 Playwright chromium＋乾淨 profile＋`FFB_E2E_EXT_ID=aniccnioenbpamjknkmeafcgdodpedma`（--load-extension 的 ID 由路徑雜湊產生，與預設不同）。
+   ⚠️ 踩雷記錄（2026-09-09 校正）：`--load-extension` 的擴充 ID 由**載入路徑**雜湊產生，所以換 checkout 就換 ID。sandbox 收掉後正本已是 `C:\dev\0xKAKA-dev\fan-fan-ba`，其 ID 就是 README 記的預設值 `cegcbfkgfobpoiaobdedldlabbddbghk`——**此時不要覆寫 `FFB_E2E_EXT_ID`**（舊記的 `aniccnio…` 是 sandbox 路徑算出來的，照設會直接啟動失敗）。ID 查法：啟動一次後讀 profile 的 `Default/Preferences` 的 `extensions.settings`。Win 實測：`FFB_E2E_EXECUTABLE` 用 `ms-playwright/chromium-1161/chrome-win/chrome.exe` 可跑；`chromium-1228` 會回 Permission denied（疑似防毒）。
 2. **Sprint 1 上架 blocker**：
    - [x] API key 改 header 傳送（Gemini/TTS 三處＋options.js 測試連線，e2e §5-3 同步驗證通過）
    - [x] Obsidian 匯出假成功修正（vocabulary.js 失敗不蓋 obsidianExportedAt，含回歸測試）
@@ -35,8 +37,12 @@
    - [ ] 1280×800 截圖產出（Tier 5 gating，需人工）
 3. **Sprint 2 結構債**：抽 `resolveRoute()` 消 AI 路由雙軌、migrationPromise 可重試、XLSX 公式防護、onboarding 閉環、CI 加 workflow_dispatch e2e job＋release 打 tag。
 4. **清 Tier 3／4 剩餘項**（原第 2 項）：需要 KAKA 決定是否配真實 API key（2026-08-14 裁決：QA profile 不配 key，這些項不會被自動化涵蓋）；Obsidian 落檔需真 App。
+   ⚠️ **根 PLAN P-16 的①預設模型能實際翻譯、③404 備援實跑，兩項卡在同一個裁決上**（②四顆模型清冊已於 2026-09-09 用測試鎖住，見下方「最近完成」）。維持不配 key 就只能由 KAKA 本人拿自己的 key 手動跑一次；`check-models.js` 也因此只涵蓋 OpenRouter、蓋不到預設模型。
 5. **Tier 5 送審前 gating**（原第 3 項，截圖已提前至 Sprint 1）：正式 OAuth client_id 確認（T7，需人工進 Google Cloud Console）、依 `STORE-SUBMISSION.md` 打包送審。
 6. **Sprint 3 中期**：dom.js innerHTML 遷移完成、高亮／全文翻譯接 DOM 變更感知層、dark mode 第一階段、design token 收斂（error/focus 色、glass 參數）＋術語表。
+7. **同類專案調研的兩條待裁線索**（2026-09-09，**皆未評估可行性，不是已排定的工作**）：
+   - **Chrome 內建 AI 翻譯**：`kiss-translator` 的引擎清單有 `BuiltinAI`。若可行則**免 API key**，同時打到「23 項手動 QA 卡無 key」與「新使用者要先申請金鑰」兩個結構性痛點。只確認同儕在用，**能力邊界與瀏覽器版本要求全未驗**。
+   - **自訂 OpenAI 相容端點**：`kiss-translator`／`MTranServer` 顯示這是本品類標配，加一個欄位即可讓模型下架時使用者自救。與 `check-models.js` 是互補而非重疊（一個偵測、一個逃生）。
 
 ## 已知風險／技術債（有證據）
 
@@ -60,6 +66,8 @@ npm test                                  # Jest 30 + jsdom（覆蓋率預設開
 npx jest --testPathIgnorePatterns '/\.claude/'   # 主樹取值用
 npm run package                           # 產 dist/pkg + zip（e2e / 載入前必跑）
 npm run e2e                               # Playwright 真 Chrome 45 案
+npm run check-models                      # OpenRouter 模型下架對賬（免 key；0=通過 1=有下架 2=未檢）
+node scripts/check-models.js --selftest    # 對賬邏輯自測，期望 SELFTEST 7/7 PASS
 ```
 
 > 更新規則：完成一個 slice 就回寫本檔「最近完成／下一步」；測試數字異動時同步 `TESTING.md` 標頭與 `MANUAL-QA.md` 頂部計數。

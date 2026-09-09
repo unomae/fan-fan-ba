@@ -78,6 +78,37 @@ describe('模型備援觸發條件（Groq／OpenRouter 共用）', () => {
   });
 });
 
+// 2026-09-09：清冊本身沒有任何鎖——popup.test.js 只驗 `MODELS.length > 0`，
+// 少一顆、改一個 id 或改一個顯示名，全部測試照樣綠。而「模型無預警下架」是本專案的
+// 常態風險（2026-08-14 一次死兩顆、Groq 兩個 llama 08-16 也下架），正是最需要
+// 「改動必須是刻意的」那種地方。這裡把四顆逐一寫死：要增刪改就得同步改這支測試。
+describe('模型清冊完整性（增刪改都必須是刻意的）', () => {
+  // 期望清冊：[id, 顯示名, provider, 是否登記備援]
+  const EXPECTED = [
+    ['groq:openai/gpt-oss-120b', 'GPT-OSS 120B', 'groq', true],
+    ['gemini-3.5-flash', 'Gemini 3.5 Flash', 'gemini', false],
+    ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite', 'gemini', false],
+    ['openrouter:google/gemma-4-31b-it:free', 'Gemma 4 31B', 'openrouter', true]
+  ];
+
+  test('清冊剛好是這四顆、順序不變（popup 依此順序渲染選項）', () => {
+    expect(M.MODELS.map(entry => entry.id)).toEqual(EXPECTED.map(([id]) => id));
+  });
+
+  test.each(EXPECTED)('%s 仍在冊：顯示名／provider／備援登記都沒被動到', (id, name, provider, hasFallback) => {
+    const entry = M.MODELS.find(item => item.id === id);
+    expect(entry).toBeDefined();
+    expect(entry.name).toBe(name);
+    expect(entry.provider).toBe(provider);
+    expect(Boolean(entry.fallbackModelId)).toBe(hasFallback);
+  });
+
+  test('預設模型是 Groq GPT-OSS 120B，且它在冊', () => {
+    expect(M.DEFAULT_MODEL).toBe('groq:openai/gpt-oss-120b');
+    expect(M.MODELS.some(entry => entry.id === M.DEFAULT_MODEL)).toBe(true);
+  });
+});
+
 describe('PROVIDERS ⟺ manifest host_permissions 對賬', () => {
   test('每個 provider apiBase 的 origin 都被 host_permissions 覆蓋', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf8'));

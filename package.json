@@ -6,7 +6,8 @@
   "scripts": {
     "test": "jest",
     "package": "node scripts/package-extension.js",
-    "e2e": "node e2e/run.js"
+    "e2e": "node e2e/run.js",
+    "check-models": "node scripts/check-models.js"
   },
   "devDependencies": {
     "jest": "^30.2.0",
