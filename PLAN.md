@@ -7,7 +7,7 @@
 | 項目 | 狀態 |
 |------|------|
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
-| 自動化單元測試 | 27 suites / 324 tests 全綠（2026-09-09，含模型清冊完整性鎖） |
+| 自動化單元測試 | <!-- ffb:suites -->27<!-- /ffb:suites --> suites / <!-- ffb:tests -->324<!-- /ffb:tests --> tests 全綠（2026-09-09，含模型清冊完整性鎖） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-08-26；改 code 先 `npm run package`） |
 | 手動 QA | 全表 55/78；剩 23 項幾乎全卡「無 API key」或「需外部 App／帳號」（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | 決策＝打磨完再送審；Chrome Web Store 為 release checkpoint |
@@ -37,7 +37,7 @@
 | body 級錯誤的 string `code` 塞進 `err.status`，429 重試／404 fallback 失效 | background.js:479-481 | `Number()` 轉換並分欄保存原始 code |
 | 浮球三面板假 `savedSel` 會把面板名當原文存進 Obsidian 週記 | floating-ball.js:329-410 | 加面板模式旗標，非翻譯模式擋存入或隱藏寶石鈕 |
 | innerHTML 主流路徑遇 Trusted Types 頁面（Google 系）UI 全滅 | content/*.js 多處；dom.js 安全 builder 遷移不到一半 | 完成 ffbEl 遷移，過渡期包 createPolicy fallback |
-| 文件數字腐化（2026-09-09 這輪已清完已知項）：`TESTING.md`／`MANUAL-QA.md`／`project-overview.html` 測試數同步 324、e2e README 校正、`jest.setup.js` 改讀 `manifest.json` 不再寫死版本。**殘留風險是機制不是資料**——現況數字仍靠人工同步，漏改不會有任何測試變紅 | 各檔標頭與內文 | release checklist 加「grep 舊版號」；現況數字考慮由 CI 生成或加一條 lint |
+| 文件數字腐化（2026-09-09 已加 lint 收斂）：9 處現況數字上標記、`check-docs` 守著；`jest.setup.js` 改讀 `manifest.json`。**殘留缺口**＝lint 未接進任何自動關卡（無 pre-commit／CI），要人記得跑；且新增的現況宣稱若忘了加標記，lint 看不見它 | `scripts/check-doc-numbers.js`；標記見 `FILES` 列的 4 個檔 | 接進 CI（`--verify`）或 pre-commit（預設模式）；歷史數字刻意不管 |
 
 ## 驗證指令速查
 
@@ -48,6 +48,11 @@ npm run package                           # 產 dist/pkg + zip（e2e / 載入前
 npm run e2e                               # Playwright 真 Chrome 45 案
 npm run check-models                      # OpenRouter 模型下架對賬（免 key；0=通過 1=有下架 2=未檢）
 node scripts/check-models.js --selftest    # 對賬邏輯自測，期望 SELFTEST 7/7 PASS
+npm run check-docs                        # 現況數字一致性（快，不跑 jest；0=一致 1=不一致 2=未檢）
+npm run check-docs -- --verify            # 權威版：實跑 jest 對照文件數字（慢，release／CI 用）
+node scripts/check-doc-numbers.js --selftest  # 期望 SELFTEST 9/9 PASS
 ```
+
+> **改測試數時**：現況數字用 `<!-- ffb:tests -->N<!-- /ffb:tests -->`（`N` 換成實際數字）這種標記包住，`check-docs` 只認標記、不碰未標記的歷史數字。新增一處現況宣稱要記得加標記，新增檔案要加進 `scripts/check-doc-numbers.js` 的 `FILES`。此處 `N` 是佔位符、刻意不寫成數字，否則這行說明自己會被當成一處現況宣稱。
 
 > 更新規則：完成一個 slice 就把它從「下一步」移進 `CHANGELOG.md`，本檔不留完成紀錄；測試數字異動時同步 `TESTING.md` 標頭與 `MANUAL-QA.md` 頂部計數。
