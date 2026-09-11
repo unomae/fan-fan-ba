@@ -130,15 +130,6 @@
   - **接續**：先以指定頁面重現與界定 DOM 注入路徑，再接原處置建議。
   - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
 
-### 文件與驗證
-
-- **現況數字｜lint 尚未接自動關卡**
-
-  - **目的**：讓現況數字維護有持續檢查。
-  - **現況**：風險：文件數字腐化（2026-09-09 已加 lint 收斂）：9 處現況數字上標記、`check-docs` 守著；`jest.setup.js` 改讀 `manifest.json`。**殘留缺口**＝lint 未接進任何自動關卡（無 pre-commit／CI），要人記得跑；且新增的現況宣稱若忘了加標記，lint 看不見它 | 證據：`scripts/check-doc-numbers.js`；標記見 `FILES` 列的 4 個檔 | 處置建議：接進 CI（`--verify`）或 pre-commit（預設模式）；歷史數字刻意不管
-  - **接續**：保留已加標記與 lint 證據；另核准自動關卡整合，未標記的新宣稱仍需人工核對。
-  - **詳情**：`jest.setup.js`；`manifest.json`；`scripts/check-doc-numbers.js`
-
 ## 驗證指令速查
 
 ```bash
