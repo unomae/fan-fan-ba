@@ -11,8 +11,8 @@
 > 本節自 CORE_RULES B-2 下放（2026-07-21），此處為細節唯一真相。
 
 - 本專案是 nested repo，曾遇 dubious ownership；結論要回寫 `project-overview.html`，且 local verified 不等於 Chrome Web Store 已發布。
-- 單元測試只寫本機 cache；人工測試會修改瀏覽器 extension／儲存狀態。
-- 沒有自動化 extension e2e；本機測試通過也不代表 Store 已發布，真實 Chrome extension、權限與頁面互動須依 `MANUAL-QA.md` 人工驗證。
+- 單元測試會寫本機 cache，並依 Jest 預設設定產出 `coverage/`；人工測試會修改瀏覽器 extension／儲存狀態。
+- 已有自動化 extension e2e（`npm run e2e`，見 `e2e/README.md`），僅涵蓋其中列明的回歸範圍；本機測試通過也不代表 Store 已發布，未涵蓋的真實 Chrome extension、權限與頁面互動仍須依 `MANUAL-QA.md` 人工驗證。
 
 ---
 

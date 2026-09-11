@@ -100,5 +100,5 @@ node e2e/run.js --list
 7. `waitForEvent('page')` 回來時分頁還是空白，要 `waitForURL` 之後再讀 `url()`。
 8. 浮球容器固定在右緣，與整寬段落**必然幾何重疊**，判「有沒有遮住原文」要先排除它。
 9. 存 API Key 的 dummy 值要符合 provider 前綴（Groq 是 `gsk_`），否則被格式驗證擋下；
-   而**清空欄位存檔會被必填驗證擋下**，要回到無 key 只能繞過 UI 刪 storage。
+   清空目前選用模型的 API Key 欄位後儲存會跳出移除確認；確認後以空值覆蓋已儲存的 key，取消則維持必填錯誤。QA 僅使用 dummy 值，不配置真實 API key。
 10. 快照輪替 24 小時一次且 `snapshotCheckedAt` 存在 SW 記憶體 → 要驗輪替得先 `relaunch()`。

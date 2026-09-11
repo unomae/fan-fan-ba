@@ -1,6 +1,6 @@
 # Chrome Web Store 送審指南（Phase A）
 
-> 文案內容在 `store-listing.md`（gitignored）。本檔是**流程 + 過審自檢**。
+> 文案內容在 `store-listing.md`（已納入版控）。本檔是**流程 + 過審自檢**。
 
 ## 1. 打包
 
