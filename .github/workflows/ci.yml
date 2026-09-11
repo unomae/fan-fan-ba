@@ -1,4 +1,4 @@
-# WS-E T-CI：把既有的 212 個 Jest 測試與打包 smoke 接上自動化，
+# WS-E T-CI：把既有的 Jest 測試與打包 smoke 接上自動化，
 # 不再依賴「作者記得跑」。send 審 / merge 前這裡必須綠。
 name: CI
 
@@ -23,3 +23,22 @@ jobs:
         run: npm test -- --runInBand
       - name: 打包 smoke（含 manifest/package.json 版本一致 assert）
         run: npm run package
+
+      # ── 兩支 lint gate（P-03）─────────────────────────────────────────
+      # 兩支都免金鑰，所以可以無條件掛在這裡；Groq／Gemini 需 key 的部分刻意
+      # 不涵蓋，依 2026-08-14「QA 不配 key」裁決。
+      # 各自先跑 --selftest：gate 自己壞掉卻還回 0，比沒有 gate 更糟。
+      - name: 現況數字 gate 自測（離線）
+        run: npm run check-docs -- --selftest
+      # 用 --verify 而非預設模式：預設只比對文件彼此，四處一起過期它抓不到。
+      # --verify 會實跑 jest 取真實數字再比對（腳本檔頭指定此模式給 CI 用）。
+      - name: 現況數字權威檢查（--verify，實跑 jest 對照真實數字）
+        run: npm run check-docs -- --verify
+      - name: 模型下架 gate 自測（離線）
+        run: npm run check-models -- --selftest
+      # exit 1 = 真的下架；exit 2 = 未檢（連不上／回應不合預期）。
+      # 兩者都讓 CI 紅是刻意的：把 2 併進 0 會讓「網路掛掉」和「模型都在」
+      # 在 CI 上長得一樣，那正是 gate 死掉卻沒人發現的死法
+      # （理由見 scripts/check-models.js 檔頭）。
+      - name: 模型下架對賬（OpenRouter，免金鑰，會連外）
+        run: npm run check-models
