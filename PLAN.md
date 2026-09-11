@@ -40,7 +40,7 @@
   - **目的**：補上自動測試無法代替的真實情境。
   - **現況**：**清 Tier 3／4 剩餘項**：需要 KAKA 決定是否配真實 API key（2026-08-14 裁決：QA profile 不配 key，這些項不會被自動化涵蓋）；Obsidian 落檔需真 App。 ⚠️ **根 PLAN P-16 的①預設模型能實際翻譯、③404 備援實跑，兩項卡在同一個裁決上**（②四顆模型清冊已於 2026-09-09 用測試鎖住，見 `CHANGELOG.md` 2026-09-09）。維持不配 key 就只能由 KAKA 本人拿自己的 key 手動跑一次；`check-models.js` 也因此只涵蓋 OpenRouter、蓋不到預設模型。
   - **接續**：KAKA 用真 key 完成 Tier 3／4；候選修改先裁決。
-  - **詳情**：`CHANGELOG.md`；`check-models.js`
+  - **詳情**：`CHANGELOG.md`；`scripts/check-models.js`
 
 ### 上架準備與驗收（續 2）
 
@@ -67,7 +67,7 @@
   - **目的**：判斷同類專案線索是否值得採用。
   - **現況**：**同類專案調研的兩條待裁線索**（2026-09-09，**皆未評估可行性，不是已排定的工作**）： - **Chrome 內建 AI 翻譯**：`kiss-translator` 的引擎清單有 `BuiltinAI`。若可行則**免 API key**，同時打到「23 項手動 QA 卡無 key」與「新使用者要先申請金鑰」兩個結構性痛點。只確認同儕在用，**能力邊界與瀏覽器版本要求全未驗**。 - **自訂 OpenAI 相容端點**：`kiss-translator`／`MTranServer` 顯示這是本品類標配，加一個欄位即可讓模型下架時使用者自救。與 `check-models.js` 是互補而非重疊（一個偵測、一個逃生）。
   - **接續**：先評估兩條研究線索，未裁決前不排成施工。
-  - **詳情**：`check-models.js`
+  - **詳情**：`scripts/check-models.js`
 
 ## 缺資料／風險處置待決
 
