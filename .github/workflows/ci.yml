@@ -42,3 +42,57 @@ jobs:
       # （理由見 scripts/check-models.js 檔頭）。
       - name: 模型下架對賬（OpenRouter，免金鑰，會連外）
         run: npm run check-models
+
+  e2e-extension:
+    # workflow_dispatch 專用。這 45 案要真 Chromium ＋ 真擴充、要 headed 瀏覽器、
+    # 還要下載 Chrome for Testing，跑一輪數分鐘，所以不綁每個 PR，由人手動觸發。
+    # 覆蓋範圍與「這裡驗不到什麼」見 e2e/README.md；人工 QA 仍照 MANUAL-QA.md。
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: 安裝依賴
+        run: npm ci
+      # playwright-core 不會自己下載瀏覽器。這裡一定要 Chrome for Testing：
+      # 品牌版 Chrome 137 起封鎖 --load-extension，走不了自動安裝那條路。
+      - name: 安裝 Chrome for Testing
+        run: node node_modules/playwright-core/cli.js install --with-deps --no-shell chromium
+      - name: 打包擴充（e2e 載入的是 dist/pkg，不是工作區）
+        run: npm run package
+      # unpacked 擴充 ID＝SHA256(載入路徑) 前 16 bytes，hex 的 0-f 映射到 a-p。
+      # 路徑一換 ID 就換，所以不能沿用本機預設值（那是 Windows 正本路徑算出來的），
+      # 必須依這個 checkout 現算。POSIX 用 UTF-8 bytes，Windows 是 UTF-16LE。
+      - name: 算出本 checkout 的擴充 ID
+        run: |
+          node -e '
+            const crypto = require("crypto"), path = require("path");
+            const dir = path.join(process.cwd(), "dist", "pkg");
+            const hex = crypto.createHash("sha256").update(Buffer.from(dir, "utf8")).digest("hex").slice(0, 32);
+            const id = [...hex].map(c => String.fromCharCode(97 + parseInt(c, 16))).join("");
+            console.error("extDir=" + dir);
+            console.log("FFB_E2E_EXT_ID=" + id);
+          ' | tee -a "$GITHUB_ENV"
+      - name: 解析 Chrome for Testing 路徑
+        run: |
+          echo "FFB_E2E_EXECUTABLE=$(node -e 'console.log(require("playwright-core").chromium.executablePath())')" | tee -a "$GITHUB_ENV"
+      # xvfb 是必要的，不是保險：harness 固定 headless:false，因為 MV3 擴充在
+      # headless 下不載入。FFB_E2E_ALLOW_NET 刻意不設，唯一會連外那案維持不跑。
+      - name: e2e（xvfb 提供 display）
+        env:
+          FFB_E2E_PROFILE: ${{ runner.temp }}/ffb-qa-profile
+          FFB_E2E_ARTIFACTS: ${{ runner.temp }}/ffb-artifacts
+        run: |
+          mkdir -p "$FFB_E2E_PROFILE"
+          xvfb-run -a node e2e/run.js
+      - name: 上傳截圖與產物
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          path: ${{ runner.temp }}/ffb-artifacts
+          if-no-files-found: warn
