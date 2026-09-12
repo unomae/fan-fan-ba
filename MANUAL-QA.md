@@ -5,7 +5,7 @@
 > 否則驗到的是舊版擴充。e2e 全綠**不等於**可以送審——需要 API key、Obsidian App、Excel
 > 或人眼觀感的項目它一律驗不到，那些仍在本表、仍要人工跑。
 
-> 這份是「**人要做**」的手動驗收，與 `npm test`（<!-- ffb:tests -->333<!-- /ffb:tests --> 個自動化單元測試，2026-09-09）互補。
+> 這份是「**人要做**」的手動驗收，與 `npm test`（<!-- ffb:tests -->336<!-- /ffb:tests --> 個自動化單元測試，2026-09-09）互補。
 > 自動測試涵蓋純函式邏輯；以下這些只有在真實瀏覽器載入擴充功能才驗得了。
 > 涵蓋版本：v1.9.6（注入面收斂）→ v1.9.9（security hardening）→ **v1.10.0（WS-E 資料層 migration）** + Phase A–D review 修正
 > → **v1.10.1（2026-08-14 bump：CSV 公式注入防護）**。
@@ -19,7 +19,7 @@
 
 **進度（2026-08-13）：Tier 0、1、2 完成；Tier 3 14/19；Tier 4 16/31 → 全表 55/78，剩 23 項。**
 剩下的 23 項幾乎都卡在同兩件事：**沒有 API key**（翻譯／解釋／優化／串流／單段 Alt+T／摘要／診斷成功計數）
-與**需要外部 App／帳號**（Obsidian 落檔、Excel 開 XLSX、Cloud Sync 登入）。
+與**需要外部 App／帳號**（Obsidian 落檔、Excel 開 CSV、Cloud Sync 登入）。
 另有 3 項是「自動化只驗到一半」而刻意不勾：局部重試的失敗計數扣回、真正的移除重裝、hover 設定隨檔備份。
 最後是 **Tier 5**（§8 送審前 gating 3 項，非 code）。
 Tier 1 那道「一旦錯過就補不回來」的閘已經過了，之後都可隨時中斷再續。
@@ -239,6 +239,7 @@ emoji、RTL override（`‮`）、`=cmd|' /C calc'!A0`、`<img src=x onerror=...
 - **根因**：`content/vocabulary.js` 的 `escapeVocabularyCsvCell` 只處理 `"`／`,`／換行，**未對 `=` `+` `-` `@` 開頭的值加 `'` 前綴**
 - **界線（別誇大）**：只驗到**輸出層無防護**，**沒有**在 Excel 實際執行那條 DDE，也不打算做；風險路徑是「使用者自己把 CSV 貼進 Excel／Sheets」
 - **XLSX 匯出無此問題**：`buildXlsxWorkbook` 以 `t="inlineStr"` 寫格，Excel 一律當字串
+  → **2026-09-13 已不適用**：XLSX 匯出整條移除、改為完整 CSV 匯出（見 `CHANGELOG.md` 同日條目）。上面這句當時也**沒有拿真 Excel 驗過**，只是依 OOXML 規格推論；換成 CSV 後走的是已有防護的那條路。
 - **處置未定**：修不修屬 KAKA 決定（改動會影響匯出內容格式，且與送審時程相關）
 
 ### 2026-08-13 執行結果（Tier 3 可自動化部分）：**14 格打勾**（含 TC-F3-004 修完後補勾那格）
@@ -460,8 +461,8 @@ emoji、RTL override（`‮`）、`=cmd|' /C calc'!A0`、`<img src=x onerror=...
       → 08-13 實測：標成已記得的 `due2` 與 `known1` 都不在錯題回看清單，只剩 `due1`
 - [x] 收藏幾個單字 → 設定頁「匯出 JSON」→ 得到 `.json` 備份
       → 08-13 實測：下載 `fan-fan-ba-vocabulary-2026-08-13.json`，`app`／`schema`／`count` 皆正確
-- [ ] 「匯出 XLSX」→ 得到 `.xlsx`，**用真 Excel / Google Sheets 開得起來**、欄位正確
-- [ ] **公式注入防護**：收藏一個以 `=` 開頭的內容（或 word/definition 含 `=cmd`）→ 匯出 XLSX → Excel 開啟時該格顯示為**純文字**，不被當公式執行
+- [ ] 「匯出 CSV」→ 得到 `.csv`，**用真 Excel / Google Sheets 開得起來**、14 欄正確、**中文不亂碼**（靠 UTF-8 BOM）
+- [ ] **公式注入防護**：收藏一個以 `=` 開頭的內容（或 word/definition 含 `=cmd`）→ 匯出 CSV → Excel 開啟時該格顯示為**純文字**，不被當公式執行
 - [ ] 移除擴充功能再重裝 → 設定頁「匯入」剛才的 JSON → 單字救回、計數正確
       → **只用「清空 `storage.local` 」模擬過**（3 筆 → 0 筆 → 匯入回 3 筆，狀態列「新增 3、更新 0，共 3」）；
       **真正的移除重裝未做**（重裝會換擴充 ID／權限重授），故不勾

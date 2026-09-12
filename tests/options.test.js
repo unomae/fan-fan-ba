@@ -40,7 +40,7 @@ describe('Options module', () => {
       <button id="btnTest"></button>
       <div id="status"></div>
       <button id="btnExportVocabulary"></button>
-      <button id="btnExportVocabularyXlsx"></button>
+      <button id="btnExportVocabularyCsv"></button>
       <button id="btnImportVocabulary"></button>
       <input id="vocabularyImportFile" type="file" />
       <div id="vocabularyBackupStatus"></div>

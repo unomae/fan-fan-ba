@@ -48,7 +48,7 @@ initVocabularyBackup();
 // ── 單字本備份 / 還原（Phase B）──────────────────────
 function initVocabularyBackup() {
   $('btnExportVocabulary')?.addEventListener('click', exportVocabularyBackup);
-  $('btnExportVocabularyXlsx')?.addEventListener('click', exportVocabularyXlsx);
+  $('btnExportVocabularyCsv')?.addEventListener('click', exportVocabularyCsv);
   const fileInput = $('vocabularyImportFile');
   $('btnImportVocabulary')?.addEventListener('click', () => fileInput?.click());
   fileInput?.addEventListener('change', importVocabularyBackup);
@@ -147,7 +147,7 @@ async function exportVocabularyBackup() {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    // 只在 JSON 匯出（完整可還原）成功後蓋章；XLSX 是 lossy 不算備份
+    // 只在 JSON 匯出（完整可還原）成功後蓋章；CSV 是 lossy 不算備份
     await chrome.storage.local.set({ [LAST_VOCAB_BACKUP_KEY]: new Date().toISOString() });
     renderVocabularyBackupStaleness();
     setVocabularyBackupStatus(`已匯出 ${backup.count} 個單字。`);
@@ -156,25 +156,27 @@ async function exportVocabularyBackup() {
   }
 }
 
-async function exportVocabularyXlsx() {
+// 檢視用的單向匯出（2026-09-13 由 XLSX 換成 CSV）。刻意不在這裡蓋
+// 「已備份」的章——那只屬於 JSON 匯出，CSV 是 lossy 的，不能還原。
+async function exportVocabularyCsv() {
   try {
     const items = await getVocabularyItemsMap();
     const normalized = VocabBackup.normalizeItemsMap(items);
     const count = Object.keys(normalized).length;
     if (!count) { setVocabularyBackupStatus('單字本是空的，沒有可匯出的單字。'); return; }
-    const workbook = VocabBackup.buildXlsxWorkbook(normalized);
-    const blob = new Blob([workbook], { type: VocabBackup.XLSX_MIME_TYPE });
+    const csv = VocabBackup.buildVocabularyCsv(normalized);
+    const blob = new Blob([csv], { type: VocabBackup.CSV_MIME_TYPE });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `fan-fan-ba-vocabulary-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.download = `fan-fan-ba-vocabulary-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setVocabularyBackupStatus(`已匯出 ${count} 個單字成 XLSX。`);
+    setVocabularyBackupStatus(`已匯出 ${count} 個單字成 CSV。`);
   } catch {
-    setVocabularyBackupStatus('XLSX 匯出失敗，請再試一次。');
+    setVocabularyBackupStatus('CSV 匯出失敗，請再試一次。');
   }
 }
 

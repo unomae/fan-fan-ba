@@ -3,6 +3,30 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-13 — 單字本匯出改用 CSV，撤掉 XLSX
+
+設定頁的「匯出 XLSX」換成「匯出 CSV」，14 欄不變。
+
+**為什麼換**：XLSX 那條路是手寫的 OOXML＋ZIP（含自寫 CRC32），`vocabulary-backup.js` 裡 165 行都在做這件事，而它唯一的優勢——「Excel 開得起來」——CSV 也做得到。更關鍵的是公式注入防護：CSV 這邊早就有 `escapeVocabularyCsvCell`（2026-08-13 TC-F3-004 抓到後補的），還有 e2e 鎖著；XLSX 那邊則一直懸著。
+
+順手釐清一個 repo 內的矛盾：`MANUAL-QA.md` 舊有一句「XLSX 匯出無此問題：`buildXlsxWorkbook` 以 `t="inlineStr"` 寫格，Excel 一律當字串」，但 Sprint 2 清單同時把「XLSX 公式防護」列為待辦、`MANUAL-QA.md` 也留著一格未勾的公式防護驗收。兩邊對不上。實際情況是那句推論**沒有拿真 Excel 驗過**，只是依 OOXML 規格推的。換成 CSV 之後這題不必再判。
+
+**BOM 是必要條件不是裝飾**：少了它 Excel（尤其 Windows 版）會用系統 ANSI 解讀，中文欄位直接亂碼。`buildVocabularyCsv` 固定輸出 `\ufeff` 開頭＋CRLF 行尾。
+
+**定位沒變**：CSV 跟原本的 XLSX 一樣是**單向、lossy 的檢視格式**，不是備份。要還原一律用 JSON，所以 CSV 匯出不會蓋「已備份」的章。另外浮球面板的「複製今日 CSV」是不同東西（8 欄、只有今天、複製到剪貼簿），這次沒動它。
+
+**公式防護有兩份實作**：MV3 下 content script 與 options 頁不共用模組，把 `vocabulary-backup.js` 掛進 `<all_urls>` 的 content_scripts 只為共用 5 行 regex 並不划算。改用測試防漂移——新增一條交叉比對，拿 17 個惡意／邊界樣本斷言 `escapeCsvCell` 與 `escapeVocabularyCsvCell` 輸出完全相同，任一邊被改、另一邊沒跟上就紅。
+
+驗證：`vocabulary-backup.js` 327 → 210 行。全套 333 → **336 全綠（27 suites）**；重新 `npm run package` 後 e2e **41 PASS / 0 FAIL / 4 PARTIAL**，PARTIAL 四項與基線相同。
+
+實際產出的 CSV 逐項檢查過：前三 byte 是 `ef bb bf`、行尾 CRLF、14 欄、中日文完好、`=cmd|' /C calc'!A0` 與 `+SUM(A1)` `@handle` `-1` 都補了 `'`、`航運專欄, 第二篇` 被引號包住、內含雙引號 double 成 `""`。
+
+突變驗證三組，每組都只紅該紅的：①防護漏掉 `@` → 公式測試＋漂移比對同時紅 ②把引號包裹搬到補前綴之前 → 順序鎖＋漂移比對紅（順序反了會得到 `"=with,comma"`，引號包住了但開頭仍是 `=`，試算表照樣當公式）③寫測試時我自己把期望值猜成「該格會被引號包起來」，測試直接紅——那格沒有逗號所以不該有引號，是我猜錯不是程式錯。
+
+**未驗**：沒有真的用 Excel／Google Sheets 開過。`MANUAL-QA.md` 那兩格仍未勾，要 KAKA 開一次確認欄位、中文與公式格。
+
+**未動（範圍外）**：`qa-reports/scripts/run-phase1-2.js` 的 TC-B4-002 會點 `#btnExportVocabularyXlsx` 並斷言 zip magic `504b`，換成 CSV 後這條必然壞。它綁 v1.9.9、無人引用，而且斷言要重新定義（CSV 沒有 zip magic），不是改個 selector 就好，留給 KAKA 裁決。`qa-reports/specs/` 與 `archive/` 的歷史紀錄一併保留原文。
+
 ## 2026-09-12 — release 打 tag（手動觸發）
 
 repo 至今零 tag。新增 `.github/workflows/release-tag.yml`，`workflow_dispatch` 手動觸發。

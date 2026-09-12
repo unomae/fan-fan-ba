@@ -2,8 +2,12 @@
   'use strict';
 
   // Phase B：單字本「可還原」備份 / 匯入（無 DOM 依賴，options 頁與測試共用）。
-  // 與既有 MD/CSV 匯出（單向、lossy）不同 —— 這是完整 keyed map 的 round-trip 備份，
-  // 用於換機 / 重新安裝後救回單字資料。
+  // 本檔有兩種產出，**別混用**：
+  //   - `buildBackup` / `parseBackup` / `mergeBackup`：完整 keyed map 的 round-trip
+  //     備份（JSON），用於換機 / 重新安裝後救回單字資料。
+  //   - `buildVocabularyCsv`：單向、lossy 的檢視格式，給 Excel / Sheets 看，不能還原。
+  //     浮球面板另有「複製今日 CSV」（`content/vocabulary.js`，8 欄、只有今天），與此處
+  //     的 14 欄完整匯出不是同一個東西。
 
   const BACKUP_APP = 'fan-fan-ba';
   const BACKUP_SCHEMA = 'vocabulary';
@@ -11,8 +15,8 @@
   const MAX_IMPORT_ITEMS = 50000;
   // 不可當成 id 的危險鍵，避免匯入檔污染物件原型
   const DANGEROUS_IDS = new Set(['__proto__', 'constructor', 'prototype']);
-  const XLSX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-  const XLSX_COLUMNS = [
+  const CSV_MIME_TYPE = 'text/csv;charset=utf-8';
+  const CSV_COLUMNS = [
     ['word', item => item.word],
     ['lang', item => item.lang],
     ['pos', item => item.pos],
@@ -142,169 +146,48 @@
     return { items: result, summary };
   }
 
-  function buildXlsxRows(itemsMap) {
+  // ── 完整單字本 CSV 匯出 ──────────────────────────────────────────────
+  // 原本這裡是手寫的 OOXML＋ZIP（含自寫 CRC32）約 200 行，產出 .xlsx。2026-09-13 換成
+  // CSV：Excel 與 Google Sheets 都直接開得起來，而公式注入防護在 CSV 這邊已經有現成、
+  // 有 e2e 鎖著的做法。XLSX 那條路的 cell 是 `t="inlineStr"`，依 OOXML 規格不會被當
+  // 公式，但那是規格推理、沒人真的拿 Excel 驗過——換成 CSV 讓這個懸而未決的問題消失。
+  //
+  // 定位不變：這是**單向、lossy 的檢視格式**，不是還原用備份。要還原一律用 JSON。
+
+  function buildCsvRows(itemsMap) {
     const items = Object.values(normalizeItemsMap(itemsMap))
       .sort((a, b) => entryTime(b) - entryTime(a) || String(a.word).localeCompare(String(b.word)));
     return [
-      XLSX_COLUMNS.map(([header]) => header),
-      ...items.map(item => XLSX_COLUMNS.map(([, read]) => normalizeXlsxCell(read(item))))
+      CSV_COLUMNS.map(([header]) => header),
+      ...items.map(item => CSV_COLUMNS.map(([, read]) => normalizeCsvValue(read(item))))
     ];
   }
 
-  function normalizeXlsxCell(value) {
+  function normalizeCsvValue(value) {
     if (value === null || value === undefined) return '';
     return String(value);
   }
 
-  function buildXlsxWorkbook(itemsMap) {
-    const rows = buildXlsxRows(itemsMap);
-    return buildZipPackage({
-      '[Content_Types].xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`,
-      '_rels/.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
-      'xl/workbook.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Vocabulary" sheetId="1" r:id="rId1"/></sheets></workbook>`,
-      'xl/_rels/workbook.xml.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`,
-      'xl/styles.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts><fills count="1"><fill><patternFill patternType="none"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellXfs></styleSheet>`,
-      'xl/worksheets/sheet1.xml': buildWorksheetXml(rows)
-    });
+  // 公式注入防護。單字本的 word／definition 都是從網頁抓來的外部文字，`=cmd|' /C calc'!A0`
+  // 這種值一路貼進試算表就會被執行，所以 `=` `+` `-` `@`（含前導 tab / CR）開頭要補一個
+  // 單引號維持純文字。順序重要：先補前綴、再做引號包裹。
+  //
+  // ⚠️ 這段邏輯在 `content/vocabulary.js` 的 `escapeVocabularyCsvCell` 有第二份。MV3 下
+  // content script 與 options 頁不共用模組，而把這個檔掛進 <all_urls> 的 content_scripts
+  // 只為了共用 5 行 regex 並不划算。改用測試防漂移：`tests/vocabulary-backup.test.js`
+  // 有一條交叉比對，拿同一組惡意樣本斷言兩份實作輸出完全相同。**改這裡就要同步改那邊。**
+  function escapeCsvCell(value) {
+    let text = normalizeCsvValue(value);
+    if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+    if (/[",\r\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
+    return text;
   }
 
-  function buildWorksheetXml(rows) {
-    const sheetData = rows.map((row, rowIndex) => {
-      const rowNumber = rowIndex + 1;
-      const cells = row.map((value, colIndex) => {
-        const ref = `${columnName(colIndex)}${rowNumber}`;
-        return `<c r="${ref}" t="inlineStr"><is><t>${escapeXml(value)}</t></is></c>`;
-      }).join('');
-      return `<row r="${rowNumber}">${cells}</row>`;
-    }).join('');
-    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetData>${sheetData}</sheetData></worksheet>`;
-  }
-
-  function columnName(index) {
-    let n = index + 1;
-    let name = '';
-    while (n > 0) {
-      const rem = (n - 1) % 26;
-      name = String.fromCharCode(65 + rem) + name;
-      n = Math.floor((n - 1) / 26);
-    }
-    return name;
-  }
-
-  function escapeXml(value) {
-    return String(value || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
-  }
-
-  function buildZipPackage(files) {
-    const localParts = [];
-    const centralParts = [];
-    let offset = 0;
-
-    for (const [name, text] of Object.entries(files)) {
-      const nameBytes = utf8Bytes(name);
-      const data = utf8Bytes(text);
-      const crc = crc32(data);
-      const localHeader = zipLocalHeader(nameBytes, data.length, crc);
-      const centralHeader = zipCentralHeader(nameBytes, data.length, crc, offset);
-      localParts.push(localHeader, nameBytes, data);
-      centralParts.push(centralHeader, nameBytes);
-      offset += localHeader.length + nameBytes.length + data.length;
-    }
-
-    const centralOffset = offset;
-    const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
-    return concatBytes([...localParts, ...centralParts, zipEndRecord(Object.keys(files).length, centralSize, centralOffset)]);
-  }
-
-  function zipLocalHeader(nameBytes, size, crc) {
-    const out = new Uint8Array(30);
-    const view = new DataView(out.buffer);
-    view.setUint32(0, 0x04034b50, true);
-    view.setUint16(4, 20, true);
-    view.setUint16(6, 0, true);
-    view.setUint16(8, 0, true);
-    view.setUint16(10, 0, true);
-    view.setUint16(12, 0, true);
-    view.setUint32(14, crc, true);
-    view.setUint32(18, size, true);
-    view.setUint32(22, size, true);
-    view.setUint16(26, nameBytes.length, true);
-    view.setUint16(28, 0, true);
-    return out;
-  }
-
-  function zipCentralHeader(nameBytes, size, crc, offset) {
-    const out = new Uint8Array(46);
-    const view = new DataView(out.buffer);
-    view.setUint32(0, 0x02014b50, true);
-    view.setUint16(4, 20, true);
-    view.setUint16(6, 20, true);
-    view.setUint16(8, 0, true);
-    view.setUint16(10, 0, true);
-    view.setUint16(12, 0, true);
-    view.setUint16(14, 0, true);
-    view.setUint32(16, crc, true);
-    view.setUint32(20, size, true);
-    view.setUint32(24, size, true);
-    view.setUint16(28, nameBytes.length, true);
-    view.setUint16(30, 0, true);
-    view.setUint16(32, 0, true);
-    view.setUint16(34, 0, true);
-    view.setUint16(36, 0, true);
-    view.setUint32(38, 0, true);
-    view.setUint32(42, offset, true);
-    return out;
-  }
-
-  function zipEndRecord(fileCount, centralSize, centralOffset) {
-    const out = new Uint8Array(22);
-    const view = new DataView(out.buffer);
-    view.setUint32(0, 0x06054b50, true);
-    view.setUint16(4, 0, true);
-    view.setUint16(6, 0, true);
-    view.setUint16(8, fileCount, true);
-    view.setUint16(10, fileCount, true);
-    view.setUint32(12, centralSize, true);
-    view.setUint32(16, centralOffset, true);
-    view.setUint16(20, 0, true);
-    return out;
-  }
-
-  function utf8Bytes(text) {
-    return new TextEncoder().encode(String(text));
-  }
-
-  function concatBytes(parts) {
-    const total = parts.reduce((sum, part) => sum + part.length, 0);
-    const out = new Uint8Array(total);
-    let offset = 0;
-    parts.forEach(part => {
-      out.set(part, offset);
-      offset += part.length;
-    });
-    return out;
-  }
-
-  function crc32(bytes) {
-    let crc = 0xffffffff;
-    for (const byte of bytes) {
-      crc ^= byte;
-      for (let i = 0; i < 8; i += 1) {
-        crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
-      }
-    }
-    return (crc ^ 0xffffffff) >>> 0;
+  // BOM 是必要的不是裝飾：沒有它 Excel（尤其 Windows 版）會用系統 ANSI 解讀，
+  // 中文欄位直接變亂碼。CRLF 同理，對齊試算表的預期。
+  function buildVocabularyCsv(itemsMap) {
+    const rows = buildCsvRows(itemsMap);
+    return `\ufeff${rows.map(row => row.map(escapeCsvCell).join(',')).join('\r\n')}`;
   }
 
   const api = {
@@ -312,13 +195,14 @@
     BACKUP_SCHEMA,
     BACKUP_SCHEMA_VERSION,
     MAX_IMPORT_ITEMS,
-    XLSX_MIME_TYPE,
+    CSV_MIME_TYPE,
     normalizeItemsMap,
     buildBackup,
     parseBackup,
     mergeBackup,
-    buildXlsxRows,
-    buildXlsxWorkbook
+    buildCsvRows,
+    buildVocabularyCsv,
+    escapeCsvCell
   };
 
   global.FanFanBaVocabularyBackup = api;

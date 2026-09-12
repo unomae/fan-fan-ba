@@ -9,7 +9,7 @@
 | 項目 | 狀態 |
 |------|------|
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
-| 自動化單元測試 | <!-- ffb:suites -->27<!-- /ffb:suites --> suites / <!-- ffb:tests -->333<!-- /ffb:tests --> tests 全綠（2026-09-09，含模型清冊完整性鎖） |
+| 自動化單元測試 | <!-- ffb:suites -->27<!-- /ffb:suites --> suites / <!-- ffb:tests -->336<!-- /ffb:tests --> tests 全綠（2026-09-09，含模型清冊完整性鎖） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-08-26；改 code 先 `npm run package`） |
 | 手動 QA | 全表 55/78；剩 23 項幾乎全卡「無 API key」或「需外部 App／帳號」（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | 決策＝打磨完再送審；Chrome Web Store 為 release checkpoint |
@@ -31,8 +31,8 @@
 - **2. Sprint 2 結構債**
 
   - **目的**：收斂翻譯與儲存路徑的結構債。
-  - **現況**：**Sprint 2 結構債**：2026-09-12 完成四項——`resolveRoute()` 抽取、migrationPromise 可重試、CI workflow_dispatch e2e job、release 打 tag（各自詳 `CHANGELOG.md` 同日條目）。**剩兩項**：①XLSX 公式防護——cell 產出是 `t="inlineStr"`，依 OOXML 規格不會被當公式，**疑為原審查從 CSV 類比來的誤判**，此為讀 code 的推理、未經真 Excel／Sheets 驗證；②onboarding 閉環——repo 內無規格（只有 `archive/code-review-2026-06-18.md` 一句「onboarding 要更像 checklist」），`welcome.js` 僅 10 行兩顆按鈕，範圍待 KAKA 定義。
-  - **接續**：XLSX 先產一份含惡意值的 `.xlsx` 由 KAKA 在真 Excel／Sheets 開檔判定有無洞，有洞才做防護、沒洞就標誤判；onboarding 待 KAKA 給定義才界定範圍。
+  - **現況**：**Sprint 2 結構債**：六項已結五項——`resolveRoute()` 抽取、migrationPromise 可重試、CI workflow_dispatch e2e job、release 打 tag（皆 2026-09-12），以及 2026-09-13 把 XLSX 匯出換成完整 CSV（14 欄、UTF-8 BOM、沿用已有 e2e 鎖的公式防護），**「XLSX 公式防護」那項因此不再成立**。各項詳 `CHANGELOG.md` 對應日條目。**剩 onboarding 閉環**：repo 內無規格（只有 `archive/code-review-2026-06-18.md` 一句「onboarding 要更像 checklist」），`welcome.js` 僅 10 行兩顆按鈕，範圍待 KAKA 定義。
+  - **接續**：onboarding 閉環待 KAKA 給定義才界定範圍。CSV 換格式留一項人工驗：`MANUAL-QA.md` 那兩格要用真 Excel／Sheets 開 `.csv`，確認 14 欄、中文不亂碼（靠 BOM）、公式格顯示為純文字。
   - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
 
 - **3. 清 Tier 3／4 剩餘項**

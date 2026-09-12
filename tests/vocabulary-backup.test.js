@@ -126,9 +126,9 @@ describe('vocabulary backup', () => {
     });
   });
 
-  describe('buildXlsxWorkbook', () => {
+  describe('buildVocabularyCsv', () => {
     it('builds rows with readable vocabulary columns', () => {
-      const rows = Backup.buildXlsxRows({
+      const rows = Backup.buildCsvRows({
         'en:beacon': entry('en:beacon', 'Beacon', {
           pos: 'noun',
           translations: ['燈塔', '信標'],
@@ -150,23 +150,70 @@ describe('vocabulary backup', () => {
       expect(rows[1]).toContain('learning');
     });
 
-    it('creates a real XLSX zip package with worksheet XML', () => {
-      const bytes = Backup.buildXlsxWorkbook({
+    it('emits BOM, CRLF and quotes cells containing commas or quotes', () => {
+      const csv = Backup.buildVocabularyCsv({
         'en:signal': entry('en:signal', 'Signal, flare', {
           translations: ['信號彈', '照明彈'],
           definition: 'A bright, "visible" signal.'
         })
       });
-      const text = new TextDecoder().decode(bytes);
 
-      expect(bytes).toBeInstanceOf(Uint8Array);
-      expect(bytes[0]).toBe(0x50);
-      expect(bytes[1]).toBe(0x4b);
-      expect(text).toContain('[Content_Types].xml');
-      expect(text).toContain('xl/worksheets/sheet1.xml');
-      expect(text).toContain('Signal, flare');
-      expect(text).toContain('信號彈；照明彈');
-      expect(text).toContain('&quot;visible&quot;');
+      // BOM 不是裝飾：少了它 Excel 會用系統 ANSI 解讀，中文欄位變亂碼
+      expect(csv.startsWith('\ufeff')).toBe(true);
+      expect(csv).toContain('\r\n');
+      expect(csv).toContain('"Signal, flare"');
+      expect(csv).toContain('信號彈；照明彈');
+      // 內含的雙引號要 double 起來，不是脫逃字元
+      expect(csv).toContain('"A bright, ""visible"" signal."');
+    });
+
+    it('prefixes formula-leading cells so spreadsheets keep them as text', () => {
+      const csv = Backup.buildVocabularyCsv({
+        'en:evil': entry('en:evil', "=cmd|' /C calc'!A0", {
+          definition: '+SUM(A1)',
+          sources: [{ title: '@handle', url: '-1' }]
+        })
+      });
+
+      // 每一個被試算表當公式起頭的字元都要補上單引號。這格沒有逗號也沒有雙引號，
+      // 所以只補前綴、不包引號（`|` 與 `\'` 都不是需要引號包裹的字元）。
+      expect(csv).toContain("'=cmd|' /C calc'!A0");
+      expect(csv).toContain("'+SUM(A1)");
+      expect(csv).toContain("'@handle");
+      expect(csv).toContain("'-1");
+    });
+
+    it('補前綴的順序在引號包裹之前（含逗號的惡意值才不會逃脫）', () => {
+      // 順序反過來的話會得到 "=with,comma" —— 引號包住了，但開頭仍是 `=`，
+      // 試算表照樣當公式算。這條鎖的就是這個順序。
+      expect(Backup.escapeCsvCell('=with,comma')).toBe('"\'=with,comma"');
+    });
+  });
+
+  // 防漂移：MV3 下 content script 與 options 頁不共用模組，所以公式防護有兩份實作
+  // （此檔的 escapeCsvCell 與 content/vocabulary.js 的 escapeVocabularyCsvCell）。
+  // 拿同一組惡意樣本斷言兩份輸出完全相同——任一邊被改動、另一邊沒跟上就會紅。
+  describe('CSV 公式防護：兩份實作不得漂移', () => {
+    it('escapeCsvCell 與 content/vocabulary.js 的版本輸出一致', () => {
+      const fs = require('fs');
+      const path = require('path');
+      const vm = require('vm');
+
+      const source = fs.readFileSync(path.join(__dirname, '../content/vocabulary.js'), 'utf8');
+      const sandbox = vm.createContext({ console, Date, chrome: { runtime: { sendMessage() {} } } });
+      vm.runInContext(source, sandbox, { filename: 'content/vocabulary.js' });
+      const contentEscape = sandbox.escapeVocabularyCsvCell;
+      // 抓不到就不能算過——靜默 undefined 會讓下面的比對變成 no-op
+      expect(typeof contentEscape).toBe('function');
+
+      const samples = [
+        "=cmd|' /C calc'!A0", '+SUM(A1)', '-1', '@handle', '\tleading tab', '\rleading cr',
+        'plain', '', 'has,comma', 'has"quote', 'has\nnewline', 'has\r\ncrlf',
+        '=with,comma', '中文字', '  leading spaces', '0', 'a=b'
+      ];
+      for (const sample of samples) {
+        expect(Backup.escapeCsvCell(sample)).toBe(contentEscape(sample));
+      }
     });
   });
 });

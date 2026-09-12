@@ -30,7 +30,7 @@
 - 🔊 **朗讀** — 優先使用 Google Cloud Chirp HD 高品質語音；未設定則自動 fallback 瀏覽器內建語音
 - 📝 **存入 Obsidian** — 一鍵 append 到週記筆記（`YYYY-W##.md`），存入後自動切回原分頁保留結果卡；字典模式保留完整結構化 markdown；macOS / Windows 跨平台相容
 - 💾 **設定備份 / 還原** — 匯出 JSON 設定檔，重新安裝後可匯入；API Key 預設不匯出，需使用者明確勾選並以密碼加密
-- 📚 **單字本備份 / 匯出** — 單字資料可用 JSON 完整備份還原，也可匯出真 `.xlsx` 給 Excel / Google Sheets 檢視
+- 📚 **單字本備份 / 匯出** — 單字資料可用 JSON 完整備份還原，也可匯出 `.csv` 給 Excel / Google Sheets 檢視
 - ☁️ **Google Drive 雲端同步（v1.7.x）** — 可同步模型、語言、Obsidian、全文翻譯等一般設定到 Drive appData；Chrome / Edge 可用不同 OAuth 流程登入，API Key 不會雲端同步
 - 🕐 **最近查詢紀錄** — 結果卡 Header 時鐘按鈕展開最近 5 筆紀錄，點擊即可重新載入
 - 📌 **釘住結果卡** — Pin 後選取新文字不關閉卡片，頂部藍線顯示釘住狀態
@@ -125,7 +125,7 @@ fan-fan-ba/
 ├── content.css           # 工具列、結果卡、全文翻譯、浮球、單字面板樣式
 ├── popup.html / js       # 模型快選 Popup
 ├── options.html / js     # 完整設定頁
-├── vocabulary-backup.js  # 單字本 JSON round-trip 備份與 XLSX 匯出
+├── vocabulary-backup.js  # 單字本 JSON round-trip 備份與 CSV 匯出
 ├── vocabulary-store.js   # 單字本 IndexedDB store + chrome.storage.local fallback / migration
 ├── welcome.html / js     # 首次安裝 Onboarding 頁面
 ├── privacy-policy.html   # 隱私權政策
