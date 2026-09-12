@@ -31,8 +31,8 @@
 - **2. Sprint 2 結構債**
 
   - **目的**：收斂翻譯與儲存路徑的結構債。
-  - **現況**：**Sprint 2 結構債**：抽 `resolveRoute()` 消 AI 路由雙軌、migrationPromise 可重試、XLSX 公式防護、onboarding 閉環、~~CI 加 workflow_dispatch e2e job~~（2026-09-12 完成，見 `CHANGELOG.md`）＋release 打 tag。
-  - **接續**：依 Sprint 2 已核准範圍逐項接續，保留現況中的測試條件。
+  - **現況**：**Sprint 2 結構債**：2026-09-12 完成四項——`resolveRoute()` 抽取、migrationPromise 可重試、CI workflow_dispatch e2e job、release 打 tag（各自詳 `CHANGELOG.md` 同日條目）。**剩兩項**：①XLSX 公式防護——cell 產出是 `t="inlineStr"`，依 OOXML 規格不會被當公式，**疑為原審查從 CSV 類比來的誤判**，此為讀 code 的推理、未經真 Excel／Sheets 驗證；②onboarding 閉環——repo 內無規格（只有 `archive/code-review-2026-06-18.md` 一句「onboarding 要更像 checklist」），`welcome.js` 僅 10 行兩顆按鈕，範圍待 KAKA 定義。
+  - **接續**：XLSX 先產一份含惡意值的 `.xlsx` 由 KAKA 在真 Excel／Sheets 開檔判定有無洞，有洞才做防護、沒洞就標誤判；onboarding 待 KAKA 給定義才界定範圍。
   - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
 
 - **3. 清 Tier 3／4 剩餘項**
@@ -99,13 +99,6 @@
   - **詳情**：`MANUAL-QA.md`
 
 ### 翻譯與資料可靠性（續 3）
-
-- **storage.js migrationPromise reject 後永久快取，一次暫時 IO 錯誤掛掉全部翻譯**
-
-  - **目的**：避免暫時 IO 錯誤永久中斷翻譯。
-  - **現況**：風險：storage.js `migrationPromise` reject 後永久快取，一次暫時 IO 錯誤掛掉全部翻譯 | 證據：storage.js:36-55 | 處置建議：`.catch` 後清 null 允許下次重試
-  - **接續**：依原證據核對 migrationPromise reject 與重試邊界，再接已核准修復範圍。
-  - **詳情**：` reject 後永久快取，一次暫時 IO 錯誤掛掉全部翻譯 storage.js:36-55 `
 
 - **body 級錯誤的 string code 塞進 err.status，429 重試／404 fallback 失效**
 

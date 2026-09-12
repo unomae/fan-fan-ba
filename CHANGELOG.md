@@ -3,6 +3,24 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-12 — release 打 tag（手動觸發）
+
+repo 至今零 tag。新增 `.github/workflows/release-tag.yml`，`workflow_dispatch` 手動觸發。
+
+**刻意獨立成一個 workflow 而不是塞進 `ci.yml`**：`ci.yml` 的 `workflow_dispatch` 是用來手動跑 e2e 的，混在一起會變成「每次想跑 e2e 都順便打 tag」。
+
+**範圍只有打 tag**：不建 GitHub Release、不附 zip、不上傳 Chrome Web Store。送審仍照 `STORE-SUBMISSION.md` 由人執行。
+
+三道前置，任一不過就停在打 tag 之前：
+
+1. `manifest.json` 與 `package.json` 版本必須一致（manifest 才是擴充的真實版本）。`npm run package` 也 assert 這件事，但打 tag 不該依賴它有沒有跑過。
+2. 同版本已有 tag 就停，**不自動覆蓋**——要重打得先手動刪。
+3. Jest 全套＋打包 smoke 要過。tag 是「這顆 commit 就是 vX.Y.Z」的宣稱，不該落在紅的 commit 上。
+
+驗證：run `34675582519` 八步全綠，`v1.11.1` 已在 origin 且指向 `c7d0cd3c`＝當時的 master HEAD。反向也驗了——同一個 workflow 再 dispatch 一次（run `34675617101`）在第 2 道前置就紅，訊息是「v1.11.1 已經存在。要重打請先手動刪掉那個 tag」，**沒有走到打 tag 那步**。
+
+注意 `v1.11.1` 這顆 tag 落在 2026-09-12 這批修改之後的 HEAD 上，不是「版本號被設成 1.11.1 的那一刻」——repo 先前沒有任何 tag，所以也沒有更合適的歷史 commit。要移到別的 commit 就刪掉重打。
+
 ## 2026-09-12 — 抽 resolveRoute()，消 AI 路由雙軌
 
 `_handleAIRequest`（非串流）與 `_streamAIRequest`（串流）各有一段約 30 行、逐字相同的 provider if 鏈：判斷 `groq:` / `openrouter:` 前綴、挑對應金鑰、組 `baseUrl`、給 `label`，無前綴落到 Gemini。差別只在後面接哪個執行器。
