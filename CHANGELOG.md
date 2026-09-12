@@ -3,6 +3,22 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-12 — 抽 resolveRoute()，消 AI 路由雙軌
+
+`_handleAIRequest`（非串流）與 `_streamAIRequest`（串流）各有一段約 30 行、逐字相同的 provider if 鏈：判斷 `groq:` / `openrouter:` 前綴、挑對應金鑰、組 `baseUrl`、給 `label`，無前綴落到 Gemini。差別只在後面接哪個執行器。
+
+抽出 `resolveRoute(selectedModel, keys)` 當**路由決策的唯一正本**，回傳 `{kind:'openai-compat', modelId, apiKey, baseUrl, label, extraHeaders}` 或 `{kind:'gemini', apiKey, model}`，兩軌各自照 `kind` 分派。
+
+**刻意只抽決策、不抽執行器**：串流與非串流的執行器（`handleWithModelFallback` / `streamWithModelFallback` / Gemini 自有 request body）差異是真實的，硬合成一個函式只會換來一堆旗標。
+
+動工前先發現一件事改了順序：**串流軌原本零單元測試覆蓋**（`streamAIRequest` 在 `tests/` 完全沒出現），`provider-endpoints.test.js` 只鎖了非串流那半。重構沒有護欄的路徑等於碰運氣，所以**先補 4 條串流軌 URL 鎖再抽**。另外 `resolveRoute` 抽出後也補了 4 條直接測，其中「缺金鑰各自拋哪句」原本零覆蓋——那三句是使用者真的會看到的字，改壞不會有任何測試變紅。
+
+驗證：全套 325 → **333 全綠（27 suites）**；e2e 重新 `npm run package` 後跑 **41 PASS / 0 FAIL / 4 PARTIAL**，連 PARTIAL 的四項都與基線相同＝真實擴充層面零行為改變。
+
+突變驗證做了兩組。①把 groq 的 `baseUrl` 換成 OpenRouter 的：**重構前只紅 1 條**（串流那條），**重構後紅 2 條**（兩軌一起）——這正是決策真的共用了的證據。②把 `if (!groqApiKey)` 改成 `if (false)` 讓守衛永不觸發：缺金鑰那條紅，其餘 11 條不動。
+
+踩到一個測試腳手架的坑：jsdom 環境沒有 `ReadableStream`，串流鎖第一次寫成真串流會四條全紅（看起來像產品回歸，其實是環境）。改成只提供 `getReader()`／`read()`／`cancel()` 的最小假物件即可——URL 與 header 的斷言讀的是 `fetch.mock.calls`，跟 body 長什麼樣無關。
+
 ## 2026-09-12 — migrationPromise 一次失敗不再永久壞掉
 
 `storage.js` 的 `migrateSecretsFromSync()` 用 `if (migrationPromise) return migrationPromise;` 快取結果，但**失敗的 promise 也被快取**。所以一次暫時 IO 錯誤之後，每個後續呼叫都拿回同一顆 rejected promise，壞到使用者重載擴充為止。

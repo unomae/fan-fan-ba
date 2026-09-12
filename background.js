@@ -374,6 +374,45 @@ async function handleAIRequest({ action, selectedText, context, pageTitle, model
   }
 }
 
+// 路由決策的唯一正本。非串流（`_handleAIRequest`）與串流（`_streamAIRequest`）原本
+// 各有一段幾乎逐字相同的 provider if 鏈：判斷前綴、挑金鑰、組 baseUrl、給 label，
+// 差別只在後面接哪個執行器。
+//
+// 刻意只抽「決策」不抽「執行」：串流與非串流的執行器（`handleWithModelFallback` /
+// `streamWithModelFallback` / Gemini 自有 body）差異是真實的，硬合成一個函式只會
+// 換來一堆旗標。所以這裡回傳一個描述，兩軌各自照 `kind` 分派。
+//
+// 「無前綴 id＝Gemini」是史前遺留 id 依賴的路由約定，`provider-endpoints.test.js`
+// 兩個 describe 各有一條鎖住它。
+function resolveRoute(selectedModel, { apiKey, groqApiKey, openrouterApiKey }) {
+  if (selectedModel.startsWith('groq:')) {
+    if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
+    return {
+      kind:         'openai-compat',
+      modelId:      ModelRegistry.toApiModelId(selectedModel),
+      apiKey:       groqApiKey,
+      baseUrl:      `${GROQ_API_BASE}/chat/completions`,
+      label:        'Groq',
+      extraHeaders: {}
+    };
+  }
+
+  if (selectedModel.startsWith('openrouter:')) {
+    if (!openrouterApiKey) throw new Error('請先在設定頁面輸入 OpenRouter API Key');
+    return {
+      kind:         'openai-compat',
+      modelId:      ModelRegistry.toApiModelId(selectedModel),
+      apiKey:       openrouterApiKey,
+      baseUrl:      `${OPENROUTER_API_BASE}/chat/completions`,
+      label:        'OpenRouter',
+      extraHeaders: ModelRegistry.PROVIDERS.openrouter.extraHeaders
+    };
+  }
+
+  if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
+  return { kind: 'gemini', apiKey, model: selectedModel, label: 'Gemini' };
+}
+
 async function _handleAIRequest({ action, selectedText, context, pageTitle, model: requestedModel, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }, signal) {
   const [{ model = DEFAULT_MODEL }, { apiKey = '', groqApiKey = '', openrouterApiKey = '' }] = await Promise.all([
     chrome.storage.sync.get({ model: DEFAULT_MODEL }),
@@ -381,33 +420,19 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle, mode
   ]);
   const selectedModel = ModelRegistry.normalizeModel(requestedModel || model);
 
-  if (selectedModel.startsWith('groq:')) {
-    if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
+  const route = resolveRoute(selectedModel, { apiKey, groqApiKey, openrouterApiKey });
+
+  if (route.kind === 'openai-compat') {
     return handleWithModelFallback({
       action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage, pageTranslation,
-      modelId: ModelRegistry.toApiModelId(selectedModel),
-      apiKey:  groqApiKey,
-      baseUrl: `${GROQ_API_BASE}/chat/completions`,
-      label:   'Groq',
+      modelId:      route.modelId,
+      apiKey:       route.apiKey,
+      baseUrl:      route.baseUrl,
+      label:        route.label,
+      extraHeaders: route.extraHeaders,
       signal
     }, selectedModel);
   }
-
-  if (selectedModel.startsWith('openrouter:')) {
-    if (!openrouterApiKey) throw new Error('請先在設定頁面輸入 OpenRouter API Key');
-    const modelId = ModelRegistry.toApiModelId(selectedModel);
-    return handleWithModelFallback({
-      action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage, pageTranslation,
-      modelId,
-      apiKey:  openrouterApiKey,
-      baseUrl: `${OPENROUTER_API_BASE}/chat/completions`,
-      label:   'OpenRouter',
-      extraHeaders: ModelRegistry.PROVIDERS.openrouter.extraHeaders,
-      signal
-    }, selectedModel);
-  }
-
-  if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
 
   const prompt   = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage, pageTranslation });
   const maxOutputTokens = getPromptMaxOutputTokens(action, pageTranslation);
@@ -495,14 +520,16 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle, mode
 
   const prompt = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage, pageTranslation });
 
-  if (selectedModel.startsWith('groq:')) {
-    if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
+  const route = resolveRoute(selectedModel, { apiKey, groqApiKey, openrouterApiKey });
+
+  if (route.kind === 'openai-compat') {
     return streamWithModelFallback({
       prompt, action,
-      modelId:   ModelRegistry.toApiModelId(selectedModel),
-      apiKey:    groqApiKey,
-      baseUrl:   `${GROQ_API_BASE}/chat/completions`,
-      label:     'Groq',
+      modelId:      route.modelId,
+      apiKey:       route.apiKey,
+      baseUrl:      route.baseUrl,
+      label:        route.label,
+      extraHeaders: route.extraHeaders,
       pageTranslation,
       onChunk,
       onStatus,
@@ -510,25 +537,7 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle, mode
     }, selectedModel);
   }
 
-  if (selectedModel.startsWith('openrouter:')) {
-    if (!openrouterApiKey) throw new Error('請先在設定頁面輸入 OpenRouter API Key');
-    const modelId = ModelRegistry.toApiModelId(selectedModel);
-    return streamWithModelFallback({
-      prompt, action,
-      modelId,
-      apiKey:       openrouterApiKey,
-      baseUrl:      `${OPENROUTER_API_BASE}/chat/completions`,
-      label:        'OpenRouter',
-      extraHeaders: ModelRegistry.PROVIDERS.openrouter.extraHeaders,
-      pageTranslation,
-      onChunk,
-      onStatus,
-      signal
-    }, selectedModel);
-  }
-
-  if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
-  return streamGemini({ prompt, apiKey, model: selectedModel, action, pageTranslation, onChunk, signal });
+  return streamGemini({ prompt, apiKey: route.apiKey, model: route.model, action, pageTranslation, onChunk, signal });
 }
 
 async function streamWithModelFallback(params, model) {
@@ -860,4 +869,4 @@ ${selectedText}`;
   }
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, validateAIRequest, validateTtsRequest, validateObsidianUriRequest, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, validateAIRequest, validateTtsRequest, validateObsidianUriRequest, resolveRoute, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }
