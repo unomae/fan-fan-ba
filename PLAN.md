@@ -31,7 +31,7 @@
 - **2. Sprint 2 結構債**
 
   - **目的**：收斂翻譯與儲存路徑的結構債。
-  - **現況**：**Sprint 2 結構債**：抽 `resolveRoute()` 消 AI 路由雙軌、migrationPromise 可重試、XLSX 公式防護、onboarding 閉環、CI 加 workflow_dispatch e2e job＋release 打 tag。
+  - **現況**：**Sprint 2 結構債**：抽 `resolveRoute()` 消 AI 路由雙軌、migrationPromise 可重試、XLSX 公式防護、onboarding 閉環、~~CI 加 workflow_dispatch e2e job~~（2026-09-12 完成，見 `CHANGELOG.md`）＋release 打 tag。
   - **接續**：依 Sprint 2 已核准範圍逐項接續，保留現況中的測試條件。
   - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
 
