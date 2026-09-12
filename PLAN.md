@@ -9,7 +9,7 @@
 | 項目 | 狀態 |
 |------|------|
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
-| 自動化單元測試 | <!-- ffb:suites -->27<!-- /ffb:suites --> suites / <!-- ffb:tests -->324<!-- /ffb:tests --> tests 全綠（2026-09-09，含模型清冊完整性鎖） |
+| 自動化單元測試 | <!-- ffb:suites -->27<!-- /ffb:suites --> suites / <!-- ffb:tests -->325<!-- /ffb:tests --> tests 全綠（2026-09-09，含模型清冊完整性鎖） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-08-26；改 code 先 `npm run package`） |
 | 手動 QA | 全表 55/78；剩 23 項幾乎全卡「無 API key」或「需外部 App／帳號」（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | 決策＝打磨完再送審；Chrome Web Store 為 release checkpoint |

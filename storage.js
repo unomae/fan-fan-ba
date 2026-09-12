@@ -49,7 +49,14 @@
 
       if (Object.keys(migrated).length) await setArea('local', migrated);
       if (SECRET_KEYS.some(key => syncSecrets?.[key])) await removeSyncSecrets();
-    })();
+    })().catch(error => {
+      // 失敗不快取。原本失敗的 promise 會一直被 `if (migrationPromise) return` 命中，
+      // 於是一次暫時 IO 錯誤就讓 getSecrets 的所有呼叫點（翻譯兩路、popup、TTS、
+      // 設定頁備份）壞到重載擴充為止。清回 null 讓下次重跑；同一批已在 await 的
+      // 呼叫者仍會收到這次的 rejection，不會被靜默吞掉。
+      migrationPromise = null;
+      throw error;
+    });
 
     return migrationPromise;
   }

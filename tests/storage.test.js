@@ -52,6 +52,28 @@ describe('Storage helper', () => {
     });
     expect(chrome.storage.sync.remove).toHaveBeenCalledWith(Storage.SECRET_KEYS);
   });
+
+  // 回歸：migrationPromise 一次暫時失敗後必須能重試。
+  // 原本 `if (migrationPromise) return migrationPromise;` 會把 rejected promise 永久快取，
+  // 於是一次暫時 IO 錯誤就讓 getSecrets 的 8 個呼叫點（翻譯兩路、popup、TTS、設定頁備份）
+  // 全部壞到重載擴充為止。這條鎖的是「錯誤源恢復後第二次要成功」。
+  it('一次暫時失敗後允許重試，不把 rejected migration 永久快取', async () => {
+    chrome.storage.sync.get
+      .mockRejectedValueOnce(new Error('暫時 IO 錯誤'))
+      .mockResolvedValue({});
+    chrome.storage.local.get.mockResolvedValue({ apiKey: 'AIza-local' });
+    chrome.storage.local.set.mockResolvedValue();
+    chrome.storage.sync.remove.mockResolvedValue();
+
+    const Storage = require('../storage');
+
+    await expect(Storage.getSecrets()).rejects.toThrow('暫時 IO 錯誤');
+    // 注入的錯誤只發生一次；第二次必須重跑 migration，而不是拿回同一顆 rejected promise
+    await expect(Storage.getSecrets()).resolves.toEqual(
+      expect.objectContaining({ apiKey: 'AIza-local' })
+    );
+    expect(chrome.storage.sync.get).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('Storage — 本機診斷摘要 (v1.9.8)', () => {

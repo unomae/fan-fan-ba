@@ -3,6 +3,16 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-12 — migrationPromise 一次失敗不再永久壞掉
+
+`storage.js` 的 `migrateSecretsFromSync()` 用 `if (migrationPromise) return migrationPromise;` 快取結果，但**失敗的 promise 也被快取**。所以一次暫時 IO 錯誤之後，每個後續呼叫都拿回同一顆 rejected promise，壞到使用者重載擴充為止。
+
+影響範圍比原風險條目寫的「掛掉全部翻譯」更大：`getSecrets` 有 8 個呼叫點——翻譯的串流與非串流兩條路、popup 兩處、TTS、設定頁三處（含備份加密）。
+
+修法是 `.catch` 裡把 `migrationPromise` 清回 `null` 再 rethrow：下次呼叫重跑 migration，而同一批已在 `await` 的呼叫者仍會收到這次的 rejection（不靜默吞掉）。
+
+驗證：先用注入「只失敗一次」的 IO 錯誤實跑重現——修復前第 1／2／3 次全部失敗，修復後第 1 次失敗、第 2／3 次成功。回歸測試 `tests/storage.test.js`〈一次暫時失敗後允許重試〉走完 fail-then-pass：加上去時**只有它變紅**（1 failed／7 passed），修完 8 passed。全套 324 → **325 全綠（27 suites）**，`check-docs --verify` 文件與實跑都是 325。
+
 ## 2026-09-12 — e2e 45 案接進 workflow_dispatch job
 
 `npm run e2e`（真 Chromium ＋ 真擴充）原本只能在本機手動跑，而且每台機器要做一次人工前置（開拋棄式 profile、到 `chrome://extensions` 手動載入未封裝）。本次接成 `ci.yml` 的 `e2e-extension` job，`if: github.event_name == 'workflow_dispatch'` 守衛——要下載瀏覽器、要 headed、一輪一分多鐘，不適合綁每個 PR。
