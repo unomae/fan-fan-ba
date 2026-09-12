@@ -1,0 +1,65 @@
+# 發布用打 tag。刻意獨立成一個 workflow，不塞進 ci.yml：
+# ci.yml 的 workflow_dispatch 是用來手動跑 e2e 的，混在一起會變成「每次想跑
+# e2e 都順便打 tag」。
+#
+# 範圍只有打 tag：不建 GitHub Release、不附 zip、不上傳 Chrome Web Store。
+# 送審仍照 STORE-SUBMISSION.md 由人執行。
+name: Release tag
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      # 要完整 tag 清單才能判斷「這個版本是不是已經打過」。
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: 安裝依賴
+        run: npm ci
+
+      # manifest 才是擴充的真實版本；package.json 只是開發端。兩邊不一致就停，
+      # 否則會打出一個跟實際擴充版本不符的 tag。
+      # （`npm run package` 也 assert 這件事，但打 tag 不該依賴它有沒有跑過。）
+      - name: 核對 manifest 與 package.json 版本一致
+        run: |
+          node -e '
+            const m = require("./manifest.json").version;
+            const p = require("./package.json").version;
+            if (m !== p) {
+              console.error(`版本不一致：manifest=${m} package.json=${p}`);
+              process.exit(1);
+            }
+            console.log(`VERSION=${m}`);
+          ' | tee -a "$GITHUB_ENV"
+
+      - name: 確認這個版本還沒打過 tag
+        run: |
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "v$VERSION 已經存在。要重打請先手動刪掉那個 tag，不在這裡自動覆蓋。"
+            exit 1
+          fi
+          echo "v$VERSION 尚未存在，可以打。"
+
+      # 不讓紅的 commit 被打成版本：tag 是一個「這顆 commit 就是 vX.Y.Z」的宣稱。
+      - name: Jest 全套測試
+        run: npm test -- --runInBand
+      - name: 打包 smoke
+        run: npm run package
+
+      - name: 打 annotated tag 並 push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "v$VERSION"
+          git push origin "v$VERSION"
+          echo "已打並推送 v$VERSION → $(git rev-parse --short HEAD)"
