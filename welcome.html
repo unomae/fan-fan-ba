@@ -132,6 +132,62 @@
       line-height: 1.65;
     }
 
+    /* 完成狀態。step 1／2 由 welcome.js 自動偵測，step 3 由使用者自己勾。 */
+    .step.is-done {
+      background: #f3faea;
+      border-color: #A3D179;
+    }
+
+    .step-content h3 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .step-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 1px 8px;
+      border-radius: 999px;
+      background: #f0f0f0;
+      color: #8a8a8a;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+    }
+
+    .step.is-done .step-state {
+      background: #dff0c6;
+      color: #3f6c14;
+    }
+
+    /* step 3 是使用者自己勾的，所以做成可點；1／2 自動偵測、不可點。 */
+    .step-state.is-toggle {
+      cursor: pointer;
+      border: 0;
+    }
+
+    .step-state.is-toggle:hover { background: #e4e4e4; }
+    .step.is-done .step-state.is-toggle:hover { background: #d2e9b1; }
+
+    .step-prereq {
+      margin-top: 7px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #fffbe8;
+      border: 1px solid #f6e6a8;
+      color: #6b5a10;
+      font-size: 11.5px;
+      line-height: 1.6;
+    }
+
+    .step-prereq a {
+      color: #5a9a2e;
+      font-weight: 700;
+    }
+
     .step-content strong { color: #333; }
 
     .step-content code {
@@ -266,10 +322,10 @@
     <!-- 3 步驟 -->
     <div class="steps">
 
-      <div class="step">
+      <div class="step" data-step="apikey">
         <div class="step-num">1</div>
         <div class="step-content">
-          <h3>設定 API Key</h3>
+          <h3>設定 API Key <span class="step-state" data-step-state>檢查中…</span></h3>
           <p>點擊下方「前往設定」，至少設定一個 API Key 即可開始使用。</p>
           <div class="api-list">
             <div class="api-item featured">
@@ -292,21 +348,27 @@
         </div>
       </div>
 
-      <div class="step">
+      <div class="step" data-step="firstuse">
         <div class="step-num">2</div>
         <div class="step-content">
-          <h3>選取網頁文字</h3>
+          <h3>選取網頁文字 <span class="step-state" data-step-state>檢查中…</span></h3>
           <p>在任意網頁<strong>滑鼠選取文字</strong>，旁邊會出現懸浮工具列。<br>
           點擊 <code>翻譯</code> <code>解釋</code> <code>優化</code> 即可觸發。</p>
         </div>
       </div>
 
-      <div class="step">
+      <div class="step" data-step="obsidian">
         <div class="step-num">3</div>
         <div class="step-content">
-          <h3>查看結果 &amp; 存入筆記</h3>
+          <h3>查看結果 &amp; 存入筆記
+            <button type="button" class="step-state is-toggle" data-step-state data-step-toggle>標記完成</button>
+          </h3>
           <p>AI 結果即時串流顯示，可拖曳移動、釘住保留。<br>
           按寶石 💎 按鈕可直接存入 Obsidian 週記。</p>
+          <p class="step-prereq"><strong>存入 Obsidian 需要先裝
+            <a href="https://obsidian.md/plugins?id=obsidian-advanced-uri" target="_blank" rel="noopener">Advanced URI</a>
+            插件</strong>，並在設定頁填 Vault 名稱。沒裝的話寶石鈕按下去不會寫進筆記。
+            只用翻譯／解釋／優化不需要這個。</p>
         </div>
       </div>
 
@@ -325,6 +387,7 @@
 
   </div>
 
+  <script src="storage.js"></script>
   <script src="welcome.js"></script>
 </body>
 </html>

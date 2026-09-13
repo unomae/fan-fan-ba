@@ -3,6 +3,33 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-13 — onboarding checklist ＋ 補 Obsidian 前置條件（Sprint 2 結案）
+
+Sprint 2 最後一項。原本 `welcome.html` 是三個純靜態 step、`welcome.js` 只有 10 行兩顆按鈕，沒有任何狀態——設完 API Key 回到這頁，它還是說你沒設。
+
+**A：補 Obsidian 前置條件。** step 3 承諾「按寶石 💎 存入 Obsidian 週記」，但整頁**完全沒提要先裝 Advanced URI 插件**（設定頁提了兩次）。使用者照著做就是失敗。這不是體驗優化，是文件承諾了做不到的操作，所以先修。
+
+**B：三個 step 顯示完成狀態。**
+
+- step 1（API Key）與 step 2（用過一次）**自動偵測**：分別讀 `Storage.getSecrets` 與 `Storage.getDiagnostics`，都有現成的真實來源，問使用者反而不準。
+- step 3（存 Obsidian）**使用者自己勾**、存在 `fanFanBaOnboarding`：diagnostics 只記 translate／explain／optimize／pageTranslations，沒有「存進 Obsidian 幾次」。單字本的 `exported` 旗標理論上可當代理指標，但那要向 background 要整份單字本，為一個提示性的勾不划算。
+- 閉環的關鍵是 `visibilitychange`：使用者按「前往設定」填完 key 切回這頁，step 1 要自己翻成「已設定」。沒有這段，閉環就斷在「設完了但這頁還說你沒設」。
+
+`welcome.html` 另外加載 `storage.js`（自動偵測需要），`welcome.js` 10 → 98 行。**沒做** C（設完 key 自動導回、附試翻譯）：要跨頁狀態與分頁協調，而分頁風暴正是舊 E2 spec 標過風險的地方。
+
+驗證：`tests/welcome.test.js` 2 → 10 條；全套 336 → **346 全綠（27 suites）**；e2e 重新 package 後 41 PASS / 0 FAIL / 4 PARTIAL，PARTIAL 四項與基線相同。
+
+e2e 不涵蓋 `welcome.html`，而這次動到 `<script src="storage.js">`——單元測試走 `require` 不經 script 標籤，載入錯了照樣綠。所以另外在**真擴充**裡開了一次 `chrome-extension://<id>/welcome.html`：`globalThis.FanFanBaStorage` 是 `object`（storage.js 真的載到）、全新安裝三格皆未完成、塞入 key 後派 `visibilitychange` → step 1 自己翻成「已設定」、step 3 勾完重載仍記得、Advanced URI 連結在頁上、**零頁面錯誤**。
+
+過程中測試抓到我兩個錯，都不是產品的：
+
+1. **`refreshSteps()` 在 storage 失敗時會 unhandled rejection**，頁面載入就炸——違反我自己寫的「onboarding 頁壞掉不該擋住使用者」。加 try/catch 後全部顯示未完成，並補一條測試鎖住「不得 reject」。
+2. **「切回分頁會重新偵測」那條測試原本是假的**：它自己手動補呼叫了 `refreshSteps()`，所以把 `visibilitychange` listener 整段拿掉照樣 10/10 綠。改成只派事件、不手動補呼叫之後，同樣的突變就紅了。另補一條「分頁隱藏時不重算」。
+
+突變驗證兩組，各只紅該紅的：拿掉 `visibilitychange` → 只紅切回分頁那條；step 1 偵測改恆真 → 紅 3 條。
+
+（jsdom 環境沒有 `setImmediate`，flush 用 `setTimeout`；這是本 session 第二次踩 jsdom 缺 Node 全域，第一次是 `ReadableStream`。）
+
 ## 2026-09-13 — 單字本匯出改用 CSV，撤掉 XLSX
 
 設定頁的「匯出 XLSX」換成「匯出 CSV」，14 欄不變。
@@ -23,9 +50,15 @@
 
 突變驗證三組，每組都只紅該紅的：①防護漏掉 `@` → 公式測試＋漂移比對同時紅 ②把引號包裹搬到補前綴之前 → 順序鎖＋漂移比對紅（順序反了會得到 `"=with,comma"`，引號包住了但開頭仍是 `=`，試算表照樣當公式）③寫測試時我自己把期望值猜成「該格會被引號包起來」，測試直接紅——那格沒有逗號所以不該有引號，是我猜錯不是程式錯。
 
-**未驗**：沒有真的用 Excel／Google Sheets 開過。`MANUAL-QA.md` 那兩格仍未勾，要 KAKA 開一次確認欄位、中文與公式格。
+**未驗**：沒有真的用 Excel／Google Sheets 開過。
 
-**未動（範圍外）**：`qa-reports/scripts/run-phase1-2.js` 的 TC-B4-002 會點 `#btnExportVocabularyXlsx` 並斷言 zip magic `504b`，換成 CSV 後這條必然壞。它綁 v1.9.9、無人引用，而且斷言要重新定義（CSV 沒有 zip magic），不是改個 selector 就好，留給 KAKA 裁決。`qa-reports/specs/` 與 `archive/` 的歷史紀錄一併保留原文。
+**同日後續（KAKA 裁決：遠端開不了 Excel，改自動驗 CSV）**：
+
+- `MANUAL-QA.md` 原本那兩格人工驗拆成兩格——**檔案結構改為自動驗並已勾**（BOM／CRLF／14 欄，外加以**獨立寫的 RFC4180 解析器 round-trip**確認含逗號／雙引號／換行的值不會讓欄位錯位）；**「Excel／Sheets 實際渲染」另立一格、刻意不勾**，並寫明不得用前一格代替（自動驗過 ≠ 人眼驗過）。
+- `qa-reports/scripts/run-phase1-2.js` 的 TC-B4-002 從斷言 zip magic `504b` 改成驗 CSV 的 BOM／CRLF／表頭欄數。
+- round-trip 那條測試花了三次才真的會做事：①第一版的樣本值同時有逗號＋引號＋換行，引號包裹因逗號而觸發，「漏判 `\n`」的突變驗不出來 ②補了「只有換行」的樣本仍抓不到 ③根因是我那個「獨立解析器」只在 `\r\n` 斷列，裸 `\n` 被當欄位內容還原回去，比真實試算表寬容。改成 CRLF／裸 LF／裸 CR 都斷列後，同樣的突變就紅了。
+
+`qa-reports/specs/` 與 `archive/` 的歷史紀錄一併保留原文。
 
 ## 2026-09-12 — release 打 tag（手動觸發）
 

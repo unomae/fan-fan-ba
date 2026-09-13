@@ -571,13 +571,21 @@ async function run() {
     await options.locator('#btnExportVocabulary').click();
     const vocabularyDownload = await vocabularyDownloadPromise;
     const vocabularyPayload = JSON.parse(await fsp.readFile(await vocabularyDownload.path(), 'utf8'));
-    const xlsxDownloadPromise = options.waitForEvent('download');
-    await options.locator('#btnExportVocabularyXlsx').click();
-    const xlsxDownload = await xlsxDownloadPromise;
-    const xlsxBytes = await fsp.readFile(await xlsxDownload.path());
-    const xlsxMagic = xlsxBytes.subarray(0, 2).toString('hex') === '504b';
-    mark('TC-B4-002', encryptionOk && vocabularyPayload.count === 1 && xlsxMagic ? 'PASS' : 'FAIL',
-      `API Key 只存在加密 payload=${encryptionOk}；單字 JSON count=${vocabularyPayload.count}；XLSX ZIP magic=${xlsxMagic}。`,
+    // 2026-09-13：XLSX 匯出已改成 CSV，原本的 ZIP magic（504b）斷言不再適用。
+    // CSV 沒有 magic bytes，改驗三件真正代表「檔案可用」的事：UTF-8 BOM（少了
+    // Excel 會用 ANSI 解讀、中文亂碼）、CRLF 行尾、以及表頭欄數。
+    const csvDownloadPromise = options.waitForEvent('download');
+    await options.locator('#btnExportVocabularyCsv').click();
+    const csvDownload = await csvDownloadPromise;
+    const csvBytes = await fsp.readFile(await csvDownload.path());
+    const csvHasBom = csvBytes.subarray(0, 3).toString('hex') === 'efbbbf';
+    const csvText = csvBytes.toString('utf8').replace(/^\ufeff/, '');
+    const csvHasCrlf = csvText.includes('\r\n');
+    const csvHeaderCols = csvText.split('\r\n')[0].split(',').length;
+    const csvOk = csvHasBom && csvHasCrlf && csvHeaderCols === 14;
+    mark('TC-B4-002', encryptionOk && vocabularyPayload.count === 1 && csvOk ? 'PASS' : 'FAIL',
+      `API Key 只存在加密 payload=${encryptionOk}；單字 JSON count=${vocabularyPayload.count}；`
+      + `CSV BOM=${csvHasBom}、CRLF=${csvHasCrlf}、表頭 ${csvHeaderCols} 欄（期望 14）。`,
       [], encryptionOk ? '' : 'P0');
 
     const beforeMalformed = await options.evaluate(async () => chrome.storage.sync.get(null));

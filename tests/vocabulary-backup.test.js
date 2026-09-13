@@ -190,6 +190,101 @@ describe('vocabulary backup', () => {
     });
   });
 
+  // 取代原本「請用真 Excel 開一次」的人工關卡（2026-09-13，KAKA 遠端無法開 Excel）。
+  // 這裡用**獨立寫的 RFC4180 讀取器**把產出的 CSV 讀回來，驗的是「引號有沒有寫壞導致
+  // 欄位錯位」——那才是結構性風險；單看 BOM／前綴的字串斷言抓不到錯位。
+  //
+  // ⚠️ 這證明不了「Excel 顯示成什麼樣」。Excel 的渲染行為沒有自動化證據，
+  // 也不在本檔宣稱範圍內；`MANUAL-QA.md` 已把那條改成「不宣稱」。
+  describe('CSV round-trip（獨立解析器讀回來，驗欄位不錯位）', () => {
+    // 刻意不用被測程式的任何函式，照 RFC4180 自己讀一遍
+    function parseCsv(text) {
+      const body = text.replace(/^\ufeff/, '');
+      const rows = [];
+      let row = [];
+      let field = '';
+      let inQuotes = false;
+      for (let i = 0; i < body.length; i += 1) {
+        const ch = body[i];
+        if (inQuotes) {
+          if (ch !== '"') { field += ch; continue; }
+          if (body[i + 1] === '"') { field += '"'; i += 1; continue; }
+          inQuotes = false;
+          continue;
+        }
+        if (ch === '"') { inQuotes = true; continue; }
+        if (ch === ',') { row.push(field); field = ''; continue; }
+        // 斷列條件刻意比 RFC4180 寬：CRLF、裸 LF、裸 CR 都當記錄結束。
+        // 真實試算表就是這樣讀的——只認 CRLF 的解析器會把「沒被引號包住的裸 \n」
+        // 當成欄位內容還原回去，於是漏掉引號的缺陷在測試裡看起來沒事
+        // （2026-09-13 第一版就是這樣寫，突變測試漏掉，改成這樣才抓到）。
+        if (ch === '\r' || ch === '\n') {
+          if (ch === '\r' && body[i + 1] === '\n') i += 1;
+          row.push(field); rows.push(row); row = []; field = ''; continue;
+        }
+        field += ch;
+      }
+      if (field !== '' || row.length) { row.push(field); rows.push(row); }
+      return rows;
+    }
+
+    it('每一列都是 14 欄，惡意與多行值都完整讀回', () => {
+      const csv = Backup.buildVocabularyCsv({
+        'en:nasty': entry('en:nasty', 'Signal, flare', {
+          translations: ['信號彈', '照明彈'],
+          // 同時塞逗號、雙引號、換行——三種都要靠引號包裹才不會錯位
+          definition: 'A bright, "visible" signal.\nSecond line, with comma.',
+          sources: [{ title: '航運專欄, 第二篇', url: 'https://example.com/a', context: 'the "lane"' }]
+        }),
+        'en:evil': entry('en:evil', "=cmd|' /C calc'!A0", {
+          definition: '+SUM(A1)',
+          sources: [{ title: '@handle', url: '-1' }]
+        }),
+        'ja:touge': entry('ja:touge', '峠', { translations: ['山頂、隘口'], definition: '山道の最高地点。' }),
+        // **只有換行、沒有逗號也沒有雙引號**。這一筆是刻意的：如果只塞「逗號＋引號＋換行」
+        // 混在一起的值，引號包裹會因為逗號而觸發，換行自己從來不決定任何事，
+        // 於是「漏掉 \n 判斷」這個缺陷就驗不出來（2026-09-13 突變測試實際漏掉一次）。
+        'en:multiline': entry('en:multiline', 'multiline', { definition: '第一行\n第二行' })
+      });
+
+      const rows = parseCsv(csv);
+      const header = rows[0];
+      expect(header).toHaveLength(14);
+      expect(rows).toHaveLength(5);
+      rows.forEach(row => expect(row).toHaveLength(14));
+
+      const byWord = new Map(rows.slice(1).map(row => [row[0], row]));
+      const col = (word, name) => byWord.get(word)[header.indexOf(name)];
+
+      // 含逗號／雙引號／換行的值原封不動讀回來
+      expect(col('Signal, flare', 'definition')).toBe('A bright, "visible" signal.\nSecond line, with comma.');
+      expect(col('Signal, flare', 'sourceTitle')).toBe('航運專欄, 第二篇');
+      expect(col('Signal, flare', 'sourceContext')).toBe('the "lane"');
+      expect(col('Signal, flare', 'translations')).toBe('信號彈；照明彈');
+
+      // 公式起頭的值讀回來時應**帶著**那個保護用的單引號（它是輸出的一部分，不是脫逃字元）
+      expect(col("'=cmd|' /C calc'!A0", 'definition')).toBe("'+SUM(A1)");
+      expect(col("'=cmd|' /C calc'!A0", 'sourceTitle')).toBe("'@handle");
+      expect(col("'=cmd|' /C calc'!A0", 'sourceUrl')).toBe("'-1");
+
+      // 非 ASCII 不受引號邏輯影響
+      expect(col('峠', 'definition')).toBe('山道の最高地点。');
+
+      // 換行必須被引號包住，否則這一列會在換行處斷成兩列、後面整份錯位
+      expect(col('multiline', 'definition')).toBe('第一行\n第二行');
+    });
+
+    it('BOM 與 CRLF 是硬需求（少了 Excel 會用 ANSI 解讀中文）', () => {
+      const csv = Backup.buildVocabularyCsv({
+        'zh:test': entry('zh:test', '測試', { definition: '中文定義' })
+      });
+      expect(csv.codePointAt(0)).toBe(0xfeff);
+      expect(csv.split('\r\n')).toHaveLength(2);
+      // 不得出現落單的 \n 當行尾（會讓部分試算表把整份讀成一列）
+      expect(csv.replace(/\r\n/g, '')).not.toContain('\n');
+    });
+  });
+
   // 防漂移：MV3 下 content script 與 options 頁不共用模組，所以公式防護有兩份實作
   // （此檔的 escapeCsvCell 與 content/vocabulary.js 的 escapeVocabularyCsvCell）。
   // 拿同一組惡意樣本斷言兩份輸出完全相同——任一邊被改動、另一邊沒跟上就會紅。
