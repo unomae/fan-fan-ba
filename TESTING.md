@@ -13,6 +13,7 @@
 npm test
 ```
 
+- **本機有註冊 worktree 時要加過濾**：裸 `npm test` 會把 `.claude/worktrees/` 底下的測試檔一起掃進來，檔數會比主樹多一截。主樹取值一律用 `npx jest --testPathIgnorePatterns '/\.claude/'`；本檔標頭的 suites／tests 數字是這個過濾後的值。
 - 設定在 [`jest.config.js`](jest.config.js)：`testEnvironment: 'jsdom'`、`setupFilesAfterEnv: jest.setup.js`、`collectCoverage: true`。
 - **覆蓋率預設開啟**，報告輸出到 `coverage/`（reporters：`text` 印在終端、`lcov` 供工具讀）。目前行覆蓋約 **68%**。
 - 跑單一檔：`npx jest tests/background.test.js`
