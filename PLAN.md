@@ -58,7 +58,7 @@
 - **6. 同類專案調研的兩條待裁線索**
 
   - **目的**：判斷同類專案線索是否值得採用。
-  - **現況**：**同類專案調研的兩條待裁線索**（2026-09-09，**皆未評估可行性，不是已排定的工作**）： - **Chrome 內建 AI 翻譯**：`kiss-translator` 的引擎清單有 `BuiltinAI`。若可行則**免 API key**，同時打到「23 項手動 QA 卡無 key」與「新使用者要先申請金鑰」兩個結構性痛點。只確認同儕在用，**能力邊界與瀏覽器版本要求全未驗**。 - **自訂 OpenAI 相容端點**：`kiss-translator`／`MTranServer` 顯示這是本品類標配，加一個欄位即可讓模型下架時使用者自救。與 `check-models.js` 是互補而非重疊（一個偵測、一個逃生）。
+  - **現況**：兩條線索，第一條已實測、第二條仍未評估。 - **Chrome 內建 AI 翻譯｜2026-09-20 真機實測（Chrome 152, Mac）**：`Translator`／`LanguageDetector` 可用，en→zh-Hant 下載後轉 `available`；首次含下載 4.8 秒，模型就緒後 **20 段批次 313 ms（15.7 ms/段）**，並行無加速（證實官方「循序處理」）；譯文全形標點、品質堪用；磁碟增量約 776 MB（`df` 差值、非純語言包大小）。**兩條硬約束**：①模型未下載時 `create()` **需使用者手勢**，而 service worker 沒有手勢——首次下載只能由 popup／設定頁或 content script 的點擊觸發 ②**`downloadable` 不是承諾**：實測下載 100% 後仍拋過 `NotSupportedError`（第二次才成功），程式須把 `create()` 失敗當正常路徑並退回雲端 provider。**能力邊界**：只做翻譯，**詞典結構化輸出與 optimize 做不到**；`LanguageModel`（Prompt API）在 Chrome 152 **存在**（Edge Beta 154 沒有），但要下載 Gemini Nano 才能驗，**KAKA 2026-09-20 裁決不驗**。**未驗且是地基**：擴充 context（content script／service worker）能否呼叫，全程在一般網頁測，KAKA 裁決先停。**Edge 結果不得外推 Chrome**（Edge 無 Prompt API、標點為半形）。所以它打不到「23 項手動 QA 卡無 key」（那些多在驗詞典與 provider 行為），真正能解的是**新使用者第一哩路**：沒金鑰也能用全文翻譯。 - **自訂 OpenAI 相容端點**：`kiss-translator`／`MTranServer` 顯示這是本品類標配，加一個欄位即可讓模型下架時使用者自救。與 `check-models.js` 是互補而非重疊（一個偵測、一個逃生）。
   - **接續**：先評估兩條研究線索，未裁決前不排成施工。
   - **詳情**：`scripts/check-models.js`
 
