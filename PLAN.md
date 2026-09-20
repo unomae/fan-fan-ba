@@ -53,6 +53,15 @@
   - **接續**：依 Sprint 3 原優先序處理，先核對研究與施工界線。
   - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
 
+### 內建翻譯 provider
+
+- [ ] **7. 內建翻譯 provider｜待裁決三點後開工**〔待裁決〕（2026-09-20）
+
+  - **目的**：讓沒有金鑰的人也能用全文翻譯，有金鑰者這條路徑改走本機；詞典與 optimize 不動。
+  - **現況**：可行性已驗完（見第 6 項）。**施工範圍四處**：①`models.js` 加 `builtin:translator` 條目（`provider: 'builtin'`、無備援模型，確認 `shouldFallbackModel`／`toApiModelId` 對它 no-op）②`background.js` 的 `resolveRoute()` 認 `builtin:` 前綴回 `{ kind: 'builtin' }`、不需 apiKey ③新函式只收 `action === 'translate'`，**batch 模式拆成逐段 `translate()` 再組回既有 `{translations:[{id,translation}]}` 契約**（讓新 provider 遷就既有契約，content 端零修改，風險鎖在 background 一層）④設定頁模型選單加「瀏覽器內建（免金鑰・僅全文翻譯）」並在非 translate 操作停用。
+  - **接續**：**先由 KAKA 裁決三點**：①來源語言怎麼決定（`LanguageDetector` 偵測／假設 `en`／使用者選）②有金鑰者的全文翻譯要不要預設走內建 ③首次下載 14.8 秒的呈現方式。裁決後才開工。**完成條件**：單元測試 mock `self.Translator` 鎖住 batch id 與順序、非 translate 被擋、`create()` 失敗可辨識；既有測試全綠 0 skipped；實機在 Chrome 對真實網頁跑一次 batch。**不做**：詞典、optimize、Prompt API、既有 provider 行為。
+  - **詳情**：`background.js` 的 `resolveRoute`／`handleOpenAICompatRequest`（引用符號不引行號）；`models.js` 的 `PROVIDERS`；可行性證據見本檔第 6 項與 memory `reference_chrome_builtin_ai_probe`
+
 ### 待評估構想
 
 - **6. 同類專案調研的兩條待裁線索**
