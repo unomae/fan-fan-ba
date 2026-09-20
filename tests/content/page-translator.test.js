@@ -97,6 +97,54 @@ const {
   buildSinglePageContext
 } = pageTranslatorContext;
 
+describe('內建模型下載進度條', () => {
+  const bar = () => pageTranslatorContext.pageTranslationPanel?.querySelector('.ffb-page-panel-progress-bar');
+  const wrap = () => pageTranslatorContext.pageTranslationPanel?.querySelector('.ffb-page-panel-progress');
+  // 刻意不斷言 .ffb-page-panel-status：它在 content.css 是 display:none，
+  // 對著看不見的元素斷言等於測了一個使用者永遠不會看到的東西。
+  const labelText = () => pageTranslatorContext.pageTranslationPanel?.querySelector('.ffb-page-panel-progress-label')?.textContent;
+
+  beforeEach(() => {
+    pageTranslatorContext.pageTranslationPanel = null;
+    document.body.innerHTML = '';
+    ensurePageTranslationPanel();
+  });
+
+  it('下載中顯示進度條與百分比', () => {
+    renderPageTranslationDownloadProgress(42);
+    expect(wrap().hidden).toBe(false);
+    expect(bar().style.width).toBe('42%');
+    expect(labelText()).toContain('42%');
+    expect(labelText()).toContain('下載');
+  });
+
+  it('進度條帶可存取性屬性，讀屏才知道進度', () => {
+    renderPageTranslationDownloadProgress(42);
+    expect(wrap().getAttribute('role')).toBe('progressbar');
+    expect(wrap().getAttribute('aria-valuenow')).toBe('42');
+  });
+
+  it('下載完成後收起進度條', () => {
+    renderPageTranslationDownloadProgress(42);
+    renderPageTranslationDownloadProgress(100);
+    expect(wrap().hidden).toBe(true);
+  });
+
+  it('進度標籤寫在看得見的元素上（status 元素是 display:none，不能拿來顯示）', () => {
+    const css = require('fs').readFileSync(require('path').join(__dirname, '../../content.css'), 'utf8');
+    expect(css).toMatch(/\.ffb-page-panel-status\s*\{[^}]*display:\s*none/);
+    renderPageTranslationDownloadProgress(42);
+    expect(labelText()).toContain('42%');
+  });
+
+  it('百分比超出範圍時夾住，不會畫出 -5% 或 250% 的長條', () => {
+    renderPageTranslationDownloadProgress(-5);
+    expect(bar().style.width).toBe('0%');
+    renderPageTranslationDownloadProgress(250);
+    expect(bar().style.width).toBe('100%');
+  });
+});
+
 describe('page translator helpers', () => {
   let originalGetComputedStyle;
   let originalGetBoundingClientRect;
@@ -604,6 +652,7 @@ const {
   getPageTranslationRelativeLuminance,
   clampPageTranslationColor,
   ensurePageTranslationPanel,
+  renderPageTranslationDownloadProgress,
   updatePageTranslationPanel,
   setPageTranslationMode,
   setPageTranslationDensity,

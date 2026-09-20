@@ -514,7 +514,7 @@ async function detectBuiltinSourceLanguage(text) {
   }
 }
 
-async function handleBuiltinTranslateRequest({ action, selectedText, targetLanguage, browserLanguage, pageTranslation, signal }) {
+async function handleBuiltinTranslateRequest({ action, selectedText, targetLanguage, browserLanguage, pageTranslation, signal, onProgress }) {
   if (action !== 'translate' || !pageTranslation) {
     throw new Error('瀏覽器內建翻譯只支援網頁翻譯，其他操作請改用雲端模型');
   }
@@ -536,7 +536,20 @@ async function handleBuiltinTranslateRequest({ action, selectedText, targetLangu
 
   let translator;
   try {
-    translator = await self.Translator.create({ sourceLanguage: source, targetLanguage: target, signal });
+    translator = await self.Translator.create({
+      sourceLanguage: source,
+      targetLanguage: target,
+      signal,
+      // 首次使用要下載語言包（實測 4.8–14.8 秒）。沒有回饋的話使用者只會看到畫面卡住，
+      // 所以把進度往上送；沒有 onProgress（非串流路徑）就不裝 monitor。
+      ...(onProgress ? {
+        monitor(m) {
+          m.addEventListener('downloadprogress', event => {
+            onProgress(Math.round(Number(event?.loaded || 0) * 100));
+          });
+        }
+      } : {})
+    });
   } catch (err) {
     // availability() 不是承諾（實測下載 100% 後仍可能 NotSupportedError），
     // 所以這裡一律當正常路徑處理，讓使用者能改回雲端
@@ -605,7 +618,8 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle, mode
   if (route.kind === 'builtin') {
     // 內建 API 沒有串流；一次算完再用單一 chunk 交付，維持串流端既有契約
     const { result } = await handleBuiltinTranslateRequest({
-      action, selectedText, targetLanguage, browserLanguage, pageTranslation, signal
+      action, selectedText, targetLanguage, browserLanguage, pageTranslation, signal,
+      onProgress: percent => onStatus({ kind: 'download-progress', percent })
     });
     onChunk(result);
     return;

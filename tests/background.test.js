@@ -412,6 +412,39 @@ describe('Background module', () => {
       expect(JSON.parse(chunks[0]).translations).toEqual([{ id: 1, translation: '[en->zh-Hant]alpha' }]);
     });
 
+    it('reports download progress through the status channel while the model downloads', async () => {
+      mockDetector('en', 0.99);
+      global.Translator = {
+        availability: async () => 'downloadable',
+        create: async (opts) => {
+          // 模擬首次下載：create 期間連續丟 downloadprogress
+          opts.monitor?.({ addEventListener: (evt, fn) => {
+            if (evt !== 'downloadprogress') return;
+            [0.25, 0.5, 1].forEach(loaded => fn({ loaded }));
+          } });
+          return { translate: async text => `[zh]${text}`, destroy() {} };
+        }
+      };
+      chrome.storage.sync.get.mockResolvedValueOnce({ model: 'builtin:translator' });
+      const statuses = [];
+      await _streamAIRequest(
+        {
+          action: 'translate',
+          selectedText: JSON.stringify([{ id: 1, text: 'alpha' }]),
+          pageTranslation: { batch: true, count: 1 },
+          targetLanguage: 'zh-TW'
+        },
+        () => {},
+        status => statuses.push(status),
+        undefined
+      );
+      expect(statuses).toEqual([
+        { kind: 'download-progress', percent: 25 },
+        { kind: 'download-progress', percent: 50 },
+        { kind: 'download-progress', percent: 100 }
+      ]);
+    });
+
     it('handles a single non-batch page-translation segment', async () => {
       mockDetector('en', 0.99); mockTranslator();
       const { result } = await handleBuiltinTranslateRequest({

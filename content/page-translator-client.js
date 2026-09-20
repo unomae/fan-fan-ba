@@ -92,6 +92,14 @@ function requestPageTranslation(text, options = {}) {
         accumulated += response.chunk;
         return;
       }
+      // status 是背景送來的進度／通知。目前只有內建模型的下載進度需要渲染；
+      // 其餘（例如備援模型通知）維持既有行為不顯示，避免蓋掉翻譯進度文字。
+      if (response.status) {
+        if (response.status.kind === 'download-progress') {
+          renderPageTranslationDownloadProgress(response.status.percent);
+        }
+        return;
+      }
       if (response.error) {
         settled = true;
         cleanup();

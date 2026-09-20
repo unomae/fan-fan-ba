@@ -3,6 +3,20 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-21 — 內建模型下載進度條
+
+內建翻譯首次使用要下載語言包（實測 4.8–14.8 秒），原本這段完全沒有回饋，使用者只會看到面板卡住。
+
+串流 port 本來就有 `onStatus` 通道，但 content 端從未接過。這次把它接起來：`Translator.create()` 的 `monitor` 把 `downloadprogress` 轉成 `{ kind: 'download-progress', percent }` 送出，content 收到後渲染面板裡的進度條，100% 自動收起。非串流路徑不帶 `onProgress`，也就不會裝 monitor。
+
+**踩到的坑**：原本想把百分比寫進 `.ffb-page-panel-status`，寫完才發現它在 `content.css` 是 `display: none !important`——使用者根本看不到。改成進度條自帶可見標籤，並補一條測試同時斷言「status 是 display:none」與「標籤才是承載百分比的元素」，免得日後有人又把文字塞回那個隱形元素。
+
+進度條帶 `role="progressbar"` 與 `aria-valuenow`，百分比超出範圍會夾在 0–100，並尊重 `prefers-reduced-motion`。
+
+**驗證**：新增 7 條測試（背景送出序列、標籤與寬度、可存取性屬性、100% 收起、越界夾住、CSS 樣式存在），全套 27 suites／373 tests exit 0、0 skipped；`check-docs --verify` exit 0。退回三支實作檔＋CSS 後剛好紅 7 條、還原後全綠且四檔 SHA-256 一致。
+
+**未驗**：真實下載情境的視覺（自動化只驗 DOM 與樣式字串），仍須人工載入擴充跑一次首次下載。
+
 ## 2026-09-21 — 瀏覽器內建翻譯 provider（免金鑰，只做頁面翻譯）
 
 Chrome 138+ 的 `Translator` API 接成第四個 provider。**沒有金鑰也能用全文翻譯**，模型就緒後 20 段批次實測 313 ms（15.7 ms/段），比雲端往返快一到兩個數量級。可行性證據見 2026-09-20 的實機 probe 與 memory `reference_chrome_builtin_ai_probe`。

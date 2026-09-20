@@ -1911,6 +1911,49 @@ del.g-diff-del {
   display: none !important;
 }
 
+/* 內建翻譯模型首次使用要下載語言包（實測 4.8–14.8 秒）。這段是下載期間唯一的回饋，
+   所以不共用 .ffb-page-panel-status（那個是 display:none）。 */
+.ffb-page-panel-progress {
+  margin: 0 0 6px !important;
+  padding: 5px 7px !important;
+  border-radius: 6px !important;
+  background: rgba(239, 246, 255, 0.92) !important;
+}
+
+.ffb-page-panel-progress[hidden] {
+  display: none !important;
+}
+
+.ffb-page-panel-progress-label {
+  margin: 0 0 4px !important;
+  color: #1e3a8a !important;
+  font-size: 11px !important;
+  font-weight: 750 !important;
+  line-height: 1.35 !important;
+  text-align: center !important;
+}
+
+.ffb-page-panel-progress-track {
+  overflow: hidden !important;
+  height: 4px !important;
+  border-radius: 999px !important;
+  background: rgba(30, 58, 138, 0.16) !important;
+}
+
+.ffb-page-panel-progress-bar {
+  width: 0% !important;
+  height: 100% !important;
+  border-radius: 999px !important;
+  background: #2563eb !important;
+  transition: width 0.2s ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ffb-page-panel-progress-bar {
+    transition: none !important;
+  }
+}
+
 .ffb-page-embedded-summary {
   margin: 0 0 6px !important;
   padding: 5px 7px !important;

@@ -83,6 +83,10 @@ function ensurePageTranslationPanel() {
       <div class="ffb-page-panel-count">0/0</div>
     </div>
     <div class="ffb-page-panel-status"></div>
+    <div class="ffb-page-panel-progress" hidden role="progressbar" aria-valuemin="0" aria-valuemax="100">
+      <div class="ffb-page-panel-progress-label"></div>
+      <div class="ffb-page-panel-progress-track"><div class="ffb-page-panel-progress-bar"></div></div>
+    </div>
     <div class="ffb-page-embedded-summary" hidden></div>
     <div class="ffb-page-usage-summary" hidden></div>
     <div class="ffb-page-learning-summary" hidden></div>
@@ -123,6 +127,29 @@ function ensurePageTranslationPanel() {
   });
   document.body.appendChild(pageTranslationPanel);
   return pageTranslationPanel;
+}
+
+// 內建模型首次使用要下載語言包，過程中頁面沒有任何回饋（實測 4.8–14.8 秒）。
+// 100% 時收起進度條，狀態列交還原本的翻譯進度，不留一條停在 100% 的殘影。
+function renderPageTranslationDownloadProgress(percent) {
+  const panel = ensurePageTranslationPanel();
+  const wrap = panel.querySelector('.ffb-page-panel-progress');
+  const bar = panel.querySelector('.ffb-page-panel-progress-bar');
+  if (!wrap || !bar) return;
+
+  const value = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+  bar.style.width = `${value}%`;
+  wrap.setAttribute('aria-valuenow', String(value));
+
+  if (value >= 100) {
+    wrap.hidden = true;
+    return;
+  }
+  // 百分比寫進進度條自己的標籤，不寫 .ffb-page-panel-status——那個元素是 display:none，
+  // 寫進去使用者看不到（2026-09-21 踩到）。
+  const label = panel.querySelector('.ffb-page-panel-progress-label');
+  if (label) label.textContent = `正在下載翻譯模型 ${value}%`;
+  wrap.hidden = false;
 }
 
 function updatePageTranslationPanel(message = '') {

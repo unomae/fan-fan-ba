@@ -24,6 +24,11 @@ describe('content CSS UI safeguards', () => {
     expect(css).toContain('.g-obs-confirm-btn:focus-visible');
   });
 
+  it('styles the builtin-model download progress bar', () => {
+    expect(css).toContain('.ffb-page-panel-progress');
+    expect(css).toContain('.ffb-page-panel-progress-bar');
+  });
+
   it('keeps the result card model switcher styled inside the compact header', () => {
     expect(css).toContain('.g-rc-model-select');
     expect(css).toContain('flex: 0 1 142px !important;');
