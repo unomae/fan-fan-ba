@@ -12,7 +12,7 @@
 | 自動化單元測試 | <!-- ffb:suites -->27<!-- /ffb:suites --> suites / <!-- ffb:tests -->350<!-- /ffb:tests --> tests 全綠（2026-09-20，含模型清冊完整性鎖與錯誤碼型別回歸） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-08-26；改 code 先 `npm run package`） |
 | 手動 QA | 全表 55/78；剩 23 項幾乎全卡「無 API key」或「需外部 App／帳號」（見 `MANUAL-QA.md` 執行順序節） |
-| 上架 | 決策＝打磨完再送審；Chrome Web Store 為 release checkpoint |
+| 上架 | **2026-09-20 裁決：暫緩送審，先做功能**，告一段落再回頭走上架流程。Chrome Web Store 仍是 release checkpoint |
 | 2026-08-26 全面審查 | 四路平行審查完成：code（30+ 項）、UI/UX（30 項）、流程（A1-A6＋B1-B5）；總評＝工程底子前段班，上架 blocker 集中在安全 P1×2、a11y、上架材料 |
 
 ## 下一步（依序）— 2026-08-26 審查後重排
@@ -22,8 +22,8 @@
 - **1. Sprint 1 上架 blocker**
 
   - **目的**：補齊擴充功能上架前的阻塞項。
-  - **現況**：**Sprint 1 上架 blocker**： - [ ] 1280×800 截圖產出（Tier 5 gating，需人工）
-  - **接續**：依 Sprint 1 順序補商店截圖及剩餘人工驗收。
+  - **現況**：只剩 1280×800 截圖產出（Tier 5 gating，需人工）。**2026-09-20 裁決：暫緩**——KAKA 要先做功能，等告一段落再回頭。
+  - **接續**：暫緩中，不主動推進也不列為阻塞；KAKA 說回頭做上架時再補商店截圖及剩餘人工驗收。
   - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
 
 ### 翻譯與資料可靠性
@@ -41,7 +41,7 @@
 
   - **目的**：達到送審前的 OAuth 與商店條件。
   - **現況**：**Tier 5 送審前 gating**：正式 OAuth client_id 確認（T7，需人工進 Google Cloud Console）、依 `STORE-SUBMISSION.md` 打包送審。
-  - **接續**：KAKA 處理 client ID 與 console／商店人工項，再核對 Tier 5。
+  - **接續**：**2026-09-20 裁決暫緩**，與 Sprint 1 上架 blocker 同步；回頭做上架時才由 KAKA 處理 client ID 與 console／商店人工項，再核對 Tier 5。
   - **詳情**：`STORE-SUBMISSION.md`
 
 ### 介面與操作體驗
