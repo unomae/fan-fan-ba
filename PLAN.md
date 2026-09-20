@@ -9,7 +9,7 @@
 | 項目 | 狀態 |
 |------|------|
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
-| 自動化單元測試 | <!-- ffb:suites -->27<!-- /ffb:suites --> suites / <!-- ffb:tests -->346<!-- /ffb:tests --> tests 全綠（2026-09-09，含模型清冊完整性鎖） |
+| 自動化單元測試 | <!-- ffb:suites -->27<!-- /ffb:suites --> suites / <!-- ffb:tests -->350<!-- /ffb:tests --> tests 全綠（2026-09-09，含模型清冊完整性鎖） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-08-26；改 code 先 `npm run package`） |
 | 手動 QA | 全表 55/78；剩 23 項幾乎全卡「無 API key」或「需外部 App／帳號」（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | 決策＝打磨完再送審；Chrome Web Store 為 release checkpoint |
@@ -93,12 +93,12 @@
 
 ### 翻譯與資料可靠性（續 3）
 
-- **body 級錯誤的 string code 塞進 err.status，429 重試／404 fallback 失效**
+- **字串型 error code 要不要對映成 HTTP 語意**〔待裁決〕
 
-  - **目的**：讓重試與 fallback 能辨識錯誤類型。
-  - **現況**：風險：body 級錯誤的 string `code` 塞進 `err.status`，429 重試／404 fallback 失效 | 證據：background.js:479-481 | 處置建議：`Number()` 轉換並分欄保存原始 code
-  - **接續**：核對 string code 與 HTTP status 的區分，再依原處置建議接續。
-  - **詳情**：`，429 重試／404 fallback 失效 background.js:479-481 `
+  - **目的**：決定非數字的 body 層 error code 是否該觸發重試或備援。
+  - **現況**：型別汙染本體已修（2026-09-20，見 `CHANGELOG.md`）：`err.status` 一律是數字、原值存 `err.code`。但 `model_not_found`／`rate_limit_exceeded` 這類**純字串 code 會是 `status = 0`**，既不重試也不切備援——只是不再假裝成數字。要不要建對映表，會擴大 `shouldFallbackModel` 的行為範圍。
+  - **接續**：KAKA 裁決要不要做；要做先蒐集實際 provider 回傳的 code 樣本，不憑猜測建表。
+  - **詳情**：`background.js` 的 `handleOpenAICompatRequest`／`streamOpenAICompat`（**引用符號不引行號**）；`models.js` 的 `shouldFallbackModel`
 
 ### 介面與操作體驗（續 3）
 

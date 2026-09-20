@@ -502,7 +502,11 @@ async function handleOpenAICompatRequest({ action, selectedText, context, pageTi
   const data   = await response.json();
   if (data.error) {
     const err = new Error(data.error.message || `${label}API 錯誤`);
-    err.status = data.error.code;
+    // code 在 OpenAI 相容格式常是字串（'429'、'model_not_found'）。下游 isRetryable 與
+    // shouldFallbackModel 都用嚴格比較，照抄原值會讓重試與備援靜默失效，故正規化成數字，
+    // 原值另存 code 供診斷；無法轉數字時是 0，不假裝自己是某個 HTTP status。
+    err.status = Number(data.error.code) || 0;
+    err.code   = data.error.code;
     throw err;
   }
   const result = data.choices?.[0]?.message?.content;
@@ -620,7 +624,8 @@ async function streamOpenAICompat({ prompt, action, pageTranslation, modelId, ap
       const err = new Error(status
         ? formatApiErrorMessage(status, obj.error.message, label)
         : (obj.error.message || `${label}串流錯誤`));
-      err.status = obj.error.code || obj.error.status;
+      err.status = status;
+      err.code   = obj.error.code || obj.error.status;
       throw err;
     }
     const text = obj.choices?.[0]?.delta?.content;

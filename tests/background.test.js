@@ -8,6 +8,7 @@ const {
   validateObsidianUriRequest,
   withRetry,
   streamOpenAICompat,
+  handleOpenAICompatRequest,
   handleAIRequest,
   handleTtsRequest
 } = require('../background');
@@ -269,6 +270,58 @@ describe('Background module', () => {
         .toThrow('Obsidian 連結過長');
       const many = Array.from({ length: 80 }, (_, i) => `obsidian://n${i}`);
       expect(validateObsidianUriRequest({ urls: many })).toHaveLength(50);
+    });
+  });
+
+  // body 層錯誤的 code 可能是字串（OpenAI 相容格式常見）。err.status 若照抄原值，
+  // isRetryable 與 shouldFallbackModel 的嚴格比較就全部失效，而且不會報錯。
+  describe('body-level error status normalisation', () => {
+    beforeEach(() => {
+      global.fetch = jest.fn();
+    });
+
+    const okWithBodyError = error => ({ ok: true, json: async () => ({ error }) });
+    const callBody = () => handleOpenAICompatRequest({
+      action: 'translate', selectedText: 'apple', modelId: 'test-model',
+      apiKey: 'k', baseUrl: 'https://example.test/chat/completions', label: 'Test'
+    });
+
+    it('turns a numeric-string body code into a number so 404 fallback still fires', async () => {
+      global.fetch.mockResolvedValueOnce(okWithBodyError({ code: '404', message: 'model not found' }));
+      const err = await callBody().catch(e => e);
+      expect(err.status).toBe(404);
+      expect(err.code).toBe('404');
+    });
+
+    it('turns a numeric-string body code into a number so 429 stays retryable', async () => {
+      global.fetch.mockResolvedValueOnce(okWithBodyError({ code: '429', message: 'slow down' }));
+      const err = await callBody().catch(e => e);
+      expect(isRetryable(err)).toBe(true);
+    });
+
+    it('keeps a non-numeric body code as 0 rather than a string masquerading as a status', async () => {
+      global.fetch.mockResolvedValueOnce(okWithBodyError({ code: 'model_not_found', message: 'gone' }));
+      const err = await callBody().catch(e => e);
+      expect(err.status).toBe(0);
+      expect(err.code).toBe('model_not_found');
+      expect(isRetryable(err)).toBe(false);
+    });
+
+    it('normalises the streaming error code too', async () => {
+      const body = new ReadableStream({
+        start(c) {
+          c.enqueue(new TextEncoder().encode('data: {"error":{"code":"503","message":"overloaded"}}\n\n'));
+          c.close();
+        }
+      });
+      global.fetch.mockResolvedValueOnce({ ok: true, body });
+      const err = await streamOpenAICompat({
+        prompt: 'p', action: 'translate', modelId: 'test-model', apiKey: 'k',
+        baseUrl: 'https://example.test/chat/completions', onChunk: () => {}
+      }).catch(e => e);
+      expect(err.status).toBe(503);
+      expect(err.code).toBe('503');
+      expect(isRetryable(err)).toBe(true);
     });
   });
 

@@ -3,6 +3,18 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-20 — body 層錯誤的 status 型別汙染（429 重試／404 備援靜默失效）
+
+`background.js` 有三處寫 `err.status`：`checkedFetch` 給的是 `res.status`（一定是數字），但另外兩處直接把 body 層的 `error.code` 照抄進去——而 OpenAI 相容格式的 `code` 常是字串（`'429'`、`'model_not_found'`）。
+
+下游兩個判斷都是嚴格比較：`isRetryable` 比 `=== 429 || === 503`、`shouldFallbackModel` 比 `=== 404 || 502 || 503`。所以只要錯誤是從 body 而不是 HTTP status 來的，**429 不會重試、404 不會切備援，而且完全不報錯**，外觀只是「翻譯失敗」。串流那處更直接：同一段上面已經算好 numeric `status` 拿去組訊息，寫 `err.status` 時卻寫回原值。
+
+**修法**：兩處都 `Number()` 正規化存入 `err.status`，原始值另存 `err.code` 供診斷；串流那處改用它自己已算好的 `status`。轉不出數字時是 `0`，不假裝自己是某個 HTTP status。`shouldFallbackModel` 的判斷集合與 `checkedFetch` 未動。
+
+**驗證**：新增 4 條回歸測試（numeric-string 404／429、非數字 code、串流 503）。**fail-then-pass**：退回修復時剛好只有這 4 條紅、既有 56 條全綠，還原後檔案 SHA-256 與修復版一致。全套 `npx jest --testPathIgnorePatterns '/\.claude/'` exit 0，27 suites／350 tests 全過、0 skipped；`npm run check-docs -- --verify` exit 0（文件 350＝實跑 350）。未跑 e2e：本次不碰 UI 或 DOM 路徑。
+
+**未涵蓋**：非數字字串 code（`model_not_found` 這類）修完仍不觸發重試或備援，只是不再假裝成數字；要不要把它們對映成 HTTP 語意另列 PLAN 待裁決。真實 API 行為仍受「QA 不配 key」裁決限制，這輪全部是 mock 層證據。
+
 ## 2026-09-13 — onboarding checklist ＋ 補 Obsidian 前置條件（Sprint 2 結案）
 
 Sprint 2 最後一項。原本 `welcome.html` 是三個純靜態 step、`welcome.js` 只有 10 行兩顆按鈕，沒有任何狀態——設完 API Key 回到這頁，它還是說你沒設。
