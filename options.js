@@ -443,9 +443,11 @@ function renderModelSelect() {
     openrouter: 'OpenRouter（需 OpenRouter API Key）'
   };
 
+  // pageTranslationOnly 的模型（瀏覽器內建）刻意不進主選單：它給不出詞典要的結構化 JSON，
+  // 讓人選得到只會換來必定失敗的操作。它只出現在下方的頁面翻譯專用選單。
   select.innerHTML = ['groq', 'gemini', 'openrouter'].map(provider => {
     const options = ModelRegistry.MODELS
-      .filter(model => model.provider === provider)
+      .filter(model => model.provider === provider && !model.pageTranslationOnly)
       .map(model => `<option value="${model.id}">${model.name}（${model.desc}）</option>`)
       .join('');
     return `<optgroup label="${providerLabels[provider]}">${options}</optgroup>`;
@@ -544,7 +546,9 @@ $('btnSave').addEventListener('click', async () => {
     const provider = ModelRegistry.getProvider(model);
     const info = ModelRegistry.PROVIDERS[provider];
     const keyValue = provider === 'groq' ? groqApiKey : provider === 'openrouter' ? openrouterApiKey : apiKey;
-    if (!keyValue) {
+    // keyless provider（瀏覽器內建）沒有 key，跳過整段驗證；否則會拿別家的空欄位去問「要不要移除金鑰」
+    if (info.keyless) { /* 無需驗證 */ }
+    else if (!keyValue) {
       if (confirmRemoveProviderKey(info.label)) {
         removedProviderLabel = info.label;
       } else {

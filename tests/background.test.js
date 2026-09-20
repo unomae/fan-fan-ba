@@ -9,6 +9,10 @@ const {
   withRetry,
   streamOpenAICompat,
   handleOpenAICompatRequest,
+  handleBuiltinTranslateRequest,
+  _streamAIRequest,
+  _handleAIRequest,
+  resolveRoute,
   handleAIRequest,
   handleTtsRequest
 } = require('../background');
@@ -275,6 +279,149 @@ describe('Background module', () => {
 
   // body 層錯誤的 code 可能是字串（OpenAI 相容格式常見）。err.status 若照抄原值，
   // isRetryable 與 shouldFallbackModel 的嚴格比較就全部失效，而且不會報錯。
+  // 內建翻譯 provider：只接頁面翻譯，詞典與 optimize 一律擋下。
+  // 來源語言靠 LanguageDetector 整批偵測一次（短片段逐段偵測信心極低，實測 '2026-09-20' 只有 0.279）。
+  describe('builtin translator provider', () => {
+    const origTranslator = global.Translator;
+    const origDetector = global.LanguageDetector;
+
+    const mockDetector = (lang, confidence) => {
+      global.LanguageDetector = {
+        availability: async () => 'available',
+        create: async () => ({
+          detect: async () => [{ detectedLanguage: lang, confidence }],
+          destroy() {}
+        })
+      };
+    };
+    const mockTranslator = (impl) => {
+      global.Translator = {
+        availability: async () => 'available',
+        create: async (opts) => {
+          if (impl && impl.createThrows) { const e = new Error(impl.createThrows); e.name = 'NotSupportedError'; throw e; }
+          return { translate: async text => `[${opts.sourceLanguage}->${opts.targetLanguage}]${text}`, destroy() {} };
+        }
+      };
+    };
+
+    afterEach(() => { global.Translator = origTranslator; global.LanguageDetector = origDetector; });
+
+    const batchRequest = (items, extra = {}) => ({
+      action: 'translate',
+      selectedText: JSON.stringify(items),
+      pageTranslation: { batch: true, count: items.length },
+      targetLanguage: 'zh-TW',
+      ...extra
+    });
+
+    it('returns the existing {translations:[{id,translation}]} contract with ids and order preserved', async () => {
+      mockDetector('en', 0.99); mockTranslator();
+      const items = [{ id: 1, text: 'alpha' }, { id: 2, text: 'beta' }, { id: 3, text: 'gamma' }];
+      const { result } = await handleBuiltinTranslateRequest(batchRequest(items));
+      const parsed = JSON.parse(result);
+      expect(parsed.translations.map(t => t.id)).toEqual([1, 2, 3]);
+      expect(parsed.translations.map(t => t.translation)).toEqual([
+        '[en->zh-Hant]alpha', '[en->zh-Hant]beta', '[en->zh-Hant]gamma'
+      ]);
+    });
+
+    it('detects the source language once for the whole batch, not per segment', async () => {
+      mockDetector('en', 0.99); mockTranslator();
+      let detectCalls = 0;
+      global.LanguageDetector.create = async () => ({
+        detect: async () => { detectCalls++; return [{ detectedLanguage: 'en', confidence: 0.99 }]; },
+        destroy() {}
+      });
+      await handleBuiltinTranslateRequest(batchRequest([
+        { id: 1, text: 'Home' }, { id: 2, text: '2026-09-20' }, { id: 3, text: 'A full sentence here.' }
+      ]));
+      expect(detectCalls).toBe(1);
+    });
+
+    it('rejects dictionary requests (translate without pageTranslation)', async () => {
+      mockDetector('en', 0.99); mockTranslator();
+      await expect(handleBuiltinTranslateRequest({
+        action: 'translate', selectedText: 'apple', targetLanguage: 'zh-TW'
+      })).rejects.toThrow(/只支援|網頁翻譯/);
+    });
+
+    it('rejects non-translate actions such as optimize', async () => {
+      mockDetector('en', 0.99); mockTranslator();
+      await expect(handleBuiltinTranslateRequest({
+        action: 'optimize', selectedText: 'apple', pageTranslation: { batch: false, count: 0 }, targetLanguage: 'zh-TW'
+      })).rejects.toThrow(/只支援|網頁翻譯/);
+    });
+
+    it('surfaces a recognisable error when create() fails so the caller can fall back', async () => {
+      mockDetector('en', 0.99); mockTranslator({ createThrows: 'Unable to create translator' });
+      await expect(handleBuiltinTranslateRequest(batchRequest([{ id: 1, text: 'alpha' }])))
+        .rejects.toThrow(/瀏覽器內建翻譯/);
+    });
+
+    it('refuses to translate when detection confidence is below the threshold', async () => {
+      mockDetector('en', 0.4); mockTranslator();
+      await expect(handleBuiltinTranslateRequest(batchRequest([{ id: 1, text: '2026-09-20' }])))
+        .rejects.toThrow(/無法判定來源語言/);
+    });
+
+    it('returns the source text untouched when it is already in the target language', async () => {
+      mockDetector('zh-Hant', 0.99); mockTranslator();
+      const items = [{ id: 1, text: '這批貨物已清關。' }, { id: 2, text: '庫存週轉率提升。' }];
+      const { result } = await handleBuiltinTranslateRequest(batchRequest(items));
+      const parsed = JSON.parse(result);
+      expect(parsed.translations.map(t => t.translation)).toEqual([items[0].text, items[1].text]);
+    });
+
+    // 以下三條鎖的是「接線」而不是函式本體：直接呼叫 handleBuiltinTranslateRequest 的測試
+    // 就算把路由整段拿掉也照樣綠（實測退回接線時 8 綠 1 紅），所以路由必須另外鎖。
+    it('resolveRoute maps the builtin prefix without requiring any API key', () => {
+      const route = resolveRoute('builtin:translator', { apiKey: '', groqApiKey: '', openrouterApiKey: '' });
+      expect(route.kind).toBe('builtin');
+    });
+
+    it('routes the non-streaming path to the builtin handler', async () => {
+      mockDetector('en', 0.99); mockTranslator();
+      chrome.storage.sync.get.mockResolvedValueOnce({ model: 'builtin:translator' });
+      const { result } = await _handleAIRequest({
+        action: 'translate',
+        selectedText: JSON.stringify([{ id: 1, text: 'alpha' }]),
+        pageTranslation: { batch: true, count: 1 },
+        targetLanguage: 'zh-TW'
+      }, undefined);
+      expect(JSON.parse(result).translations).toEqual([{ id: 1, translation: '[en->zh-Hant]alpha' }]);
+    });
+
+    // 頁面翻譯實際走的是串流 port（content 端 chrome.runtime.connect({name:'ai-stream'})），
+    // 只接非串流路徑的話，選內建會靜默掉進 Gemini 分支、拿一把空的 key。
+    it('routes the streaming path to the builtin handler and emits one chunk', async () => {
+      mockDetector('en', 0.99); mockTranslator();
+      chrome.storage.sync.get.mockResolvedValueOnce({ model: 'builtin:translator' });
+      const chunks = [];
+      await _streamAIRequest(
+        {
+          action: 'translate',
+          selectedText: JSON.stringify([{ id: 1, text: 'alpha' }]),
+          pageTranslation: { batch: true, count: 1 },
+          targetLanguage: 'zh-TW'
+        },
+        chunk => chunks.push(chunk),
+        () => {},
+        undefined
+      );
+      expect(chunks).toHaveLength(1);
+      expect(JSON.parse(chunks[0]).translations).toEqual([{ id: 1, translation: '[en->zh-Hant]alpha' }]);
+    });
+
+    it('handles a single non-batch page-translation segment', async () => {
+      mockDetector('en', 0.99); mockTranslator();
+      const { result } = await handleBuiltinTranslateRequest({
+        action: 'translate', selectedText: 'A full sentence here.',
+        pageTranslation: { batch: false, count: 0 }, targetLanguage: 'zh-TW'
+      });
+      expect(result).toBe('[en->zh-Hant]A full sentence here.');
+    });
+  });
+
   describe('body-level error status normalisation', () => {
     beforeEach(() => {
       global.fetch = jest.fn();

@@ -28,16 +28,23 @@ describe('Popup module', () => {
     });
   });
 
+  describe('keyless provider', () => {
+    it('treats the builtin model as ready without any API key', () => {
+      expect(global.popupModule.getApiKeyStatus('builtin:translator', {})).toEqual({ provider: 'builtin', hasKey: true });
+    });
+  });
+
   describe('MODELS', () => {
     // 原本只驗 length > 0——少一顆模型照樣綠，等於沒鎖。清冊內容的正本鎖在
-    // models-registry.test.js「模型清冊完整性」；這裡只確認 popup 拿到的是同一份四顆。
-    it('should expose the same four models as the registry', () => {
+    // models-registry.test.js「模型清冊完整性」；這裡只確認 popup 拿到的是同一份五顆。
+    it('should expose the same five models as the registry', () => {
       expect(global.popupModule.MODELS).toBeDefined();
       expect(global.popupModule.MODELS.map(entry => entry.id)).toEqual([
         'groq:openai/gpt-oss-120b',
         'gemini-3.5-flash',
         'gemini-3.5-flash-lite',
-        'openrouter:google/gemma-4-31b-it:free'
+        'openrouter:google/gemma-4-31b-it:free',
+        'builtin:translator'
       ]);
     });
   });

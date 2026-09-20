@@ -88,10 +88,12 @@ describe('模型清冊完整性（增刪改都必須是刻意的）', () => {
     ['groq:openai/gpt-oss-120b', 'GPT-OSS 120B', 'groq', true],
     ['gemini-3.5-flash', 'Gemini 3.5 Flash', 'gemini', false],
     ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite', 'gemini', false],
-    ['openrouter:google/gemma-4-31b-it:free', 'Gemma 4 31B', 'openrouter', true]
+    ['openrouter:google/gemma-4-31b-it:free', 'Gemma 4 31B', 'openrouter', true],
+    // 瀏覽器內建 Translator API：無 endpoint、無 key、無備援模型（掛掉就回報，讓使用者改選雲端）
+    ['builtin:translator', '瀏覽器內建翻譯', 'builtin', false]
   ];
 
-  test('清冊剛好是這四顆、順序不變（popup 依此順序渲染選項）', () => {
+  test('清冊剛好是這五顆、順序不變（popup 依此順序渲染選項）', () => {
     expect(M.MODELS.map(entry => entry.id)).toEqual(EXPECTED.map(([id]) => id));
   });
 
@@ -113,7 +115,14 @@ describe('PROVIDERS ⟺ manifest host_permissions 對賬', () => {
   test('每個 provider apiBase 的 origin 都被 host_permissions 覆蓋', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf8'));
     const permittedOrigins = manifest.host_permissions.map(p => new URL(p.replace('/*', '/')).origin);
-    Object.values(M.PROVIDERS).forEach(info => {
+    // keyless provider（瀏覽器內建）沒有 endpoint，沒有 origin 可對；略過但要**證明它真的是 keyless**，
+    // 免得日後某個有 endpoint 的 provider 漏填 apiBase 時，被這個分支靜默放行。
+    const entries = Object.entries(M.PROVIDERS);
+    const skipped = entries.filter(([, info]) => !info.apiBase);
+    skipped.forEach(([name, info]) => expect(info.keyless).toBe(true));
+    expect(skipped.map(([name]) => name)).toEqual(['builtin']);
+
+    entries.filter(([, info]) => info.apiBase).forEach(([, info]) => {
       expect(permittedOrigins).toContain(new URL(info.apiBase).origin);
     });
   });

@@ -88,7 +88,9 @@ function selectModel(id, clickedItem) {
 function getApiKeyStatus(model, sync) {
   const provider = ModelRegistry.getProvider(model);
   // key 欄位名單一來源：ModelRegistry.PROVIDERS（WS-E M3''）
-  const hasKey = !!sync[ModelRegistry.PROVIDERS[provider].apiKeyName];
+  // keyless provider（瀏覽器內建）沒有 key 可言，一律視為就緒，否則會顯示假的「缺 key」
+  const info = ModelRegistry.PROVIDERS[provider] || ModelRegistry.PROVIDERS.gemini;
+  const hasKey = info.keyless ? true : !!sync[info.apiKeyName];
   return { provider, hasKey };
 }
 

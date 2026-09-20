@@ -409,6 +409,11 @@ function resolveRoute(selectedModel, { apiKey, groqApiKey, openrouterApiKey }) {
     };
   }
 
+  if (selectedModel.startsWith('builtin:')) {
+    // 瀏覽器內建：沒有 endpoint、沒有 key，所以不做任何 key 檢查
+    return { kind: 'builtin', label: '瀏覽器內建' };
+  }
+
   if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
   return { kind: 'gemini', apiKey, model: selectedModel, label: 'Gemini' };
 }
@@ -421,6 +426,10 @@ async function _handleAIRequest({ action, selectedText, context, pageTitle, mode
   const selectedModel = ModelRegistry.normalizeModel(requestedModel || model);
 
   const route = resolveRoute(selectedModel, { apiKey, groqApiKey, openrouterApiKey });
+
+  if (route.kind === 'builtin') {
+    return handleBuiltinTranslateRequest({ action, selectedText, targetLanguage, browserLanguage, pageTranslation, signal });
+  }
 
   if (route.kind === 'openai-compat') {
     return handleWithModelFallback({
@@ -480,6 +489,73 @@ async function handleWithModelFallback(params, model) {
   }
 }
 
+// ── 瀏覽器內建 Translator API（Chrome 138+）─────────────────────────
+// 只接頁面翻譯：詞典模式同樣是 action='translate'，差別在有沒有 pageTranslation，
+// 而內建 API 只吐譯文、給不出詞典要的結構化 JSON。
+// 來源語言整批偵測一次：實測短片段信心極低（'2026-09-20' 只有 0.279），逐段偵測會把
+// 日期當英文送去翻。
+const BUILTIN_MIN_DETECTION_CONFIDENCE = 0.8;
+
+async function detectBuiltinSourceLanguage(text) {
+  if (typeof self.LanguageDetector === 'undefined') {
+    throw new Error('此瀏覽器不支援內建語言偵測，請改用雲端模型');
+  }
+  const detector = await self.LanguageDetector.create();
+  try {
+    const results = await detector.detect(text);
+    const top = Array.isArray(results) ? results[0] : null;
+    if (!top || !top.detectedLanguage || top.detectedLanguage === 'und'
+        || Number(top.confidence) < BUILTIN_MIN_DETECTION_CONFIDENCE) {
+      throw new Error('無法判定來源語言，請改用雲端模型翻譯');
+    }
+    return top.detectedLanguage;
+  } finally {
+    if (detector.destroy) detector.destroy();
+  }
+}
+
+async function handleBuiltinTranslateRequest({ action, selectedText, targetLanguage, browserLanguage, pageTranslation, signal }) {
+  if (action !== 'translate' || !pageTranslation) {
+    throw new Error('瀏覽器內建翻譯只支援網頁翻譯，其他操作請改用雲端模型');
+  }
+  if (typeof self.Translator === 'undefined') {
+    throw new Error('此瀏覽器不支援內建翻譯（需 Chrome 138 以上），請改用雲端模型');
+  }
+
+  const isBatch = pageTranslation.batch === true;
+  const items = isBatch ? JSON.parse(selectedText) : [{ id: 1, text: String(selectedText || '') }];
+  const target = ModelRegistry.toBuiltinLanguageCode(targetLanguage, browserLanguage);
+  const source = await detectBuiltinSourceLanguage(items.map(item => item.text).join('\n'));
+
+  // 來源＝目標就不送翻譯：省一次呼叫，也避開相同語言對的未定義行為
+  if (source === target) {
+    return isBatch
+      ? { result: JSON.stringify({ translations: items.map(item => ({ id: item.id, translation: item.text })) }) }
+      : { result: items[0].text };
+  }
+
+  let translator;
+  try {
+    translator = await self.Translator.create({ sourceLanguage: source, targetLanguage: target, signal });
+  } catch (err) {
+    // availability() 不是承諾（實測下載 100% 後仍可能 NotSupportedError），
+    // 所以這裡一律當正常路徑處理，讓使用者能改回雲端
+    throw new Error(`瀏覽器內建翻譯無法啟用（${source} → ${target}）：${err.message}`);
+  }
+
+  try {
+    const translations = [];
+    for (const item of items) {
+      translations.push({ id: item.id, translation: await translator.translate(item.text) });
+    }
+    return isBatch
+      ? { result: JSON.stringify({ translations }) }
+      : { result: translations[0].translation };
+  } finally {
+    if (translator.destroy) translator.destroy();
+  }
+}
+
 async function handleOpenAICompatRequest({ action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage, pageTranslation, modelId, apiKey, baseUrl, label, extraHeaders = {}, signal }) {
   const prompt   = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage, pageTranslation });
   const maxOutputTokens = getPromptMaxOutputTokens(action, pageTranslation);
@@ -525,6 +601,15 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle, mode
   const prompt = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage, pageTranslation });
 
   const route = resolveRoute(selectedModel, { apiKey, groqApiKey, openrouterApiKey });
+
+  if (route.kind === 'builtin') {
+    // 內建 API 沒有串流；一次算完再用單一 chunk 交付，維持串流端既有契約
+    const { result } = await handleBuiltinTranslateRequest({
+      action, selectedText, targetLanguage, browserLanguage, pageTranslation, signal
+    });
+    onChunk(result);
+    return;
+  }
 
   if (route.kind === 'openai-compat') {
     return streamWithModelFallback({
@@ -874,4 +959,4 @@ ${selectedText}`;
   }
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, validateAIRequest, validateTtsRequest, validateObsidianUriRequest, resolveRoute, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, validateAIRequest, validateTtsRequest, validateObsidianUriRequest, resolveRoute, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, handleBuiltinTranslateRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }

@@ -331,6 +331,45 @@ describe('Options module', () => {
     });
   });
 
+  describe('瀏覽器內建（只做頁面翻譯的 keyless 模型）', () => {
+    it('不出現在主模型選單——選它做詞典必定失敗，所以不該給選', () => {
+      global.optionsModule.renderModelSelect();
+      const values = [...document.getElementById('model').querySelectorAll('option')].map(o => o.value);
+      expect(values).not.toContain('builtin:translator');
+      expect(values).toContain('groq:openai/gpt-oss-120b');
+    });
+
+    it('出現在頁面翻譯專用選單', () => {
+      global.optionsModule.renderPageTranslationModelSelect();
+      const values = [...document.getElementById('pageTranslationModel').querySelectorAll('option')].map(o => o.value);
+      expect(values).toContain('builtin:translator');
+    });
+
+    it('頁面翻譯選內建、主模型維持雲端時，存檔不因內建而要求額外金鑰', async () => {
+      const originalConfirm = window.confirm;
+      window.confirm = jest.fn(() => false);
+      chrome.storage.sync.set.mockClear();
+      try {
+        global.optionsModule.renderModelSelect();
+        global.optionsModule.renderPageTranslationModelSelect();
+        document.getElementById('model').value = 'gemini-3.5-flash';
+        document.getElementById('apiKey').value = 'AIzaTestKeyValue';
+        document.getElementById('pageTranslationModel').value = 'builtin:translator';
+        document.getElementById('btnSave').click();
+        await flushPromises();
+
+        expect(window.confirm).not.toHaveBeenCalled();
+        expect(document.getElementById('status').className).toBe('ok');
+        expect(chrome.storage.sync.set).toHaveBeenCalledWith(
+          expect.objectContaining({ pageTranslationModel: 'builtin:translator' })
+        );
+      } finally {
+        window.confirm = originalConfirm;
+        document.getElementById('apiKey').value = '';
+      }
+    });
+  });
+
   describe('local diagnostics self-check', () => {
     it('builds a checklist with actionable warnings for missing provider keys', () => {
       const rows = global.optionsModule.buildDiagnosticsChecklist({

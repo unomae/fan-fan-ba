@@ -3,6 +3,23 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-21 — 瀏覽器內建翻譯 provider（免金鑰，只做頁面翻譯）
+
+Chrome 138+ 的 `Translator` API 接成第四個 provider。**沒有金鑰也能用全文翻譯**，模型就緒後 20 段批次實測 313 ms（15.7 ms/段），比雲端往返快一到兩個數量級。可行性證據見 2026-09-20 的實機 probe 與 memory `reference_chrome_builtin_ai_probe`。
+
+**範圍**：`models.js` 加 `builtin:translator`（provider `builtin`、`keyless`、`pageTranslationOnly`、無備援模型）；`resolveRoute()` 認 `builtin:` 前綴且不查金鑰；新 `handleBuiltinTranslateRequest()`；`popup`／`options` 認 keyless。
+
+**三個設計決定**：
+- **只接頁面翻譯**。詞典模式同樣是 `action='translate'`，差別在有沒有 `pageTranslation`——內建 API 只吐譯文、給不出詞典要的結構化 JSON，所以閘門卡 `pageTranslation` 而不是卡 action。它也因此**不進主模型選單**（`pageTranslationOnly`），只出現在頁面翻譯專用選單；選得到卻必定失敗比沒得選更糟。
+- **batch 由新 provider 遷就既有契約**：拆成逐段 `translate()` 再組回 `{translations:[{id,translation}]}`，content 端一行未改。
+- **來源語言整批偵測一次**：實測短片段信心極低（`Home` 0.645、`2026-09-20` 0.279，對照長句 1.000），逐段偵測會把日期當英文送去翻。信心 < 0.8 不翻並明說「無法判定來源語言」；偵測結果等於目標語言則原文回傳、不送翻譯。
+
+**施工中發現、計畫原本漏掉的兩處**：①**頁面翻譯實際走串流 port**（`chrome.runtime.connect({name:'ai-stream'})`），只接非串流路徑的話選內建會靜默掉進 Gemini 分支拿空金鑰——已在 `_streamAIRequest` 一併接線，內建無串流故以單一 chunk 交付 ②`popup.getApiKeyStatus` 直接取 `PROVIDERS[provider].apiKeyName`，keyless 會顯示假的「缺 key」。
+
+**驗證**：新增 16 條測試，全套 27 suites／366 tests exit 0、0 skipped；`check-docs --verify` exit 0。**兩輪 fail-then-pass**：第一輪退回接線時發現 8 條直接呼叫 handler 的測試照樣綠、只有 1 條紅——代表路由是零覆蓋，補了 `resolveRoute`／非串流／串流三條接線測試後再退回，紅 3 條；最後把四支實作檔整組退回 HEAD，紅 18 條、還原後 366 全綠且 SHA-256 與修復版一致。既有的「清冊剛好四顆」與「PROVIDERS ⟺ host_permissions 對賬」兩條守衛如預期擋下這次改動，已依刻意變更更新期望值（後者改成 keyless 才准略過，並斷言略過清單恰為 `['builtin']`，避免日後漏填 apiBase 被靜默放行）。
+
+**未驗**：真實網頁的端到端頁面翻譯（需載入擴充人工跑）；全部自動化證據都是 mock 層。首次下載的進度條 UI **尚未實作**，目前使用者會看到 4.8–14.8 秒無回饋。
+
 ## 2026-09-20 — body 層錯誤的 status 型別汙染（429 重試／404 備援靜默失效）
 
 `background.js` 有三處寫 `err.status`：`checkedFetch` 給的是 `res.status`（一定是數字），但另外兩處直接把 body 層的 `error.code` 照抄進去——而 OpenAI 相容格式的 `code` 常是字串（`'429'`、`'model_not_found'`）。

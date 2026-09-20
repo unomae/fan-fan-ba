@@ -7,6 +7,8 @@
   // Groq 會定期清掉舊模型（2026-07 Scout、2026-08 llama-3.3/3.1 陸續下架），
   // 主模型 404 時退到同家另一個 production 模型，翻譯不至於整條斷掉
   const GROQ_FALLBACK_MODEL_ID = 'openai/gpt-oss-20b';
+  // 瀏覽器內建 Translator API（Chrome 138+）；沒有備援模型，掛掉就回報、由使用者改選雲端
+  const BUILTIN_TRANSLATOR_MODEL = 'builtin:translator';
 
   // provider 級靜態資料的單一事實來源（WS-E M3''）：
   // background 請求路徑、options 測試連線與 key 前綴驗證共用，
@@ -32,6 +34,15 @@
       apiKeyName: 'apiKey',
       keyPrefix: 'AIza',
       apiBase: 'https://generativelanguage.googleapis.com/v1beta/models'
+    },
+    // 瀏覽器內建 Translator API：沒有 endpoint、沒有 key。keyless 供 popup／options
+    // 跳過「缺 key」判斷，不要為了它在各處散寫 provider === 'builtin'
+    builtin: {
+      label: '瀏覽器內建',
+      apiKeyName: '',
+      keyPrefix: '',
+      apiBase: '',
+      keyless: true
     }
   };
 
@@ -75,6 +86,17 @@
       badgeClass: 'badge-or'
     }
   ];
+
+  MODELS.push({
+    id: BUILTIN_TRANSLATOR_MODEL,
+    provider: 'builtin',
+    apiKeyName: '',
+    name: '瀏覽器內建翻譯',
+    desc: '免金鑰 · 本機執行 · 僅網頁翻譯',
+    badge: '內建',
+    badgeClass: 'badge-builtin',
+    pageTranslationOnly: true
+  });
 
   const MODEL_MIGRATIONS = {
     'gemini-3-flash-preview': 'gemini-3.5-flash',
@@ -156,6 +178,20 @@
     return getPromptLanguageName(value, browserLanguage);
   }
 
+  // 設定頁的語言 id 與 Translator API 的 BCP 47 不完全一致：zh-TW/zh-CN 要轉成
+  // 書寫系統標籤（實測 LanguageDetector 對中文也是回 zh-Hant/zh-Hans）。
+  const BUILTIN_LANGUAGE_CODES = { 'zh-TW': 'zh-Hant', 'zh-CN': 'zh-Hans' };
+
+  function toBuiltinLanguageCode(language, browserLanguage = '') {
+    let value = language || 'zh-TW';
+    if (value === 'browser') value = browserLanguage || 'zh-TW';
+    if (BUILTIN_LANGUAGE_CODES[value]) return BUILTIN_LANGUAGE_CODES[value];
+    // 'zh-Hant-TW' 這類帶地區的值取前兩段，其餘取主語言碼
+    const parts = String(value).split('-');
+    if (parts[1] && /^Han[st]$/.test(parts[1])) return `${parts[0]}-${parts[1]}`;
+    return parts[0] || 'zh-Hant';
+  }
+
   function normalizeModel(model) {
     return MODEL_MIGRATIONS[model] || model || DEFAULT_MODEL;
   }
@@ -174,6 +210,7 @@
     const normalized = normalizeModel(model);
     if (normalized.startsWith('groq:')) return 'groq';
     if (normalized.startsWith('openrouter:')) return 'openrouter';
+    if (normalized.startsWith('builtin:')) return 'builtin';
     return 'gemini';
   }
 
@@ -185,6 +222,7 @@
     const normalized = normalizeModel(model);
     if (normalized.startsWith('groq:')) return normalized.slice('groq:'.length);
     if (normalized.startsWith('openrouter:')) return normalized.slice('openrouter:'.length);
+    if (normalized.startsWith('builtin:')) return normalized.slice('builtin:'.length);
     return normalized;
   }
 
@@ -239,6 +277,7 @@
     OPENROUTER_PRIMARY_MODEL,
     OPENROUTER_FALLBACK_MODEL_ID,
     GROQ_FALLBACK_MODEL_ID,
+    BUILTIN_TRANSLATOR_MODEL,
     PROVIDERS,
     MODELS,
     MODEL_MIGRATIONS,
@@ -260,7 +299,8 @@
     normalizeExplanationLanguage,
     normalizeTtsLanguageMode,
     getPromptLanguageName,
-    resolveExplanationLanguage
+    resolveExplanationLanguage,
+    toBuiltinLanguageCode
   };
 
   global.FanFanBaModels = registry;
