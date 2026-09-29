@@ -3,6 +3,14 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-30 — `check-docs --verify` 在 worktree 內無法執行
+
+`scripts/check-doc-numbers.js` 實跑 jest 時帶 `--testPathIgnorePatterns /\.claude/`，本意是排除主樹底下 `.claude/worktrees/` 的並行 worktree。但若 checkout 本身就在 `.claude/worktrees/<name>/` 裡，自己的測試路徑也含 `/.claude/`，會被整批濾掉、jest 以「找不到測試」失敗，`--verify` 回 exit 2「未檢」。
+
+**修法**：pattern 改成 `<rootDir>/\.claude/`，只排除「本 checkout 根目錄底下」的 `.claude/`。主樹行為不變。
+
+**驗證**：`--selftest` 新增 2 案（worktree 內不濾掉自己、主樹仍排除並行 worktree），11/11 PASS；退回舊 pattern 時新案紅 1 條（10/11）、還原後全綠。worktree 內 `check-docs --verify` exit 0（27／373）；主樹以新 pattern `jest --listTests` 得 27 支、未過濾為 80 支。
+
 ## 2026-09-21 — 內建模型下載進度條
 
 內建翻譯首次使用要下載語言包（實測 4.8–14.8 秒），原本這段完全沒有回饋，使用者只會看到面板卡住。

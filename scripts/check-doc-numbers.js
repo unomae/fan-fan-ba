@@ -27,6 +27,9 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
+// 排除本 checkout 底下的並行 worktree（`.claude/worktrees/`）。錨定 <rootDir>：若寫成裸 `/\\.claude/`，
+// 本身就在 `.claude/worktrees/<name>/` 裡的 checkout 會把自己的測試整批濾掉、jest 直接失敗。
+const JEST_IGNORE = '<rootDir>/\\.claude/';
 
 // 會被掃描的檔。新增檔案要記得加進來——沒列到的檔即使有標記也不會被檢查。
 const FILES = ['TESTING.md', 'MANUAL-QA.md', 'PLAN.md', 'project-overview.html'];
@@ -78,7 +81,7 @@ function runJestSummary() {
   // 用 process.execPath ＋ jest.js 兩邊都不沾。
   const jestBin = path.join(ROOT, 'node_modules', 'jest', 'bin', 'jest.js');
   if (!fs.existsSync(jestBin)) throw new Error(`找不到 jest 入口 ${jestBin}（是不是還沒 npm install？）`);
-  execFileSync(process.execPath, [jestBin, '--json', `--outputFile=${out}`, '--testPathIgnorePatterns', '/\\.claude/'],
+  execFileSync(process.execPath, [jestBin, '--json', `--outputFile=${out}`, '--testPathIgnorePatterns', JEST_IGNORE],
     { cwd: ROOT, stdio: 'ignore' });
   const summary = JSON.parse(fs.readFileSync(out, 'utf8'));
   fs.unlinkSync(out);
@@ -174,6 +177,13 @@ function selftest() {
     checkConsistency([{ value: 5 }, { value: 6 }]), { ok: false, values: [5, 6], expected: null });
   check('單一標記也算一致',
     checkConsistency([{ value: 5 }]), { ok: true, values: [5], expected: 5 });
+
+  // jest 會把 <rootDir> 換成 checkout 根目錄再當 regex 用；這裡照做一次
+  const ignoreRe = root => new RegExp(JEST_IGNORE.replace('<rootDir>', root));
+  check('worktree 內的 checkout 不濾掉自己的測試',
+    ignoreRe('/r/.claude/worktrees/w').test('/r/.claude/worktrees/w/tests/a.test.js'), false);
+  check('主樹仍排除並行 worktree 的測試',
+    ignoreRe('/r').test('/r/.claude/worktrees/w/tests/a.test.js'), true);
 
   cases.forEach(([name, ok, detail]) => console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`));
   const passed = cases.filter(([, ok]) => ok).length;
