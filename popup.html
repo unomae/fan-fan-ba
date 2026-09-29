@@ -331,6 +331,37 @@
     #save-msg.show { opacity: 1; }
 
     /* ── 底部 ────────────────────────────── */
+    /* ── 快捷鍵 ──────────────────────────── */
+    .shortcuts {
+      padding: 0 12px 10px;
+    }
+    .shortcut-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 3px 0;
+      font-size: 12px;
+      color: #444;
+    }
+    .shortcut-key {
+      font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+      font-size: 11px;
+      padding: 1px 6px;
+      border: 1px solid #e3e7de;
+      border-radius: 5px;
+      background: #fff;
+      color: #333;
+      white-space: nowrap;
+    }
+    .shortcut-key.unset {
+      font-family: inherit;
+      color: #999;
+    }
+    .shortcuts .settings-link {
+      margin-top: 4px;
+    }
+
     .footer {
       border-top: 1px solid #f0f0f0;
       padding: 8px 12px;
@@ -476,6 +507,13 @@
       <div class="health-head"><span class="health-dot" id="healthObsidianDot"></span>Obsidian</div>
       <div class="health-value" id="healthObsidianText">檢查中</div>
     </div>
+  </div>
+
+  <!-- 快捷鍵（實際綁定以 chrome.commands.getAll() 為準，使用者可在瀏覽器改）-->
+  <div class="shortcuts" aria-label="快捷鍵">
+    <div class="section-label">快捷鍵</div>
+    <div id="shortcutList"></div>
+    <button class="settings-link" id="openShortcuts" type="button">變更快捷鍵 →</button>
   </div>
 
   <!-- 底部 -->

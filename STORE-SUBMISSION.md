@@ -25,6 +25,7 @@ Windows 用 .NET ZipArchive 產生 forward-slash 路徑（Compress-Archive 的�
   - `storage`（存設定 / API Key / 歷史，本機）
   - `unlimitedStorage`（單字本 IndexedDB 與歷史的本地空間不設上限）← 2026-08-26 已補進隱私表，別漏填
   - `identity`（**選用** Google Drive 同步登入）← v1.9.6 已補進隱私表，別漏填
+  - `contextMenus`（右鍵選單「翻譯選取文字」「翻譯整頁」）← 2026-09-30 新增，**隱私表尚未補上，補完前不可送審**
   - `<all_urls>` content script（任意網頁注入工具列、偵測選取）
   - host permissions（直連 Gemini / Groq / OpenRouter / TTS / Google Drive API；Google API host 已收斂到 Drive / upload path）
 - [ ] **資料用途揭露**：填「處理的使用者資料」= 網站內容（選取文字），用途=提供功能；勾選「不販售/不轉移」「僅供宣告用途」。

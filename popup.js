@@ -20,6 +20,7 @@ async function initPopup() {
   renderModels(current);
   renderApiStatus(current, settings);
   renderPopupOverview(current, settings);
+  renderShortcuts(await loadShortcuts());
 }
 
 // ── 渲染模型列表 ──────────────────────────────────────
@@ -139,9 +140,47 @@ function renderPopupOverview(model, sync = {}) {
   setStatusElement('healthObsidianDot', 'healthObsidianText', hasObsidian ? 'ok' : 'warn', hasObsidian ? '已設定' : '未設定');
 }
 
+// ── 快捷鍵 ────────────────────────────────────────────
+// 顯示瀏覽器實際綁定的鍵：預設鍵可能跟其他擴充衝突而沒綁上，使用者也可能自己改過
+const SHORTCUT_COMMANDS = ['translate-selection', 'toggle-page-translation'];
+const SHORTCUTS_PAGE_URL = 'chrome://extensions/shortcuts';
+
+async function loadShortcuts() {
+  try {
+    return await chrome.commands.getAll();
+  } catch {
+    return [];
+  }
+}
+
+function renderShortcuts(commands = []) {
+  const list = document.getElementById('shortcutList');
+  if (!list) return;
+  list.textContent = '';
+  const byName = new Map(commands.map(command => [command.name, command]));
+  SHORTCUT_COMMANDS.forEach(name => {
+    const command = byName.get(name);
+    if (!command) return;
+    const row = document.createElement('div');
+    row.className = 'shortcut-row';
+    const label = document.createElement('span');
+    label.textContent = command.description || name;
+    const key = document.createElement('span');
+    key.className = 'shortcut-key' + (command.shortcut ? '' : ' unset');
+    key.textContent = command.shortcut || '未設定';
+    row.append(label, key);
+    list.appendChild(row);
+  });
+}
+
+// chrome:// 頁面不能用一般連結開，要走 tabs.create
+document.getElementById('openShortcuts')?.addEventListener('click', () => {
+  chrome.tabs.create({ url: SHORTCUTS_PAGE_URL });
+});
+
 // ── 開啟完整設定頁 ────────────────────────────────────
 document.getElementById('openOptions').addEventListener('click', () => {
   chrome.runtime.openOptionsPage();
 });
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { initPopup, renderModels, selectModel, renderApiStatus, renderPopupOverview, getApiKeyStatus, MODELS }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { initPopup, renderModels, selectModel, renderApiStatus, renderPopupOverview, getApiKeyStatus, renderShortcuts, loadShortcuts, SHORTCUTS_PAGE_URL, MODELS }; }

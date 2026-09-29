@@ -17,7 +17,58 @@ chrome.runtime.onInstalled.addListener(details => {
   if (details.reason === 'install') {
     chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
   }
+  registerContextMenus();
 });
+
+// ── 快捷鍵與右鍵選單 ─────────────────────────────────
+// 兩者都只把「要做什麼」轉給分頁裡的 content script，由 content 端自己檢查
+// 站點是否停用、有沒有選取文字；background 不讀網頁內容。
+// 敏感網域（登入／密碼管理）不注入 content script，訊息送不到就靜默略過。
+const CONTEXT_MENU_TRANSLATE_SELECTION = 'ffb-translate-selection';
+const CONTEXT_MENU_TRANSLATE_PAGE = 'ffb-translate-page';
+const COMMAND_TRIGGERS = {
+  'toggle-page-translation': { trigger: 'toggle-page-translation', topFrameOnly: true },
+  'translate-selection': { trigger: 'translate-selection', topFrameOnly: false }
+};
+
+function registerContextMenus() {
+  if (!chrome.contextMenus) return;
+  // 更新擴充時舊選單還在，先清掉再建，避免 duplicate id 錯誤
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({ id: CONTEXT_MENU_TRANSLATE_SELECTION, title: '翻翻吧：翻譯選取文字', contexts: ['selection'] });
+    chrome.contextMenus.create({ id: CONTEXT_MENU_TRANSLATE_PAGE, title: '翻翻吧：翻譯整頁', contexts: ['page'] });
+  });
+}
+
+function sendTriggerToTab(tabId, message, frameId) {
+  if (typeof tabId !== 'number' || tabId < 0) return Promise.resolve(false);
+  const options = typeof frameId === 'number' ? { frameId } : undefined;
+  return Promise.resolve(chrome.tabs.sendMessage(tabId, { type: 'FFB_TRIGGER', ...message }, options))
+    .then(() => true)
+    .catch(() => false); // 分頁沒有 content script（chrome://、敏感網域、尚未載入）
+}
+
+function handleContextMenuClick(info, tab) {
+  if (info?.menuItemId === CONTEXT_MENU_TRANSLATE_SELECTION) {
+    // 右鍵點在哪個 frame 就送哪個 frame，由它讀自己的選取範圍
+    return sendTriggerToTab(tab?.id, { trigger: 'translate-selection' }, info.frameId ?? 0);
+  }
+  if (info?.menuItemId === CONTEXT_MENU_TRANSLATE_PAGE) {
+    return sendTriggerToTab(tab?.id, { trigger: 'start-page-translation' }, 0);
+  }
+  return Promise.resolve(false);
+}
+
+async function handleCommand(command, tab) {
+  const entry = COMMAND_TRIGGERS[command];
+  if (!entry) return false;
+  const target = tab?.id !== undefined ? tab : (await chrome.tabs.query({ active: true, currentWindow: true }).catch(() => []))[0];
+  // 快捷鍵不知道焦點在哪個 frame：選取翻譯廣播給全部 frame，由持有焦點的那個處理
+  return sendTriggerToTab(target?.id, { trigger: entry.trigger, requireFocus: !entry.topFrameOnly }, entry.topFrameOnly ? 0 : undefined);
+}
+
+chrome.contextMenus?.onClicked.addListener(handleContextMenuClick);
+chrome.commands?.onCommand.addListener(handleCommand);
 
 // API base 單一來源在 models.js 的 PROVIDERS 表（WS-E M3''），這裡只取用
 const GEMINI_API_BASE     = ModelRegistry.PROVIDERS.gemini.apiBase;
@@ -975,4 +1026,4 @@ ${selectedText}`;
   }
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, validateAIRequest, validateTtsRequest, validateObsidianUriRequest, resolveRoute, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, handleBuiltinTranslateRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { registerContextMenus, handleContextMenuClick, handleCommand, sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, validateAIRequest, validateTtsRequest, validateObsidianUriRequest, resolveRoute, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, handleBuiltinTranslateRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }

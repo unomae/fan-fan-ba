@@ -30,6 +30,50 @@ if (fanFanBaShouldActivate()) {
   });
 
   initContentSettings();
+  chrome.runtime.onMessage?.addListener(onExtensionTrigger);
+}
+
+// ── 快捷鍵／右鍵選單觸發（由 background 轉來）──────────
+// 站點停用時一律不作用；沒有選取文字就什麼都不做（不跳錯誤、不彈 UI）。
+function onExtensionTrigger(message) {
+  if (!message || message.type !== 'FFB_TRIGGER') return false;
+  if (fanFanBaPaused || !fanFanBaShouldActivate()) return false;
+  if (message.trigger === 'translate-selection') {
+    translateSelectionFromTrigger({ requireFocus: !!message.requireFocus });
+  } else if (message.trigger === 'toggle-page-translation') {
+    runPageTranslationTrigger({ toggle: true });
+  } else if (message.trigger === 'start-page-translation') {
+    runPageTranslationTrigger({ toggle: false });
+  }
+  return false;
+}
+
+// 快捷鍵是廣播給每個 frame 的，只讓持有鍵盤焦點的那個處理；
+// 焦點在子 frame 時，上層 frame 的 activeElement 是 iframe 本身，要讓給它。
+function frameHasKeyboardFocus() {
+  if (!document.hasFocus()) return false;
+  const tag = document.activeElement?.tagName;
+  return tag !== 'IFRAME' && tag !== 'FRAME';
+}
+
+function translateSelectionFromTrigger({ requireFocus = false } = {}) {
+  if (requireFocus && !frameHasKeyboardFocus()) return false;
+  // 只讀本 frame 自己的選取：子 frame 各自有 content script，會自己處理
+  const selectionData = getWindowSelectionData() || getEditableSelectionData();
+  if (!selectionData?.text) return false;
+  savedSel = selectionData;
+  showToolbar();
+  triggerAction('translate');
+  return true;
+}
+
+// 全文翻譯只在最上層 frame 載入（manifest 第二組 content script）
+function runPageTranslationTrigger({ toggle }) {
+  if (!fanFanBaIsTopFrame() || typeof startPageTranslationBeta !== 'function') return false;
+  const active = typeof pageTranslationState !== 'undefined' && pageTranslationState.activated;
+  if (toggle && active) restorePageTranslationBeta();
+  else startPageTranslationBeta();
+  return true;
 }
 
 // ── 拖曳（rAF throttle）──────────────────────────────

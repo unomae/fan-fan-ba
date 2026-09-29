@@ -3,6 +3,23 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-30 — 快捷鍵＋右鍵選單
+
+**範圍**：`manifest.json` 加 `contextMenus` 權限與兩個 `commands`——「翻譯選取文字」（Win `Alt+S`、Mac `⌃⇧S`）、「切換全文翻譯」（Win `Alt+A`、Mac `⌃⇧A`）；右鍵選單兩項：「翻翻吧：翻譯選取文字」（contexts: selection）、「翻翻吧：翻譯整頁」（contexts: page）。`background.js` 新增 `registerContextMenus()`／`handleContextMenuClick()`／`handleCommand()`，只把 `{ type: 'FFB_TRIGGER', trigger }` 轉給分頁；`content/main.js` 新增 `onExtensionTrigger()` 接收。popup 新增「快捷鍵」區，用 `chrome.commands.getAll()` 顯示實際綁定的鍵，沒綁上顯示「未設定」，「變更快捷鍵 →」以 `chrome.tabs.create` 開 `chrome://extensions/shortcuts`。
+
+**設計決定**：
+- **background 不讀網頁內容**：站點是否停用、有沒有選字都由 content 端自己判斷。停用站點（浮球「暫停」）三種觸發都不作用；沒選字就什麼都不做，不跳錯誤。敏感網域本來就不注入 content script，訊息送不到會靜默略過。
+- **快捷鍵不知道焦點在哪個 frame**，所以選取翻譯廣播給全部 frame，只有 `document.hasFocus()` 且焦點不在子 iframe 上的那個處理，避免上下層重複開卡。右鍵選單有 `info.frameId`，直接送到那個 frame、不檢查焦點。
+- 快捷鍵是「切換」（已啟用就還原），右鍵「翻譯整頁」只開始、不會反過來把翻譯收掉。全文翻譯只在最上層 frame 處理。
+- Mac 預設用 `⌃⇧` 而非 Option：Option＋字母是輸入特殊字元的鍵，被快捷鍵攔走會影響打字。預設鍵若與其他擴充衝突，瀏覽器不會綁上，popup 會如實顯示「未設定」。
+- 更新擴充時先 `contextMenus.removeAll()` 再建立，避免重複 id 錯誤。
+
+**測試基礎**：真正生效的 chrome mock 是 `jest.setup.js`（`tests/setup.js` 未被引用），補上 `tabs.sendMessage`、`commands`，`contextMenus.removeAll` 改成會呼叫 callback。
+
+**驗證**：新增 24 條（background 分派 10、content 接收 10、popup 4）：command／右鍵分派到正確 frame、找不到 tab 時改查目前分頁、送不到時回 false 不丟錯、停用站點不作用、沒選字不作用、無焦點 frame 與焦點在子 iframe 時讓出、切換與「只開始」語意、子 frame 不處理全文翻譯、快捷鍵顯示「未設定」、描述含 HTML 只當文字。全套 30 suites／409 tests exit 0、0 skipped；`check-docs --verify` exit 0。**fail-then-pass**：五支實作檔退回 A1 版時 24 條全紅，還原後 SHA-256 一致、全綠。e2e 重新打包後連跑三次皆 41 PASS／0 FAIL／4 PARTIAL。
+
+**未驗**：實機按快捷鍵與右鍵選單（e2e 無法按瀏覽器層快捷鍵，也點不到原生右鍵選單），已列入 `MANUAL-QA.md`。**隱私權政策尚未補 `contextMenus` 的用途說明，補上前不可送審。**
+
 ## 2026-09-30 — 字典卡：例句加粗查詢詞＋CEFR 難度標籤
 
 **範圍**：字典 JSON 每個 example 新增 `surface`（查詢詞在該例句中的原樣，可含詞形變化），頂層新增 `cefr`（僅英文，A1–C2，否則空字串）。`content/utils.js` 新增 `highlightExampleHtml()`、`normalizeCefr()`；`buildDictHTML()` 用它們渲染；`content.css` 加 `.g-ex-hit`、`.g-dict-cefr`；`buildCacheKey()` 前綴 `p${PROMPT_VERSION}`（本次為 2）。
@@ -13,11 +30,11 @@
 - `cefr` 只接受 `/^[ABC][12]$/`（大小寫、空白容忍），其餘一律不顯示；標籤放在單字列最右側。
 - 舊格式結果（歷史紀錄、改版前的回應）沒有新欄位時照常顯示，不補猜。
 
-**驗證**：新增 `tests/content/dict-examples.test.js` 12 條（surface 存在／缺欄位／不在句中或只在別的詞內／regex 特殊字元／中日文／HTML 跳脫／cefr 合法與非法值／prompt 規格／快取版本）；既有 XSS 回歸測試改注入新 helper。全套 28 suites／385 tests exit 0、0 skipped；`check-docs --verify` exit 0。**fail-then-pass**：五支實作檔退回 HEAD 時紅 10 條（另 2 條是舊格式相容與「非字典 prompt 不帶新欄位」守衛，本就該綠），還原後 SHA-256 一致、全綠。e2e（Mac Chrome for Testing）重新打包後首跑 37/4/4，連兩次重跑皆 41 PASS／0 FAIL／4 PARTIAL，與基準相同；紅的 T5、T6、B1、B2 與本次改動無關，未改碼的基準首跑同樣會紅（見下方「已知」）。
+**驗證**：新增 `tests/content/dict-examples.test.js` 12 條（surface 存在／缺欄位／不在句中或只在別的詞內／regex 特殊字元／中日文／HTML 跳脫／cefr 合法與非法值／prompt 規格／快取版本）；既有 XSS 回歸測試改注入新 helper。全套 28 suites／385 tests exit 0、0 skipped；`check-docs --verify` exit 0。**fail-then-pass**：五支實作檔退回 HEAD 時紅 10 條（另 2 條是舊格式相容與「非字典 prompt 不帶新欄位」守衛，本就該綠），還原後 SHA-256 一致、全綠。e2e（Mac Chrome for Testing）重新打包後首跑 37/4/4，連兩次重跑皆 41 PASS／0 FAIL／4 PARTIAL，與基準相同；紅的 T5、T6、B1、B2 與本次改動無關，未改碼的基準首跑同樣紅過（見下方「已知」）。
 
 **未驗**：**未以真實模型驗證**——模型實際回傳的 surface 與 cefr 準確度，已列入 `MANUAL-QA.md`。
 
-**已知**：本機 e2e 每次 `npm run package` 後第一次完整跑，ui-panels／legacy-regression 會紅 3–4 案，重跑即恢復，根因未查。
+**已知**：本機 e2e 在全新 profile 或重新打包後的第一次完整跑，ui-panels／legacy-regression 間歇會紅 3–4 案（不是每次），重跑即恢復，根因未查。
 
 ## 2026-09-30 — `check-docs --verify` 在 worktree 內無法執行
 
