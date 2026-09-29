@@ -513,6 +513,7 @@ const CHEVRON_SVG = `<svg class="g-chevron" width="12" height="12" viewBox="0 0 
 
 function buildDictHTML(d) {
   const translations = normalizeTranslations(d.translations);
+  const cefr = normalizeCefr(d.cefr);
 
   const synonymHtml = d.synonym?.word ? `
     <div class="g-dict-divider"></div>
@@ -528,7 +529,7 @@ function buildDictHTML(d) {
       : '<span class="g-ex-badge g-ex-general">通用</span>';
     return `
       <div class="g-example">
-        <div class="g-ex-src">${badge}<span class="g-ex-en">${escapeHtml(ex.src || ex.en || '')}</span></div>
+        <div class="g-ex-src">${badge}<span class="g-ex-en">${highlightExampleHtml(ex.src || ex.en || '', ex.surface)}</span></div>
         <div class="g-ex-zh">${escapeHtml(ex.zh || '')}</div>
       </div>`;
   }).join('');
@@ -553,6 +554,7 @@ function buildDictHTML(d) {
         </svg>
         <span>收藏</span>
       </button>
+      ${cefr ? `<span class="g-dict-cefr" title="CEFR 難度 ${cefr}" aria-label="CEFR 難度 ${cefr}">${cefr}</span>` : ''}
     </div>
     ${d.phonetic ? `<div class="g-dict-phonetic">${escapeHtml(d.phonetic)}</div>` : ''}
     ${d.pos || d.definition ? `

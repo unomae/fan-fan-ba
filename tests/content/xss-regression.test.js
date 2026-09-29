@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const { escapeHtml, getPosClass, formatMarkdown, renderDiff } = require('../../content/utils');
+const { escapeHtml, getPosClass, formatMarkdown, renderDiff, highlightExampleHtml, normalizeCefr } = require('../../content/utils');
 
 function runContentScript(file, context) {
   const source = fs.readFileSync(path.join(__dirname, '../../', file), 'utf8');
@@ -32,6 +32,8 @@ function loadResultCard() {
     getPosClass,
     formatMarkdown,
     renderDiff,
+    highlightExampleHtml,
+    normalizeCefr,
     loadRecentFolders: jest.fn(async () => []),
     hideAutoSaveToast: jest.fn()
   });

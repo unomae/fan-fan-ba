@@ -260,8 +260,12 @@
     return (hash >>> 0).toString(36);
   }
 
+  // prompt 輸出格式有變（例如字典 JSON 新增欄位）就遞增，讓同一 tab 內舊格式的快取結果不再命中
+  const PROMPT_VERSION = 2;
+
   function buildCacheKey({ action, text, model, targetLanguage = 'zh-TW', explanationLanguage = 'target', context = '', pageTitle = '' }) {
     return [
+      `p${PROMPT_VERSION}`,
       normalizeModel(model),
       normalizeLanguage(targetLanguage, 'zh-TW'),
       normalizeExplanationLanguage(explanationLanguage, 'target'),
@@ -294,6 +298,7 @@
     shouldFallbackModel,
     stableHash,
     buildCacheKey,
+    PROMPT_VERSION,
     getLanguageOption,
     normalizeLanguage,
     normalizeExplanationLanguage,

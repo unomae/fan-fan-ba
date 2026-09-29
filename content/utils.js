@@ -152,4 +152,46 @@ function renderDiff(original, optimized) {
   ).join('');
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { escapeHtml, formatMarkdown, parseJSON, getWeekLabel, getPosClass, extractContext, renderDiff }; }
+// 字典例句：把查詢詞在例句中的原樣（surface，可含詞形變化）加粗。
+// 規則：大小寫不敏感、只取第一個完整比對；拉丁／希臘／西里爾字母與數字的邊緣要落在詞界上
+// （避免 "art" 命中 "start"），中日韓等無空格文字不檢查詞界。比對不到就整句純文字，不猜。
+// 輸入先逐段 escapeHtml 再組字串，surface 以字面比對（含 C++ 這類 regex 特殊字元）。
+const EXAMPLE_WORD_CHAR = /[\p{Script=Latin}\p{Script=Greek}\p{Script=Cyrillic}\p{N}]/u;
+
+function findExampleSurface(src, surface) {
+  if (!src || !surface) return -1;
+  const escaped = surface.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(escaped, 'giu');
+  let match;
+  while ((match = re.exec(src)) !== null) {
+    const start = match.index;
+    const end = start + match[0].length;
+    const before = src.slice(0, start).match(/.$/u)?.[0] || '';
+    const after = src.slice(end).match(/^./u)?.[0] || '';
+    const headIsWord = EXAMPLE_WORD_CHAR.test(match[0].match(/^./u)[0]);
+    const tailIsWord = EXAMPLE_WORD_CHAR.test(match[0].match(/.$/u)[0]);
+    const okBefore = !headIsWord || !before || !EXAMPLE_WORD_CHAR.test(before);
+    const okAfter = !tailIsWord || !after || !EXAMPLE_WORD_CHAR.test(after);
+    if (okBefore && okAfter) return { start, end };
+    re.lastIndex = start + 1;
+  }
+  return -1;
+}
+
+function highlightExampleHtml(src, surface) {
+  const text = String(src || '');
+  const target = String(surface || '').trim();
+  const hit = findExampleSurface(text, target);
+  if (hit === -1) return escapeHtml(text);
+  return escapeHtml(text.slice(0, hit.start))
+    + `<strong class="g-ex-hit">${escapeHtml(text.slice(hit.start, hit.end))}</strong>`
+    + escapeHtml(text.slice(hit.end));
+}
+
+// CEFR 難度只接受 A1–C2，其餘（含空字串、B3、"intermediate"）一律視為沒有
+function normalizeCefr(value) {
+  const level = String(value || '').trim().toUpperCase();
+  return /^[ABC][12]$/.test(level) ? level : '';
+}
+
+if (typeof module !== 'undefined' && module.exports) { module.exports = { escapeHtml, formatMarkdown, parseJSON, getWeekLabel, getPosClass, extractContext, renderDiff, highlightExampleHtml, normalizeCefr }; }

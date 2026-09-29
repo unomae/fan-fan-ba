@@ -3,6 +3,22 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-30 — 字典卡：例句加粗查詢詞＋CEFR 難度標籤
+
+**範圍**：字典 JSON 每個 example 新增 `surface`（查詢詞在該例句中的原樣，可含詞形變化），頂層新增 `cefr`（僅英文，A1–C2，否則空字串）。`content/utils.js` 新增 `highlightExampleHtml()`、`normalizeCefr()`；`buildDictHTML()` 用它們渲染；`content.css` 加 `.g-ex-hit`、`.g-dict-cefr`；`buildCacheKey()` 前綴 `p${PROMPT_VERSION}`（本次為 2）。
+
+**設計決定**：
+- **加粗只取第一個大小寫不敏感的完整比對，比對不到就整句純文字**，不做詞幹還原或模糊比對——模型給錯 surface 時寧可不標，也不標錯字。拉丁／希臘／西里爾字母與數字要落在詞界上（`art` 不會命中 `Start`），中日韓無空格文字不檢查詞界。
+- surface 經 regex 跳脫後以字面比對（`C++`、`(approx.)` 不會變成 pattern），切段後逐段 `escapeHtml` 才組字串，surface 本身含 HTML 也只會變成文字。
+- `cefr` 只接受 `/^[ABC][12]$/`（大小寫、空白容忍），其餘一律不顯示；標籤放在單字列最右側。
+- 舊格式結果（歷史紀錄、改版前的回應）沒有新欄位時照常顯示，不補猜。
+
+**驗證**：新增 `tests/content/dict-examples.test.js` 12 條（surface 存在／缺欄位／不在句中或只在別的詞內／regex 特殊字元／中日文／HTML 跳脫／cefr 合法與非法值／prompt 規格／快取版本）；既有 XSS 回歸測試改注入新 helper。全套 28 suites／385 tests exit 0、0 skipped；`check-docs --verify` exit 0。**fail-then-pass**：五支實作檔退回 HEAD 時紅 10 條（另 2 條是舊格式相容與「非字典 prompt 不帶新欄位」守衛，本就該綠），還原後 SHA-256 一致、全綠。e2e（Mac Chrome for Testing）重新打包後首跑 37/4/4，連兩次重跑皆 41 PASS／0 FAIL／4 PARTIAL，與基準相同；紅的 T5、T6、B1、B2 與本次改動無關，未改碼的基準首跑同樣會紅（見下方「已知」）。
+
+**未驗**：**未以真實模型驗證**——模型實際回傳的 surface 與 cefr 準確度，已列入 `MANUAL-QA.md`。
+
+**已知**：本機 e2e 每次 `npm run package` 後第一次完整跑，ui-panels／legacy-regression 會紅 3–4 案，重跑即恢復，根因未查。
+
 ## 2026-09-30 — `check-docs --verify` 在 worktree 內無法執行
 
 `scripts/check-doc-numbers.js` 實跑 jest 時帶 `--testPathIgnorePatterns /\.claude/`，本意是排除主樹底下 `.claude/worktrees/` 的並行 worktree。但若 checkout 本身就在 `.claude/worktrees/<name>/` 裡，自己的測試路徑也含 `/.claude/`，會被整批濾掉、jest 以「找不到測試」失敗，`--verify` 回 exit 2「未檢」。
