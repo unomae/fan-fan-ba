@@ -37,7 +37,11 @@ function makeFields(count) {
   return Array.from({ length: count }, (_, i) => ({ key: `f${i}`, label: `欄位${i}`, description: '' }));
 }
 
-describe('內建三動作 prompt 與改版前逐字相同', () => {
+// 優化的句子分支已升級為寫作批改（多了場合／原文標記／總評），不再比對舊基準，改由 tests/writing-review.test.js 測；
+// 優化的單字分支、翻譯、解釋仍必須逐字相同
+const isOptimizeReview = c => c.action === 'optimize' && !(c.selectedText.length <= 20 && !c.settings?.pageTranslation);
+
+describe('內建動作 prompt 與改版前逐字相同（優化句子分支除外）', () => {
   const cases = buildCases();
 
   it('基準涵蓋全部組合', () => {
@@ -48,7 +52,10 @@ describe('內建三動作 prompt 與改版前逐字相同', () => {
   // 每個動作一條；不相符時列出組合名稱，方便定位
   it.each(['translate', 'explain', 'optimize'])('%s', action => {
     const mismatches = [];
-    for (const c of cases.filter(item => item.action === action)) {
+    const compared = cases.filter(item => item.action === action && !isOptimizeReview(item));
+    // 優化仍有單字分支要比對（2 種單字 × 10 種設定 × 2 種上下文，扣掉全文翻譯設定走句子分支的 8 組）
+    expect(compared.length).toBe(action === 'optimize' ? 32 : 120);
+    for (const c of compared) {
       const direct = buildPrompt(c.action, c.selectedText, c.context, c.pageTitle, c.settings);
       // 經過新的分派函式也一樣，而且沒有系統提示
       const routed = buildRequestPrompt({

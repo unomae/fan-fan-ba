@@ -1519,6 +1519,27 @@ del.g-diff-del {
   margin-top:  4px !important;
 }
 
+/* 寫作批改：場合、原文標記計數、總評 */
+.g-opt-setting {
+  display:       flex !important;
+  align-items:   baseline !important;
+  gap:           8px !important;
+  margin-bottom: 10px !important;
+  font-size:     12.5px !important;
+  line-height:   1.5 !important;
+  color:         #555 !important;
+}
+.g-opt-setting .g-optimize-label { margin-bottom: 0 !important; flex: none !important; }
+.g-opt-counts { font-size: 11px !important; color: #777 !important; }
+.g-opt-count { border-radius: 3px !important; padding: 0 4px !important; }
+.g-opt-marks { margin-top: 6px !important; }
+.g-opt-summary {
+  border-top:  1px solid rgba(0, 0, 0, 0.07) !important;
+  padding-top: 8px !important;
+  margin-top:  8px !important;
+}
+.g-opt-summary-text { font-size: 13px !important; line-height: 1.6 !important; }
+
 /* ════════════════════════════════════════════════
    15. 歷史紀錄面板（g-history-panel）
    ════════════════════════════════════════════════ */
@@ -1739,7 +1760,17 @@ del.g-diff-del {
 .g-ca-mark.g-ca-type-grammar,
 .g-ca-note-text.g-ca-type-grammar { background: rgba(138, 180, 248, 0.30) !important; }
 .g-ca-mark.g-ca-type-error,
-.g-ca-note-text.g-ca-type-error { background: rgba(234, 67, 53, 0.22) !important; }
+.g-ca-note-text.g-ca-type-error,
+.g-ca-type-label.g-ca-type-error,
+.g-opt-count.g-ca-type-error { background: rgba(234, 67, 53, 0.22) !important; }
+.g-ca-mark.g-ca-type-awkward,
+.g-ca-note-text.g-ca-type-awkward,
+.g-ca-type-label.g-ca-type-awkward,
+.g-opt-count.g-ca-type-awkward { background: rgba(249, 171, 0, 0.30) !important; }
+.g-ca-mark.g-ca-type-good,
+.g-ca-note-text.g-ca-type-good,
+.g-ca-type-label.g-ca-type-good,
+.g-opt-count.g-ca-type-good { background: rgba(52, 168, 83, 0.22) !important; }
 .g-ca-note-text { border-radius: 3px !important; padding: 0 2px !important; background: rgba(249, 212, 35, 0.35) !important; }
 .g-ca-unmatched .g-ca-note-text { background: transparent !important; }
 .g-ca-notes { margin-top: 8px !important; font-size: 12.5px !important; }
@@ -3121,6 +3152,9 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
     color: #d3ecc2 !important;
   }
   #gemini-result-card .g-optimize-reasons { border-top-color: var(--ffb-dark-border) !important; }
+  #gemini-result-card .g-opt-setting,
+  #gemini-result-card .g-opt-counts { color: var(--ffb-dark-text-muted) !important; }
+  #gemini-result-card .g-opt-summary { border-top-color: var(--ffb-dark-border) !important; }
   #gemini-result-card .g-ca-label { color: var(--ffb-dark-text-muted) !important; }
   #gemini-result-card .g-ca-before .g-ca-value {
     background: rgba(255, 255, 255, 0.05) !important;
