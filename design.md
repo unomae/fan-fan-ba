@@ -67,6 +67,44 @@
 | CSS 變數範圍 | `#gemini-ai-toolbar, #gemini-result-card` | 避免污染宿主頁 `:root` |
 | 所有樣式 | 加 `!important` | 防止宿主頁覆蓋 |
 
+### 浮層 UI 深色模式（第一階段）
+
+系統設定為深色時（`@media (prefers-color-scheme: dark)`），工具列、結果卡（含單字本面板）、浮球與選單、單字高亮提示、全文翻譯控制面板換成下表的暗色。亮色規則不動；token 定義在這五個元件的根節點（`#gemini-ai-toolbar`、`#gemini-result-card`、`#fanfanba-floating`、`.g-vocab-highlight-tip`、`.ffb-page-translation-panel`），不寫在頁面 `:root`。插進網頁的譯文段落與單字高亮標記不在本階段，它們依頁面底色自己調對比。設定頁、popup、welcome 也還沒做。
+
+| Token | 值 | 用途 |
+|------|----|------|
+| `--ffb-dark-surface` | `rgba(32, 33, 36, 0.98)` | 結果卡、工具列、全文翻譯面板底色 |
+| `--ffb-dark-surface-raised` | `#2b2d31` | 按鈕、輸入框、浮球、單字提示 |
+| `--ffb-dark-surface-hover` | `#36393e` | 中性按鈕 hover |
+| `--ffb-dark-border` | `rgba(255, 255, 255, 0.12)` | 分隔線、一般邊框 |
+| `--ffb-dark-border-strong` | `rgba(255, 255, 255, 0.24)` | 輸入框與需要看得出邊界的元件 |
+| `--ffb-dark-text` | `#e8eaed` | 主要文字 |
+| `--ffb-dark-text-strong` | `#f8f9fa` | 單字、標題、粗體 |
+| `--ffb-dark-text-muted` | `#a9afb8` | 次要文字、時間、提示 |
+| `--ffb-dark-accent`／`-bg` | `#9ec1fa`／`rgba(138, 180, 248, 0.16)` | 動作標籤、連結色、「記得」與語境徽章 |
+| `--ffb-dark-green`／`-bg` | `#a8d88a`／`rgba(163, 209, 121, 0.16)` | 品牌綠：收藏、選中分頁、成功與提示列 |
+| `--ffb-dark-purple`／`-bg` | `#c3b5f5`／`rgba(160, 140, 230, 0.18)` | Obsidian 相關 |
+| `--ffb-dark-orange`／`-bg` | `#f6b26b`／`rgba(246, 178, 107, 0.16)` | 「還不熟」、解釋標籤、內嵌內容提示 |
+| `--ffb-dark-danger`／`-bg` | `#f6a39c`／`rgba(242, 139, 130, 0.14)` | 錯誤、刪除、重試 |
+| `--ffb-dark-focus` | `rgba(138, 180, 248, 0.6)` | 所有 `:focus-visible` 外框 |
+| `--ffb-dark-shadow` | `0 10px 28px rgba(0, 0, 0, 0.45)` | 浮層陰影 |
+
+**對比**：所有有文字的元素（含 hover 與 focus-visible 狀態）文字對比 ≥ 4.5:1，網頁底色分別以純白與純黑兩種最壞情況計算（2026-09-30 實測最低 4.82:1，量法見 `CHANGELOG.md`）。新增暗色樣式時沿用上表 token，不要另寫色碼。
+
+**收斂**：暗色下錯誤色只有 `--ffb-dark-danger` 一個、焦點外框只有 `--ffb-dark-focus` 一個。亮色目前仍有兩處不一致，因為這階段要求亮色外觀不變，所以先記錄、未修改：
+
+- 錯誤文字：`.g-error` 在 `content.css` 定義兩次（`#d93025` 與 `#f87171`，後者生效）。`#f87171` 在白底上對比約 2.8:1，未達 4.5:1。
+- 焦點外框：藍（`rgba(26, 115, 232, …)`）、綠（`rgba(90, 158, 58, …)`）、紫（`rgba(107, 93, 170, …)`）三套並存。
+
+**術語**：
+
+| 名詞 | 意思 |
+|------|------|
+| surface | 元件本身的底色；`raised` 是浮在 surface 上的一層（按鈕、輸入框） |
+| muted | 次要文字，仍需達到 4.5:1 對比 |
+| accent／green／purple／orange／danger | 語意色；`-bg` 是同色系的半透明底，文字用不帶 `-bg` 的那個 |
+| 元件根節點 | 翻翻吧插進網頁的最外層節點；所有 token 與暗色覆寫都從這裡開始，避免影響網頁本身 |
+
 ---
 
 ## 3. 字型

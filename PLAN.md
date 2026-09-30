@@ -9,7 +9,7 @@
 | 項目 | 狀態 |
 |------|------|
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
-| 自動化單元測試 | <!-- ffb:suites -->34<!-- /ffb:suites --> suites / <!-- ffb:tests -->517<!-- /ffb:tests --> tests 全綠（2026-09-30，含模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點） |
+| 自動化單元測試 | <!-- ffb:suites -->34<!-- /ffb:suites --> suites / <!-- ffb:tests -->520<!-- /ffb:tests --> tests 全綠（2026-09-30，含模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-08-26；改 code 先 `npm run package`） |
 | 手動 QA | 全表 55/78；剩 23 項幾乎全卡「無 API key」或「需外部 App／帳號」（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | **2026-09-20 裁決：暫緩送審，先做功能**，告一段落再回頭走上架流程。Chrome Web Store 仍是 release checkpoint |
@@ -49,7 +49,7 @@
 - **5. Sprint 3 中期**
 
   - **目的**：改善中期介面與 DOM 維護。
-  - **現況**：**Sprint 3 中期**：dom.js innerHTML 遷移完成、高亮／全文翻譯接 DOM 變更感知層、dark mode 第一階段、design token 收斂（error/focus 色、glass 參數）＋術語表。
+  - **現況**：**Sprint 3 中期**：dom.js innerHTML 遷移完成（2026-09-30）；dark mode 第一階段完成（2026-09-30，浮層 UI，見 `CHANGELOG.md`；暗色 token 與術語表在 `design.md`）；高亮／全文翻譯接 DOM 變更感知層未開始；亮色的 error／focus 色收斂與 glass 參數未做（`design.md`「浮層 UI 深色模式」記錄了現況）。
   - **接續**：依 Sprint 3 原優先序處理，先核對研究與施工界線。
   - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
 

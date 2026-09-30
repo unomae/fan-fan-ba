@@ -3,6 +3,28 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-30 — 深色模式第一階段（浮層 UI）
+
+**範圍**：系統設定為深色時，工具列、結果卡（含最近查詢、Obsidian 面板、字典／解釋／優化內容、錯誤與提示、底部列、單字本面板）、浮球與選單、單字高亮提示、全文翻譯控制面板換成暗色。亮色外觀不變。插進網頁的譯文段落與單字高亮標記不在本階段（它們依頁面底色自己調對比）；設定頁、popup、welcome 也還沒做。
+
+**做法**：
+- `content.css` 最後新增一個 `@media (prefers-color-scheme: dark)` 區塊，上方的亮色規則一行都沒改。暗色 token（`--ffb-dark-*`，共 20 個）定義在五個元件的根節點上，不寫在頁面 `:root`；覆寫的 selector 都帶元件根前綴（`#gemini-result-card …` 等），specificity 一定高於亮色的 class 規則，每條宣告都加 `!important`。
+- 根節點設 `color-scheme: dark`，原生的 select、輸入框與捲軸跟著變暗。
+- 暗色下錯誤色只用 `--ffb-dark-danger`、所有 `:focus-visible` 外框只用 `--ffb-dark-focus`。
+- 浮球旁的「×」原本沒有底色、直接疊在網頁上，暗色下給一個深色圓底，對比才不受網頁底色影響。
+- `design.md` 補上暗色 token 表、對比要求與術語表。
+
+**亮色錯誤色與焦點色未收斂**：這一階段要求亮色外觀不變，所以只在 `design.md` 記錄現況：`.g-error` 定義兩次（`#d93025` 與 `#f87171`，後者生效，白底對比約 2.8:1，未達 4.5:1）；焦點外框有藍、綠、紫三套。要改需要另外決定。
+
+**驗證**：
+- 亮色不變：用 Chromium 1161 把渲染對照測試的 32 組基準 HTML 分別套上改前與改後的 `content.css`，逐元素比對計算後的 color、background、四邊 border-color、box-shadow、outline-color、fill、stroke、opacity、background-size，差異 0。
+- 暗色對比：同樣 32 組（全文翻譯譯文段落除外），對每個有文字的元素把背景逐層疊到網頁底色上，網頁底色用純白與純黑兩種最壞情況各算一次：靜態 574 筆最低 5.25:1；再以 CDP 強制 `:hover` 與 `:focus-visible` 對所有按鈕、選單、輸入框量 260 筆，最低 4.82:1，全部 ≥ 4.5:1。第一輪有 27＋37 筆未達標（半透明底疊在白色網頁上被墊亮、「×」沒有底色），調整卡片不透明度、藍與紅的文字色、刪除鍵 hover 底色並給「×」加底色後全過。另外列出暗色下仍帶亮色背景或邊框的元素，只剩刻意的半透明彩色邊框、進度條與「重新查詢」藍底按鈕。
+- `css.test.js` 新增 3 條：暗色區塊的 selector 全部以五個元件根節點開頭、不碰 `:root`／`html`／`body`；不含 animation／transition（系統要求減少動態效果時不受影響）；每條宣告都有 `!important`。**fail-then-pass**：在暗色區塊加一條 `body` 規則、一條 transition 並拿掉一個 `!important`，3 條全紅；還原後逐位元組一致、全綠。
+- 全套 34 suites／520 tests exit 0、0 skipped；`check-docs --verify` exit 0。
+- e2e（Windows、Chromium 1161）40 PASS／1 FAIL／4 PARTIAL。唯一的 FAIL 是「CSV 公式前綴防護：讀不到剪貼簿」：把 `dist/pkg/content.css` 換回改前版本重跑同樣失敗；另用最小腳本在同一顆 Chromium 寫入再讀取剪貼簿也只拿到空字串，判定是當時這台機器的系統剪貼簿無法存取，與本次改動無關。這一條本次未驗成。
+
+**未驗**：實機切換系統深色後的外觀（已列入 `MANUAL-QA.md`）；CSV 匯出那條 e2e 要在剪貼簿可用時重跑。
+
 ## 2026-09-30 — 頁面 UI 改用 DOM builder（Trusted Types 相容）
 
 **範圍**：content script 的所有 UI 改成用 `createElement`／`createElementNS`／`createTextNode` 建立，不再把 HTML 字串交給 `innerHTML`、`insertAdjacentHTML` 這類寫入點。頁面 CSP 若要求 Trusted Types（`require-trusted-types-for 'script'`，Google 系常見），瀏覽器會直接拒絕純字串寫入，工具列、結果卡、浮球與全文翻譯面板就整塊出不來；改寫後這條路徑不再使用。這是行為不變的重構，畫面與互動不變。
