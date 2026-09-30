@@ -225,6 +225,7 @@ function loadContent() {
   chrome.runtime.id = 'mock-id';
   chrome.runtime.sendMessage = jest.fn(() => Promise.resolve({ models: [] }));
   chrome.runtime.connect = jest.fn(() => port);
+  chrome.storage.onChanged = { addListener: jest.fn() };
   ['custom-actions.js', 'content/site-policy.js', 'content/state.js', 'content/utils.js', 'content/dom.js',
     'content/custom-action-render.js', 'content/obsidian.js', 'content/selection-controls.js',
     'content/toolbar.js', 'content/result-card.js', 'content/main.js'].forEach(file => runContentScript(file, context));
@@ -312,5 +313,30 @@ describe('動作圖示', () => {
       expect(buildCustomActionIcon(name).namespaceURI).toBe('http://www.w3.org/2000/svg');
     }
     expect(buildCustomActionIcon('no-such-icon').outerHTML).toBe(buildCustomActionIcon(getDefaultCustomActionIcon()).outerHTML);
+  });
+});
+
+describe('工具列跟著動作清單更新', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('storage 的動作清單變了，工具列馬上換；點自訂動作按鈕會標成使用中', async () => {
+    const { context } = loadContent();
+    await flush();
+    vm.runInContext("savedSel = { text: 'She go to school.', range: null };", context);
+    context.showToolbar();
+    const onChanged = chrome.storage.onChanged.addListener.mock.calls[0][0];
+    onChanged({ actionList: { newValue: [
+      { id: 'optimize', builtin: true, enabled: false, pinned: true, order: 2 },
+      { ...FIELDS_ACTION, builtin: false, enabled: true, pinned: true, order: 3, icon: 'list', model: 'default', systemPrompt: '', userPrompt: '{{selection}}' }
+    ] } }, 'local');
+
+    const toolbar = document.getElementById('gemini-ai-toolbar');
+    const labels = [...toolbar.querySelectorAll(':scope > .g-btn')].map(btn => btn.getAttribute('aria-label'));
+    expect(labels).toEqual(['翻譯', '解釋這個', '重點摘要', '更多動作']);
+
+    toolbar.querySelector('[data-action-id="custom-summary"]').click();
+    await flush();
+    expect(toolbar.querySelector('[data-action-id="custom-summary"]').classList.contains('g-active')).toBe(true);
+    expect(toolbar.querySelector('[data-action="translate"]').classList.contains('g-active')).toBe(false);
   });
 });

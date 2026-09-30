@@ -383,6 +383,12 @@
   opacity: 1 !important;
 }
 
+/* 選單展開時不顯示「更多動作」提示，避免蓋住選單最後一列 */
+.g-btn.g-more[aria-expanded="true"]::after,
+.g-btn.g-more[aria-expanded="true"]::before {
+  opacity: 0 !important;
+}
+
 .g-btn:focus-visible {
   outline: 2px solid rgba(26, 115, 232, 0.38) !important;
   outline-offset: 3px !important;
@@ -1660,6 +1666,53 @@ del.g-diff-del {
   font-weight: 650 !important;
 }
 
+/* ── 工具列「⋯」更多動作選單 ── */
+#gemini-ai-toolbar .g-sep[hidden] { display: none !important; }
+#gemini-ai-toolbar .g-action-menu {
+  position:      absolute !important;
+  top:           calc(100% + 6px) !important;
+  right:         0;
+  z-index:       1 !important;
+  display:       block !important;
+  min-width:     230px !important;
+  max-width:     min(320px, calc(100vw - 16px)) !important;
+  max-height:    min(360px, 60vh) !important;
+  overflow-y:    auto !important;
+  margin:        0 !important;
+  padding:       4px !important;
+  background:    #fff !important;
+  color:         #1f2933 !important;
+  border:        1px solid rgba(0, 0, 0, 0.1) !important;
+  border-radius: 10px !important;
+  box-shadow:    0 8px 24px rgba(0, 0, 0, 0.14) !important;
+  font-size:     13px !important;
+  text-align:    left !important;
+}
+#gemini-ai-toolbar .g-action-menu.g-am-up { top: auto !important; bottom: calc(100% + 6px) !important; }
+#gemini-ai-toolbar .g-am-list { list-style: none !important; margin: 0 !important; padding: 0 !important; }
+#gemini-ai-toolbar .g-am-row {
+  display: flex !important; align-items: center !important; gap: 2px !important;
+  margin: 0 !important; padding: 2px !important; border-radius: 7px !important;
+}
+#gemini-ai-toolbar .g-am-row:hover { background: rgba(0, 0, 0, 0.04) !important; }
+#gemini-ai-toolbar .g-am-handle { color: #aab0b8 !important; cursor: grab !important; font-size: 11px !important; padding: 0 3px !important; letter-spacing: -2px !important; user-select: none !important; }
+#gemini-ai-toolbar .g-action-menu button {
+  all: unset;
+  box-sizing: border-box !important;
+  display: inline-flex !important; align-items: center !important; justify-content: center !important;
+  min-height: 28px !important; border-radius: 6px !important; cursor: pointer !important;
+  color: inherit !important; font: inherit !important;
+}
+#gemini-ai-toolbar .g-action-menu button:disabled { opacity: 0.3 !important; cursor: default !important; }
+#gemini-ai-toolbar .g-action-menu button:focus-visible { outline: 2px solid #5a9e3a !important; outline-offset: -1px !important; }
+#gemini-ai-toolbar .g-action-menu .g-am-run { flex: 1 !important; justify-content: flex-start !important; gap: 8px !important; padding: 0 8px !important; min-width: 0 !important; }
+#gemini-ai-toolbar .g-action-menu .g-am-run span { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+#gemini-ai-toolbar .g-action-menu .g-am-icon { width: 26px !important; color: #7b838c !important; }
+#gemini-ai-toolbar .g-action-menu button:not(:disabled):hover { background: rgba(0, 0, 0, 0.06) !important; }
+#gemini-ai-toolbar .g-action-menu .g-am-pin.g-am-pinned { color: #5a9e3a !important; }
+#gemini-ai-toolbar .g-am-notice { font-size: 12px !important; color: #b3261e !important; padding: 0 8px !important; }
+#gemini-ai-toolbar .g-am-notice:empty { display: none !important; }
+
 /* ── 自訂動作版面（欄位卡／原文標註／前後對照）── */
 .g-icon-btn[hidden] { display: none !important; }
 .g-ca-field + .g-ca-field,
@@ -2863,6 +2916,18 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
   }
   #gemini-ai-toolbar .g-btn:focus-visible { background: var(--ffb-dark-accent-bg) !important; }
   #gemini-ai-toolbar .g-sep { background: var(--ffb-dark-border) !important; }
+  #gemini-ai-toolbar .g-action-menu {
+    background: var(--ffb-dark-surface-raised) !important;
+    color: var(--ffb-dark-text) !important;
+    border-color: var(--ffb-dark-border-strong) !important;
+  }
+  #gemini-ai-toolbar .g-am-row:hover,
+  #gemini-ai-toolbar .g-action-menu button:not(:disabled):hover { background: var(--ffb-dark-surface-hover) !important; }
+  #gemini-ai-toolbar .g-action-menu .g-am-icon,
+  #gemini-ai-toolbar .g-am-handle { color: var(--ffb-dark-text-muted) !important; }
+  #gemini-ai-toolbar .g-action-menu .g-am-pin.g-am-pinned { color: var(--ffb-dark-green) !important; }
+  #gemini-ai-toolbar .g-action-menu button:focus-visible { outline-color: var(--ffb-dark-focus) !important; }
+  #gemini-ai-toolbar .g-am-notice { color: var(--ffb-dark-danger) !important; }
 
   /* ── 結果卡外框、標題列、底部列 ───────────────── */
   #gemini-result-card {

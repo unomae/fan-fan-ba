@@ -375,7 +375,9 @@ function triggerAction(action) {
   if (!isPinned) userDragged = false; // pin 住時保留位置
 
   toolbar.querySelectorAll('.g-btn').forEach(b =>
-    b.classList.toggle('g-active', b.dataset.action === action)
+    b.classList.toggle('g-active', action === 'custom'
+      ? b.dataset.actionId === activeCustomAction.id
+      : b.dataset.action === action)
   );
 
   if (!resultCard || !document.body.contains(resultCard)) resultCard = createResultCard();
@@ -618,6 +620,13 @@ function buildStreamingText(text) {
   ]);
 }
 
+// 工具列依動作清單顯示（設定頁與「⋯」選單都會改這份清單）
+function loadToolbarActionList() {
+  globalThis.FanFanBaCustomActions?.loadActionList()
+    ?.then(list => setToolbarActionList(list))
+    .catch(() => {});
+}
+
 function initContentSettings() {
   chrome.storage.sync.get({ model: FanFanBaModels.DEFAULT_MODEL, pageTranslationModel: '', targetLanguage: 'zh-TW', explanationLanguage: 'target', ttsLanguageMode: 'auto' })
     .then(settings => {
@@ -636,7 +645,13 @@ function initContentSettings() {
     })
     .catch(() => {});
 
+  loadToolbarActionList();
+
   chrome.storage.onChanged?.addListener((changes, area) => {
+    const actionsApi = globalThis.FanFanBaCustomActions;
+    if (area === 'local' && actionsApi && changes[actionsApi.STORAGE_KEY]) {
+      setToolbarActionList(actionsApi.normalizeActionList(changes[actionsApi.STORAGE_KEY].newValue));
+    }
     if (area === 'sync') {
       if (changes.model) {
         activeModel = FanFanBaModels.normalizeModel(changes.model.newValue);

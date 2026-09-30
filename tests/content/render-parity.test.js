@@ -338,7 +338,10 @@ const SCENARIOS = {
 
   'toolbar': ({ context }) => {
     context.showToolbar();
-    return run(context, 'toolbar').cloneNode(true);
+    // 「⋯」更多動作是之後刻意新增的（行為另見 toolbar-menu.test.js），這裡只比對內建三顆按鈕
+    const clone = run(context, 'toolbar').cloneNode(true);
+    clone.querySelectorAll('.g-more, .g-more-sep, .g-action-menu').forEach(node => node.remove());
+    return clone;
   },
   'vocab-tooltip': ({ context }) => {
     const mark = document.createElement('mark');
