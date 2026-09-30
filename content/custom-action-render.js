@@ -125,7 +125,8 @@ function normalizeAnnotationType(type) {
   return /^[a-z0-9-]{1,20}$/.test(value) ? value : 'other';
 }
 
-function normalizeAnnotations(value) {
+// allowedTypes：有給就只留這些類型，其他標註整筆忽略（長難句分析用）
+function normalizeAnnotations(value, allowedTypes = null) {
   if (!Array.isArray(value)) return [];
   return value
     .filter(item => item && typeof item === 'object' && typeof item.text === 'string' && item.text)
@@ -133,11 +134,26 @@ function normalizeAnnotations(value) {
       text: item.text,
       type: normalizeAnnotationType(item.type),
       note: typeof item.note === 'string' ? item.note : ''
-    }));
+    }))
+    .filter(item => !allowedTypes || allowedTypes.includes(item.type));
 }
 
-// 依序在原文找每個片段；找得到的包成 <mark>，找不到的放進 unmatched
-function buildAnnotatedText(original, annotations) {
+// 長難句分析的類型名稱（註解列表與 Obsidian 輸出用）
+const ANNOTATION_TYPE_LABELS = {
+  subject: '主詞',
+  predicate: '動詞',
+  object: '受詞／補語',
+  clause: '子句',
+  modifier: '修飾',
+  connector: '連接詞'
+};
+
+// 「只看主幹」「斷句」的狀態：同一頁面內沿用上次的選擇（串流重繪、查下一句都不會跳回預設）
+const annotateViewState = { coreOnly: false, split: false };
+
+// 依序在原文找每個片段；找得到的包成 <mark>，找不到的放進 unmatched。
+// coreTypes：屬於主幹的類型，mark 加 g-ca-core；splitType：在這類片段的前後放斷句點
+function buildAnnotatedText(original, annotations, { coreTypes = null, splitType = null } = {}) {
   const source = String(original || '');
   const matches = [];
   const unmatched = [];
@@ -152,33 +168,100 @@ function buildAnnotatedText(original, annotations) {
   }
   matches.sort((a, b) => a.start - b.start);
 
+  // 斷句位置：子句片段的開頭與結尾，排除原文頭尾（前後沒有字就不用換行）。
+  // 結尾緊接的標點與空白跟著子句留在同一行，不要讓逗號自己落到下一行開頭
+  const breaks = new Set();
+  if (splitType) {
+    const startsAt = new Set(matches.map(m => m.start));
+    for (const { start, end, item } of matches) {
+      if (item.type !== splitType) continue;
+      if (source.slice(0, start).trim()) breaks.add(start);
+      let after = end;
+      while (after < source.length && !startsAt.has(after) && /[,;:.!?，。；：！？、)）」』]/.test(source[after])) after++;
+      // 標點後的空白也吃掉，斷點才會跟下一個子句的開頭重合（不會多出空行）
+      while (after < source.length && !startsAt.has(after) && /\s/.test(source[after])) after++;
+      if (source.slice(after).trim()) breaks.add(after);
+    }
+  }
   const nodes = [];
+  const emitted = new Set();
+  // 每個斷句點只放一個（子句結尾剛好是下一個片段開頭時不會重複）
+  const brAt = at => {
+    if (!breaks.has(at) || emitted.has(at)) return;
+    emitted.add(at);
+    // 空的 span：平常不佔位，開「斷句」時 CSS 改成 block 形成換行（原文文字不變）
+    nodes.push(ffbEl('span', { class: 'g-ca-break', 'aria-hidden': 'true' }));
+  };
+  const pushPlain = (from, to) => {
+    brAt(from);
+    let at = from;
+    for (const point of [...breaks].filter(p => p > from && p < to).sort((a, b) => a - b)) {
+      nodes.push(source.slice(at, point));
+      brAt(point);
+      at = point;
+    }
+    nodes.push(source.slice(at, to));
+  };
+
   let pos = 0;
   for (const { start, end, item } of matches) {
-    if (start > pos) nodes.push(source.slice(pos, start));
+    if (start > pos) pushPlain(pos, start);
+    brAt(start);
+    const isCore = coreTypes ? coreTypes.includes(item.type) : false;
     nodes.push(ffbEl('mark', {
-      class: `g-ca-mark g-ca-type-${item.type}`,
+      class: `g-ca-mark g-ca-type-${item.type}${isCore ? ' g-ca-core' : ''}`,
       title: item.note || null
     }, source.slice(start, end)));
     pos = end;
   }
-  if (pos < source.length) nodes.push(source.slice(pos));
+  if (pos < source.length) pushPlain(pos, source.length);
   return { node: ffbEl('div', { class: 'g-ca-annotated' }, nodes), matched: matches.map(m => m.item), unmatched };
+}
+
+// 「只看主幹」「斷句」兩個切換鈕：只切換 .g-ca 容器上的 class，不重畫內容
+function buildAnnotateToggle(label, stateKey, className) {
+  const btn = ffbEl('button', {
+    class: 'g-ca-toggle', type: 'button', dataset: { toggle: stateKey },
+    'aria-pressed': annotateViewState[stateKey] ? 'true' : 'false'
+  }, label);
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    annotateViewState[stateKey] = !annotateViewState[stateKey];
+    btn.setAttribute('aria-pressed', annotateViewState[stateKey] ? 'true' : 'false');
+    btn.closest('.g-ca')?.classList.toggle(className, annotateViewState[stateKey]);
+  });
+  return btn;
+}
+
+function buildAnnotateControls() {
+  return ffbEl('div', { class: 'g-ca-toggles', role: 'group', 'aria-label': '顯示方式' }, [
+    buildAnnotateToggle('只看主幹', 'coreOnly', 'g-ca-core-only'),
+    buildAnnotateToggle('斷句', 'split', 'g-ca-split')
+  ]);
 }
 
 function buildAnnotateLayout(action, data, { selectedText, pending }) {
   const arrayField = action.fields.find(field => Array.isArray(data[field.key]))
     || action.fields[0];
-  const annotations = normalizeAnnotations(data[arrayField.key]);
+  const allowedTypes = Array.isArray(action.annotationTypes) ? action.annotationTypes : null;
+  const coreTypes = Array.isArray(action.coreTypes) ? action.coreTypes : null;
+  const annotations = normalizeAnnotations(data[arrayField.key], allowedTypes);
   const hasArray = Object.prototype.hasOwnProperty.call(data, arrayField.key);
-  const { node, matched, unmatched } = buildAnnotatedText(selectedText, annotations);
+  const { node, matched, unmatched } = buildAnnotatedText(selectedText, annotations,
+    coreTypes ? { coreTypes, splitType: 'clause' } : {});
   const notes = [...matched, ...unmatched];
+  const typeLabel = type => (allowedTypes && ANNOTATION_TYPE_LABELS[type]) || null;
 
   return [
+    coreTypes && buildAnnotateControls(),
     node,
     hasArray
       ? (notes.length > 0 && ffbEl('ul', { class: 'g-list g-ca-notes' }, notes.map(item =>
-        ffbEl('li', { class: unmatched.includes(item) ? 'g-ca-unmatched' : null }, [
+        ffbEl('li', {
+          class: [unmatched.includes(item) && 'g-ca-unmatched', coreTypes?.includes(item.type) && 'g-ca-core']
+            .filter(Boolean).join(' ') || null
+        }, [
+          typeLabel(item.type) && ffbEl('span', { class: `g-ca-type-label g-ca-type-${item.type}` }, typeLabel(item.type)),
           ffbEl('span', { class: `g-ca-note-text g-ca-type-${item.type}` }, item.text),
           item.note ? `：${item.note}` : null
         ]))))
@@ -226,7 +309,10 @@ function buildCustomActionContent(action, data, { selectedText = '', pending = f
   if (layout === 'annotate') children = buildAnnotateLayout(action, safeData, options);
   else if (layout === 'compare') children = buildCompareLayout(action, safeData, options);
   else children = action.fields.map(field => buildCustomField(field, safeData, pending));
-  return ffbEl('div', { class: `g-ca g-ca-${layout === 'annotate' || layout === 'compare' ? layout : 'fields'}${pending ? ' g-streaming' : ''}` }, children);
+  const viewClasses = layout === 'annotate' && Array.isArray(action.coreTypes)
+    ? `${annotateViewState.coreOnly ? ' g-ca-core-only' : ''}${annotateViewState.split ? ' g-ca-split' : ''}`
+    : '';
+  return ffbEl('div', { class: `g-ca g-ca-${layout === 'annotate' || layout === 'compare' ? layout : 'fields'}${viewClasses}${pending ? ' g-streaming' : ''}` }, children);
 }
 
 // 解析失敗：原文照純文字顯示，加「格式不符」提示
@@ -247,10 +333,16 @@ function buildCustomActionMarkdown(action, data) {
     if (Array.isArray(value)) {
       body = value.map(item => {
         if (item && typeof item === 'object' && typeof item.text === 'string') {
+          // 長難句分析：白名單外的類型不輸出，其餘前面加類型名稱
+          if (Array.isArray(action.annotationTypes)) {
+            const type = normalizeAnnotationType(item.type);
+            if (!action.annotationTypes.includes(type)) return null;
+            return `- ${ANNOTATION_TYPE_LABELS[type] ? `［${ANNOTATION_TYPE_LABELS[type]}］` : ''}${item.text}${item.note ? `：${item.note}` : ''}`;
+          }
           return `- ${item.text}${item.note ? `：${item.note}` : ''}`;
         }
         return `- ${customValueToText(item)}`;
-      }).join('\n');
+      }).filter(line => line != null).join('\n');
     } else {
       body = customValueToText(value);
     }
@@ -322,6 +414,8 @@ if (typeof module !== 'undefined' && module.exports) {
     buildCustomFormatError,
     buildCustomActionMarkdown,
     normalizeAnnotationType,
+    ANNOTATION_TYPE_LABELS,
+    annotateViewState,
     CUSTOM_ACTION_ICONS,
     CUSTOM_ACTION_DEFAULT_ICON,
     listCustomActionIcons,

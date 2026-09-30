@@ -85,6 +85,19 @@ describe('工具列：依動作清單顯示', () => {
     bar().querySelector('[data-action-id="custom-a"]').click();
     expect(context.runCustomAction).toHaveBeenCalledWith(expect.objectContaining({ id: 'custom-a', name: '自訂a' }));
   });
+
+  it('長難句分析預設不放工具列，只在「⋯」選單；從選單執行走 triggerAction', () => {
+    const context = loadToolbar();
+    for (const list of [null, []]) { // 還沒讀到清單、讀到空清單都一樣
+      if (list) setList(context, list);
+      expect(barLabels()).toEqual(['翻譯', '解釋這個', '優化精進', '更多動作']);
+    }
+    bar().querySelector('.g-more').click();
+    expect(menuButton('長難句分析', 'pin').getAttribute('aria-pressed')).toBe('false');
+    menuButton('長難句分析', 'run').click();
+    expect(context.triggerAction).toHaveBeenCalledWith('analyze');
+    expect(context.runCustomAction).not.toHaveBeenCalled();
+  });
 });
 
 describe('「⋯」選單', () => {
@@ -94,7 +107,7 @@ describe('「⋯」選單', () => {
     const context = loadToolbar();
     setList(context, [{ id: 'optimize', builtin: true, enabled: false }, custom('a')]);
     bar().querySelector('.g-more').click();
-    expect(menuNames()).toEqual(['翻譯', '解釋這個', '自訂a']);
+    expect(menuNames()).toEqual(['翻譯', '解釋這個', '長難句分析', '自訂a']);
     expect(bar().querySelector('.g-more').getAttribute('aria-expanded')).toBe('true');
     expect(document.activeElement).toBe(menuButton('翻譯', 'run'));
 
@@ -113,6 +126,7 @@ describe('「⋯」選單', () => {
     menuButton('解釋這個', 'pin').focus();
     key(document.activeElement, 'ArrowDown');
     expect(document.activeElement).toBe(menuButton('優化精進', 'pin'));
+    key(document.activeElement, 'ArrowDown');
     key(document.activeElement, 'ArrowDown');
     key(document.activeElement, 'ArrowDown');
     expect(document.activeElement).toBe(menuButton('翻譯', 'pin'));
@@ -151,15 +165,15 @@ describe('「⋯」選單', () => {
     setList(context, []);
     bar().querySelector('.g-more').click();
     expect(menuButton('翻譯', 'up').disabled).toBe(true);
-    expect(menuButton('優化精進', 'down').disabled).toBe(true);
+    expect(menuButton('長難句分析', 'down').disabled).toBe(true);
 
     menuButton('優化精進', 'up').focus();
     menuButton('優化精進', 'up').click();
     await flush(); await flush();
-    expect(menuNames()).toEqual(['翻譯', '優化精進', '解釋這個']);
+    expect(menuNames()).toEqual(['翻譯', '優化精進', '解釋這個', '長難句分析']);
     expect(barLabels()).toEqual(['翻譯', '優化精進', '解釋這個', '更多動作']);
     expect(store.actionList.map(action => [action.id, action.order]))
-      .toEqual([['translate', 0], ['optimize', 1], ['explain', 2]]);
+      .toEqual([['translate', 0], ['optimize', 1], ['explain', 2], ['analyze', 3]]);
     expect(document.activeElement).toBe(menuButton('優化精進', 'up'));
   });
 
@@ -169,8 +183,8 @@ describe('「⋯」選單', () => {
     bar().querySelector('.g-more').click();
     menuButton('優化精進', 'up').click();
     await flush(); await flush();
-    expect(menuNames()).toEqual(['優化精進', '翻譯']);
-    expect(store.actionList.map(action => action.id)).toEqual(['optimize', 'translate', 'explain']);
+    expect(menuNames()).toEqual(['優化精進', '翻譯', '長難句分析']);
+    expect(store.actionList.map(action => action.id)).toEqual(['optimize', 'translate', 'explain', 'analyze']);
   });
 
   it('拖曳排序', async () => {
@@ -182,7 +196,7 @@ describe('「⋯」選單', () => {
     const drop = new Event('drop', { bubbles: true, cancelable: true });
     rowOf('翻譯').dispatchEvent(drop);
     await flush(); await flush();
-    expect(menuNames()).toEqual(['自訂a', '翻譯', '解釋這個', '優化精進']);
+    expect(menuNames()).toEqual(['自訂a', '翻譯', '解釋這個', '優化精進', '長難句分析']);
     expect(drop.defaultPrevented).toBe(true);
   });
 

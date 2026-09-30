@@ -11,7 +11,7 @@ function resultCardIcon(size, shapes, { strokeWidth = 2, className = null } = {}
 const RESULT_CARD_ICON_OBSIDIAN = [['path', { d: 'M6 3h12l4 6-10 13L2 9Z' }], ['path', { d: 'M11 3 8 9l4 13 4-13-3-6' }], ['path', { d: 'M2 9h20' }]];
 const RESULT_CARD_ICON_COPY = [['rect', { width: 14, height: 14, x: 8, y: 8, rx: 2 }], ['path', { d: 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2' }]];
 
-// 三個查詢動作的標籤圖示（結果卡標題列；歷史還原與 main.js 新查詢共用）
+// 內建查詢動作的標籤圖示（結果卡標題列；歷史還原與 main.js 新查詢共用）
 const RESULT_CARD_ACTION_TAGS = {
   translate: {
     label: '翻譯',
@@ -24,13 +24,21 @@ const RESULT_CARD_ACTION_TAGS = {
   optimize: {
     label: '優化',
     shapes: [['path', { d: 'm12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z' }]]
+  },
+  analyze: {
+    label: '長難句分析',
+    // 與工具列、設定頁同一個「清單」圖示，由 custom-action-render.js 畫
+    iconName: 'list'
   }
 };
 
 // 標題列標籤：已知動作＝圖示＋中文名；其他（如自訂字串）只顯示原字
 function setResultCardTag(tagEl, action) {
   const meta = RESULT_CARD_ACTION_TAGS[action];
-  ffbClear(tagEl).append(...(meta ? [resultCardIcon(13, meta.shapes), meta.label] : [String(action)]));
+  if (!meta) { ffbClear(tagEl).append(String(action)); return; }
+  const icon = meta.shapes ? resultCardIcon(13, meta.shapes)
+    : (typeof buildCustomActionIcon === 'function' ? buildCustomActionIcon(meta.iconName, 13) : null);
+  ffbClear(tagEl).append(...[icon, meta.label].filter(Boolean));
 }
 
 function createResultCard() {
@@ -453,13 +461,14 @@ function renderResult(action, rawResult, selectedText, { fromHistory = false } =
   const body = resultCard?.querySelector('.g-rc-body');
   if (!body) return;
 
-  // 自訂動作：解析 JSON 後依版面渲染；不寫入最近紀錄（紀錄不存動作定義，無法還原版面），
+  // 自訂動作與長難句分析：解析 JSON 後依版面渲染；不寫入最近紀錄（紀錄不存動作定義，無法還原版面），
   // 所以從紀錄還原的一律照舊走純文字
-  if (action === 'custom' && !fromHistory) {
-    const parsed = FanFanBaCustomActions.parseCustomActionOutput(rawResult, activeCustomAction?.fields);
+  const structuredAction = fromHistory ? null : getStructuredAction(action);
+  if (structuredAction) {
+    const parsed = FanFanBaCustomActions.parseCustomActionOutput(rawResult, structuredAction.fields);
     if (parsed.ok) {
-      lastCustomOutput = { action: activeCustomAction, data: parsed.data };
-      ffbClear(body).appendChild(buildCustomActionContent(activeCustomAction, parsed.data, { selectedText }));
+      lastCustomOutput = { action: structuredAction, data: parsed.data };
+      ffbClear(body).appendChild(buildCustomActionContent(structuredAction, parsed.data, { selectedText }));
     } else {
       ffbClear(body).appendChild(buildCustomFormatError(rawResult));
     }

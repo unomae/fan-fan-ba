@@ -144,10 +144,17 @@ describe('validateCustomAction', () => {
 });
 
 describe('動作清單', () => {
-  it('沒有存過資料時只有內建三個，順序與目前工具列相同', () => {
+  it('沒有存過資料時只有內建四個：前三個順序與目前工具列相同，長難句分析預設不釘選', () => {
     const list = CustomActions.normalizeActionList(undefined);
-    expect(list.map(a => a.id)).toEqual(['translate', 'explain', 'optimize']);
-    expect(list.every(a => a.builtin && a.enabled && a.pinned && a.model === 'default')).toBe(true);
+    expect(list.map(a => a.id)).toEqual(['translate', 'explain', 'optimize', 'analyze']);
+    expect(list.every(a => a.builtin && a.enabled && a.model === 'default')).toBe(true);
+    expect(list.map(a => a.pinned)).toEqual([true, true, true, false]);
+    // 舊使用者存過清單（只有三個內建）時，長難句分析同樣不會自己跑上工具列
+    const stored = CustomActions.normalizeActionList([{ id: 'translate', builtin: true, pinned: true, order: 0 }]);
+    expect(stored.find(a => a.id === 'analyze').pinned).toBe(false);
+    // 使用者釘選過就照存的值
+    const pinned = CustomActions.normalizeActionList([{ id: 'analyze', builtin: true, pinned: true, order: 0 }]);
+    expect(pinned.find(a => a.id === 'analyze').pinned).toBe(true);
   });
 
   it('內建動作可隱藏、可排序，但名稱與 prompt 取程式定義、刪不掉', () => {
@@ -157,7 +164,7 @@ describe('動作清單', () => {
       { id: 'explain', builtin: true, order: 3 },
       makeAction({ order: 1 })
     ]);
-    expect(list.map(a => a.id)).toEqual(['optimize', 'custom-vocab-note', 'translate', 'explain']);
+    expect(list.map(a => a.id)).toEqual(['optimize', 'custom-vocab-note', 'translate', 'explain', 'analyze']);
     const optimize = list.find(a => a.id === 'optimize');
     expect(optimize).toEqual({ id: 'optimize', name: '優化', icon: 'optimize', builtin: true, enabled: false, pinned: false, order: 0, model: 'default' });
   });

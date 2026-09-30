@@ -1751,6 +1751,48 @@ del.g-diff-del {
 }
 .g-ca-error-label { font-size: 12px !important; color: #b3261e !important; margin-bottom: 6px !important; }
 
+/* ── 長難句分析：句子成分顏色、只看主幹、斷句 ── */
+.g-ca-mark.g-ca-type-subject,   .g-ca-type-label.g-ca-type-subject,   .g-ca-note-text.g-ca-type-subject   { background: rgba(66, 133, 244, 0.22) !important; }
+.g-ca-mark.g-ca-type-predicate, .g-ca-type-label.g-ca-type-predicate, .g-ca-note-text.g-ca-type-predicate { background: rgba(234, 67, 53, 0.20) !important; }
+.g-ca-mark.g-ca-type-object,    .g-ca-type-label.g-ca-type-object,    .g-ca-note-text.g-ca-type-object    { background: rgba(52, 168, 83, 0.22) !important; }
+.g-ca-mark.g-ca-type-clause,    .g-ca-type-label.g-ca-type-clause,    .g-ca-note-text.g-ca-type-clause    { background: rgba(161, 66, 244, 0.14) !important; }
+.g-ca-mark.g-ca-type-modifier,  .g-ca-type-label.g-ca-type-modifier,  .g-ca-note-text.g-ca-type-modifier  { background: rgba(128, 134, 139, 0.18) !important; }
+.g-ca-mark.g-ca-type-connector, .g-ca-type-label.g-ca-type-connector, .g-ca-note-text.g-ca-type-connector { background: rgba(249, 171, 0, 0.30) !important; }
+.g-ca-type-label {
+  display:       inline-block !important;
+  font-size:     10.5px !important;
+  font-weight:   700 !important;
+  line-height:   1.5 !important;
+  border-radius: 3px !important;
+  padding:       0 4px !important;
+  margin-right:  4px !important;
+}
+.g-ca-toggles { display: flex !important; gap: 6px !important; margin-bottom: 8px !important; }
+.g-ca-toggle {
+  font:          inherit !important;
+  font-size:     11.5px !important;
+  line-height:   1.4 !important;
+  padding:       2px 8px !important;
+  background:    none !important;
+  border:        1px solid rgba(0, 0, 0, 0.15) !important;
+  border-radius: 999px !important;
+  color:         #666 !important;
+  cursor:        pointer !important;
+}
+.g-ca-toggle:hover { border-color: #a3d179 !important; color: #3a7a1e !important; }
+.g-ca-toggle:focus-visible { outline: 2px solid rgba(90, 158, 58, 0.34) !important; outline-offset: 2px !important; }
+.g-ca-toggle[aria-pressed="true"] {
+  background:   rgba(163, 209, 121, 0.25) !important;
+  border-color: #a3d179 !important;
+  color:        #2f7a1f !important;
+}
+/* 只看主幹：主詞／動詞／受詞以外的標記退回純文字，說明列表也只留主幹 */
+.g-ca-core-only .g-ca-annotated .g-ca-mark:not(.g-ca-core) { background: transparent !important; padding: 0 !important; }
+.g-ca-core-only .g-ca-notes li:not(.g-ca-core) { display: none !important; }
+/* 斷句：子句前後換行 */
+.g-ca-break { display: none !important; }
+.g-ca-split .g-ca-break { display: block !important; }
+
 /* ════════════════════════════════════════════════
    17. 右側常駐懸浮球
    ════════════════════════════════════════════════ */
@@ -3090,6 +3132,16 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
     color: #d3ecc2 !important;
   }
   #gemini-result-card .g-ca-error-label { color: #f2b8b5 !important; }
+  #gemini-result-card .g-ca-toggle {
+    border-color: var(--ffb-dark-border-strong) !important;
+    color: var(--ffb-dark-text-muted) !important;
+  }
+  #gemini-result-card .g-ca-toggle:hover,
+  #gemini-result-card .g-ca-toggle[aria-pressed="true"] {
+    background: var(--ffb-dark-green-bg) !important;
+    border-color: rgba(163, 209, 121, 0.45) !important;
+    color: var(--ffb-dark-green) !important;
+  }
   #gemini-result-card .g-opt-copy-btn {
     border-color: var(--ffb-dark-border-strong) !important;
     color: var(--ffb-dark-text-muted) !important;

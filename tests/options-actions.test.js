@@ -69,15 +69,15 @@ describe('設定頁：自訂動作清單', () => {
     global.fetch = jest.fn();
   });
 
-  it('預設列出三個內建動作，標示內建、只有「以此為範本」、沒有編輯與刪除', async () => {
+  it('預設列出四個內建動作，標示內建、只有「以此為範本」、沒有編輯與刪除', async () => {
     await loadOptions();
-    expect(listNames()).toEqual(['翻譯', '解釋', '優化']);
+    expect(listNames()).toEqual(['翻譯', '解釋', '優化', '長難句分析']);
     const translate = row('翻譯');
     expect(translate.querySelector('.action-badge').textContent).toBe('內建');
     const texts = [...translate.querySelectorAll('button')].map(button => button.textContent);
     expect(texts).toEqual(['↑', '↓', '以此為範本']);
     expect(rowButton('翻譯', '↑').disabled).toBe(true);
-    expect(rowButton('優化', '↓').disabled).toBe(true);
+    expect(rowButton('長難句分析', '↓').disabled).toBe(true);
   });
 
   it('新增：填名稱、prompt、欄位後儲存，寫進 storage 並出現在清單最後', async () => {
@@ -95,7 +95,7 @@ describe('設定頁：自訂動作清單', () => {
     await submitEditor();
 
     expect($('actionEditor').hidden).toBe(true);
-    expect(listNames()).toEqual(['翻譯', '解釋', '優化', '重點摘要']);
+    expect(listNames()).toEqual(['翻譯', '解釋', '優化', '長難句分析', '重點摘要']);
     const [saved] = storedCustoms();
     expect(saved).toEqual(expect.objectContaining({
       name: '重點摘要', icon: 'list', userPrompt: '摘要：{{selection}}', saveTo: 'obsidian',
@@ -152,7 +152,7 @@ describe('設定頁：自訂動作清單', () => {
     $('btnDeleteAction').click();
     await flush(); await flush();
     expect(storedCustoms()).toHaveLength(0);
-    expect(listNames()).toEqual(['翻譯', '解釋', '優化']);
+    expect(listNames()).toEqual(['翻譯', '解釋', '優化', '長難句分析']);
   });
 
   it('以內建為範本：產生可編輯的自訂動作，內建動作不變', async () => {
@@ -161,8 +161,19 @@ describe('設定頁：自訂動作清單', () => {
     expect($('actionName').value).toBe('優化（自訂）');
     expect($('actionLayout').value).toBe('compare');
     await submitEditor();
-    expect(listNames()).toEqual(['翻譯', '解釋', '優化', '優化（自訂）']);
+    expect(listNames()).toEqual(['翻譯', '解釋', '優化', '長難句分析', '優化（自訂）']);
     expect(store.actionList.filter(action => action.builtin).every(action => !('userPrompt' in action))).toBe(true);
+  });
+
+  it('長難句分析也能當範本：版面是原文標註，存出的自訂動作通過驗證', async () => {
+    await loadOptions();
+    rowButton('長難句分析', '以此為範本').click();
+    expect($('actionName').value).toBe('長難句分析（自訂）');
+    expect($('actionLayout').value).toBe('annotate');
+    await submitEditor();
+    const [saved] = storedCustoms();
+    expect(saved).toEqual(expect.objectContaining({ name: '長難句分析（自訂）', layout: 'annotate', icon: 'list' }));
+    expect(saved.fields.map(field => field.key)).toEqual(['marks', 'translation']);
   });
 
   it('複製自訂動作：新 id、名稱加（副本）', async () => {
@@ -180,13 +191,13 @@ describe('設定頁：自訂動作清單', () => {
     await loadOptions();
     rowButton('優化', '↑').click();
     await flush(); await flush();
-    expect(listNames()).toEqual(['翻譯', '優化', '解釋']);
+    expect(listNames()).toEqual(['翻譯', '優化', '解釋', '長難句分析']);
     expect(store.actionList.map(action => [action.id, action.order]))
-      .toEqual([['translate', 0], ['optimize', 1], ['explain', 2]]);
+      .toEqual([['translate', 0], ['optimize', 1], ['explain', 2], ['analyze', 3]]);
     expect(document.activeElement).toBe(rowButton('優化', '↑'));
     document.activeElement.click();
     await flush(); await flush();
-    expect(listNames()).toEqual(['優化', '翻譯', '解釋']);
+    expect(listNames()).toEqual(['優化', '翻譯', '解釋', '長難句分析']);
     // 到頂了：上移鈕停用，焦點改到下移鈕
     expect(document.activeElement).toBe(rowButton('優化', '↓'));
   });
@@ -316,6 +327,6 @@ describe('設定頁：設定檔匯出匯入帶動作清單', () => {
     expect(storedCustoms().map(action => action.id)).toEqual(['custom-c']);
     expect(store.actionList.find(action => action.id === 'explain').enabled).toBe(false);
     // explain 的 order 0 與 translate 預設值相同，維持內建順序
-    expect(listNames()).toEqual(['翻譯', '解釋', '優化', '新的']);
+    expect(listNames()).toEqual(['翻譯', '解釋', '優化', '長難句分析', '新的']);
   });
 });

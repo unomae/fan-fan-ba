@@ -19,14 +19,41 @@
   const FIELD_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,31}$/;
   const ICON_PATTERN = /^[a-z0-9-]{0,32}$/;
 
-  // 內建動作的 prompt 由 background 的 buildPrompt 產生，不存在清單裡；
-  // 清單只記使用者能調的部分（啟用、釘選、排序、模型）
+  // 長難句分析：句子成分標在原文上。type 只收這幾種，其他值直接忽略
+  const ANALYZE_ANNOTATION_TYPES = ['subject', 'predicate', 'object', 'clause', 'modifier', 'connector'];
+  // 「只看主幹」只留這三種的標記
+  const ANALYZE_CORE_TYPES = ['subject', 'predicate', 'object'];
+
+  // 內建動作的 prompt 由 background 產生，不存在清單裡；
+  // 清單只記使用者能調的部分（啟用、釘選、排序、模型）。
+  // defaultPinned：沒存過設定時要不要放在工具列（新加的內建動作預設只出現在「⋯」選單）。
+  // 有 layout／fields 的內建動作回傳 JSON，跟自訂動作用同一套版面渲染。
   const BUILTIN_ACTIONS = [
-    { id: 'translate', name: '翻譯', icon: 'translate' },
-    { id: 'explain', name: '解釋', icon: 'explain' },
-    { id: 'optimize', name: '優化', icon: 'optimize' }
+    { id: 'translate', name: '翻譯', icon: 'translate', defaultPinned: true },
+    { id: 'explain', name: '解釋', icon: 'explain', defaultPinned: true },
+    { id: 'optimize', name: '優化', icon: 'optimize', defaultPinned: true },
+    {
+      id: 'analyze',
+      name: '長難句分析',
+      icon: 'list', // 內建圖示集裡的「清單」
+      defaultPinned: false,
+      layout: 'annotate',
+      saveTo: 'obsidian',
+      annotationTypes: ANALYZE_ANNOTATION_TYPES,
+      coreTypes: ANALYZE_CORE_TYPES,
+      fields: [
+        { key: 'annotations', label: '句子成分', description: '' },
+        { key: 'translation', label: '譯文', description: '' }
+      ]
+    }
   ];
   const BUILTIN_IDS = BUILTIN_ACTIONS.map(action => action.id);
+
+  // 回傳 JSON、走版面渲染的內建動作定義；其他內建動作回傳 null
+  function getStructuredBuiltinAction(id) {
+    const definition = BUILTIN_ACTIONS.find(action => action.id === id);
+    return definition && definition.layout ? definition : null;
+  }
 
   // 可用變數。網頁來源的四個在組 prompt 時會包進防注入框；targetLanguage 來自設定
   const VARIABLES = ['selection', 'context', 'pageTitle', 'pageUrl', 'targetLanguage'];
@@ -138,7 +165,7 @@
       icon: definition.icon,
       builtin: true,
       enabled: readBoolean(stored.enabled, true),
-      pinned: readBoolean(stored.pinned, true),
+      pinned: readBoolean(stored.pinned, definition.defaultPinned !== false),
       order: readOrder(stored.order, index),
       model
     };
@@ -278,6 +305,9 @@
     SAVE_TARGETS,
     BUILTIN_ACTIONS,
     BUILTIN_IDS,
+    ANALYZE_ANNOTATION_TYPES,
+    ANALYZE_CORE_TYPES,
+    getStructuredBuiltinAction,
     VARIABLES,
     WEB_VARIABLES,
     SYSTEM_VARIABLES,

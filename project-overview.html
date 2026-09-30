@@ -546,8 +546,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <h3>網頁內功能</h3>
             <ul>
               <li><code>content/toolbar.js</code>：選字後浮出工具列。按動作清單只放釘選且啟用的動作（最多 4 個），後面接「⋯」選單：列出全部已啟用動作，可執行、釘選、上移下移與拖曳排序，改動寫回 <code>actionList</code>；支援方向鍵、Esc，靠視窗邊緣時往上開或往內收。清單在 content 啟動時讀取，storage 變更時即時更新。</li>
-              <li><code>content/result-card.js</code>：翻譯、解釋、優化結果卡。</li>
-              <li><code>content/custom-action-render.js</code>：自訂動作的三種版面（欄位卡、原文標註、前後對照）、串流時只顯示已收完的欄位，以及存 Obsidian 用的 markdown。入口 <code>runCustomAction()</code> 在 <code>content/main.js</code>，由工具列或「⋯」選單觸發。也收一組內建動作圖示，設定頁與工具列共用。</li>
+              <li><code>content/result-card.js</code>：翻譯、解釋、優化、長難句分析結果卡。</li>
+              <li><code>content/custom-action-render.js</code>：自訂動作的三種版面（欄位卡、原文標註、前後對照）、串流時只顯示已收完的欄位，以及存 Obsidian 用的 markdown。入口 <code>runCustomAction()</code> 在 <code>content/main.js</code>，由工具列或「⋯」選單觸發。內建的「長難句分析」也用原文標註版面：類型只收主詞、動詞、受詞、子句、修飾、連接詞六種，另有「只看主幹」「斷句」兩個切換（同一頁面內沿用上次選擇）。也收一組內建動作圖示，設定頁與工具列共用。</li>
               <li><code>options.js</code> 的「自訂動作」分頁：動作清單（啟用、上移下移、內建標示）、編輯表單、即時預覽（範例資料，不發網路請求）、「用 AI 協助設定」（只複製說明文字）。設定頁另外載入 <code>custom-actions.js</code>、<code>content/dom.js</code>、<code>content/custom-action-render.js</code> 與 <code>content.css</code>，預覽和結果卡長得一樣。動作清單會跟著本機設定檔匯出匯入（整份取代），不進雲端同步。</li>
               <li><code>content/floating-ball.js</code>：常駐浮球與閱讀入口。</li>
               <li><code>content/page-translator-*.js</code>：整頁 / 單段翻譯。</li>
@@ -558,7 +558,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <ul>
               <li><code>background.js</code>：AI API、streaming、TTS、訊息入口、prompt 圍欄。</li>
               <li><code>models.js</code>：模型、語言、provider、migration。</li>
-              <li><code>custom-actions.js</code>：動作清單（內建翻譯／解釋／優化＋自訂動作）的資料模型、驗證、變數替換與 JSON 輸出解析；background 與 content 都會載入。自訂動作的 prompt 由 <code>background.js</code> 組裝，網頁內容包在防注入框線內；content 端不送網址，<code>{{pageUrl}}</code> 目前替換成空白。</li>
+              <li><code>custom-actions.js</code>：動作清單（內建翻譯／解釋／優化／長難句分析＋自訂動作）的資料模型、驗證、變數替換與 JSON 輸出解析；background 與 content 都會載入。自訂動作的 prompt 由 <code>background.js</code> 組裝，網頁內容包在防注入框線內；長難句分析的 prompt 固定寫在 <code>background.js</code>，content 只送動作名稱，不送定義；content 端不送網址，<code>{{pageUrl}}</code> 目前替換成空白。</li>
               <li><code>storage.js</code>：API Key、設定與本機診斷。</li>
               <li><code>vocabulary-store.js</code> / <code>vocabulary-backup.js</code>：單字本 IndexedDB、JSON、XLSX。</li>
               <li><code>cloud-sync.js</code>：Google Drive appData 同步與 OAuth state。</li>
@@ -709,7 +709,7 @@ content/page-translator-single.js</pre>
         <div class="grid">
           <div class="card">
             <h3>自動測試</h3>
-            <p>目前測試框架是 Jest 30 + jsdom。2026-09-30 fresh run 為 <code><!-- ffb:suites -->39<!-- /ffb:suites --> suites / <!-- ffb:tests -->623<!-- /ffb:tests --> tests</code> 全綠。<strong>專案內若有 <code>.claude/worktrees/</code>，jest 會連 worktree 的 <code>tests/</code> 一起掃、筆數灌水一倍</strong>，驗收前先 <code>git worktree list</code>，並用下面第二條指令取值。</p>
+            <p>目前測試框架是 Jest 30 + jsdom。2026-10-01 fresh run 為 <code><!-- ffb:suites -->41<!-- /ffb:suites --> suites / <!-- ffb:tests -->648<!-- /ffb:tests --> tests</code> 全綠。<strong>專案內若有 <code>.claude/worktrees/</code>，jest 會連 worktree 的 <code>tests/</code> 一起掃、筆數灌水一倍</strong>，驗收前先 <code>git worktree list</code>，並用下面第二條指令取值。</p>
             <pre>npm test
 npx jest --testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</pre>
           </div>
@@ -726,7 +726,7 @@ npx jest --testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</pre>
 
         <table style="margin-top:12px;">
           <tr><th>發布前 gate</th><th>狀態</th><th>說明</th></tr>
-          <tr><td>Jest</td><td><span class="pill green">fresh run 通過</span></td><td>2026-09-30：<code><!-- ffb:suites -->39<!-- /ffb:suites --> suites / <!-- ffb:tests -->623<!-- /ffb:tests --> tests</code>，0 failed、0 skipped（主樹實跑，取值請帶 <code>--testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</code>；Git Bash 下不能寫裸 <code>'/\.claude/'</code>，會被改寫成路徑而失效）。</td></tr>
+          <tr><td>Jest</td><td><span class="pill green">fresh run 通過</span></td><td>2026-10-01：<code><!-- ffb:suites -->41<!-- /ffb:suites --> suites / <!-- ffb:tests -->648<!-- /ffb:tests --> tests</code>，0 failed、0 skipped（worktree 實跑，取值請帶 <code>--testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</code>；Git Bash 下不能寫裸 <code>'/\.claude/'</code>，會被改寫成路徑而失效）。</td></tr>
           <tr><td>Manual QA</td><td><span class="pill red">待真瀏覽器重跑</span></td><td>Phase 0-C～4-B：<code>60 TC / 32 PASS / 4 FAIL / 24 SKIP</code>。QA-P1-001、QA-P1-003、QA-P2-002 已於 2026-07-28 修復並補回歸測試；4 個失敗 TC 的真瀏覽器重跑清單、加上同日接線輪 6 條的新驗收項，都在 <code>MANUAL-QA.md</code>。完整報告見 <code>qa-reports/fan-fan-ba-qa-report-20260724.html</code>。</td></tr>
           <tr><td>OAuth / Cloud Sync</td><td><span class="pill red">T7 待人工</span></td><td>Chrome native auth 與 Edge Web Auth fallback 都要回填結果；Google Cloud Console 設定送審前必查。</td></tr>
           <tr><td>Chrome Web Store</td><td><span class="pill orange">checkpoint</span></td><td>等產品打磨完成後，再依 <code>STORE-SUBMISSION.md</code> 送審。</td></tr>
