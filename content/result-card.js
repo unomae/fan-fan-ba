@@ -11,7 +11,7 @@ function resultCardIcon(size, shapes, { strokeWidth = 2, className = null } = {}
 const RESULT_CARD_ICON_OBSIDIAN = [['path', { d: 'M6 3h12l4 6-10 13L2 9Z' }], ['path', { d: 'M11 3 8 9l4 13 4-13-3-6' }], ['path', { d: 'M2 9h20' }]];
 const RESULT_CARD_ICON_COPY = [['rect', { width: 14, height: 14, x: 8, y: 8, rx: 2 }], ['path', { d: 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2' }]];
 
-// 三個查詢動作的標籤圖示（結果卡標題列；歷史還原與 main.js 新查詢共用）
+// 內建查詢動作的標籤圖示（結果卡標題列；歷史還原與 main.js 新查詢共用）
 const RESULT_CARD_ACTION_TAGS = {
   translate: {
     label: '翻譯',
@@ -24,13 +24,21 @@ const RESULT_CARD_ACTION_TAGS = {
   optimize: {
     label: '優化',
     shapes: [['path', { d: 'm12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z' }]]
+  },
+  analyze: {
+    label: '長難句分析',
+    // 與工具列、設定頁同一個「清單」圖示，由 custom-action-render.js 畫
+    iconName: 'list'
   }
 };
 
 // 標題列標籤：已知動作＝圖示＋中文名；其他（如自訂字串）只顯示原字
 function setResultCardTag(tagEl, action) {
   const meta = RESULT_CARD_ACTION_TAGS[action];
-  ffbClear(tagEl).append(...(meta ? [resultCardIcon(13, meta.shapes), meta.label] : [String(action)]));
+  if (!meta) { ffbClear(tagEl).append(String(action)); return; }
+  const icon = meta.shapes ? resultCardIcon(13, meta.shapes)
+    : (typeof buildCustomActionIcon === 'function' ? buildCustomActionIcon(meta.iconName, 13) : null);
+  ffbClear(tagEl).append(...[icon, meta.label].filter(Boolean));
 }
 
 function createResultCard() {
@@ -453,13 +461,14 @@ function renderResult(action, rawResult, selectedText, { fromHistory = false } =
   const body = resultCard?.querySelector('.g-rc-body');
   if (!body) return;
 
-  // 自訂動作：解析 JSON 後依版面渲染；不寫入最近紀錄（紀錄不存動作定義，無法還原版面），
+  // 自訂動作與長難句分析：解析 JSON 後依版面渲染；不寫入最近紀錄（紀錄不存動作定義，無法還原版面），
   // 所以從紀錄還原的一律照舊走純文字
-  if (action === 'custom' && !fromHistory) {
-    const parsed = FanFanBaCustomActions.parseCustomActionOutput(rawResult, activeCustomAction?.fields);
+  const structuredAction = fromHistory ? null : getStructuredAction(action);
+  if (structuredAction) {
+    const parsed = FanFanBaCustomActions.parseCustomActionOutput(rawResult, structuredAction.fields);
     if (parsed.ok) {
-      lastCustomOutput = { action: activeCustomAction, data: parsed.data };
-      ffbClear(body).appendChild(buildCustomActionContent(activeCustomAction, parsed.data, { selectedText }));
+      lastCustomOutput = { action: structuredAction, data: parsed.data };
+      ffbClear(body).appendChild(buildCustomActionContent(structuredAction, parsed.data, { selectedText }));
     } else {
       ffbClear(body).appendChild(buildCustomFormatError(rawResult));
     }
@@ -765,6 +774,83 @@ function buildExplainContent(raw) {
 }
 
 // ── 優化模式：原文 → 優化後（綠底）→ 改動說明 ────
+// 寫作批改版多三段：場合、原文標記（標在原文上並計數）、總評。
+// 模型沒回這三段（或舊的快取／最近紀錄）時，完全照舊版顯示。
+const OPTIMIZE_SECTIONS = ['場合', '優化後版本', '改動說明', '原文標記', '總評'];
+const OPTIMIZE_MARK_TYPES = { 錯誤: 'error', 不自然: 'awkward', 寫得好: 'good', error: 'error', awkward: 'awkward', good: 'good' };
+const OPTIMIZE_MARK_LABELS = { error: '錯誤', awkward: '不自然', good: '寫得好' };
+
+// 依「**標題：**」切段；回傳 { 標題: 內容 }，只含出現過的段落
+function parseOptimizeSections(raw) {
+  const pattern = new RegExp(`\\*\\*(${OPTIMIZE_SECTIONS.join('|')})[：:]\\*\\*`, 'g');
+  const heads = [...String(raw).matchAll(pattern)];
+  const sections = {};
+  heads.forEach((match, index) => {
+    const end = index + 1 < heads.length ? heads[index + 1].index : raw.length;
+    if (!(match[1] in sections)) sections[match[1]] = raw.slice(match.index + match[0].length, end).trim();
+  });
+  return sections;
+}
+
+// 「- 錯誤「片段」：說明」→ { type, text, note }；類型不在三種之內、沒有引號片段的行一律略過
+function parseOptimizeMarks(text) {
+  const marks = [];
+  for (const line of String(text || '').split('\n')) {
+    const match = /^\s*[-*•]\s*[〔\[【(（]?\s*(錯誤|不自然|寫得好|error|awkward|good)\s*[〕\]】)）]?\s*[｜|：:]?\s*[「“"『](.+?)[」”"』]\s*(?:[：:]\s*(.*))?$/i.exec(line);
+    if (!match) continue;
+    marks.push({ type: OPTIMIZE_MARK_TYPES[match[1].toLowerCase()], text: match[2], note: (match[3] || '').trim() });
+  }
+  return marks;
+}
+
+function buildOptimizeCopyBlock(optimizedText) {
+  return ffbEl('div', { class: 'g-optimize-block' }, [
+    ffbEl('div', { class: 'g-optimize-label-row' }, [
+      ffbEl('span', { class: 'g-optimize-label' }, '優化後'),
+      ffbEl('button', {
+        class: 'g-opt-copy-btn', type: 'button', title: '複製優化後文字', 'aria-label': '複製優化後文字',
+        dataset: { text: optimizedText }
+      }, resultCardIcon(12, RESULT_CARD_ICON_COPY))
+    ]),
+    ffbEl('div', { class: 'g-optimize-result' }, optimizedText)
+  ]);
+}
+
+function buildOptimizeReasons(reasonsText) {
+  return reasonsText && ffbEl('div', { class: 'g-optimize-reasons' }, [
+    ffbEl('div', { class: 'g-optimize-label' }, '改動說明'),
+    ffbEl('div', { class: 'g-text-body' }, formatMarkdown(reasonsText))
+  ]);
+}
+
+// 原文區塊：片段標在原文上（沿用 custom-action-render.js 的比對），標題列顯示各類型數量
+function buildOptimizeMarkedOriginal(original, marks) {
+  const counts = ['error', 'awkward', 'good']
+    .map(type => [type, marks.filter(mark => mark.type === type).length])
+    .filter(([, count]) => count > 0);
+  const marked = typeof buildAnnotatedText === 'function'
+    ? buildAnnotatedText(original, marks)
+    : { node: ffbEl('div', null, original), matched: [], unmatched: marks };
+  marked.node.setAttribute('class', 'g-optimize-original g-ca-annotated');
+  const notes = [...marked.matched, ...marked.unmatched];
+  return ffbEl('div', { class: 'g-optimize-block' }, [
+    ffbEl('div', { class: 'g-optimize-label-row' }, [
+      ffbEl('span', { class: 'g-optimize-label' }, '原文'),
+      counts.length > 0 && ffbEl('span', { class: 'g-opt-counts' }, counts.map(([type, count], index) => [
+        index > 0 && ' · ',
+        ffbEl('span', { class: `g-opt-count g-ca-type-${type}`, dataset: { type } }, `${OPTIMIZE_MARK_LABELS[type]} ${count}`)
+      ]))
+    ]),
+    marked.node,
+    notes.length > 0 && ffbEl('ul', { class: 'g-list g-ca-notes g-opt-marks' }, notes.map(mark =>
+      ffbEl('li', { class: marked.unmatched.includes(mark) ? 'g-ca-unmatched' : null }, [
+        ffbEl('span', { class: `g-ca-type-label g-ca-type-${mark.type}` }, OPTIMIZE_MARK_LABELS[mark.type]),
+        ffbEl('span', { class: `g-ca-note-text g-ca-type-${mark.type}` }, mark.text),
+        mark.note ? `：${mark.note}` : null
+      ])))
+  ]);
+}
+
 function buildOptimizeContent(raw, original) {
   const optimizedMatch = raw.match(/\*\*優化後版本[：:]\*\*\s*([\s\S]*?)(?=\n\s*\*\*改動說明|$)/);
   const reasonsMatch   = raw.match(/\*\*改動說明[：:]\*\*\s*([\s\S]*)/);
@@ -773,27 +859,35 @@ function buildOptimizeContent(raw, original) {
     return ffbEl('div', { class: 'g-text-body' }, formatMarkdown(raw));
   }
 
-  const optimizedText = optimizedMatch[1].trim();
-  const reasonsText   = reasonsMatch?.[1]?.trim() || '';
+  const sections = parseOptimizeSections(raw);
+  const isReview = ['場合', '原文標記', '總評'].some(name => name in sections);
 
-  return ffbFragment([
-    ffbEl('div', { class: 'g-optimize-block' }, [
-      ffbEl('div', { class: 'g-optimize-label' }, '原文'),
-      ffbEl('div', { class: 'g-optimize-original' }, original)
-    ]),
-    ffbEl('div', { class: 'g-optimize-block' }, [
-      ffbEl('div', { class: 'g-optimize-label-row' }, [
-        ffbEl('span', { class: 'g-optimize-label' }, '優化後'),
-        ffbEl('button', {
-          class: 'g-opt-copy-btn', type: 'button', title: '複製優化後文字', 'aria-label': '複製優化後文字',
-          dataset: { text: optimizedText }
-        }, resultCardIcon(12, RESULT_CARD_ICON_COPY))
+  if (!isReview) {
+    const optimizedText = optimizedMatch[1].trim();
+    const reasonsText   = reasonsMatch?.[1]?.trim() || '';
+    return ffbFragment([
+      ffbEl('div', { class: 'g-optimize-block' }, [
+        ffbEl('div', { class: 'g-optimize-label' }, '原文'),
+        ffbEl('div', { class: 'g-optimize-original' }, original)
       ]),
-      ffbEl('div', { class: 'g-optimize-result' }, optimizedText)
+      buildOptimizeCopyBlock(optimizedText),
+      buildOptimizeReasons(reasonsText)
+    ]);
+  }
+
+  const setting = sections['場合'] || '';
+  const summary = sections['總評'] || '';
+  return ffbFragment([
+    setting && ffbEl('div', { class: 'g-opt-setting' }, [
+      ffbEl('span', { class: 'g-optimize-label' }, '場合'),
+      ffbEl('span', { class: 'g-opt-setting-text' }, setting)
     ]),
-    reasonsText && ffbEl('div', { class: 'g-optimize-reasons' }, [
-      ffbEl('div', { class: 'g-optimize-label' }, '改動說明'),
-      ffbEl('div', { class: 'g-text-body' }, formatMarkdown(reasonsText))
+    buildOptimizeMarkedOriginal(original, parseOptimizeMarks(sections['原文標記'])),
+    buildOptimizeCopyBlock(sections['優化後版本'] || ''),
+    buildOptimizeReasons(sections['改動說明'] || ''),
+    summary && ffbEl('div', { class: 'g-opt-summary' }, [
+      ffbEl('div', { class: 'g-optimize-label' }, '總評'),
+      ffbEl('div', { class: 'g-opt-summary-text' }, summary)
     ])
   ]);
 }

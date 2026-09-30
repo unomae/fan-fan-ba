@@ -77,7 +77,7 @@ const GEMINI_API_BASE     = ModelRegistry.PROVIDERS.gemini.apiBase;
 const GROQ_API_BASE       = ModelRegistry.PROVIDERS.groq.apiBase;
 const OPENROUTER_API_BASE = ModelRegistry.PROVIDERS.openrouter.apiBase;
 const DEFAULT_MODEL       = ModelRegistry.DEFAULT_MODEL; // 預設 Groq（免費額度最大方）
-const ALLOWED_AI_ACTIONS  = new Set(['translate', 'explain', 'optimize', 'custom']);
+const ALLOWED_AI_ACTIONS  = new Set(['translate', 'explain', 'optimize', 'analyze', 'custom']);
 const MAX_SELECTED_TEXT_CHARS = 6000;
 const MAX_CONTEXT_CHARS = 4000;
 const MAX_PAGE_TITLE_CHARS = 300;
@@ -378,6 +378,7 @@ function validateAIRequest(request = {}) {
   // CustomActions.validateActionList 把關（單一請求只帶一個動作）。
   const customAction = request.action === 'custom' ? CustomActions.validateCustomAction(request.customAction) : null;
   if (customAction && request.pageTranslation) throw new Error('自訂動作不能用於全文翻譯');
+  if (request.action === 'analyze' && request.pageTranslation) throw new Error('長難句分析不能用於全文翻譯');
 
   return {
     ...request,
@@ -467,7 +468,9 @@ async function handleAIRequest({ action, selectedText, context, pageTitle, pageU
 
   try {
     const response = await _handleAIRequest({ action, selectedText, context, pageTitle, pageUrl, customAction, model, modelOverride, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }, controller.signal);
-    return action === 'custom' ? attachCustomActionOutput(response, customAction) : response;
+    if (action === 'custom') return attachCustomActionOutput(response, customAction);
+    if (action === 'analyze') return attachCustomActionOutput(response, getAnalyzeAction());
+    return response;
   } catch (err) {
     if (err.name === 'AbortError') throw new Error('請求逾時或已取消，請稍後重試');
     throw err;
@@ -940,8 +943,8 @@ async function handleTtsRequest({ text, lang }) {
 // ── Prompt 建構（依文字長度區分策略）──────────────
 function getPromptMaxOutputTokens(action, pageTranslation) {
   if (action === 'translate' && pageTranslation?.batch) return 2048;
-  // 自訂動作一次回多個欄位的 JSON，給跟批次翻譯一樣的額度
-  if (action === 'custom') return 2048;
+  // 自訂動作與長難句分析一次回多個欄位的 JSON，給跟批次翻譯一樣的額度
+  if (action === 'custom' || action === 'analyze') return 2048;
   return 1024;
 }
 
@@ -1091,15 +1094,29 @@ ${selectedText}`;
 
 請提供 2–3 個更精準或更有力的替換選項，並簡短說明各自適合的使用情境。`;
       }
-      return `你是專業文案編輯。請優化以下文字，輸出語言必須與原文相同（英文輸入 → 英文輸出；中文輸入 → 中文輸出）。
+      // 寫作批改：在「優化後版本／改動說明」之外，多判斷場合、在原文上標出問題與寫得好的地方、給一句總評。
+      // 段落標題是 content 解析的依據（buildOptimizeContent），改名要一起改
+      return `你是專業文案編輯兼寫作老師。請批改並優化以下文字，優化後版本的語言必須與原文相同（英文輸入 → 英文輸出；中文輸入 → 中文輸出）。
 
-請嚴格依以下格式輸出（標題完整保留）：
+請嚴格依以下格式輸出（標題完整保留，順序不要變）：
+
+**場合：**
+（用${explanationLanguage}一句話判斷這段文字的使用場合與語氣，例如「寫給客戶的正式商務信」）
 
 **優化後版本：**
 （直接輸出優化後的文字，語言與原文相同，不加引號或說明）
 
 **改動說明：**
 （用${explanationLanguage}條列說明調整項目與原因，每點以 - 開頭）
+
+**原文標記：**
+（標出原文的問題與寫得好的地方，每點一行，格式固定為：- 類型「原文片段」：說明
+類型只能用「錯誤」「不自然」「寫得好」三種；原文片段必須逐字取自原文，不要改寫或補字；說明用${explanationLanguage}；沒有可標的就只寫「- 無」）
+
+**總評：**
+（用${explanationLanguage}一句話總評這段文字）
+
+中文請用台灣慣用語。
 
 原始內容：
 「${selectedText}」`;
@@ -1148,10 +1165,48 @@ ${fieldLines}
   };
 }
 
-// 內建三動作走 buildPrompt（沒有系統提示，輸出與既有完全相同）；自訂動作多一段系統提示
+// ── 長難句分析 prompt ─────────────────────────────
+// 版面與欄位定義在 custom-actions.js（content 渲染也用同一份），prompt 固定寫在這裡、不從 content 傳來；
+// 組裝走自訂動作同一套：網頁內容包防注入框、要求只回 JSON。
+const ANALYZE_SYSTEM_PROMPT = `你是英文文法老師，專門拆解結構複雜的長句，幫讀者看懂句子骨架。
+說明與譯文一律使用{{targetLanguage}}。`;
+
+const ANALYZE_USER_PROMPT = `請分析下面這段文字的句子結構。
+
+分析規則：
+1. "annotations" 是陣列，每一項是 { "text": 片段, "type": 類型, "note": 說明 }。
+2. "text" 必須逐字取自原文（大小寫、標點都不能改），不要改寫、不要補字，也不要跨越兩個不相連的位置；依片段在原文出現的順序排列，片段之間不要重疊。
+3. "type" 只能用以下六種：
+   - "subject"：主詞（主要子句的主詞核心）
+   - "predicate"：述語動詞（含助動詞，例如 has been working）
+   - "object"：受詞或補語
+   - "clause"：從屬子句（關係子句、名詞子句、副詞子句），整個子句標成一個片段
+   - "modifier"：修飾語（介系詞片語、分詞片語、同位語等）
+   - "connector"：連接詞或轉折詞（例如 although、which、and）
+4. 主詞、述語動詞、受詞只標主要子句的；從屬子句整段標成 "clause"，不要再拆裡面的成分。
+5. "note" 用一句話說明這個片段在句中的作用，例如修飾誰、表示什麼關係；主詞、動詞很明顯時可以省略 note。
+6. 不必每個字都標，只標有助於看懂結構的片段。
+
+"translation"：整段的自然譯文，不要逐字直譯。
+
+原文：
+{{selection}}`;
+
+function getAnalyzeAction() {
+  return {
+    ...CustomActions.getStructuredBuiltinAction('analyze'),
+    systemPrompt: ANALYZE_SYSTEM_PROMPT,
+    userPrompt: ANALYZE_USER_PROMPT
+  };
+}
+
+// 內建三動作走 buildPrompt（沒有系統提示，輸出與既有完全相同）；自訂動作與長難句分析多一段系統提示
 function buildRequestPrompt({ action, selectedText, context, pageTitle, pageUrl, customAction, ...settings }) {
   if (action === 'custom') {
     return buildCustomActionPrompt(customAction, { selectedText, context, pageTitle, pageUrl }, settings);
+  }
+  if (action === 'analyze') {
+    return buildCustomActionPrompt(getAnalyzeAction(), { selectedText, context, pageTitle, pageUrl }, settings);
   }
   return { system: '', prompt: buildPrompt(action, selectedText, context, pageTitle, settings) };
 }
@@ -1174,4 +1229,4 @@ function attachCustomActionOutput(response, customAction) {
     : { ...response, formatError: parsed.error };
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { assertRoutePermission, normalizeModelOverride, getAvailableCardModelIds, registerContextMenus, handleContextMenuClick, handleCommand, sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, validateAIRequest, validateTtsRequest, validateObsidianUriRequest, resolveRoute, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, handleBuiltinTranslateRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt, buildCustomActionPrompt, buildRequestPrompt, attachCustomActionOutput }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { assertRoutePermission, normalizeModelOverride, getAvailableCardModelIds, registerContextMenus, handleContextMenuClick, handleCommand, sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, validateAIRequest, validateTtsRequest, validateObsidianUriRequest, resolveRoute, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, handleBuiltinTranslateRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt, buildCustomActionPrompt, buildRequestPrompt, attachCustomActionOutput, getAnalyzeAction }; }

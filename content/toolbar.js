@@ -1,6 +1,7 @@
 'use strict';
 
-// 內建三個動作的工具列按鈕（提示文字與圖示維持改版前）
+// 內建翻譯／解釋／優化的工具列按鈕（提示文字與圖示維持改版前）；
+// 長難句分析不在這裡，名稱與圖示取動作清單的 name／icon
 const TOOLBAR_BUILTIN_BUTTONS = {
   translate: {
     label: '翻譯',
@@ -35,6 +36,9 @@ function toolbarIcon(shapes, size = 16) {
 
 function getAllToolbarActions() {
   if (Array.isArray(toolbarActionList)) return toolbarActionList;
+  // 還沒讀到清單：用內建動作的預設值（長難句分析等預設不釘選的只出現在「⋯」選單）
+  const defaults = globalThis.FanFanBaCustomActions?.normalizeActionList([]);
+  if (Array.isArray(defaults)) return defaults;
   return Object.keys(TOOLBAR_BUILTIN_BUTTONS).map((id, order) => ({ id, builtin: true, enabled: true, pinned: true, order }));
 }
 

@@ -354,6 +354,13 @@ function hideAll() {
 }
 
 // ── 觸發 AI 功能 ─────────────────────────────────────
+// 回傳 JSON、依版面渲染的動作定義：自訂動作用目前執行的那份，長難句分析等內建動作用程式內建的定義；
+// 其他內建動作回傳 null（照舊渲染純文字／字典卡）
+function getStructuredAction(action) {
+  if (action === 'custom') return activeCustomAction;
+  return globalThis.FanFanBaCustomActions?.getStructuredBuiltinAction(action) || null;
+}
+
 // 自訂動作的入口：記下動作定義後走同一條 triggerAction（重試也會沿用這份定義）
 function runCustomAction(customAction) {
   if (!customAction) return;
@@ -389,8 +396,9 @@ function triggerAction(action) {
   hideAutoSaveToast(resultCard);
 
   setResultCardTag(resultCard.querySelector('.g-rc-tag'), action === 'custom' ? activeCustomAction.name : action);
-  // 自訂動作只有 saveTo 為 obsidian 時才顯示寶石鈕；內建動作照舊
-  resultCard.querySelector('.g-save-obs')?.toggleAttribute('hidden', action === 'custom' && activeCustomAction.saveTo !== 'obsidian');
+  // 依版面渲染的動作只有 saveTo 為 obsidian 時才顯示寶石鈕；其他內建動作照舊
+  const structuredAction = getStructuredAction(action);
+  resultCard.querySelector('.g-save-obs')?.toggleAttribute('hidden', !!structuredAction && structuredAction.saveTo !== 'obsidian');
   ffbClear(resultCard.querySelector('.g-rc-body')).appendChild(ffbEl('div', { class: 'g-shimmer-wrap' }, [
     ffbEl('div', { class: 'g-shimmer-line' }),
     ffbEl('div', { class: 'g-shimmer-line' }),
@@ -579,12 +587,13 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey, requ
     }
     if (msg.chunk) {
       accumulated += msg.chunk;
-      // 自訂動作：只顯示已完整收到的欄位，其餘顯示骨架
-      if (body && action === 'custom') {
-        const partial = readCompletedCustomFields(accumulated, activeCustomAction.fields);
+      // 依版面渲染的動作：只顯示已完整收到的欄位，其餘顯示骨架
+      const structuredAction = getStructuredAction(action);
+      if (body && structuredAction) {
+        const partial = readCompletedCustomFields(accumulated, structuredAction.fields);
         ffbClear(body).append(
           ...(streamNotice ? [ffbEl('div', { class: 'g-provider-notice' }, streamNotice)] : []),
-          buildCustomActionContent(activeCustomAction, partial, { selectedText, pending: true })
+          buildCustomActionContent(structuredAction, partial, { selectedText, pending: true })
         );
       // 串流進行中：純文字 + 游標，DEEP 標記顯示為分隔線
       } else if (body) {

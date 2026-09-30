@@ -37,7 +37,11 @@ function makeFields(count) {
   return Array.from({ length: count }, (_, i) => ({ key: `f${i}`, label: `欄位${i}`, description: '' }));
 }
 
-describe('內建三動作 prompt 與改版前逐字相同', () => {
+// 優化的句子分支已升級為寫作批改（多了場合／原文標記／總評），不再比對舊基準，改由 tests/writing-review.test.js 測；
+// 優化的單字分支、翻譯、解釋仍必須逐字相同
+const isOptimizeReview = c => c.action === 'optimize' && !(c.selectedText.length <= 20 && !c.settings?.pageTranslation);
+
+describe('內建動作 prompt 與改版前逐字相同（優化句子分支除外）', () => {
   const cases = buildCases();
 
   it('基準涵蓋全部組合', () => {
@@ -48,7 +52,10 @@ describe('內建三動作 prompt 與改版前逐字相同', () => {
   // 每個動作一條；不相符時列出組合名稱，方便定位
   it.each(['translate', 'explain', 'optimize'])('%s', action => {
     const mismatches = [];
-    for (const c of cases.filter(item => item.action === action)) {
+    const compared = cases.filter(item => item.action === action && !isOptimizeReview(item));
+    // 優化仍有單字分支要比對（2 種單字 × 10 種設定 × 2 種上下文，扣掉全文翻譯設定走句子分支的 8 組）
+    expect(compared.length).toBe(action === 'optimize' ? 32 : 120);
+    for (const c of compared) {
       const direct = buildPrompt(c.action, c.selectedText, c.context, c.pageTitle, c.settings);
       // 經過新的分派函式也一樣，而且沒有系統提示
       const routed = buildRequestPrompt({
@@ -144,10 +151,17 @@ describe('validateCustomAction', () => {
 });
 
 describe('動作清單', () => {
-  it('沒有存過資料時只有內建三個，順序與目前工具列相同', () => {
+  it('沒有存過資料時只有內建四個：前三個順序與目前工具列相同，長難句分析預設不釘選', () => {
     const list = CustomActions.normalizeActionList(undefined);
-    expect(list.map(a => a.id)).toEqual(['translate', 'explain', 'optimize']);
-    expect(list.every(a => a.builtin && a.enabled && a.pinned && a.model === 'default')).toBe(true);
+    expect(list.map(a => a.id)).toEqual(['translate', 'explain', 'optimize', 'analyze']);
+    expect(list.every(a => a.builtin && a.enabled && a.model === 'default')).toBe(true);
+    expect(list.map(a => a.pinned)).toEqual([true, true, true, false]);
+    // 舊使用者存過清單（只有三個內建）時，長難句分析同樣不會自己跑上工具列
+    const stored = CustomActions.normalizeActionList([{ id: 'translate', builtin: true, pinned: true, order: 0 }]);
+    expect(stored.find(a => a.id === 'analyze').pinned).toBe(false);
+    // 使用者釘選過就照存的值
+    const pinned = CustomActions.normalizeActionList([{ id: 'analyze', builtin: true, pinned: true, order: 0 }]);
+    expect(pinned.find(a => a.id === 'analyze').pinned).toBe(true);
   });
 
   it('內建動作可隱藏、可排序，但名稱與 prompt 取程式定義、刪不掉', () => {
@@ -157,7 +171,7 @@ describe('動作清單', () => {
       { id: 'explain', builtin: true, order: 3 },
       makeAction({ order: 1 })
     ]);
-    expect(list.map(a => a.id)).toEqual(['optimize', 'custom-vocab-note', 'translate', 'explain']);
+    expect(list.map(a => a.id)).toEqual(['optimize', 'custom-vocab-note', 'translate', 'explain', 'analyze']);
     const optimize = list.find(a => a.id === 'optimize');
     expect(optimize).toEqual({ id: 'optimize', name: '優化', icon: 'optimize', builtin: true, enabled: false, pinned: false, order: 0, model: 'default' });
   });

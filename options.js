@@ -1453,6 +1453,15 @@ const BUILTIN_ACTION_TEMPLATES = {
       { key: 'points', label: '重點', description: '條列' }
     ]
   },
+  analyze: {
+    name: '長難句分析（自訂）', icon: 'list', layout: 'annotate',
+    systemPrompt: '說明一律使用{{targetLanguage}}。',
+    userPrompt: '分析下面這段文字的句子結構：把主詞、動詞、受詞、子句、修飾語、連接詞標出來，片段要逐字取自原文，並附上整段譯文。\n\n{{selection}}',
+    fields: [
+      { key: 'marks', label: '句子成分', description: '陣列：text 取自原文，type 用 subject／predicate／object／clause／modifier／connector' },
+      { key: 'translation', label: '譯文', description: '' }
+    ]
+  },
   optimize: {
     name: '優化（自訂）', icon: 'pen', layout: 'compare',
     userPrompt: '把下面的文字改得更通順自然，保留原意，並說明改了什麼。\n\n{{selection}}',
@@ -1561,7 +1570,7 @@ function renderActionList() {
 }
 
 function builtinIconName(id) {
-  return { translate: 'globe', explain: 'bulb', optimize: 'pen' }[id] || ActionRender.getDefaultCustomActionIcon();
+  return { translate: 'globe', explain: 'bulb', optimize: 'pen', analyze: 'list' }[id] || ActionRender.getDefaultCustomActionIcon();
 }
 
 // 存檔一律走 saveActionList（嚴格驗證）；失敗時畫面維持原狀並顯示原因

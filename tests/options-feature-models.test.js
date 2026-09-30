@@ -76,9 +76,9 @@ describe('設定頁：各功能使用的模型', () => {
       { id: 'custom-a', name: '重點摘要', icon: 'list', builtin: false, enabled: true, pinned: false, order: 3, model: 'default',
         systemPrompt: '', userPrompt: '{{selection}}', fields: [{ key: 'summary', label: '摘要', description: '' }], layout: 'fields', saveTo: 'none' }
     ] } });
-    expect(rowLabels()).toEqual(['字典（20 字以內的翻譯）', '翻譯', '解釋', '優化', '自訂：重點摘要', '全文翻譯']);
+    expect(rowLabels()).toEqual(['字典（20 字以內的翻譯）', '翻譯', '解釋', '優化', '長難句分析', '自訂：重點摘要', '全文翻譯']);
     expect([...document.querySelectorAll('select[data-feature-model]')].map(select => select.value))
-      .toEqual(['', 'default', 'default', 'default', 'default', '']);
+      .toEqual(['', 'default', 'default', 'default', 'default', 'default', '']);
     expect($('dictionaryModel').selectedOptions[0].textContent).toBe('跟隨主模型');
   });
 
@@ -198,7 +198,7 @@ describe('設定頁：動作清單被別處改動時不拿舊資料蓋回去', (
     const row = [...document.querySelectorAll('#actionList .action-row')].find(item => item.dataset.id === 'optimize');
     row.querySelector('button').click(); // 上移
     await flush(); await flush();
-    expect(store.actionList.map(action => action.id)).toEqual(['translate', 'optimize', 'explain']);
+    expect(store.actionList.map(action => action.id)).toEqual(['translate', 'optimize', 'explain', 'analyze']);
     expect(pinnedOf('explain')).toBe(false);
   });
 
