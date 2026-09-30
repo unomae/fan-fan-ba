@@ -8,43 +8,57 @@ function escapeHtml(str) {
 }
 
 // 強化 Markdown 渲染：段落、無序 / 有序清單、粗體、{{tag}} 標籤
+// 回傳 DocumentFragment（一律 createElement / createTextNode，不解析 HTML 字串）
 function formatMarkdown(text) {
-  const lines = text.split('\n');
-  let html  = '';
-  let inUl  = false;
-  let inOl  = false;
+  const fragment = document.createDocumentFragment();
+  let list = null; // 目前開著的 <ul>／<ol>
 
-  for (const raw of lines) {
-    if (raw.trim() === '===DEEP===') continue; // 略過分隔標記（完成渲染後由 buildExplainHTML 處理）
-
-    const esc    = escapeHtml(raw);
-    const inline = esc
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\{\{([^}]+)\}\}/g, (_, t) =>
-        `<span class="g-tag" data-term="${t}">${t}</span>`
-      );
+  for (const raw of text.split('\n')) {
+    if (raw.trim() === '===DEEP===') continue; // 略過分隔標記（完成渲染後由 buildExplainContent 處理）
 
     const isBullet  = /^\s*[-*•・‧]\s+/.test(raw);
     const isOrdered = /^\s*[0-9０-９]+[.)．、]\s+/.test(raw);
 
-    if (isBullet) {
-      if (inOl) { html += '</ol>'; inOl = false; }
-      if (!inUl) { html += '<ul class="g-list">'; inUl = true; }
-      html += `<li>${inline.replace(/^\s*[-*•・‧]\s+/, '')}</li>`;
-    } else if (isOrdered) {
-      if (inUl) { html += '</ul>'; inUl = false; }
-      if (!inOl) { html += '<ol class="g-list">'; inOl = true; }
-      html += `<li>${inline.replace(/^\s*[0-9０-９]+[.)．、]\s+/, '')}</li>`;
+    if (isBullet || isOrdered) {
+      const tag = isBullet ? 'ul' : 'ol';
+      if (list?.localName !== tag) {
+        list = ffbEl(tag, { class: 'g-list' });
+        fragment.appendChild(list);
+      }
+      const content = raw.replace(isBullet ? /^\s*[-*•・‧]\s+/ : /^\s*[0-9０-９]+[.)．、]\s+/, '');
+      list.appendChild(ffbEl('li', null, formatMarkdownInline(content)));
     } else {
-      if (inUl) { html += '</ul>'; inUl = false; }
-      if (inOl) { html += '</ol>'; inOl = false; }
-      html += raw.trim() === '' ? '<br>' : `<p class="g-p">${inline}</p>`;
+      list = null;
+      fragment.appendChild(raw.trim() === '' ? ffbEl('br') : ffbEl('p', { class: 'g-p' }, formatMarkdownInline(raw)));
     }
   }
 
-  if (inUl) html += '</ul>';
-  if (inOl) html += '</ol>';
-  return html;
+  return fragment;
+}
+
+// 行內格式：**粗體** → <strong>、{{詞}} → 可點的 .g-tag；其餘一律純文字
+function formatMarkdownInline(text) {
+  const nodes = [];
+  let last = 0;
+  for (const match of text.matchAll(/\*\*(.*?)\*\*/g)) {
+    nodes.push(...formatMarkdownTags(text.slice(last, match.index)));
+    nodes.push(ffbEl('strong', null, formatMarkdownTags(match[1])));
+    last = match.index + match[0].length;
+  }
+  nodes.push(...formatMarkdownTags(text.slice(last)));
+  return nodes;
+}
+
+function formatMarkdownTags(text) {
+  const nodes = [];
+  let last = 0;
+  for (const match of text.matchAll(/\{\{([^}]+)\}\}/g)) {
+    if (match.index > last) nodes.push(text.slice(last, match.index));
+    nodes.push(ffbEl('span', { class: 'g-tag', dataset: { term: match[1] } }, match[1]));
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
 }
 
 // Gemini 有時回傳 ```json 包裝或夾帶說明文字，三層容錯解析
@@ -115,14 +129,14 @@ function extractContext(selectedText, range) {
   } catch { return ''; }
 }
 
-// LCS word-level diff：比對原文與優化後版本，回傳帶 <ins>/<del> 標記的 HTML
+// LCS word-level diff：比對原文與優化後版本，回傳帶 <ins>/<del> 標記的 DocumentFragment
 function renderDiff(original, optimized) {
   const a = original.match(/\S+|\s+/g) || [];
   const b = optimized.match(/\S+|\s+/g) || [];
 
   // 文字過長時降級顯示（避免 LCS 表格佔用過多記憶體）
   if (a.length > 600 || b.length > 600) {
-    return `<ins class="g-diff-ins">${escapeHtml(optimized)}</ins>`;
+    return ffbFragment(ffbEl('ins', { class: 'g-diff-ins' }, optimized));
   }
 
   const n = a.length, m = b.length;
@@ -145,17 +159,17 @@ function renderDiff(original, optimized) {
     }
   }
 
-  return ops.map(o =>
-    o.t === '=' ? escapeHtml(o.v) :
-    o.t === '+' ? `<ins class="g-diff-ins">${escapeHtml(o.v)}</ins>` :
-                  `<del class="g-diff-del">${escapeHtml(o.v)}</del>`
-  ).join('');
+  return ffbFragment(ops.map(o =>
+    o.t === '=' ? o.v :
+    o.t === '+' ? ffbEl('ins', { class: 'g-diff-ins' }, o.v) :
+                  ffbEl('del', { class: 'g-diff-del' }, o.v)
+  ));
 }
 
 // 字典例句：把查詢詞在例句中的原樣（surface，可含詞形變化）加粗。
 // 規則：大小寫不敏感、只取第一個完整比對；拉丁／希臘／西里爾字母與數字的邊緣要落在詞界上
 // （避免 "art" 命中 "start"），中日韓等無空格文字不檢查詞界。比對不到就整句純文字，不猜。
-// 輸入先逐段 escapeHtml 再組字串，surface 以字面比對（含 C++ 這類 regex 特殊字元）。
+// 回傳 DocumentFragment（純文字＋<strong>），surface 以字面比對（含 C++ 這類 regex 特殊字元）。
 const EXAMPLE_WORD_CHAR = /[\p{Script=Latin}\p{Script=Greek}\p{Script=Cyrillic}\p{N}]/u;
 
 function findExampleSurface(src, surface) {
@@ -178,14 +192,16 @@ function findExampleSurface(src, surface) {
   return -1;
 }
 
-function highlightExampleHtml(src, surface) {
+function highlightExample(src, surface) {
   const text = String(src || '');
   const target = String(surface || '').trim();
   const hit = findExampleSurface(text, target);
-  if (hit === -1) return escapeHtml(text);
-  return escapeHtml(text.slice(0, hit.start))
-    + `<strong class="g-ex-hit">${escapeHtml(text.slice(hit.start, hit.end))}</strong>`
-    + escapeHtml(text.slice(hit.end));
+  if (hit === -1) return ffbFragment(text);
+  return ffbFragment([
+    text.slice(0, hit.start),
+    ffbEl('strong', { class: 'g-ex-hit' }, text.slice(hit.start, hit.end)),
+    text.slice(hit.end)
+  ]);
 }
 
 // CEFR 難度只接受 A1–C2，其餘（含空字串、B3、"intermediate"）一律視為沒有
@@ -194,4 +210,4 @@ function normalizeCefr(value) {
   return /^[ABC][12]$/.test(level) ? level : '';
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { escapeHtml, formatMarkdown, parseJSON, getWeekLabel, getPosClass, extractContext, renderDiff, highlightExampleHtml, normalizeCefr }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { escapeHtml, formatMarkdown, parseJSON, getWeekLabel, getPosClass, extractContext, renderDiff, highlightExample, normalizeCefr }; }

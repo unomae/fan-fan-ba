@@ -2762,3 +2762,510 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
     scroll-behavior: auto !important;
   }
 }
+
+/* ════════════════════════════════════════════════
+   18. 深色模式（第一階段：浮層 UI）
+   系統切暗色時，工具列／結果卡（含單字本面板）／浮球／單字提示／全文翻譯控制面板換暗色。
+   亮色規則一律不動；本段只在 prefers-color-scheme: dark 生效。
+   token 定義在各元件根節點（不碰頁面 :root），覆寫 selector 都帶元件根前綴，
+   specificity 才一定高於上方的亮色 class 規則。
+   插進網頁的譯文段落與單字高亮標記不在本階段（它們依頁面底色自己調對比）。
+   ════════════════════════════════════════════════ */
+@media (prefers-color-scheme: dark) {
+  #gemini-ai-toolbar,
+  #gemini-result-card,
+  #fanfanba-floating,
+  .g-vocab-highlight-tip,
+  .ffb-page-translation-panel {
+    color-scheme: dark !important;
+    --ffb-dark-surface:        rgba(32, 33, 36, 0.98);
+    --ffb-dark-surface-raised: #2b2d31;
+    --ffb-dark-surface-hover:  #36393e;
+    --ffb-dark-border:         rgba(255, 255, 255, 0.12);
+    --ffb-dark-border-strong:  rgba(255, 255, 255, 0.24);
+    --ffb-dark-text:           #e8eaed;
+    --ffb-dark-text-strong:    #f8f9fa;
+    --ffb-dark-text-muted:     #a9afb8;
+    --ffb-dark-accent:         #9ec1fa;
+    --ffb-dark-accent-bg:      rgba(138, 180, 248, 0.16);
+    --ffb-dark-green:          #a8d88a;
+    --ffb-dark-green-bg:       rgba(163, 209, 121, 0.16);
+    --ffb-dark-purple:         #c3b5f5;
+    --ffb-dark-purple-bg:      rgba(160, 140, 230, 0.18);
+    --ffb-dark-orange:         #f6b26b;
+    --ffb-dark-orange-bg:      rgba(246, 178, 107, 0.16);
+    --ffb-dark-danger:         #f6a39c;
+    --ffb-dark-danger-bg:      rgba(242, 139, 130, 0.14);
+    --ffb-dark-focus:          rgba(138, 180, 248, 0.6);
+    --ffb-dark-shadow:         0 10px 28px rgba(0, 0, 0, 0.45);
+  }
+
+  /* ── 焦點外框：暗色下統一一個顏色 ─────────────── */
+  #gemini-ai-toolbar .g-btn:focus-visible,
+  #gemini-result-card button:focus-visible,
+  #gemini-result-card select:focus-visible,
+  #gemini-result-card textarea:focus-visible,
+  #fanfanba-floating button:focus-visible,
+  .ffb-page-translation-panel button:focus-visible {
+    outline-color: var(--ffb-dark-focus) !important;
+  }
+
+  /* ── 工具列 ───────────────────────────────────── */
+  #gemini-ai-toolbar {
+    background: var(--ffb-dark-surface) !important;
+    border-color: var(--ffb-dark-border) !important;
+    box-shadow: var(--ffb-dark-shadow) !important;
+  }
+  #gemini-ai-toolbar.g-show:hover { background: var(--ffb-dark-surface-raised) !important; }
+  #gemini-ai-toolbar .g-btn { color: var(--ffb-dark-text-muted) !important; }
+  #gemini-ai-toolbar .g-btn:hover,
+  #gemini-ai-toolbar .g-btn.g-active {
+    background: var(--ffb-dark-green-bg) !important;
+    color: var(--ffb-dark-green) !important;
+  }
+  #gemini-ai-toolbar .g-btn:focus-visible { background: var(--ffb-dark-accent-bg) !important; }
+  #gemini-ai-toolbar .g-sep { background: var(--ffb-dark-border) !important; }
+
+  /* ── 結果卡外框、標題列、底部列 ───────────────── */
+  #gemini-result-card {
+    background: var(--ffb-dark-surface) !important;
+    border-color: var(--ffb-dark-border) !important;
+    box-shadow: var(--ffb-dark-shadow), 0 0 0 0.5px rgba(255, 255, 255, 0.06) !important;
+    color: var(--ffb-dark-text) !important;
+  }
+  #gemini-result-card .g-rc-header,
+  #gemini-result-card .g-rc-footer {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-color: var(--ffb-dark-border) !important;
+  }
+  #gemini-result-card .g-rc-tag { color: var(--ffb-dark-accent) !important; }
+  #gemini-result-card .g-rc-tag svg { stroke: var(--ffb-dark-accent) !important; }
+  #gemini-result-card .g-icon-btn { color: var(--ffb-dark-text-muted) !important; }
+  #gemini-result-card .g-icon-btn:hover { background: var(--ffb-dark-surface-hover) !important; }
+  #gemini-result-card .g-icon-btn:focus-visible,
+  #gemini-result-card .g-pin.g-pin-active {
+    background: var(--ffb-dark-accent-bg) !important;
+    color: var(--ffb-dark-accent) !important;
+  }
+  #gemini-result-card .g-copy.g-copied { color: var(--ffb-dark-green) !important; }
+  #gemini-result-card .g-save-obs.g-saved { color: var(--ffb-dark-purple) !important; }
+  #gemini-result-card .g-rc-edit-source,
+  #gemini-result-card .g-rc-source-cancel,
+  #gemini-result-card .g-rc-model-select {
+    background: var(--ffb-dark-surface-raised) !important;
+    border-color: var(--ffb-dark-border) !important;
+    color: var(--ffb-dark-text) !important;
+  }
+  #gemini-result-card .g-rc-edit-source:hover,
+  #gemini-result-card .g-rc-source-cancel:hover,
+  #gemini-result-card .g-rc-model-select:hover {
+    background: var(--ffb-dark-surface-hover) !important;
+    border-color: var(--ffb-dark-border-strong) !important;
+  }
+  #gemini-result-card .g-rc-source-submit {
+    background: var(--ffb-dark-accent) !important;
+    border-color: var(--ffb-dark-accent) !important;
+    color: #202124 !important;
+  }
+  #gemini-result-card .g-rc-model-once,
+  #gemini-result-card .g-rc-source-hint { color: var(--ffb-dark-text-muted) !important; }
+  #gemini-result-card .g-rc-model-once.g-rc-model-once-active { color: var(--ffb-dark-accent) !important; }
+  #gemini-result-card .g-rc-source { border-color: var(--ffb-dark-border) !important; }
+  #gemini-result-card .g-rc-source-input {
+    background: var(--ffb-dark-surface-raised) !important;
+    border-color: var(--ffb-dark-border-strong) !important;
+    color: var(--ffb-dark-text) !important;
+  }
+  #gemini-result-card .g-rc-body::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.22) !important; }
+  #gemini-result-card .g-shimmer-line {
+    background-image: linear-gradient(90deg, #2b2d31 25%, #3a3d42 50%, #2b2d31 75%) !important;
+  }
+
+  /* ── 內文：解釋／翻譯段落、串流、分隔線 ─────────── */
+  #gemini-result-card .g-text-body,
+  #gemini-result-card .g-text-body .g-p,
+  #gemini-result-card .g-text-body .g-list li,
+  #gemini-result-card .g-dict-pos-def,
+  #gemini-result-card .g-ex-en { color: var(--ffb-dark-text) !important; }
+  #gemini-result-card .g-text-body strong { color: var(--ffb-dark-text-strong) !important; }
+  #gemini-result-card .g-num,
+  #gemini-result-card .g-streaming::after { color: var(--ffb-dark-accent) !important; }
+  #gemini-result-card hr.g-deep-divider { border-top-color: var(--ffb-dark-border-strong) !important; }
+  #gemini-result-card .g-chevron { color: var(--ffb-dark-text-muted) !important; }
+  #gemini-result-card .g-tag {
+    background: var(--ffb-dark-accent-bg) !important;
+    border-color: rgba(138, 180, 248, 0.32) !important;
+    color: var(--ffb-dark-accent) !important;
+  }
+  #gemini-result-card .g-tag:hover {
+    background: rgba(138, 180, 248, 0.26) !important;
+    border-color: rgba(138, 180, 248, 0.5) !important;
+  }
+
+  /* ── 字典卡 ───────────────────────────────────── */
+  #gemini-result-card .g-dict-word,
+  #gemini-result-card .g-synonym-word { color: var(--ffb-dark-text-strong) !important; }
+  #gemini-result-card .g-dict-phonetic,
+  #gemini-result-card .g-ex-zh,
+  #gemini-result-card .g-dict-usage,
+  #gemini-result-card .g-dict-examples-title,
+  #gemini-result-card .g-synonym-label,
+  #gemini-result-card .g-synonym-diff { color: var(--ffb-dark-text-muted) !important; }
+  #gemini-result-card .g-dict-divider { background: var(--ffb-dark-border) !important; }
+  #gemini-result-card .g-dict-translations span {
+    background: var(--ffb-dark-accent-bg) !important;
+    color: var(--ffb-dark-text) !important;
+  }
+  #gemini-result-card .g-dict-cefr {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: var(--ffb-dark-border-strong) !important;
+    color: var(--ffb-dark-text) !important;
+  }
+  #gemini-result-card .g-pos { color: var(--ffb-dark-text) !important; }
+  #gemini-result-card .g-pos-n { background: rgba(129, 201, 149, 0.2) !important; }
+  #gemini-result-card .g-pos-v { background: rgba(138, 180, 248, 0.2) !important; }
+  #gemini-result-card .g-pos-adj { background: rgba(242, 139, 130, 0.2) !important; }
+  #gemini-result-card .g-pos-adv { background: rgba(253, 214, 99, 0.2) !important; }
+  #gemini-result-card .g-pos-prep { background: rgba(197, 166, 250, 0.2) !important; }
+  #gemini-result-card .g-pos-default { background: rgba(255, 255, 255, 0.1) !important; }
+  #gemini-result-card .g-example { border-left-color: rgba(138, 180, 248, 0.45) !important; }
+  #gemini-result-card .g-ex-general {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: var(--ffb-dark-text-muted) !important;
+  }
+  #gemini-result-card .g-ex-context {
+    background: var(--ffb-dark-accent-bg) !important;
+    color: var(--ffb-dark-accent) !important;
+  }
+  #gemini-result-card .g-speak-btn { color: var(--ffb-dark-accent) !important; }
+  #gemini-result-card .g-speak-btn:hover,
+  #gemini-result-card .g-speak-btn:focus-visible { background: var(--ffb-dark-accent-bg) !important; }
+  #gemini-result-card .g-speak-btn.g-speaking { color: #aecbfa !important; }
+  #gemini-result-card .g-vocab-save-btn {
+    background: var(--ffb-dark-green-bg) !important;
+    border-color: rgba(163, 209, 121, 0.3) !important;
+    color: var(--ffb-dark-green) !important;
+  }
+  #gemini-result-card .g-vocab-save-btn:hover,
+  #gemini-result-card .g-vocab-save-btn.g-vocab-saved {
+    background: rgba(163, 209, 121, 0.26) !important;
+    border-color: rgba(163, 209, 121, 0.45) !important;
+    color: #c5e8ad !important;
+  }
+  #gemini-result-card .g-vocab-save-btn.g-vocab-saving {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: var(--ffb-dark-border) !important;
+    color: var(--ffb-dark-text-muted) !important;
+  }
+  #gemini-result-card .g-vocab-save-btn.g-vocab-error {
+    background: var(--ffb-dark-danger-bg) !important;
+    border-color: rgba(242, 139, 130, 0.35) !important;
+    color: var(--ffb-dark-danger) !important;
+  }
+
+  /* ── 優化：原文／優化後／改動說明／diff ─────────── */
+  #gemini-result-card .g-optimize-label { color: var(--ffb-dark-text-muted) !important; }
+  #gemini-result-card .g-optimize-original {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: var(--ffb-dark-border) !important;
+    color: var(--ffb-dark-text) !important;
+  }
+  #gemini-result-card .g-optimize-result {
+    background: var(--ffb-dark-green-bg) !important;
+    border-color: rgba(163, 209, 121, 0.35) !important;
+    color: #d3ecc2 !important;
+  }
+  #gemini-result-card .g-optimize-reasons { border-top-color: var(--ffb-dark-border) !important; }
+  #gemini-result-card .g-opt-copy-btn {
+    border-color: var(--ffb-dark-border-strong) !important;
+    color: var(--ffb-dark-text-muted) !important;
+  }
+  #gemini-result-card .g-opt-copy-btn:hover,
+  #gemini-result-card .g-opt-copy-btn:focus-visible,
+  #gemini-result-card .g-opt-copy-btn.g-opt-copied {
+    background: var(--ffb-dark-green-bg) !important;
+    border-color: rgba(163, 209, 121, 0.45) !important;
+    color: var(--ffb-dark-green) !important;
+  }
+  #gemini-result-card ins.g-diff-ins,
+  #gemini-result-card .g-diff-label-ins {
+    background: rgba(129, 201, 149, 0.18) !important;
+    color: #9fdcae !important;
+  }
+  #gemini-result-card del.g-diff-del,
+  #gemini-result-card .g-diff-label-del {
+    background: var(--ffb-dark-danger-bg) !important;
+    color: var(--ffb-dark-danger) !important;
+  }
+
+  /* ── 錯誤、提示、自動存入提示列 ───────────────── */
+  #gemini-result-card .g-error { color: var(--ffb-dark-danger) !important; }
+  #gemini-result-card .g-retry-btn {
+    background: var(--ffb-dark-danger-bg) !important;
+    border-color: rgba(242, 139, 130, 0.35) !important;
+    color: var(--ffb-dark-danger) !important;
+  }
+  #gemini-result-card .g-retry-btn:hover { background: rgba(242, 139, 130, 0.24) !important; }
+  #gemini-result-card .g-provider-notice,
+  #gemini-result-card .g-autosave-bar {
+    background: var(--ffb-dark-green-bg) !important;
+    border-color: rgba(163, 209, 121, 0.3) !important;
+    color: var(--ffb-dark-green) !important;
+  }
+  #gemini-result-card .g-autosave-change { color: var(--ffb-dark-green) !important; }
+  #gemini-result-card .g-autosave-change:hover { color: #c5e8ad !important; }
+
+  /* ── 最近查詢 ─────────────────────────────────── */
+  #gemini-result-card .g-history-panel.g-hist-open,
+  #gemini-result-card .g-hist-item { border-bottom-color: var(--ffb-dark-border) !important; }
+  #gemini-result-card .g-hist-item:hover { background: var(--ffb-dark-green-bg) !important; }
+  #gemini-result-card .g-hist-item:focus-visible { background: var(--ffb-dark-accent-bg) !important; }
+  #gemini-result-card .g-hist-text { color: var(--ffb-dark-text) !important; }
+  #gemini-result-card .g-hist-time,
+  #gemini-result-card .g-hist-empty { color: var(--ffb-dark-text-muted) !important; }
+  #gemini-result-card .g-hist-tag-translate {
+    background: var(--ffb-dark-accent-bg) !important;
+    color: var(--ffb-dark-accent) !important;
+  }
+  #gemini-result-card .g-hist-tag-explain {
+    background: var(--ffb-dark-orange-bg) !important;
+    color: var(--ffb-dark-orange) !important;
+  }
+  #gemini-result-card .g-hist-tag-optimize {
+    background: var(--ffb-dark-green-bg) !important;
+    color: var(--ffb-dark-green) !important;
+  }
+
+  /* ── Obsidian 面板 ────────────────────────────── */
+  #gemini-result-card .g-obs-panel.g-obs-open { border-top-color: var(--ffb-dark-border) !important; }
+  #gemini-result-card .g-obs-panel-title { color: var(--ffb-dark-purple) !important; }
+  #gemini-result-card .g-obs-input {
+    background: var(--ffb-dark-surface-raised) !important;
+    border-color: var(--ffb-dark-border-strong) !important;
+    color: var(--ffb-dark-text) !important;
+  }
+  #gemini-result-card .g-obs-input:focus {
+    background: var(--ffb-dark-surface-raised) !important;
+    border-color: var(--ffb-dark-purple) !important;
+    box-shadow: 0 0 0 3px var(--ffb-dark-purple-bg) !important;
+  }
+  #gemini-result-card .g-obs-input.g-obs-input-err {
+    border-color: var(--ffb-dark-danger) !important;
+    box-shadow: 0 0 0 3px var(--ffb-dark-danger-bg) !important;
+  }
+  #gemini-result-card .g-obs-dropdown {
+    background: var(--ffb-dark-surface-raised) !important;
+    border-color: rgba(195, 181, 245, 0.3) !important;
+  }
+  #gemini-result-card .g-obs-dd-item {
+    border-bottom-color: var(--ffb-dark-border) !important;
+    color: var(--ffb-dark-text) !important;
+  }
+  #gemini-result-card .g-obs-dd-item:hover,
+  #gemini-result-card .g-obs-dd-item:focus-visible {
+    background: var(--ffb-dark-purple-bg) !important;
+    color: var(--ffb-dark-purple) !important;
+  }
+  #gemini-result-card .g-obs-dd-empty { color: var(--ffb-dark-text-muted) !important; }
+  #gemini-result-card .g-obs-status {
+    background: var(--ffb-dark-purple-bg) !important;
+    border-color: rgba(195, 181, 245, 0.3) !important;
+    color: var(--ffb-dark-purple) !important;
+  }
+  #gemini-result-card .g-obs-status.g-obs-status-ok {
+    background: var(--ffb-dark-green-bg) !important;
+    border-color: rgba(163, 209, 121, 0.3) !important;
+    color: var(--ffb-dark-green) !important;
+  }
+  #gemini-result-card .g-obs-confirm-btn { background: #6a57b3 !important; color: #fff !important; }
+  #gemini-result-card .g-obs-confirm-btn:hover { background: #5d4ba3 !important; }
+  #gemini-result-card .g-obs-chevron-btn { background: #5d4ba3 !important; color: #fff !important; }
+  #gemini-result-card .g-obs-chevron-btn:hover { background: #503f92 !important; }
+
+  /* ── 單字本面板（在結果卡內） ─────────────────── */
+  #gemini-result-card .g-vocab-search {
+    background: var(--ffb-dark-surface-raised) !important;
+    border-color: var(--ffb-dark-border-strong) !important;
+    color: var(--ffb-dark-text) !important;
+  }
+  #gemini-result-card .g-vocab-search:focus {
+    border-color: rgba(163, 209, 121, 0.5) !important;
+    box-shadow: 0 0 0 3px var(--ffb-dark-green-bg) !important;
+  }
+  #gemini-result-card .g-vocab-tab,
+  #gemini-result-card .g-vocab-export,
+  #gemini-result-card .g-vocab-copy {
+    background: var(--ffb-dark-surface-raised) !important;
+    border-color: var(--ffb-dark-border) !important;
+    color: var(--ffb-dark-text) !important;
+  }
+  #gemini-result-card .g-vocab-tab:hover,
+  #gemini-result-card .g-vocab-export:hover,
+  #gemini-result-card .g-vocab-copy:hover,
+  #gemini-result-card .g-vocab-tab.g-active {
+    background: var(--ffb-dark-green-bg) !important;
+    border-color: rgba(163, 209, 121, 0.4) !important;
+    color: var(--ffb-dark-green) !important;
+  }
+  #gemini-result-card .g-vocab-panel-item {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: var(--ffb-dark-border) !important;
+  }
+  #gemini-result-card .g-vocab-panel-word,
+  #gemini-result-card .g-vocab-panel-meaning { color: var(--ffb-dark-text) !important; }
+  #gemini-result-card .g-vocab-panel-def { color: var(--ffb-dark-text-muted) !important; }
+  #gemini-result-card .g-vocab-panel-meta span {
+    background: var(--ffb-dark-green-bg) !important;
+    color: var(--ffb-dark-green) !important;
+  }
+  #gemini-result-card .g-vocab-panel-meta .g-vocab-known {
+    background: var(--ffb-dark-accent-bg) !important;
+    color: var(--ffb-dark-accent) !important;
+  }
+  #gemini-result-card .g-vocab-panel-meta .g-vocab-learning {
+    background: var(--ffb-dark-orange-bg) !important;
+    color: var(--ffb-dark-orange) !important;
+  }
+  #gemini-result-card .g-vocab-status {
+    background: var(--ffb-dark-accent-bg) !important;
+    border-color: rgba(138, 180, 248, 0.3) !important;
+    color: var(--ffb-dark-accent) !important;
+  }
+  #gemini-result-card .g-vocab-status:hover {
+    background: rgba(138, 180, 248, 0.26) !important;
+    border-color: rgba(138, 180, 248, 0.45) !important;
+    color: #aecbfa !important;
+  }
+  #gemini-result-card .g-vocab-delete {
+    background: var(--ffb-dark-danger-bg) !important;
+    border-color: rgba(242, 139, 130, 0.3) !important;
+    color: var(--ffb-dark-danger) !important;
+  }
+  #gemini-result-card .g-vocab-delete:hover {
+    background: rgba(242, 139, 130, 0.2) !important;
+    border-color: rgba(242, 139, 130, 0.45) !important;
+  }
+
+  /* ── 浮球開的收藏／最近查詢入口（在結果卡內） ─── */
+  #gemini-result-card .g-floating-library-item,
+  #gemini-result-card .g-floating-history-item {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: var(--ffb-dark-border) !important;
+    color: var(--ffb-dark-text) !important;
+  }
+  #gemini-result-card .g-floating-library-item:hover,
+  #gemini-result-card .g-floating-history-item:hover { background: var(--ffb-dark-green-bg) !important; }
+  #gemini-result-card .g-floating-history-item:focus-visible { background: var(--ffb-dark-accent-bg) !important; }
+  #gemini-result-card .g-floating-library-item span { color: var(--ffb-dark-green) !important; }
+  #gemini-result-card .g-floating-library-item strong { color: var(--ffb-dark-text-strong) !important; }
+  #gemini-result-card .g-floating-library-item em { color: var(--ffb-dark-text-muted) !important; }
+  #gemini-result-card .g-floating-history-item span {
+    background: var(--ffb-dark-accent-bg) !important;
+    color: var(--ffb-dark-accent) !important;
+  }
+
+  /* ── 單字高亮提示（掛在 body） ─────────────────── */
+  .g-vocab-highlight-tip {
+    background: var(--ffb-dark-surface-raised) !important;
+    border-color: rgba(163, 209, 121, 0.3) !important;
+    color: var(--ffb-dark-text) !important;
+    box-shadow: var(--ffb-dark-shadow) !important;
+  }
+  .g-vocab-highlight-tip strong { color: var(--ffb-dark-text-strong) !important; }
+  .g-vocab-highlight-tip span { color: var(--ffb-dark-green) !important; }
+  .g-vocab-highlight-tip em { color: var(--ffb-dark-text-muted) !important; }
+
+  /* ── 浮球與選單 ───────────────────────────────── */
+  #fanfanba-floating .ffb-ball-main,
+  #fanfanba-floating .ffb-ball-item {
+    background: var(--ffb-dark-surface-raised) !important;
+    border-color: var(--ffb-dark-border-strong) !important;
+    box-shadow: var(--ffb-dark-shadow) !important;
+  }
+  #fanfanba-floating .ffb-ball-main:hover,
+  #fanfanba-floating .ffb-ball-item:hover,
+  #fanfanba-floating .ffb-ball-item:focus-visible { background: var(--ffb-dark-surface-hover) !important; }
+  #fanfanba-floating .ffb-ball-item { color: var(--ffb-dark-text) !important; }
+  #fanfanba-floating .ffb-ball-item:hover,
+  #fanfanba-floating .ffb-ball-item:focus-visible {
+    border-color: rgba(163, 209, 121, 0.5) !important;
+    color: var(--ffb-dark-green) !important;
+  }
+  #fanfanba-floating .ffb-ball-item:disabled { color: #7d857d !important; }
+  #fanfanba-floating .ffb-ball-icon { color: var(--ffb-dark-green) !important; }
+  /* × 疊在網頁上、原本沒有底色：暗色下給圓底，才不受網頁底色影響 */
+  #fanfanba-floating .ffb-pause-x {
+    background: var(--ffb-dark-surface-raised) !important;
+    color: var(--ffb-dark-text-muted) !important;
+  }
+  #fanfanba-floating .ffb-pause-x:hover,
+  #fanfanba-floating .ffb-pause-x:focus-visible { color: var(--ffb-dark-danger) !important; }
+  #fanfanba-floating .ffb-continue-tip {
+    background: #2e3a28 !important;
+    border-color: rgba(163, 209, 121, 0.4) !important;
+    color: var(--ffb-dark-green) !important;
+    box-shadow: var(--ffb-dark-shadow) !important;
+  }
+  #fanfanba-floating .ffb-continue-tip:hover,
+  #fanfanba-floating .ffb-continue-tip:focus-visible {
+    background: #354430 !important;
+    border-color: rgba(163, 209, 121, 0.6) !important;
+  }
+  #fanfanba-floating.ffb-can-continue .ffb-ball-main {
+    background: #2e3a28 !important;
+    border-color: rgba(163, 209, 121, 0.62) !important;
+  }
+  #fanfanba-floating.ffb-can-continue [data-action="page-translate"] {
+    background: var(--ffb-dark-green-bg) !important;
+    color: var(--ffb-dark-green) !important;
+  }
+  #fanfanba-floating.ffb-vocab-highlight-on [data-action="vocab-highlight"] {
+    background: rgba(253, 214, 99, 0.18) !important;
+    color: #fdd663 !important;
+  }
+
+  /* ── 全文翻譯控制面板 ─────────────────────────── */
+  .ffb-page-translation-panel {
+    background: var(--ffb-dark-surface) !important;
+    border-color: var(--ffb-dark-border) !important;
+    color: var(--ffb-dark-text) !important;
+    box-shadow: var(--ffb-dark-shadow) !important;
+  }
+  .ffb-page-translation-panel .ffb-page-panel-title { color: var(--ffb-dark-text-strong) !important; }
+  .ffb-page-translation-panel .ffb-page-panel-title span,
+  .ffb-page-translation-panel .ffb-page-learning-title { color: var(--ffb-dark-green) !important; }
+  .ffb-page-translation-panel .ffb-page-panel-count {
+    background: var(--ffb-dark-green-bg) !important;
+    color: var(--ffb-dark-green) !important;
+  }
+  .ffb-page-translation-panel .ffb-page-panel-progress { background: var(--ffb-dark-accent-bg) !important; }
+  .ffb-page-translation-panel .ffb-page-panel-progress-label { color: var(--ffb-dark-accent) !important; }
+  .ffb-page-translation-panel .ffb-page-panel-progress-track { background: rgba(138, 180, 248, 0.22) !important; }
+  .ffb-page-translation-panel .ffb-page-panel-progress-bar { background: var(--ffb-dark-accent) !important; }
+  .ffb-page-translation-panel .ffb-page-embedded-summary {
+    background: var(--ffb-dark-orange-bg) !important;
+    color: var(--ffb-dark-orange) !important;
+  }
+  .ffb-page-translation-panel .ffb-page-usage-summary,
+  .ffb-page-translation-panel .ffb-page-learning-vocab { color: var(--ffb-dark-text-muted) !important; }
+  .ffb-page-translation-panel .ffb-page-learning-summary {
+    background: var(--ffb-dark-green-bg) !important;
+    color: var(--ffb-dark-text) !important;
+  }
+  .ffb-page-translation-panel .ffb-page-panel-modes button,
+  .ffb-page-translation-panel .ffb-page-panel-actions button {
+    background: var(--ffb-dark-surface-raised) !important;
+    border-color: var(--ffb-dark-border) !important;
+    color: var(--ffb-dark-text) !important;
+  }
+  .ffb-page-translation-panel .ffb-page-panel-modes button:hover,
+  .ffb-page-translation-panel .ffb-page-panel-actions button:hover,
+  .ffb-page-translation-panel .ffb-page-panel-modes button:focus-visible,
+  .ffb-page-translation-panel .ffb-page-panel-actions button:focus-visible,
+  .ffb-page-translation-panel .ffb-page-panel-modes button.ffb-page-active,
+  .ffb-page-translation-panel .ffb-page-panel-actions button.ffb-page-active {
+    background: var(--ffb-dark-green-bg) !important;
+    border-color: rgba(163, 209, 121, 0.4) !important;
+    color: var(--ffb-dark-green) !important;
+  }
+}

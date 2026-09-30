@@ -126,4 +126,42 @@ describe('content CSS UI safeguards', () => {
   it('does not inject the removed paragraph hover translate button', () => {
     expect(css).not.toContain('.ffb-single-translate-btn');
   });
+
+  describe('深色模式區塊', () => {
+    const ROOTS = ['#gemini-ai-toolbar', '#gemini-result-card', '#fanfanba-floating', '.g-vocab-highlight-tip', '.ffb-page-translation-panel'];
+    let dark;
+
+    beforeAll(() => {
+      const start = css.indexOf('@media (prefers-color-scheme: dark)');
+      expect(start).toBeGreaterThan(-1);
+      // 以大括號配對取出整個 @media 區塊內容
+      let depth = 0;
+      let end = start;
+      for (let i = css.indexOf('{', start); i < css.length; i++) {
+        if (css[i] === '{') depth++;
+        if (css[i] === '}' && --depth === 0) { end = i; break; }
+      }
+      dark = css.slice(css.indexOf('{', start) + 1, end).replace(/\/\*[\s\S]*?\*\//g, '');
+    });
+
+    const rules = () => [...dark.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => ({ selectors: m[1].split(',').map(x => x.trim()), body: m[2] }));
+
+    it('只作用在翻翻吧自己的元件，不碰頁面 :root／html／body', () => {
+      const selectors = rules().flatMap(rule => rule.selectors);
+      expect(selectors.length).toBeGreaterThan(50);
+      const outside = selectors.filter(selector => !ROOTS.some(root => selector.startsWith(root)));
+      expect(outside).toEqual([]);
+      expect(dark).not.toMatch(/(^|[\s,}]):root\b|(^|[\s,}])(html|body)\b/);
+    });
+
+    it('不新增動畫或轉場（系統要求減少動態效果時不受影響）', () => {
+      expect(dark).not.toMatch(/\b(animation|transition)\s*:/);
+    });
+
+    it('每條宣告都帶 !important，宿主頁面蓋不過去', () => {
+      const declarations = rules().flatMap(rule => rule.body.split(';').map(x => x.trim()).filter(Boolean));
+      const missing = declarations.filter(decl => !decl.startsWith('--') && !decl.endsWith('!important'));
+      expect(missing).toEqual([]);
+    });
+  });
 });

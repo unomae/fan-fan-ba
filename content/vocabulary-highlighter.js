@@ -172,11 +172,11 @@ function showVocabularyHighlightTooltip(event) {
   const word = mark.dataset.vocabWord || mark.textContent || '';
   const meaning = mark.dataset.vocabMeaning || '已收藏';
   const count = mark.dataset.vocabCount || '1';
-  vocabularyHighlightTooltip.innerHTML = `
-    <strong>${escapeHtml(word)}</strong>
-    <span>${escapeHtml(meaning)}</span>
-    <em>遇到 ${escapeHtml(count)} 次</em>
-  `;
+  ffbClear(vocabularyHighlightTooltip).append(
+    ffbEl('strong', null, word),
+    ffbEl('span', null, meaning),
+    ffbEl('em', null, `遇到 ${count} 次`)
+  );
   const rect = mark.getBoundingClientRect();
   vocabularyHighlightTooltip.style.left = `${Math.min(rect.left, window.innerWidth - 220)}px`;
   vocabularyHighlightTooltip.style.top = `${Math.max(8, rect.bottom + 6)}px`;

@@ -125,56 +125,45 @@ function renderPageTranslationResult(item, result) {
   }
   const head = ffbEl('div', { class: 'ffb-page-translation-head' },
     actions);
-  // 譯文本體是 formatPageTranslationText 產生、且內部已 escapeHtml 過的 HTML 結構，仍以 innerHTML 注入
-  const textEl = ffbEl('div', { class: 'ffb-page-translation-text' });
-  textEl.innerHTML = formatPageTranslationText(result);
+  // 譯文本體：段落與清單由 formatPageTranslationText 建成 DOM 節點，譯文一律當純文字
+  const textEl = ffbEl('div', { class: 'ffb-page-translation-text' }, formatPageTranslationText(result));
 
   ffbClear(item.translationNode);
   item.translationNode.append(head, textEl);
   bindPageTranslationBlockEvents(item.translationNode);
 }
 
+// 譯文 → DOM 節點陣列：空行分段、• / - / * 開頭成 <ul>、數字編號成 <ol>，其餘每行一個 <p>
 function formatPageTranslationText(text) {
   const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
-  let html = '';
-  let inUl = false;
-  let inOl = false;
-
-  const closeLists = () => {
-    if (inUl) { html += '</ul>'; inUl = false; }
-    if (inOl) { html += '</ol>'; inOl = false; }
-  };
+  const nodes = [];
+  let list = null; // 目前開著的 <ul>／<ol>
 
   lines.forEach(rawLine => {
     const line = rawLine.trim();
     if (!line) {
-      closeLists();
+      list = null;
       return;
     }
 
     const bulletMatch = line.match(/^(?:[-*•・‧])\s+(.+)$/);
     const orderedMatch = line.match(/^([0-9０-９]+)[.)．、]\s+(.+)$/);
 
-    if (bulletMatch) {
-      if (inOl) { html += '</ol>'; inOl = false; }
-      if (!inUl) { html += '<ul class="ffb-page-translation-list">'; inUl = true; }
-      html += `<li>${escapeHtml(bulletMatch[1])}</li>`;
+    if (bulletMatch || orderedMatch) {
+      const tag = bulletMatch ? 'ul' : 'ol';
+      if (list?.localName !== tag) {
+        list = ffbEl(tag, { class: 'ffb-page-translation-list' });
+        nodes.push(list);
+      }
+      list.appendChild(ffbEl('li', null, bulletMatch ? bulletMatch[1] : orderedMatch[2]));
       return;
     }
 
-    if (orderedMatch) {
-      if (inUl) { html += '</ul>'; inUl = false; }
-      if (!inOl) { html += '<ol class="ffb-page-translation-list">'; inOl = true; }
-      html += `<li>${escapeHtml(orderedMatch[2])}</li>`;
-      return;
-    }
-
-    closeLists();
-    html += `<p>${escapeHtml(line)}</p>`;
+    list = null;
+    nodes.push(ffbEl('p', null, line));
   });
 
-  closeLists();
-  return html || escapeHtml(text);
+  return nodes.length ? nodes : [String(text)];
 }
 
 function renderPageTranslationError(item, message) {

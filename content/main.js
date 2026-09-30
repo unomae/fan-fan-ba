@@ -354,21 +354,6 @@ function hideAll() {
 }
 
 // ── 觸發 AI 功能 ─────────────────────────────────────
-const ACTION_META = {
-  translate: {
-    label: '翻譯',
-    svg: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>`
-  },
-  explain: {
-    label: '解釋',
-    svg: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`
-  },
-  optimize: {
-    label: '優化',
-    svg: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>`
-  }
-};
-
 function triggerAction(action) {
   if (!savedSel) return;
   if (savedSel.pendingGoogleDocsSelection) {
@@ -393,10 +378,12 @@ function triggerAction(action) {
   resultCard.querySelector('.g-obs-dropdown')?.classList.remove('g-obs-dd-open');
   hideAutoSaveToast(resultCard);
 
-  const meta = ACTION_META[action] || { label: action, svg: '' };
-  resultCard.querySelector('.g-rc-tag').innerHTML = `${meta.svg}${meta.label}`;
-  resultCard.querySelector('.g-rc-body').innerHTML =
-    '<div class="g-shimmer-wrap"><div class="g-shimmer-line"></div><div class="g-shimmer-line"></div><div class="g-shimmer-line"></div></div>';
+  setResultCardTag(resultCard.querySelector('.g-rc-tag'), action);
+  ffbClear(resultCard.querySelector('.g-rc-body')).appendChild(ffbEl('div', { class: 'g-shimmer-wrap' }, [
+    ffbEl('div', { class: 'g-shimmer-line' }),
+    ffbEl('div', { class: 'g-shimmer-line' }),
+    ffbEl('div', { class: 'g-shimmer-line' })
+  ]));
 
   const toolbarRect = toolbar?.getBoundingClientRect?.();
   resultCardAnchorRect = toolbarRect && Number.isFinite(toolbarRect.bottom) ? {
@@ -551,7 +538,7 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey, requ
     if (requestId !== activeRequestId || (msg.requestId && String(msg.requestId) !== String(requestId))) return;
     if (msg.status) {
       streamNotice = msg.status;
-      if (body && !accumulated) body.innerHTML = `<div class="g-provider-notice">${escapeHtml(streamNotice)}</div>`;
+      if (body && !accumulated) ffbClear(body).appendChild(ffbEl('div', { class: 'g-provider-notice' }, streamNotice));
       return;
     }
     if (msg.error) {
@@ -576,11 +563,10 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey, requ
       accumulated += msg.chunk;
       // 串流進行中：純文字 + 游標，DEEP 標記顯示為分隔線
       if (body) {
-        const display = escapeHtml(accumulated)
-          .replace(/===DEEP===/g, '<hr class="g-deep-divider">')
-          .replace(/\n/g, '<br>');
-        const notice = streamNotice ? `<div class="g-provider-notice">${escapeHtml(streamNotice)}</div>` : '';
-        body.innerHTML = `${notice}<div class="g-text-body g-streaming">${display}</div>`;
+        ffbClear(body).append(
+          ...(streamNotice ? [ffbEl('div', { class: 'g-provider-notice' }, streamNotice)] : []),
+          ffbEl('div', { class: 'g-text-body g-streaming' }, buildStreamingText(accumulated))
+        );
       }
     }
   });
@@ -594,6 +580,14 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey, requ
   });
 
   port.postMessage({ requestId, action, selectedText, context, pageTitle, modelOverride: cardModelOverride || '', targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' });
+}
+
+// 串流中的暫時顯示：純文字，換行 → <br>，DEEP 標記 → 分隔線
+function buildStreamingText(text) {
+  return text.split('===DEEP===').flatMap((part, partIndex) => [
+    partIndex > 0 && ffbEl('hr', { class: 'g-deep-divider' }),
+    ...part.split('\n').flatMap((line, lineIndex) => [lineIndex > 0 && ffbEl('br'), line || null])
+  ]);
 }
 
 function initContentSettings() {

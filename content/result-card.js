@@ -1,98 +1,102 @@
 'use strict';
 
+// 結果卡用的線條圖示（無填色、currentColor 描邊）
+function resultCardIcon(size, shapes, { strokeWidth = 2, className = null } = {}) {
+  return ffbSvgIcon({
+    class: className, width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
+    stroke: 'currentColor', 'stroke-width': strokeWidth, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+  }, shapes);
+}
+
+const RESULT_CARD_ICON_OBSIDIAN = [['path', { d: 'M6 3h12l4 6-10 13L2 9Z' }], ['path', { d: 'M11 3 8 9l4 13 4-13-3-6' }], ['path', { d: 'M2 9h20' }]];
+const RESULT_CARD_ICON_COPY = [['rect', { width: 14, height: 14, x: 8, y: 8, rx: 2 }], ['path', { d: 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2' }]];
+
+// 三個查詢動作的標籤圖示（結果卡標題列；歷史還原與 main.js 新查詢共用）
+const RESULT_CARD_ACTION_TAGS = {
+  translate: {
+    label: '翻譯',
+    shapes: [['path', { d: 'm5 8 6 6' }], ['path', { d: 'm4 14 6-6 2-3' }], ['path', { d: 'M2 5h12' }], ['path', { d: 'M7 2h1' }], ['path', { d: 'm22 22-5-10-5 10' }], ['path', { d: 'M14 18h6' }]]
+  },
+  explain: {
+    label: '解釋',
+    shapes: [['circle', { cx: 12, cy: 12, r: 10 }], ['path', { d: 'M12 16v-4' }], ['path', { d: 'M12 8h.01' }]]
+  },
+  optimize: {
+    label: '優化',
+    shapes: [['path', { d: 'm12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z' }]]
+  }
+};
+
+// 標題列標籤：已知動作＝圖示＋中文名；其他（如自訂字串）只顯示原字
+function setResultCardTag(tagEl, action) {
+  const meta = RESULT_CARD_ACTION_TAGS[action];
+  ffbClear(tagEl).append(...(meta ? [resultCardIcon(13, meta.shapes), meta.label] : [String(action)]));
+}
+
 function createResultCard() {
-  const el = document.createElement('div');
-  el.id = 'gemini-result-card';
-  el.innerHTML = `
-    <div class="g-rc-header">
-      <span class="g-rc-tag"></span>
-      <div class="g-rc-actions">
-        <button class="g-icon-btn g-pin" type="button" title="釘住結果卡" aria-label="釘住結果卡">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="17" x2="12" y2="22"/>
-            <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
-          </svg>
-        </button>
-        <button class="g-icon-btn g-save-obs" type="button" title="存到 Obsidian" aria-label="存到 Obsidian">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 3h12l4 6-10 13L2 9Z"/>
-            <path d="M11 3 8 9l4 13 4-13-3-6"/>
-            <path d="M2 9h20"/>
-          </svg>
-        </button>
-        <button class="g-icon-btn g-history" type="button" title="最近查詢紀錄" aria-label="最近查詢紀錄">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-            <path d="M3 3v5h5"/>
-            <path d="M12 7v5l4 2"/>
-          </svg>
-        </button>
-        <button class="g-icon-btn g-copy" type="button" title="複製" aria-label="複製結果">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-          </svg>
-        </button>
-        <button class="g-icon-btn g-close-rc" type="button" title="關閉" aria-label="關閉結果卡">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 6 6 18M6 6l12 12"/>
-          </svg>
-        </button>
-      </div>
-    </div>
+  const iconButton = (className, title, ariaLabel, shapes) => ffbEl('button',
+    { class: `g-icon-btn ${className}`, type: 'button', title, 'aria-label': ariaLabel },
+    resultCardIcon(13, shapes));
 
-    <!-- 自動存入 Obsidian 成功提示列 -->
-    <div class="g-autosave-bar">
-      <span class="g-autosave-text"></span>
-      <button class="g-autosave-change" type="button">更換資料夾</button>
-    </div>
+  const el = ffbEl('div', { id: 'gemini-result-card' }, [
+    ffbEl('div', { class: 'g-rc-header' }, [
+      ffbEl('span', { class: 'g-rc-tag' }),
+      ffbEl('div', { class: 'g-rc-actions' }, [
+        iconButton('g-pin', '釘住結果卡', '釘住結果卡', [
+          ['line', { x1: 12, y1: 17, x2: 12, y2: 22 }],
+          ['path', { d: 'M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z' }]
+        ]),
+        iconButton('g-save-obs', '存到 Obsidian', '存到 Obsidian', RESULT_CARD_ICON_OBSIDIAN),
+        iconButton('g-history', '最近查詢紀錄', '最近查詢紀錄', [
+          ['path', { d: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' }], ['path', { d: 'M3 3v5h5' }], ['path', { d: 'M12 7v5l4 2' }]
+        ]),
+        iconButton('g-copy', '複製', '複製結果', RESULT_CARD_ICON_COPY),
+        iconButton('g-close-rc', '關閉', '關閉結果卡', [['path', { d: 'M18 6 6 18M6 6l12 12' }]])
+      ])
+    ]),
 
-    <!-- 最近查詢紀錄下拉面板 -->
-    <div class="g-history-panel"></div>
+    // 自動存入 Obsidian 成功提示列
+    ffbEl('div', { class: 'g-autosave-bar' }, [
+      ffbEl('span', { class: 'g-autosave-text' }),
+      ffbEl('button', { class: 'g-autosave-change', type: 'button' }, '更換資料夾')
+    ]),
 
-    <div class="g-rc-body"></div>
+    // 最近查詢紀錄下拉面板
+    ffbEl('div', { class: 'g-history-panel' }),
 
-    <div class="g-obs-panel">
-      <div class="g-obs-panel-title">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 3h12l4 6-10 13L2 9Z"/>
-          <path d="M11 3 8 9l4 13 4-13-3-6"/>
-          <path d="M2 9h20"/>
-        </svg>
-        存到 Obsidian
-      </div>
-      <div class="g-obs-input-row">
-        <input class="g-obs-input" type="text" placeholder="資料夾路徑，如：翻翻吧  或  Reading/AI">
-      </div>
-      <div class="g-obs-dropdown"></div>
-      <div class="g-obs-status"></div>
-      <div class="g-obs-split-wrap">
-        <button class="g-obs-confirm-btn" type="button">新增到 Obsidian</button>
-        <button class="g-obs-chevron-btn" type="button" title="最近使用的資料夾" aria-label="最近使用的資料夾">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m6 9 6 6 6-6"/>
-          </svg>
-        </button>
-      </div>
-    </div>
+    ffbEl('div', { class: 'g-rc-body' }),
 
-    <!-- 修改原文後重查（僅影響這張卡，不改網頁內容）-->
-    <div class="g-rc-source">
-      <textarea class="g-rc-source-input" rows="3" aria-label="修改要查詢的原文"></textarea>
-      <div class="g-rc-source-actions">
-        <span class="g-rc-source-hint">⌘／Ctrl + Enter 送出</span>
-        <button class="g-rc-source-cancel" type="button">取消</button>
-        <button class="g-rc-source-submit" type="button">重新查詢</button>
-      </div>
-    </div>
+    ffbEl('div', { class: 'g-obs-panel' }, [
+      ffbEl('div', { class: 'g-obs-panel-title' }, [resultCardIcon(13, RESULT_CARD_ICON_OBSIDIAN), ' 存到 Obsidian']),
+      ffbEl('div', { class: 'g-obs-input-row' },
+        ffbEl('input', { class: 'g-obs-input', type: 'text', placeholder: '資料夾路徑，如：翻翻吧  或  Reading/AI' })),
+      ffbEl('div', { class: 'g-obs-dropdown' }),
+      ffbEl('div', { class: 'g-obs-status' }),
+      ffbEl('div', { class: 'g-obs-split-wrap' }, [
+        ffbEl('button', { class: 'g-obs-confirm-btn', type: 'button' }, '新增到 Obsidian'),
+        ffbEl('button', { class: 'g-obs-chevron-btn', type: 'button', title: '最近使用的資料夾', 'aria-label': '最近使用的資料夾' },
+          resultCardIcon(12, [['path', { d: 'm6 9 6 6 6-6' }]], { strokeWidth: 2.5 }))
+      ])
+    ]),
 
-    <div class="g-rc-footer">
-      <button class="g-rc-edit-source" type="button" aria-expanded="false">修改原文</button>
-      <div class="g-rc-model-wrap">
-        <select class="g-rc-model-select" title="這張卡使用的模型" aria-label="這張卡使用的模型（僅本次）"></select>
-        <span class="g-rc-model-once">僅本次</span>
-      </div>
-    </div>
-  `;
+    // 修改原文後重查（僅影響這張卡，不改網頁內容）
+    ffbEl('div', { class: 'g-rc-source' }, [
+      ffbEl('textarea', { class: 'g-rc-source-input', rows: 3, 'aria-label': '修改要查詢的原文' }),
+      ffbEl('div', { class: 'g-rc-source-actions' }, [
+        ffbEl('span', { class: 'g-rc-source-hint' }, '⌘／Ctrl + Enter 送出'),
+        ffbEl('button', { class: 'g-rc-source-cancel', type: 'button' }, '取消'),
+        ffbEl('button', { class: 'g-rc-source-submit', type: 'button' }, '重新查詢')
+      ])
+    ]),
+
+    ffbEl('div', { class: 'g-rc-footer' }, [
+      ffbEl('button', { class: 'g-rc-edit-source', type: 'button', 'aria-expanded': 'false' }, '修改原文'),
+      ffbEl('div', { class: 'g-rc-model-wrap' }, [
+        ffbEl('select', { class: 'g-rc-model-select', title: '這張卡使用的模型', 'aria-label': '這張卡使用的模型（僅本次）' }),
+        ffbEl('span', { class: 'g-rc-model-once' }, '僅本次')
+      ])
+    ])
+  ]);
 
   initModelSwitcher(el);
   initSourceEditor(el);
@@ -177,18 +181,16 @@ function createResultCard() {
       const ACTION_LABEL = { translate: '翻譯', explain: '解釋', optimize: '優化' };
       const ACTION_CLS   = { translate: 'g-hist-tag-translate', explain: 'g-hist-tag-explain', optimize: 'g-hist-tag-optimize' };
 
-      panel.innerHTML = history.map((h, i) => {
+      ffbClear(panel).append(...history.map((h, i) => {
         const label   = ACTION_LABEL[h.action] || h.action;
         const cls     = ACTION_CLS[h.action]   || '';
         const preview = h.text.length > 28 ? h.text.slice(0, 28) + '…' : h.text;
-        const time    = formatHistoryTime(h.ts);
-        return `
-          <button class="g-hist-item" data-index="${i}">
-            <span class="g-hist-tag ${cls}">${escapeHtml(label)}</span>
-            <span class="g-hist-text">${escapeHtml(preview)}</span>
-            <span class="g-hist-time">${escapeHtml(time)}</span>
-          </button>`;
-      }).join('');
+        return ffbEl('button', { class: 'g-hist-item', dataset: { index: i } }, [
+          ffbEl('span', { class: `g-hist-tag ${cls}` }, label),
+          ffbEl('span', { class: 'g-hist-text' }, preview),
+          ffbEl('span', { class: 'g-hist-time' }, formatHistoryTime(h.ts))
+        ]);
+      }));
 
       // ── 點擊歷史項目 → 還原結果卡 ──────────────────
       panel.querySelectorAll('.g-hist-item').forEach(btn => {
@@ -205,15 +207,7 @@ function createResultCard() {
           applyHistoryState(item.text);
 
           // 更新 header tag
-          const ACTION_META_LABEL = { translate: '翻譯', explain: '解釋', optimize: '優化' };
-          const ACTION_META_SVG   = {
-            translate: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>`,
-            explain:   `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`,
-            optimize:  `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>`
-          };
-          const tagSvg  = ACTION_META_SVG[item.action]   || '';
-          const tagText = ACTION_META_LABEL[item.action]  || item.action;
-          el.querySelector('.g-rc-tag').innerHTML = `${tagSvg}${tagText}`;
+          setResultCardTag(el.querySelector('.g-rc-tag'), item.action);
 
           // fromHistory: true → 不重複寫入 storage
           renderResult(item.action, item.result, item.text, { fromHistory: true });
@@ -235,9 +229,8 @@ function createResultCard() {
     if (folders.length === 0) {
       ffbClear(dropdown).appendChild(ffbEl('div', { class: 'g-obs-dd-empty' }, '尚無使用記錄'));
     } else {
-      dropdown.innerHTML = folders.map(f =>
-        `<button class="g-obs-dd-item" data-folder="${escapeHtml(f)}">${escapeHtml(f)}</button>`
-      ).join('');
+      ffbClear(dropdown).append(...folders.map(f =>
+        ffbEl('button', { class: 'g-obs-dd-item', dataset: { folder: f } }, f)));
       dropdown.querySelectorAll('.g-obs-dd-item').forEach(item => {
         item.addEventListener('click', e2 => {
           e2.stopPropagation();
@@ -463,7 +456,7 @@ function renderResult(action, rawResult, selectedText, { fromHistory = false } =
     try {
       const data = parseJSON(rawResult);
       lastDictData = data;
-      body.innerHTML = buildDictHTML(data);
+      ffbClear(body).appendChild(buildDictContent(data));
       body.querySelector('.g-speak-btn')?.addEventListener('click', e => {
         e.stopPropagation();
         speakWord(data.word || selectedText, e.currentTarget, data.lang);
@@ -475,7 +468,7 @@ function renderResult(action, rawResult, selectedText, { fromHistory = false } =
   }
 
   if (action === 'optimize' && selectedText.length > 20) {
-    body.innerHTML = buildOptimizeHTML(rawResult, selectedText);
+    ffbClear(body).appendChild(buildOptimizeContent(rawResult, selectedText));
     // 綁定「優化後」區塊的複製按鈕
     body.querySelector('.g-opt-copy-btn')?.addEventListener('click', e => {
       e.stopPropagation();
@@ -489,13 +482,13 @@ function renderResult(action, rawResult, selectedText, { fromHistory = false } =
   }
 
   if (action === 'explain') {
-    body.innerHTML = buildExplainHTML(rawResult);
+    ffbClear(body).appendChild(buildExplainContent(rawResult));
     initTagHandlers(body);
     if (!fromHistory) saveToHistory(action, selectedText, rawResult, null);
     return;
   }
 
-  body.innerHTML = `<div class="g-text-body">${formatMarkdown(rawResult)}</div>`;
+  ffbClear(body).appendChild(ffbEl('div', { class: 'g-text-body' }, formatMarkdown(rawResult)));
   if (!fromHistory) saveToHistory(action, selectedText, rawResult, null);
 }
 
@@ -605,64 +598,58 @@ function closeSourceEditor(el = resultCard) {
 
 const CHEVRON_SVG = `<svg class="g-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
 
-function buildDictHTML(d) {
+// 字典卡內容（DocumentFragment）；AI 回傳欄位一律當純文字
+function buildDictContent(d) {
   const translations = normalizeTranslations(d.translations);
   const cefr = normalizeCefr(d.cefr);
+  const divider = () => ffbEl('div', { class: 'g-dict-divider' });
 
-  const synonymHtml = d.synonym?.word ? `
-    <div class="g-dict-divider"></div>
-    <div class="g-synonym-row">
-      <span class="g-synonym-label">近義詞</span>
-      <span class="g-synonym-word">${escapeHtml(d.synonym.word)}</span>
-      <span class="g-synonym-diff">${escapeHtml(d.synonym.diff || '')}</span>
-    </div>` : '';
-
-  const examplesHtml = (d.examples || []).map(ex => {
-    const badge = ex.type === 'context'
-      ? '<span class="g-ex-badge g-ex-context">語境</span>'
-      : '<span class="g-ex-badge g-ex-general">通用</span>';
-    return `
-      <div class="g-example">
-        <div class="g-ex-src">${badge}<span class="g-ex-en">${highlightExampleHtml(ex.src || ex.en || '', ex.surface)}</span></div>
-        <div class="g-ex-zh">${escapeHtml(ex.zh || '')}</div>
-      </div>`;
-  }).join('');
-
-  const usageHtml = d.usage
-    ? `<div class="g-dict-divider"></div><div class="g-dict-usage">${escapeHtml(d.usage)}</div>` : '';
+  const examples = (d.examples || []).map(ex => ffbEl('div', { class: 'g-example' }, [
+    ffbEl('div', { class: 'g-ex-src' }, [
+      ex.type === 'context'
+        ? ffbEl('span', { class: 'g-ex-badge g-ex-context' }, '語境')
+        : ffbEl('span', { class: 'g-ex-badge g-ex-general' }, '通用'),
+      ffbEl('span', { class: 'g-ex-en' }, highlightExample(ex.src || ex.en || '', ex.surface))
+    ]),
+    ffbEl('div', { class: 'g-ex-zh' }, ex.zh || '')
+  ]));
 
   // 順序：單字說明區塊 → 詞彙涵義與用法 → 近義詞 → 例句
-  return `
-    <div class="g-dict-word-row">
-      <span class="g-dict-word">${escapeHtml(d.word || '')}</span>
-      <button class="g-speak-btn" type="button" title="發音" aria-label="播放發音">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-        </svg>
-      </button>
-      <button class="g-vocab-save-btn" type="button" title="收藏到單字本" aria-label="收藏到單字本">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-        </svg>
-        <span>收藏</span>
-      </button>
-      ${cefr ? `<span class="g-dict-cefr" title="CEFR 難度 ${cefr}" aria-label="CEFR 難度 ${cefr}">${cefr}</span>` : ''}
-    </div>
-    ${d.phonetic ? `<div class="g-dict-phonetic">${escapeHtml(d.phonetic)}</div>` : ''}
-    ${d.pos || d.definition ? `
-      <div class="g-dict-pos-def">
-        ${d.pos ? `<span class="g-pos ${getPosClass(d.pos)}">${escapeHtml(d.pos)}</span>` : ''}
-        ${escapeHtml(d.definition || '')}
-      </div>` : ''}
-    ${translations.length ? `
-      <div class="g-dict-divider"></div>
-      <div class="g-dict-translations">${translations.map(text => `<span>${escapeHtml(text)}</span>`).join('')}</div>` : ''}
-    ${d.usage ? `<div class="g-dict-usage">${escapeHtml(d.usage)}</div>` : ''}
-    ${synonymHtml}
-    ${examplesHtml ? `<div class="g-dict-divider"></div><div class="g-dict-examples-title">例句</div>${examplesHtml}` : ''}
-  `;
+  return ffbFragment([
+    ffbEl('div', { class: 'g-dict-word-row' }, [
+      ffbEl('span', { class: 'g-dict-word' }, d.word || ''),
+      ffbEl('button', { class: 'g-speak-btn', type: 'button', title: '發音', 'aria-label': '播放發音' },
+        resultCardIcon(15, [
+          ['polygon', { points: '11 5 6 9 2 9 2 15 6 15 11 19 11 5' }],
+          ['path', { d: 'M15.54 8.46a5 5 0 0 1 0 7.07' }],
+          ['path', { d: 'M19.07 4.93a10 10 0 0 1 0 14.14' }]
+        ])),
+      ffbEl('button', { class: 'g-vocab-save-btn', type: 'button', title: '收藏到單字本', 'aria-label': '收藏到單字本' }, [
+        resultCardIcon(14, [['path', { d: 'M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z' }]], { strokeWidth: 2.2 }),
+        ffbEl('span', null, '收藏')
+      ]),
+      cefr && ffbEl('span', { class: 'g-dict-cefr', title: `CEFR 難度 ${cefr}`, 'aria-label': `CEFR 難度 ${cefr}` }, cefr)
+    ]),
+    d.phonetic && ffbEl('div', { class: 'g-dict-phonetic' }, d.phonetic),
+    (d.pos || d.definition) && ffbEl('div', { class: 'g-dict-pos-def' }, [
+      d.pos && ffbEl('span', { class: `g-pos ${getPosClass(d.pos)}` }, d.pos),
+      d.pos ? ` ${d.definition || ''}` : (d.definition || '')
+    ]),
+    translations.length > 0 && [
+      divider(),
+      ffbEl('div', { class: 'g-dict-translations' }, translations.map(text => ffbEl('span', null, text)))
+    ],
+    d.usage && ffbEl('div', { class: 'g-dict-usage' }, d.usage),
+    d.synonym?.word && [
+      divider(),
+      ffbEl('div', { class: 'g-synonym-row' }, [
+        ffbEl('span', { class: 'g-synonym-label' }, '近義詞'),
+        ffbEl('span', { class: 'g-synonym-word' }, d.synonym.word),
+        ffbEl('span', { class: 'g-synonym-diff' }, d.synonym.diff || '')
+      ])
+    ],
+    examples.length > 0 && [divider(), ffbEl('div', { class: 'g-dict-examples-title' }, '例句'), examples]
+  ]);
 }
 
 function normalizeTranslations(translations) {
@@ -753,43 +740,42 @@ function setVocabularyButtonState(button, state, exported = false) {
 }
 
 // ── 解釋模式：直接顯示全部內容 ─────────────────────
-function buildExplainHTML(raw) {
-  return `<div class="g-text-body">${formatMarkdown(raw)}</div>`;
+function buildExplainContent(raw) {
+  return ffbEl('div', { class: 'g-text-body' }, formatMarkdown(raw));
 }
 
 // ── 優化模式：原文 → 優化後（綠底）→ 改動說明 ────
-function buildOptimizeHTML(raw, original) {
+function buildOptimizeContent(raw, original) {
   const optimizedMatch = raw.match(/\*\*優化後版本[：:]\*\*\s*([\s\S]*?)(?=\n\s*\*\*改動說明|$)/);
   const reasonsMatch   = raw.match(/\*\*改動說明[：:]\*\*\s*([\s\S]*)/);
 
   if (!optimizedMatch) {
-    return `<div class="g-text-body">${formatMarkdown(raw)}</div>`;
+    return ffbEl('div', { class: 'g-text-body' }, formatMarkdown(raw));
   }
 
   const optimizedText = optimizedMatch[1].trim();
   const reasonsText   = reasonsMatch?.[1]?.trim() || '';
 
-  return `
-    <div class="g-optimize-block">
-      <div class="g-optimize-label">原文</div>
-      <div class="g-optimize-original">${escapeHtml(original)}</div>
-    </div>
-    <div class="g-optimize-block">
-      <div class="g-optimize-label-row">
-        <span class="g-optimize-label">優化後</span>
-        <button class="g-opt-copy-btn" type="button" title="複製優化後文字" aria-label="複製優化後文字" data-text="${escapeHtml(optimizedText)}">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-          </svg>
-        </button>
-      </div>
-      <div class="g-optimize-result">${escapeHtml(optimizedText)}</div>
-    </div>
-    ${reasonsText ? `<div class="g-optimize-reasons">
-      <div class="g-optimize-label">改動說明</div>
-      <div class="g-text-body">${formatMarkdown(reasonsText)}</div>
-    </div>` : ''}
-  `;
+  return ffbFragment([
+    ffbEl('div', { class: 'g-optimize-block' }, [
+      ffbEl('div', { class: 'g-optimize-label' }, '原文'),
+      ffbEl('div', { class: 'g-optimize-original' }, original)
+    ]),
+    ffbEl('div', { class: 'g-optimize-block' }, [
+      ffbEl('div', { class: 'g-optimize-label-row' }, [
+        ffbEl('span', { class: 'g-optimize-label' }, '優化後'),
+        ffbEl('button', {
+          class: 'g-opt-copy-btn', type: 'button', title: '複製優化後文字', 'aria-label': '複製優化後文字',
+          dataset: { text: optimizedText }
+        }, resultCardIcon(12, RESULT_CARD_ICON_COPY))
+      ]),
+      ffbEl('div', { class: 'g-optimize-result' }, optimizedText)
+    ]),
+    reasonsText && ffbEl('div', { class: 'g-optimize-reasons' }, [
+      ffbEl('div', { class: 'g-optimize-label' }, '改動說明'),
+      ffbEl('div', { class: 'g-text-body' }, formatMarkdown(reasonsText))
+    ])
+  ]);
 }
 
 // ── Tag 點擊事件綁定（點擊後觸發 explain 查詢）────
@@ -810,10 +796,10 @@ function initTagHandlers(el) {
 function setError(msg, onRetry) {
   const body = resultCard?.querySelector('.g-rc-body');
   if (!body) return;
-  const retryHtml = onRetry
-    ? `<button class="g-retry-btn" type="button" aria-label="重試">↺ 重試</button>`
-    : '';
-  body.innerHTML = `<div class="g-error-wrap"><span class="g-error">${escapeHtml(msg)}</span>${retryHtml}</div>`;
+  ffbClear(body).appendChild(ffbEl('div', { class: 'g-error-wrap' }, [
+    ffbEl('span', { class: 'g-error' }, msg),
+    onRetry && ffbEl('button', { class: 'g-retry-btn', type: 'button', 'aria-label': '重試' }, '↺ 重試')
+  ]));
   if (onRetry) {
     body.querySelector('.g-retry-btn')?.addEventListener('click', onRetry);
   }
@@ -822,7 +808,7 @@ function setError(msg, onRetry) {
 function showResultNotice(msg) {
   const body = resultCard?.querySelector('.g-rc-body');
   if (!body || !msg) return;
-  body.insertAdjacentHTML('afterbegin', `<div class="g-provider-notice">${escapeHtml(msg)}</div>`);
+  body.prepend(ffbEl('div', { class: 'g-provider-notice' }, msg));
 }
 
 function speakWord(word, btn, lang) {

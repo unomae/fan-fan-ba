@@ -2,8 +2,10 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
+// utils 的格式化函式在執行時才找 ffbEl 等 DOM helper（瀏覽器端由 dom.js 提供），測試端掛到 global
+Object.assign(global, require('../../content/dom'));
 const utils = require('../../content/utils');
-const { highlightExampleHtml, normalizeCefr } = utils;
+const { highlightExample, normalizeCefr } = utils;
 const { buildPrompt } = require('../../background');
 const FanFanBaModels = require('../../models');
 
@@ -43,8 +45,15 @@ function loadResultCard() {
 function renderDict(data) {
   const ctx = loadResultCard();
   const wrapper = document.createElement('div');
-  wrapper.innerHTML = ctx.buildDictHTML(data);
+  wrapper.appendChild(ctx.buildDictContent(data));
   return wrapper;
+}
+
+// 把回傳的 DOM 節點序列化，沿用原本逐字比對 HTML 的斷言
+function highlightExampleHtml(src, surface) {
+  const wrapper = document.createElement('div');
+  wrapper.appendChild(highlightExample(src, surface));
+  return wrapper.innerHTML;
 }
 
 describe('字典例句：查詢詞加粗', () => {
