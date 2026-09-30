@@ -9,7 +9,7 @@
 | 項目 | 狀態 |
 |------|------|
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
-| 自動化單元測試 | <!-- ffb:suites -->35<!-- /ffb:suites --> suites / <!-- ffb:tests -->552<!-- /ffb:tests --> tests 全綠（2026-09-30，含模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對） |
+| 自動化單元測試 | <!-- ffb:suites -->39<!-- /ffb:suites --> suites / <!-- ffb:tests -->623<!-- /ffb:tests --> tests 全綠（2026-09-30，含模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-08-26；改 code 先 `npm run package`） |
 | 手動 QA | 全表 55/78；剩 23 項幾乎全卡「無 API key」或「需外部 App／帳號」（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | **2026-09-20 裁決：暫緩送審，先做功能**，告一段落再回頭走上架流程。Chrome Web Store 仍是 release checkpoint |

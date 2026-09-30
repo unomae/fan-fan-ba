@@ -7,6 +7,12 @@ const ModelRegistry = globalThis.FanFanBaModels || require('./models');
 const Storage = globalThis.FanFanBaStorage || require('./storage');
 const CloudSync = globalThis.FanFanBaCloudSync || require('./cloud-sync');
 const VocabBackup = globalThis.FanFanBaVocabularyBackup || require('./vocabulary-backup');
+const CustomActions = globalThis.FanFanBaCustomActions || require('./custom-actions');
+// 設定頁與 content 共用 DOM helper 與自訂動作版面（瀏覽器端由 <script> 掛在全域）
+const Dom = typeof globalThis.ffbEl === 'function' ? globalThis : require('./content/dom');
+const ActionRender = typeof globalThis.buildCustomActionContent === 'function'
+  ? globalThis
+  : require('./content/custom-action-render');
 const SETTINGS_BACKUP_APP = 'fan-fan-ba';
 const SETTINGS_BACKUP_SCHEMA_VERSION = 1;
 const SECRET_BACKUP_CRYPTO_VERSION = 1;
@@ -14,6 +20,7 @@ const SECRET_BACKUP_KDF_ITERATIONS = 210000;
 const SYNC_SETTING_KEYS = [
   'model',
   'pageTranslationModel',
+  'dictionaryModel',
   'targetLanguage',
   'explanationLanguage',
   'ttsLanguageMode',
@@ -41,12 +48,15 @@ const VOCAB_BACKUP_STALE_DAYS = 30;
 
 renderModelSelect();
 renderPageTranslationModelSelect();
+renderDictionaryModelSelect();
 renderLanguageSelects();
 initSettingsTabs();
+initFeatureModelHints();
 
 loadSettings();
 initDiagnosticsPanel();
 initVocabularyBackup();
+initActionEditor();
 
 // ── 單字本備份 / 還原（Phase B）──────────────────────
 function initVocabularyBackup() {
@@ -404,7 +414,7 @@ function setModelSelectValue(select, modelId) {
 // ── 載入已儲存的設定 ─────────────────────────────────
 async function loadSettings() {
   const [
-    { model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder, customApiBase, customModelName },
+    { model, pageTranslationModel, dictionaryModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder, customApiBase, customModelName },
     { apiKey, groqApiKey, openrouterApiKey, customApiKey, ttsApiKey }
   ] = await Promise.all([
     chrome.storage.sync.get(SYNC_SETTING_KEYS),
@@ -420,7 +430,9 @@ async function loadSettings() {
   // 無儲存紀錄時預設 Groq（免費額度最大方）
   const currentModel = ModelRegistry.normalizeModel(model);
   setModelSelectValue($('model'), currentModel);
-  if ($('pageTranslationModel')) setModelSelectValue($('pageTranslationModel'), ModelRegistry.normalizeModel(pageTranslationModel || currentModel));
+  // 沒存過（或存成空字串）＝跟隨主模型
+  if ($('pageTranslationModel')) setModelSelectValue($('pageTranslationModel'), pageTranslationModel ? ModelRegistry.normalizeModel(pageTranslationModel) : '');
+  if ($('dictionaryModel')) setModelSelectValue($('dictionaryModel'), dictionaryModel || '');
   if (model && currentModel !== model) chrome.storage.sync.set({ model: currentModel });
   if ($('targetLanguage')) {
     $('targetLanguage').value = ModelRegistry.normalizeLanguage(targetLanguage, 'zh-TW');
@@ -437,6 +449,7 @@ async function loadSettings() {
   if (obsidianVault)          $('obsidianVault').value          = obsidianVault;
   if (ttsApiKey)              $('ttsApiKey').value              = ttsApiKey;
   if (obsidianDefaultFolder)  $('obsidianDefaultFolder').value  = obsidianDefaultFolder;
+  updateFeatureModelHints();
 }
 
 function renderModelSelect() {
@@ -465,9 +478,127 @@ function renderPageTranslationModelSelect() {
   const select = $('pageTranslationModel');
   if (!select || select.tagName !== 'SELECT') return;
 
-  select.innerHTML = ModelRegistry.MODELS
+  select.innerHTML = '<option value="">跟隨主模型</option>' + ModelRegistry.MODELS
     .map(model => `<option value="${model.id}">${model.name}（${model.desc}）</option>`)
     .join('');
+}
+
+// ── 各功能使用的模型 ─────────────────────────────────
+// 字典與各動作可選的模型：不含只做全文翻譯的模型（給不出結構化 JSON）
+function buildFeatureModelOptions(defaultValue) {
+  return [
+    Dom.ffbEl('option', { value: defaultValue }, '跟隨主模型'),
+    ...ModelRegistry.MODELS
+      .filter(model => !model.pageTranslationOnly)
+      .map(model => Dom.ffbEl('option', { value: model.id }, `${model.name}（${providerName(model.provider)}）`))
+  ];
+}
+
+function renderDictionaryModelSelect() {
+  const select = $('dictionaryModel');
+  if (select) Dom.ffbClear(select).append(...buildFeatureModelOptions(''));
+}
+
+// 動作清單的每個動作一列；值寫在動作的 model 欄位，按「儲存設定」才寫回
+function renderFeatureActionModelRows() {
+  const body = $('featureActionModelRows');
+  if (!body) return;
+  // 清單被別處改動而重畫時，保留使用者在表上還沒存的選擇
+  const unsaved = new Map(readUnsavedActionModels());
+  Dom.ffbClear(body).append(...actionListState.map(action => {
+    const id = `featureModel-${action.id}`;
+    const savedModel = action.model || 'default';
+    const select = Dom.ffbEl('select', { id, dataset: { featureModel: '', actionId: action.id, savedModel } }, buildFeatureModelOptions('default'));
+    setModelSelectValue(select, unsaved.get(action.id) || savedModel);
+    return Dom.ffbEl('tr', null, [
+      Dom.ffbEl('th', { scope: 'row' }, Dom.ffbEl('label', { for: id }, action.builtin ? action.name : `自訂：${action.name}`)),
+      Dom.ffbEl('td', null, select)
+    ]);
+  }));
+  updateFeatureModelHints();
+}
+
+// 缺什麼才能用這個模型；回傳 null 表示可用。focusId 是「前往填寫」要聚焦的欄位
+function getFeatureModelGap(modelId) {
+  if (!modelId || modelId === 'default') return null;
+  const model = ModelRegistry.MODELS.find(item => item.id === modelId);
+  const provider = model && ModelRegistry.PROVIDERS[model.provider];
+  if (!provider || provider.keyless) return null;
+  const valueOf = id => String($(id)?.value || '').trim();
+  if (provider.userConfigured) {
+    const missing = ['customApiBase', 'customModelName', provider.apiKeyName].find(id => !valueOf(id));
+    return missing ? { message: '自訂端點的網址、模型名稱或金鑰還沒填', focusId: missing } : null;
+  }
+  return valueOf(provider.apiKeyName) ? null : { message: `缺 ${provider.label} API Key`, focusId: provider.apiKeyName };
+}
+
+// 每個功能下拉選到缺金鑰的模型時，就地顯示提示與「前往填寫」
+function updateFeatureModelHints() {
+  document.querySelectorAll('select[data-feature-model]').forEach(select => {
+    const hintId = `${select.id}-hint`;
+    let hint = $(hintId);
+    const gap = getFeatureModelGap(select.value);
+    if (!gap) {
+      hint?.remove();
+      select.removeAttribute('aria-describedby');
+      return;
+    }
+    if (!hint) {
+      hint = Dom.ffbEl('div', { id: hintId, class: 'feature-model-hint' });
+      select.after(hint);
+    }
+    const go = Dom.ffbEl('button', { type: 'button' }, '前往填寫');
+    go.addEventListener('click', () => {
+      const target = $(gap.focusId);
+      target?.scrollIntoView?.({ block: 'center' });
+      target?.focus();
+    });
+    Dom.ffbClear(hint).append(
+      Dom.ffbEl('span', { class: 'diagnostics-dot warn', 'aria-hidden': 'true' }),
+      Dom.ffbEl('span', null, [`${gap.message}，這個功能會無法使用。`, go])
+    );
+    select.setAttribute('aria-describedby', hintId);
+  });
+}
+
+function initFeatureModelHints() {
+  document.addEventListener('change', event => {
+    if (event.target?.matches?.('select[data-feature-model]')) updateFeatureModelHints();
+  });
+  ['apiKey', 'groqApiKey', 'openrouterApiKey', 'customApiKey', 'customApiBase', 'customModelName'].forEach(id => {
+    $(id)?.addEventListener('input', updateFeatureModelHints);
+  });
+}
+
+// 表上改過、還沒存的動作模型：[[動作 id, 模型], …]
+function readUnsavedActionModels() {
+  return [...document.querySelectorAll('select[data-action-id]')]
+    .filter(select => (select.value || 'default') !== select.dataset.savedModel)
+    .map(select => [select.dataset.actionId, select.value || 'default']);
+}
+
+// 按「儲存設定」時把表上改過的動作模型寫回動作清單；沒有變動就不寫。
+// 先重讀 storage 裡最新的清單，只改這幾個動作的 model，不蓋掉別的分頁剛改的釘選或順序
+async function saveFeatureActionModels() {
+  const changed = new Map(readUnsavedActionModels());
+  if (!changed.size) return;
+  const latest = await CustomActions.loadActionList();
+  actionListState = await CustomActions.saveActionList(latest.map(action => (
+    changed.has(action.id) ? { ...action, model: changed.get(action.id) } : action
+  )));
+  renderActionList();
+}
+
+// 網頁「⋯」選單或其他設定分頁改了動作清單：換上最新清單，之後的排序、啟用、存檔才不會拿舊資料蓋回去。
+// 內容跟手上一樣（多半是這頁自己剛存的）就不重畫，以免打斷鍵盤焦點
+function initActionListSync() {
+  chrome.storage.onChanged?.addListener((changes, area) => {
+    if (area !== 'local' || !changes[CustomActions.STORAGE_KEY]) return;
+    const next = CustomActions.normalizeActionList(changes[CustomActions.STORAGE_KEY].newValue);
+    if (JSON.stringify(next) === JSON.stringify(CustomActions.normalizeActionList(actionListState))) return;
+    actionListState = next;
+    renderActionList();
+  });
 }
 
 function renderLanguageSelects() {
@@ -541,7 +672,9 @@ $('btnSave').addEventListener('click', async () => {
   const groqApiKey       = $('groqApiKey').value.trim();
   const openrouterApiKey = $('openrouterApiKey').value.trim();
   const model            = $('model').value;
-  const pageTranslationModel = ModelRegistry.normalizeModel($('pageTranslationModel')?.value || model);
+  const pageTranslationValue = $('pageTranslationModel')?.value || '';
+  const pageTranslationModel = pageTranslationValue ? ModelRegistry.normalizeModel(pageTranslationValue) : '';
+  const dictionaryModel  = $('dictionaryModel')?.value || '';
   const targetLanguage   = ModelRegistry.normalizeLanguage($('targetLanguage')?.value, 'zh-TW');
   const explanationLanguage = ModelRegistry.normalizeExplanationLanguage($('explanationLanguage')?.value, 'target');
   const ttsLanguageMode  = ModelRegistry.normalizeTtsLanguageMode($('ttsLanguageMode')?.value, 'auto');
@@ -580,9 +713,15 @@ $('btnSave').addEventListener('click', async () => {
   const obsidianDefaultFolder = $('obsidianDefaultFolder').value.trim();
 
   await Promise.all([
-    chrome.storage.sync.set({ model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder, ...custom.settings }),
+    chrome.storage.sync.set({ model, pageTranslationModel, dictionaryModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder, ...custom.settings }),
     Storage.setSecrets({ apiKey, groqApiKey, openrouterApiKey, customApiKey, ttsApiKey })
   ]);
+  try {
+    await saveFeatureActionModels();
+  } catch (error) {
+    showStatus('err', `各動作的模型沒有存成功：${error.message}`);
+    return;
+  }
   showStatus('ok', removedProviderLabel ? `✓ 設定已儲存（${removedProviderLabel} API Key 已移除）` : '✓ 設定已儲存');
 });
 
@@ -1021,6 +1160,10 @@ async function buildSettingsBackupPayload(includeSecrets = false, options = {}) 
     payload.secretsEncrypted = await encryptBackupSecrets(pickBackupSecrets(await Storage.getSecrets({})), options.password || '');
   }
 
+  // 動作清單只進本機設定檔、不進雲端同步（雲端 payload 只取 settings）；沒存過就不帶這個鍵
+  const { [CustomActions.STORAGE_KEY]: storedActions } = await chrome.storage.local.get({ [CustomActions.STORAGE_KEY]: [] });
+  if (Array.isArray(storedActions) && storedActions.length) payload.actions = storedActions;
+
   return payload;
 }
 
@@ -1162,17 +1305,27 @@ async function importSettingsBackupFile(file, options = {}) {
   const payload = parseSettingsBackup(await readTextFile(file));
   const settings = normalizeImportedSettings(payload.settings || {});
   const secrets = await resolveImportedBackupSecrets(payload, options.password || '');
+  const hasActions = Array.isArray(payload.actions);
 
-  if (!Object.keys(settings).length && !Object.keys(secrets).length) {
+  if (!Object.keys(settings).length && !Object.keys(secrets).length && !hasActions) {
     throw new Error('設定檔沒有可匯入的設定');
   }
 
   const writes = [];
   if (Object.keys(settings).length) writes.push(chrome.storage.sync.set(settings));
   if (Object.keys(secrets).length) writes.push(Storage.setSecrets(secrets));
+  // 動作清單整份取代：讀取端容錯（壞掉的自訂動作略過），再走嚴格存檔
+  let actions = null;
+  if (hasActions) writes.push(CustomActions.saveActionList(CustomActions.normalizeActionList(payload.actions)).then(list => { actions = list; }));
   await Promise.all(writes);
   await loadSettings();
-  return { settingsCount: Object.keys(settings).length, secretsCount: Object.keys(secrets).length };
+  const result = { settingsCount: Object.keys(settings).length, secretsCount: Object.keys(secrets).length };
+  if (actions) {
+    result.actionsCount = actions.filter(action => !action.builtin).length;
+    actionListState = actions;
+    renderActionList();
+  }
+  return result;
 }
 
 async function resolveImportedBackupSecrets(payload = {}, password = '') {
@@ -1245,10 +1398,11 @@ async function readTextFile(file) {
   });
 }
 
-function formatImportSettingsStatus({ settingsCount = 0, secretsCount = 0 } = {}) {
+function formatImportSettingsStatus({ settingsCount = 0, secretsCount = 0, actionsCount = null } = {}) {
   const parts = [];
   if (settingsCount) parts.push(`${settingsCount} 個設定`);
   if (secretsCount) parts.push(`${secretsCount} 個 API Key`);
+  if (actionsCount !== null) parts.push(`動作清單（${actionsCount} 個自訂動作）`);
   return `✓ 設定檔已匯入${parts.length ? `：${parts.join('、')}` : ''}`;
 }
 
@@ -1274,12 +1428,440 @@ function confirmCloudDownloadOverwrite(file = {}) {
   return window.confirm(`下載雲端設定會覆寫這台裝置目前的一般設定，但不會變更任何 API Key。${modifiedTime}\n\n確定要下載並套用嗎？`);
 }
 
+
+// ── 自訂動作：清單、編輯器與預覽 ──────────────────────
+// 資料模型與驗證都在 custom-actions.js；這裡只負責畫面。預覽用範例資料，不發任何網路請求。
+
+const ACTION_LAYOUT_NOTES = {
+  fields: '每個欄位一段，依序顯示欄位名與內容。',
+  annotate: '第一個欄位要回傳陣列：[{ "text": 原文片段, "type": 類型, "note": 說明 }]，片段會標在原文上。',
+  compare: '欄位代號用 before／after／notes；沒有 before 時以選取原文當修改前。'
+};
+
+// 內建動作的範本：prompt 是另外寫的簡化版，不是內建動作的原始 prompt
+const BUILTIN_ACTION_TEMPLATES = {
+  translate: {
+    name: '翻譯（自訂）', icon: 'globe', layout: 'fields',
+    userPrompt: '請把下面的文字翻成{{targetLanguage}}，語氣自然。\n\n{{selection}}',
+    fields: [{ key: 'translation', label: '譯文', description: '' }]
+  },
+  explain: {
+    name: '解釋（自訂）', icon: 'bulb', layout: 'fields',
+    userPrompt: '用{{targetLanguage}}解釋下面這段文字的意思與重點，必要時參考上下文。\n\n文字：{{selection}}\n\n上下文：{{context}}',
+    fields: [
+      { key: 'meaning', label: '意思', description: '' },
+      { key: 'points', label: '重點', description: '條列' }
+    ]
+  },
+  optimize: {
+    name: '優化（自訂）', icon: 'pen', layout: 'compare',
+    userPrompt: '把下面的文字改得更通順自然，保留原意，並說明改了什麼。\n\n{{selection}}',
+    fields: [
+      { key: 'after', label: '修改後', description: '' },
+      { key: 'notes', label: '說明', description: '' }
+    ]
+  }
+};
+
+let actionListState = [];
+let actionEditorState = null; // { action, isNew }
+
+function initActionEditor() {
+  if (!$('actionList') || !$('actionEditor')) return undefined;
+  renderActionIconPicker();
+  renderActionVarButtons();
+  renderActionModelSelect();
+
+  $('btnNewAction').addEventListener('click', () => openActionEditor(createBlankCustomAction(), { isNew: true }));
+  $('btnCopyAiGuide').addEventListener('click', copyActionAiGuide);
+  $('btnAddActionField').addEventListener('click', () => {
+    const fields = readActionFieldRows();
+    if (fields.length >= CustomActions.MAX_FIELDS) {
+      setActionEditorError(`輸出欄位最多 ${CustomActions.MAX_FIELDS} 個`);
+      return;
+    }
+    renderActionFieldRows([...fields, { key: '', label: '', description: '' }]);
+    $('actionFields').querySelector('.action-field-row:last-child input')?.focus();
+    renderActionPreview();
+  });
+  $('actionEditor').addEventListener('submit', event => {
+    event.preventDefault();
+    saveActionFromEditor();
+  });
+  $('actionEditor').addEventListener('input', renderActionPreview);
+  $('actionEditor').addEventListener('change', renderActionPreview);
+  $('actionEditor').addEventListener('keydown', event => {
+    if (event.key === 'Escape') { event.preventDefault(); closeActionEditor(); }
+  });
+  $('btnCancelAction').addEventListener('click', closeActionEditor);
+  $('btnDeleteAction').addEventListener('click', deleteActionFromEditor);
+  document.querySelectorAll('[data-preview-width]').forEach(button => {
+    button.addEventListener('click', () => setActionPreviewWidth(Number(button.dataset.previewWidth)));
+  });
+
+  initActionListSync();
+  return loadActionEditorList();
+}
+
+async function loadActionEditorList() {
+  actionListState = await CustomActions.loadActionList();
+  renderActionList();
+  return actionListState;
+}
+
+function setActionListStatus(message, isError = false) {
+  const el = $('actionListStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.style.color = isError ? '#b3261e' : '';
+}
+
+function renderActionList() {
+  const list = $('actionList');
+  if (!list) return;
+  const last = actionListState.length - 1;
+  Dom.ffbClear(list).append(...actionListState.map((action, index) => {
+    const moveButton = (delta, text) => Dom.ffbEl('button', {
+      class: 'btn-test', type: 'button', 'aria-label': `${text}：${action.name}`,
+      disabled: (delta < 0 && index === 0) || (delta > 0 && index === last)
+    }, delta < 0 ? '↑' : '↓');
+    const up = moveButton(-1, '上移');
+    const down = moveButton(1, '下移');
+    up.addEventListener('click', () => moveAction(action.id, -1));
+    down.addEventListener('click', () => moveAction(action.id, 1));
+
+    const enabled = Dom.ffbEl('input', { type: 'checkbox', 'aria-label': `啟用：${action.name}` });
+    enabled.checked = action.enabled;
+    enabled.addEventListener('change', () => setActionEnabled(action.id, enabled.checked));
+
+    const buttons = action.builtin
+      ? [Dom.ffbEl('button', { class: 'btn-test', type: 'button', dataset: { act: 'template' } }, '以此為範本')]
+      : [
+        Dom.ffbEl('button', { class: 'btn-test', type: 'button', dataset: { act: 'edit' } }, '編輯'),
+        Dom.ffbEl('button', { class: 'btn-test', type: 'button', dataset: { act: 'duplicate' } }, '複製')
+      ];
+    buttons.forEach(button => button.addEventListener('click', () => {
+      const act = button.dataset.act;
+      if (act === 'edit') openActionEditor(action, { isNew: false });
+      else if (act === 'duplicate') openActionEditor(duplicateCustomAction(action), { isNew: true });
+      else openActionEditor(createActionFromBuiltin(action.id), { isNew: true });
+    }));
+
+    return Dom.ffbEl('li', { class: `action-row${action.enabled ? '' : ' is-disabled'}`, dataset: { id: action.id } }, [
+      enabled,
+      Dom.ffbEl('span', { class: 'action-row-name' }, [
+        ActionRender.buildCustomActionIcon(action.builtin ? builtinIconName(action.id) : action.icon, 16),
+        Dom.ffbEl('span', null, action.name),
+        action.builtin && Dom.ffbEl('span', { class: 'action-badge' }, '內建')
+      ]),
+      up, down, ...buttons
+    ]);
+  }));
+  renderFeatureActionModelRows();
+}
+
+function builtinIconName(id) {
+  return { translate: 'globe', explain: 'bulb', optimize: 'pen' }[id] || ActionRender.getDefaultCustomActionIcon();
+}
+
+// 存檔一律走 saveActionList（嚴格驗證）；失敗時畫面維持原狀並顯示原因
+async function persistActionList(list, message) {
+  try {
+    actionListState = await CustomActions.saveActionList(list);
+    renderActionList();
+    setActionListStatus(message);
+    return true;
+  } catch (error) {
+    setActionListStatus(`儲存失敗：${error.message}`, true);
+    renderActionList();
+    return false;
+  }
+}
+
+function reorderActions(list) {
+  return list.map((action, index) => ({ ...action, order: index }));
+}
+
+async function moveAction(id, delta) {
+  const index = actionListState.findIndex(action => action.id === id);
+  const target = index + delta;
+  if (index === -1 || target < 0 || target >= actionListState.length) return false;
+  const list = actionListState.slice();
+  [list[index], list[target]] = [list[target], list[index]];
+  const moved = await persistActionList(reorderActions(list), '✓ 已調整順序');
+  // 重畫後把焦點放回同一個動作的同方向按鈕，鍵盤可以連按
+  if (moved) {
+    const row = [...$('actionList').querySelectorAll('.action-row')].find(item => item.dataset.id === id);
+    const buttons = row ? [...row.querySelectorAll('button')].slice(0, 2) : [];
+    const preferred = buttons[delta < 0 ? 0 : 1];
+    (preferred && !preferred.disabled ? preferred : buttons[delta < 0 ? 1 : 0])?.focus();
+  }
+  return moved;
+}
+
+function setActionEnabled(id, enabled) {
+  const list = actionListState.map(action => (action.id === id ? { ...action, enabled } : action));
+  return persistActionList(list, enabled ? '✓ 已啟用' : '✓ 已停用');
+}
+
+function generateCustomActionId() {
+  const random = Math.random().toString(36).slice(2, 8);
+  return `custom-${Date.now().toString(36)}-${random}`;
+}
+
+function nextActionOrder() {
+  return Math.min(999, actionListState.reduce((max, action) => Math.max(max, action.order), -1) + 1);
+}
+
+function createBlankCustomAction() {
+  return {
+    id: generateCustomActionId(), name: '新動作', icon: ActionRender.getDefaultCustomActionIcon(),
+    builtin: false, enabled: true, pinned: false, order: nextActionOrder(), model: 'default',
+    systemPrompt: '', userPrompt: '{{selection}}',
+    fields: [{ key: 'result', label: '結果', description: '' }],
+    layout: 'fields', saveTo: 'none'
+  };
+}
+
+function createActionFromBuiltin(builtinId) {
+  const template = BUILTIN_ACTION_TEMPLATES[builtinId];
+  return {
+    ...createBlankCustomAction(),
+    ...template,
+    fields: template.fields.map(field => ({ ...field }))
+  };
+}
+
+function duplicateCustomAction(action) {
+  return {
+    ...action,
+    id: generateCustomActionId(),
+    name: `${action.name}（副本）`.slice(0, 40),
+    pinned: false,
+    order: nextActionOrder(),
+    fields: action.fields.map(field => ({ ...field }))
+  };
+}
+
+function renderActionIconPicker() {
+  const picker = $('actionIconPicker');
+  const legend = picker.querySelector('legend');
+  Dom.ffbClear(picker).append(legend, ...ActionRender.listCustomActionIcons().map(({ name, label }) => {
+    const input = Dom.ffbEl('input', { type: 'radio', name: 'actionIcon', value: name });
+    return Dom.ffbEl('label', { class: 'action-icon-option' }, [input, ActionRender.buildCustomActionIcon(name, 16), label]);
+  }));
+}
+
+function renderActionVarButtons() {
+  Dom.ffbClear($('actionVarButtons')).append(...CustomActions.VARIABLES.map(name => {
+    const button = Dom.ffbEl('button', { class: 'btn-test', type: 'button', 'aria-label': `插入變數 ${name}` }, `{{${name}}}`);
+    button.addEventListener('click', () => insertActionVariable(name));
+    return button;
+  }));
+}
+
+function renderActionModelSelect() {
+  const models = ModelRegistry.MODELS.filter(model => !model.pageTranslationOnly);
+  Dom.ffbClear($('actionModel')).append(
+    Dom.ffbEl('option', { value: 'default' }, '跟隨主模型'),
+    ...models.map(model => Dom.ffbEl('option', { value: model.id }, model.name || model.id))
+  );
+}
+
+// 插在游標位置，插完游標停在變數後面
+function insertActionVariable(name) {
+  const textarea = $('actionUserPrompt');
+  const token = `{{${name}}}`;
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? textarea.value.length;
+  textarea.value = textarea.value.slice(0, start) + token + textarea.value.slice(end);
+  textarea.focus();
+  textarea.setSelectionRange(start + token.length, start + token.length);
+  renderActionPreview();
+}
+
+function renderActionFieldRows(fields) {
+  Dom.ffbClear($('actionFields')).append(...fields.map((field, index) => {
+    const input = (className, value, label, maxlength, placeholder) => {
+      const el = Dom.ffbEl('input', {
+        type: 'text', class: className, 'aria-label': `第 ${index + 1} 個欄位的${label}`,
+        maxlength, placeholder, autocomplete: 'off', spellcheck: 'false'
+      });
+      el.value = value || '';
+      return el;
+    };
+    const remove = Dom.ffbEl('button', { class: 'btn-test', type: 'button', 'aria-label': `刪除第 ${index + 1} 個欄位` }, '刪除');
+    remove.addEventListener('click', () => {
+      const rows = readActionFieldRows();
+      rows.splice(index, 1);
+      renderActionFieldRows(rows);
+      renderActionPreview();
+    });
+    return Dom.ffbEl('div', { class: 'action-field-row' }, [
+      input('action-field-key', field.key, '代號', 32, '代號，如 summary'),
+      input('action-field-label', field.label, '名稱', 40, '名稱'),
+      input('action-field-description', field.description, '說明', 200, '說明（選填，會寫進 prompt）'),
+      remove
+    ]);
+  }));
+}
+
+function readActionFieldRows() {
+  return [...$('actionFields').querySelectorAll('.action-field-row')].map(row => ({
+    key: row.querySelector('.action-field-key').value.trim(),
+    label: row.querySelector('.action-field-label').value.trim(),
+    description: row.querySelector('.action-field-description').value.trim()
+  }));
+}
+
+function openActionEditor(action, { isNew }) {
+  actionEditorState = { action, isNew };
+  $('actionEditorTitle').textContent = isNew ? '新增自訂動作' : `編輯：${action.name}`;
+  $('actionName').value = action.name;
+  $('actionModel').value = action.model || 'default';
+  const icons = [...$('actionIconPicker').querySelectorAll('input[name="actionIcon"]')];
+  (icons.find(input => input.value === action.icon)
+    || icons.find(input => input.value === ActionRender.getDefaultCustomActionIcon())).checked = true;
+  $('actionSystemPrompt').value = action.systemPrompt || '';
+  $('actionUserPrompt').value = action.userPrompt || '';
+  $('actionLayout').value = action.layout || 'fields';
+  $('actionSaveTo').value = action.saveTo || 'none';
+  $('btnDeleteAction').hidden = isNew;
+  renderActionFieldRows(action.fields || []);
+  setActionEditorError('');
+  $('actionEditor').hidden = false;
+  renderActionPreview();
+  $('actionName').focus();
+}
+
+function closeActionEditor() {
+  actionEditorState = null;
+  $('actionEditor').hidden = true;
+  setActionEditorError('');
+  $('btnNewAction')?.focus();
+}
+
+function setActionEditorError(message) {
+  const el = $('actionEditorError');
+  if (el) el.textContent = message;
+}
+
+function readActionEditorDraft() {
+  const base = actionEditorState?.action || createBlankCustomAction();
+  return {
+    ...base,
+    name: $('actionName').value.trim(),
+    icon: $('actionIconPicker').querySelector('input[name="actionIcon"]:checked')?.value || ActionRender.getDefaultCustomActionIcon(),
+    model: $('actionModel').value || 'default',
+    systemPrompt: $('actionSystemPrompt').value,
+    userPrompt: $('actionUserPrompt').value,
+    fields: readActionFieldRows(),
+    layout: $('actionLayout').value,
+    saveTo: $('actionSaveTo').value
+  };
+}
+
+async function saveActionFromEditor() {
+  if (!actionEditorState) return false;
+  let action;
+  try {
+    action = CustomActions.validateCustomAction(readActionEditorDraft());
+  } catch (error) {
+    setActionEditorError(error.message);
+    return false;
+  }
+  const exists = actionListState.some(item => item.id === action.id);
+  const list = exists
+    ? actionListState.map(item => (item.id === action.id ? action : item))
+    : [...actionListState, action];
+  const saved = await persistActionList(list, `✓ 已儲存「${action.name}」`);
+  if (!saved) {
+    setActionEditorError($('actionListStatus').textContent);
+    return false;
+  }
+  closeActionEditor();
+  return true;
+}
+
+async function deleteActionFromEditor() {
+  if (!actionEditorState || actionEditorState.isNew) return false;
+  const { action } = actionEditorState;
+  if (!window.confirm(`確定刪除「${action.name}」？刪除後無法復原。`)) return false;
+  const saved = await persistActionList(
+    reorderActions(actionListState.filter(item => item.id !== action.id)),
+    `✓ 已刪除「${action.name}」`
+  );
+  if (saved) closeActionEditor();
+  return saved;
+}
+
+// 預覽只用範例資料渲染所選版面；欄位還沒填好時只畫填好的那幾個
+function renderActionPreview() {
+  const preview = $('actionPreview');
+  if (!preview || !actionEditorState) return;
+  const draft = readActionEditorDraft();
+  $('actionLayoutNote').textContent = ACTION_LAYOUT_NOTES[draft.layout] || '';
+  const fields = draft.fields.filter(field => field.key && field.label);
+  if (!fields.length) {
+    Dom.ffbClear(preview).append(Dom.ffbEl('p', { class: 'field-note' }, '至少填一個欄位的代號與名稱，這裡會顯示預覽。'));
+    return;
+  }
+  const action = { ...draft, fields };
+  const sample = ActionRender.buildCustomActionSample(action);
+  Dom.ffbClear(preview).append(
+    Dom.ffbEl('div', { class: 'action-preview-tag' }, [ActionRender.buildCustomActionIcon(draft.icon, 13), ` ${draft.name || '未命名動作'}`]),
+    ActionRender.buildCustomActionContent(action, sample.data, { selectedText: sample.selectedText })
+  );
+}
+
+function setActionPreviewWidth(width) {
+  const value = width === 500 ? 500 : 320;
+  $('actionPreview').style.width = `${value}px`;
+  document.querySelectorAll('[data-preview-width]').forEach(button => {
+    button.setAttribute('aria-pressed', Number(button.dataset.previewWidth) === value ? 'true' : 'false');
+  });
+}
+
+function buildActionAiGuideText() {
+  return [
+    '請幫我設計一個「翻翻吧」瀏覽器擴充功能的自訂動作。使用方式：在網頁上選取文字後執行這個動作，模型會回傳 JSON，擴充功能再依版面顯示。',
+    '',
+    '請依下面格式回覆，讓我逐欄貼進設定頁：',
+    '- 名稱：最多 40 字',
+    '- 系統提示（選填）：最多 4000 字，只能用變數 {{targetLanguage}}',
+    `- 使用者提示：最多 4000 字，可用變數 ${CustomActions.VARIABLES.map(name => `{{${name}}}`).join('、')}`,
+    '  （{{selection}} 是選取文字、{{context}} 是鄰近段落、{{pageTitle}} 是頁面標題、{{targetLanguage}} 是目標語言；{{pageUrl}} 目前一律是空白）',
+    `- 輸出欄位：最多 ${CustomActions.MAX_FIELDS} 個，每個有「代號」（英文字母開頭，只能用英數與底線）、「名稱」、「說明」`,
+    '- 版面三選一：',
+    '  - 欄位卡：每個欄位一段',
+    '  - 原文標註：第一個欄位回傳 [{ "text": 原文片段, "type": 類型, "note": 說明 }]，片段必須和原文一字不差',
+    '  - 前後對照：欄位代號用 before／after／notes',
+    '',
+    '不需要在 prompt 裡要求輸出 JSON，擴充功能會自動加上格式要求。中文請用台灣慣用語。',
+    '',
+    '我想做的動作：'
+  ].join('\n');
+}
+
+async function copyActionAiGuide() {
+  try {
+    await navigator.clipboard.writeText(buildActionAiGuideText());
+    setActionListStatus('✓ 說明文字已複製，貼到任何 AI 並補上你想做的動作');
+  } catch {
+    setActionListStatus('複製失敗，請確認瀏覽器允許剪貼簿', true);
+  }
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     showStatus,
     bindToggleVis,
     renderModelSelect,
     renderPageTranslationModelSelect,
+    renderDictionaryModelSelect,
+    renderFeatureActionModelRows,
+    updateFeatureModelHints,
+    getFeatureModelGap,
     renderLanguageSelects,
     initSettingsTabs,
     loadSettings,
@@ -1316,6 +1898,20 @@ if (typeof module !== 'undefined' && module.exports) {
     formatVocabularyBackupReminder,
     formatSnapshotLabel,
     renderVocabularySnapshots,
-    restoreVocabularySnapshot
+    restoreVocabularySnapshot,
+    initActionEditor,
+    loadActionEditorList,
+    moveAction,
+    setActionEnabled,
+    openActionEditor,
+    saveActionFromEditor,
+    deleteActionFromEditor,
+    createBlankCustomAction,
+    createActionFromBuiltin,
+    duplicateCustomAction,
+    insertActionVariable,
+    buildActionAiGuideText,
+    copyActionAiGuide,
+    setActionPreviewWidth
   };
 }

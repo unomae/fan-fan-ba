@@ -56,6 +56,37 @@ describe('modelOverride 路由', () => {
   });
 });
 
+describe('三層優先序：單次覆寫 > 功能模型 > 主模型', () => {
+  const okFetch = () => jest.fn(async () => ({
+    ok: true,
+    status: 200,
+    headers: { get: () => 'application/json' },
+    json: async () => ({ choices: [{ message: { content: '你好' } }], candidates: [{ content: { parts: [{ text: '你好' }] } }] }),
+    text: async () => '{}'
+  }));
+  const hostOf = () => new URL(String(global.fetch.mock.calls[0][0])).host;
+  const run = async request => {
+    chrome.storage.sync.get.mockResolvedValueOnce({ model: GEMINI });
+    chrome.storage.local.get.mockResolvedValue({ apiKey: 'AIza-dummy', groqApiKey: 'gsk_dummy' });
+    global.fetch = okFetch();
+    await _handleAIRequest({ action: 'explain', selectedText: 'hello there, this is long enough', ...request }).catch(() => {});
+    chrome.storage.local.get.mockResolvedValue({});
+    return hostOf();
+  };
+
+  it('只有主模型：用主模型', async () => {
+    expect(await run({})).toBe('generativelanguage.googleapis.com');
+  });
+
+  it('有功能模型：功能模型優先於主模型', async () => {
+    expect(await run({ model: GROQ })).toBe('api.groq.com');
+  });
+
+  it('再加單次覆寫：單次覆寫優先於功能模型', async () => {
+    expect(await run({ model: GROQ, modelOverride: GEMINI })).toBe('generativelanguage.googleapis.com');
+  });
+});
+
 describe('可用模型清單', () => {
   it('只列有金鑰的模型，永遠不列只做頁面翻譯的內建模型', () => {
     expect(getAvailableCardModelIds({ groqApiKey: 'gsk_x' })).toEqual([GROQ]);

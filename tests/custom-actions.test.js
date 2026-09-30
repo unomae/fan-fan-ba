@@ -346,3 +346,38 @@ describe('自訂動作走完整請求路徑', () => {
     expect(chunks).toEqual(['{}']);
   });
 });
+
+describe('resolveFeatureModel：各功能用哪個模型', () => {
+  const GROQ = 'groq:openai/gpt-oss-120b';
+  const GEMINI = 'gemini-3.5-flash';
+  const list = CustomActions.normalizeActionList([
+    { id: 'translate', builtin: true, model: GROQ },
+    { id: 'explain', builtin: true, model: 'default' }
+  ]);
+  const resolve = (request, settings = { actionList: list }) => CustomActions.resolveFeatureModel(request, settings);
+
+  it('內建動作用清單裡的 model，default 回空字串（跟隨主模型）', () => {
+    expect(resolve({ action: 'translate', selectedText: 'this sentence is longer than twenty' })).toBe(GROQ);
+    expect(resolve({ action: 'explain', selectedText: 'x' })).toBe('');
+    expect(resolve({ action: 'optimize', selectedText: 'x' })).toBe('');
+  });
+
+  it('20 字以內的翻譯走字典設定，不走翻譯動作的模型', () => {
+    expect(resolve({ action: 'translate', selectedText: 'apple' }, { actionList: list, dictionaryModel: GEMINI })).toBe(GEMINI);
+    expect(resolve({ action: 'translate', selectedText: 'apple' }, { actionList: list, dictionaryModel: '' })).toBe('');
+    expect(resolve({ action: 'translate', selectedText: 'a'.repeat(20) }, { actionList: list, dictionaryModel: GEMINI })).toBe(GEMINI);
+    expect(resolve({ action: 'translate', selectedText: 'a'.repeat(21) }, { actionList: list, dictionaryModel: GEMINI })).toBe(GROQ);
+  });
+
+  it('自訂動作用動作自己的 model', () => {
+    expect(resolve({ action: 'custom', customAction: makeAction({ model: GEMINI }) })).toBe(GEMINI);
+    expect(resolve({ action: 'custom', customAction: makeAction({ model: 'default' }) })).toBe('');
+  });
+
+  it('存的值不合法或只能做全文翻譯時，當成跟隨主模型', () => {
+    expect(resolve({ action: 'translate', selectedText: 'apple' }, { dictionaryModel: 'evil:model' })).toBe('');
+    expect(resolve({ action: 'translate', selectedText: 'apple' }, { dictionaryModel: 'builtin:translator' })).toBe('');
+    expect(resolve({ action: 'explain', selectedText: 'x' }, { actionList: [{ id: 'explain', builtin: true, model: 'gemini-2.5-flash' }] })).toBe('');
+    expect(resolve({ action: 'explain', selectedText: 'x' }, { actionList: null })).toBe('');
+  });
+});

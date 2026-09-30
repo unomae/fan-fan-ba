@@ -12,6 +12,8 @@ let activeModel  = FanFanBaModels.DEFAULT_MODEL;
 let cardModelOverride = null; // 結果卡底部「僅本次」選的模型；換選取或關卡就清掉，不寫回全域設定
 let targetLanguage = 'zh-TW';
 let explanationLanguage = 'target';
+let dictionaryModel = '';          // 字典用的模型；'' 表示跟隨主模型
+let pageTranslationModelSetting = ''; // 全文翻譯設定值；'' 表示跟隨主模型
 let ttsLanguageMode = 'auto';
 let fanFanBaPaused = false;
 let userDragged  = false;  // 使用者手動拖曳後不覆蓋位置
@@ -19,6 +21,8 @@ let dragState    = null;   // { startX, startY, origLeft, origTop }
 let dragPending  = false;  // rAF 節流旗標
 let lastDictData  = null;  // 字典模式解析後的 JSON 物件（供 Obsidian 使用）
 let lastRawResult = null;  // 一般模式原始 AI 回傳文字
+let activeCustomAction = null; // 目前執行的自訂動作定義（action === 'custom' 時使用）
+let lastCustomOutput = null;   // 自訂動作解析後的 { action, data }（供 Obsidian 使用）
 let isPinned      = false; // 結果卡是否釘住（釘住時點外部不關閉）
 let obsidianSaving = false; // 存入 Obsidian 期間暫時防止 mouseup 關閉結果卡
 let activeRequestId = 0;    // 最新 AI 請求序號，用於忽略舊回應

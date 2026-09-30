@@ -28,7 +28,10 @@ function buildObsidianBlock({ tag, hm, date, preview }) {
     ''
   ];
 
-  if (lastDictData) {
+  if (lastCustomOutput) {
+    // 自訂動作：每個欄位一段（標題＋內容）
+    lines.push(buildCustomActionMarkdown(lastCustomOutput.action, lastCustomOutput.data), '');
+  } else if (lastDictData) {
     // 字典模式：順序與結果卡一致（單字說明 → 涵義與用法 → 近義詞 → 例句）
     const d            = lastDictData;
     const translations = Array.isArray(d.translations)

@@ -259,6 +259,11 @@
               <td>僅存於 <code>chrome.storage.local</code>（本地裝置）</td>
             </tr>
             <tr>
+              <td>自訂動作（名稱、prompt、輸出欄位等設定）</td>
+              <td>讓使用者用自己寫的 prompt 處理選取文字；執行時 prompt 會連同選取文字送到使用者選的 AI 服務</td>
+              <td>僅存於 <code>chrome.storage.local</code>（本地裝置）；使用者匯出設定檔時會一併帶出，雲端同步不包含</td>
+            </tr>
+            <tr>
               <td>自訂端點的網址與模型名稱</td>
               <td>讓使用者改用自己指定、相容 OpenAI 格式的 AI 服務</td>
               <td>存於 <code>chrome.storage.sync</code>；開啟雲端同步或匯出設定時會一併帶出，但不含 API Key</td>
