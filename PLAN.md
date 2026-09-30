@@ -9,7 +9,7 @@
 | 項目 | 狀態 |
 |------|------|
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
-| 自動化單元測試 | <!-- ffb:suites -->33<!-- /ffb:suites --> suites / <!-- ffb:tests -->450<!-- /ffb:tests --> tests 全綠（2026-09-30，含模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點） |
+| 自動化單元測試 | <!-- ffb:suites -->34<!-- /ffb:suites --> suites / <!-- ffb:tests -->517<!-- /ffb:tests --> tests 全綠（2026-09-30，含模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-08-26；改 code 先 `npm run package`） |
 | 手動 QA | 全表 55/78；剩 23 項幾乎全卡「無 API key」或「需外部 App／帳號」（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | **2026-09-20 裁決：暫緩送審，先做功能**，告一段落再回頭走上架流程。Chrome Web Store 仍是 release checkpoint |
@@ -121,8 +121,8 @@
 - **innerHTML 主流路徑遇 Trusted Types 頁面（Google 系）UI 全滅**
 
   - **目的**：確認嚴格 Trusted Types 頁面仍能操作。
-  - **現況**：風險：innerHTML 主流路徑遇 Trusted Types 頁面（Google 系）UI 全滅 | 證據：content/*.js 多處；dom.js 安全 builder 遷移不到一半 | 處置建議：完成 ffbEl 遷移，過渡期包 createPolicy fallback
-  - **接續**：先以指定頁面重現與界定 DOM 注入路徑，再接原處置建議。
+  - **現況**：2026-09-30 content script 的 HTML 字串寫入點已全數改用 DOM builder（見 `CHANGELOG.md` 同日「頁面 UI 改用 DOM builder」），jsdom 內模擬 Trusted Types 的 32 個情境都不再觸發寫入點；未用 `createPolicy` 過渡包裝。
+  - **接續**：在 Google 搜尋結果頁實機操作一次（`MANUAL-QA.md`「頁面 UI 改用 DOM builder」），確認後結案。
   - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
 
 ## 驗證指令速查

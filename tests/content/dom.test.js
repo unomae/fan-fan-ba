@@ -1,4 +1,4 @@
-const { ffbText, ffbEl, ffbClear } = require('../../content/dom');
+const { ffbText, ffbEl, ffbSvg, ffbSvgIcon, ffbFragment, ffbClear } = require('../../content/dom');
 
 describe('safe DOM builder (dom.js)', () => {
   it('ffbText wraps any value as an inert text node', () => {
@@ -43,6 +43,21 @@ describe('safe DOM builder (dom.js)', () => {
     expect(el.hasAttribute('title')).toBe(false);
     expect(el.hasAttribute('data-keep')).toBe(false);
     expect(el.id).toBe('ok');
+  });
+
+  it('ffbSvg / ffbSvgIcon build elements in the SVG namespace with a class attribute', () => {
+    const icon = ffbSvgIcon({ class: 'g-icon', viewBox: '0 0 24 24' }, [['path', { d: 'M3 3h5' }], ['circle', { r: 3 }]]);
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    expect(icon.namespaceURI).toBe(SVG_NS);
+    expect(icon.getAttribute('class')).toBe('g-icon');
+    expect([...icon.children].map(child => [child.localName, child.namespaceURI])).toEqual([['path', SVG_NS], ['circle', SVG_NS]]);
+    expect(ffbSvg('path', { d: 'M1 1' }).namespaceURI).toBe(SVG_NS);
+  });
+
+  it('ffbFragment and nested child arrays keep order and treat strings as text', () => {
+    const fragment = ffbFragment(['a', [ffbEl('b', null, '<i>x</i>'), ['c', null]], false]);
+    const host = ffbEl('div', null, fragment);
+    expect(host.innerHTML).toBe('a<b>&lt;i&gt;x&lt;/i&gt;</b>c');
   });
 
   it('ffbClear empties a node and returns it', () => {

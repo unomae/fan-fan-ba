@@ -3,6 +3,24 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-30 — 頁面 UI 改用 DOM builder（Trusted Types 相容）
+
+**範圍**：content script 的所有 UI 改成用 `createElement`／`createElementNS`／`createTextNode` 建立，不再把 HTML 字串交給 `innerHTML`、`insertAdjacentHTML` 這類寫入點。頁面 CSP 若要求 Trusted Types（`require-trusted-types-for 'script'`，Google 系常見），瀏覽器會直接拒絕純字串寫入，工具列、結果卡、浮球與全文翻譯面板就整塊出不來；改寫後這條路徑不再使用。這是行為不變的重構，畫面與互動不變。
+
+**做法**：
+- `content/dom.js`：`ffbEl` 的子節點可以是巢狀陣列或 `DocumentFragment`；新增 `ffbSvg`／`ffbSvgIcon`（SVG 必須建在 SVG namespace，圖示才畫得出來）與 `ffbFragment`。`class` 一律走 `setAttribute`，因為 SVG 元素的 `className` 是唯讀物件。
+- `content/utils.js`：`formatMarkdown`、`renderDiff` 改為回傳 `DocumentFragment`；`highlightExampleHtml` 改名 `highlightExample`，同樣回傳節點。粗體、`{{詞}}` 標籤、清單與段落的規則不變，AI 回傳的文字一律當純文字節點。
+- `content/result-card.js`：結果卡外殼、最近查詢清單、Obsidian 資料夾下拉、字典卡、解釋、優化、錯誤卡與提示列全部改用 builder。`buildDictHTML`／`buildExplainHTML`／`buildOptimizeHTML` 改名為 `buildDictContent`／`buildExplainContent`／`buildOptimizeContent`（回傳的已不是 HTML 字串）。標題列的動作標籤改由 `setResultCardTag()` 設定，最近查詢還原與 `content/main.js` 發新查詢共用，原本兩份重複的圖示字串合成一份。
+- `content/main.js`：載入中畫面、串流中的暫時顯示（換行、DEEP 分隔線）與提供者提示改用 builder。
+- `content/toolbar.js`、`content/floating-ball.js`（浮球、收藏／紀錄、最近查詢、單字本面板；`buildVocabularyPanelItemHtml` 改名 `buildVocabularyPanelItem`）、`content/page-translator-panel.js`、`content/page-translator-renderer.js`（`formatPageTranslationText` 改回傳節點陣列）、`content/vocabulary-highlighter.js` 同樣改寫。
+- 沒有使用 `trustedTypes.createPolicy` 過渡包裝：全部寫入點都已改完，不需要。
+
+**刻意變更的既有測試**：`utils.test.js`、`dict-examples.test.js`、`xss-regression.test.js`、`page-translator.test.js` 改為把回傳的節點放進容器再檢查，斷言內容不變（例句加粗仍逐字比對序列化後的 HTML）；這幾支直接 `require` utils 的測試把 `dom.js` 的 helper 掛到 global，對應瀏覽器端 `dom.js` 先載入的順序。`toolbar.test.js` 的 vm context 照 manifest 順序補載 `dom.js`。
+
+**驗證**：新增 `tests/content/render-parity.test.js`（65 條）與 `dom.test.js` 2 條（SVG namespace、巢狀子節點與 fragment）。改寫前先在未動的程式碼上，用 32 組代表性輸入（結果卡外殼、載入中、串流、字典卡各種欄位組合與 XSS 字串、解釋、優化、錯誤、最近查詢、資料夾下拉、工具列、單字提示、浮球、收藏／紀錄、單字本各分頁、全文翻譯面板與譯文）把輸出存成 `tests/content/__fixtures__/render-parity-baseline.json`；改寫後同樣輸入的 DOM 必須與基準一致（屬性、SVG namespace、文字都比對）。比對時唯一的差異是行內元素之間的純空白文字節點（128 處），出現在 26 個容器；逐一查過 `content.css`，全部是 flex／grid（`.g-history-panel` 是 block，但子項是 `display:flex` 且寬 100%），空白不影響排版，這份清單與查到的 display 值寫在測試檔裡。另 32 條模擬 Trusted Types：把 `innerHTML`／`outerHTML`／`insertAdjacentHTML`／`createContextualFragment`／`DOMParser`／`document.write` 換成「記錄後拋錯」，同樣 32 個情境不得呼叫任何一個。全套 34 suites／517 tests exit 0、0 skipped；`check-docs --verify` exit 0。**fail-then-pass**：Trusted Types 模擬在改寫前 32 條全紅；改寫後故意拿掉字典卡詞性後的空格、並讓錯誤卡寫一次 `innerHTML`，分別紅 2 條與 2 條；`ffbSvg` 改回 `createElement`、拿掉巢狀陣列攤平時 `dom.test.js` 紅 2 條；還原後全綠。e2e（Windows、Chromium 1161、全新 profile 首跑）41 PASS／0 FAIL／4 PARTIAL。
+
+**未驗**：Trusted Types 只在 jsdom 以攔截寫入點的方式模擬，還沒在真正強制 Trusted Types 的頁面上操作過；已列入 `MANUAL-QA.md`。
+
 ## 2026-09-30 — 自訂 OpenAI 相容端點
 
 **範圍**：設定頁新增「自訂端點」卡片，可填 API 網址、模型名稱與 API Key，另有「測試自訂端點」按鈕。填好之後，「自訂端點」會像一般模型一樣出現在主模型、全文翻譯與結果卡「僅本次」的選單裡。沒有備援模型，端點掛了就如實回報。

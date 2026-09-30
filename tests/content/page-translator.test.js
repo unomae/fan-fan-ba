@@ -763,8 +763,10 @@ describe('page translator render helpers', () => {
     HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
   });
 
-  it('formats bullet lists, ordered lists, and paragraphs into HTML', () => {
-    const html = formatPageTranslationText('• 第一點\n• 第二點\n1. 步驟一\n2. 步驟二\n一般段落');
+  it('formats bullet lists, ordered lists, and paragraphs into DOM nodes', () => {
+    const wrapper = document.createElement('div');
+    wrapper.append(...formatPageTranslationText('• 第一點\n• 第二點\n1. 步驟一\n2. 步驟二\n一般段落'));
+    const html = wrapper.innerHTML;
     expect(html).toContain('<ul class="ffb-page-translation-list"><li>第一點</li><li>第二點</li></ul>');
     expect(html).toContain('<ol class="ffb-page-translation-list"><li>步驟一</li><li>步驟二</li></ol>');
     expect(html).toContain('<p>一般段落</p>');

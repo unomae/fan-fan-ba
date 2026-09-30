@@ -25,6 +25,7 @@ describe('selection toolbar positioning', () => {
     });
     context.globalThis = context;
 
+    runContentScript('content/dom.js', context); // manifest 中 dom.js 先於 toolbar.js 載入
     runContentScript('content/toolbar.js', context);
     context.toolbar = context.createToolbar();
     Object.defineProperty(context.toolbar, 'offsetWidth', { value: 120, configurable: true });
@@ -73,6 +74,7 @@ describe('selection toolbar positioning', () => {
     });
     context.globalThis = context;
 
+    runContentScript('content/dom.js', context); // manifest 中 dom.js 先於 toolbar.js 載入
     runContentScript('content/toolbar.js', context);
     context.toolbar = context.createToolbar();
     Object.defineProperty(context.toolbar, 'offsetWidth', { value: 120, configurable: true });
@@ -120,6 +122,7 @@ describe('selection toolbar positioning', () => {
     });
     context.globalThis = context;
 
+    runContentScript('content/dom.js', context); // manifest 中 dom.js 先於 toolbar.js 載入
     runContentScript('content/toolbar.js', context);
     context.toolbar = context.createToolbar();
     Object.defineProperty(context.toolbar, 'offsetWidth', { value: 120, configurable: true });

@@ -1,11 +1,16 @@
 'use strict';
 
 const FLOATING_POSITION_KEY = 'fanFanBaFloatingPosition';
-const FFB_ICON_HISTORY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>';
-const FFB_ICON_NOTEBOOK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9.5 8h5"/><path d="M9.5 12H16"/><path d="M9.5 16H14"/></svg>';
-const FFB_ICON_HIGHLIGHTER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.83 0l-5.17-5.17a2 2 0 0 1 0-2.83L16 4"/></svg>';
-const FFB_ICON_LANGUAGES ='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>';
-const FFB_ICON_SETTINGS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.52a2 2 0 0 1-1 1.72l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.52a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg>';
+// 浮球與收藏面板的線條圖示（形狀陣列；由 floatingBallIcon 建成 SVG namespace 節點）
+const FFB_ICON_HISTORY = [['path', { d: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' }], ['path', { d: 'M3 3v5h5' }], ['path', { d: 'M12 7v5l4 2' }]];
+const FFB_ICON_NOTEBOOK = [['path', { d: 'M2 6h4' }], ['path', { d: 'M2 10h4' }], ['path', { d: 'M2 14h4' }], ['path', { d: 'M2 18h4' }], ['rect', { x: 4, y: 2, width: 16, height: 20, rx: 2 }], ['path', { d: 'M9.5 8h5' }], ['path', { d: 'M9.5 12H16' }], ['path', { d: 'M9.5 16H14' }]];
+const FFB_ICON_HIGHLIGHTER = [['path', { d: 'm9 11-6 6v3h9l3-3' }], ['path', { d: 'm22 12-4.6 4.6a2 2 0 0 1-2.83 0l-5.17-5.17a2 2 0 0 1 0-2.83L16 4' }]];
+const FFB_ICON_LANGUAGES = [['path', { d: 'm5 8 6 6' }], ['path', { d: 'm4 14 6-6 2-3' }], ['path', { d: 'M2 5h12' }], ['path', { d: 'M7 2h1' }], ['path', { d: 'm22 22-5-10-5 10' }], ['path', { d: 'M14 18h6' }]];
+const FFB_ICON_SETTINGS = [['path', { d: 'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.52a2 2 0 0 1-1 1.72l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.52a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z' }], ['circle', { cx: 12, cy: 12, r: 3 }]];
+
+function floatingBallIcon(shapes) {
+  return ffbSvgIcon({ viewBox: '0 0 24 24', 'aria-hidden': 'true' }, shapes);
+}
 
 // getPauseStorageKey 已移至 content/site-policy.js（all_frames 都載入）。
 // 本檔只在 top frame 載入，靠 site-policy 提供的 helper 取得 per-site 停用 key。
@@ -24,36 +29,37 @@ function initFloatingBall() {
 function createFloatingBall() {
   const el = document.createElement('div');
   el.id = 'fanfanba-floating';
-  el.innerHTML = `
-    <button class="ffb-ball-main" type="button" title="翻翻吧">
-      <img src="${chrome.runtime.getURL('icons/icon48.png')}" alt="">
-    </button>
-    <button class="ffb-continue-tip" type="button" aria-label="直接翻譯新的可見段落">有新的段落可翻譯</button>
-    <div class="ffb-ball-menu">
-      <div class="ffb-ball-menu-group ffb-ball-menu-top">
-        <button class="ffb-ball-item" type="button" data-action="library" data-tooltip="收藏 / 紀錄" aria-label="收藏 / 紀錄">
-          <span class="ffb-ball-icon">${FFB_ICON_NOTEBOOK}</span>
-          <span class="ffb-ball-label">收藏 / 紀錄</span>
-        </button>
-        <button class="ffb-ball-item" type="button" data-action="vocab-highlight" data-tooltip="開啟單字高亮" aria-label="開啟單字高亮">
-          <span class="ffb-ball-icon ffb-vocab-highlight-icon">${FFB_ICON_HIGHLIGHTER}</span>
-          <span class="ffb-ball-label ffb-vocab-highlight-label">開啟單字高亮</span>
-        </button>
-      </div>
-      <div class="ffb-ball-menu-gap" aria-hidden="true"></div>
-      <div class="ffb-ball-menu-group ffb-ball-menu-bottom">
-        <button class="ffb-ball-item" type="button" data-action="page-translate" data-tooltip="全文翻譯 Beta" aria-label="全文翻譯 Beta">
-          <span class="ffb-ball-icon ffb-translate-icon">${FFB_ICON_LANGUAGES}</span>
-          <span class="ffb-ball-label ffb-page-translate-label">全文翻譯 Beta</span>
-        </button>
-        <button class="ffb-ball-item" type="button" data-action="settings" data-tooltip="設定" aria-label="設定">
-          <span class="ffb-ball-icon ffb-settings-icon">${FFB_ICON_SETTINGS}</span>
-          <span class="ffb-ball-label">設定</span>
-        </button>
-      </div>
-    </div>
-    <button class="ffb-pause-x" type="button" data-action="pause" data-tooltip="在此網站停用" aria-label="在此網站停用">×</button>
-  `;
+  const menuItem = ({ action, label, iconClass, labelClass, icon }) => ffbEl('button',
+    { class: 'ffb-ball-item', type: 'button', dataset: { action, tooltip: label }, 'aria-label': label }, [
+      ffbEl('span', { class: iconClass ? `ffb-ball-icon ${iconClass}` : 'ffb-ball-icon' }, floatingBallIcon(icon)),
+      ffbEl('span', { class: labelClass ? `ffb-ball-label ${labelClass}` : 'ffb-ball-label' }, label)
+    ]);
+
+  el.append(
+    ffbEl('button', { class: 'ffb-ball-main', type: 'button', title: '翻翻吧' },
+      ffbEl('img', { src: chrome.runtime.getURL('icons/icon48.png'), alt: '' })),
+    ffbEl('button', { class: 'ffb-continue-tip', type: 'button', 'aria-label': '直接翻譯新的可見段落' }, '有新的段落可翻譯'),
+    ffbEl('div', { class: 'ffb-ball-menu' }, [
+      ffbEl('div', { class: 'ffb-ball-menu-group ffb-ball-menu-top' }, [
+        menuItem({ action: 'library', label: '收藏 / 紀錄', icon: FFB_ICON_NOTEBOOK }),
+        menuItem({
+          action: 'vocab-highlight', label: '開啟單字高亮', icon: FFB_ICON_HIGHLIGHTER,
+          iconClass: 'ffb-vocab-highlight-icon', labelClass: 'ffb-vocab-highlight-label'
+        })
+      ]),
+      ffbEl('div', { class: 'ffb-ball-menu-gap', 'aria-hidden': 'true' }),
+      ffbEl('div', { class: 'ffb-ball-menu-group ffb-ball-menu-bottom' }, [
+        menuItem({
+          action: 'page-translate', label: '全文翻譯 Beta', icon: FFB_ICON_LANGUAGES,
+          iconClass: 'ffb-translate-icon', labelClass: 'ffb-page-translate-label'
+        }),
+        menuItem({ action: 'settings', label: '設定', icon: FFB_ICON_SETTINGS, iconClass: 'ffb-settings-icon' })
+      ])
+    ]),
+    ffbEl('button', {
+      class: 'ffb-pause-x', type: 'button', dataset: { action: 'pause', tooltip: '在此網站停用' }, 'aria-label': '在此網站停用'
+    }, '×')
+  );
 
   const mainBtn = el.querySelector('.ffb-ball-main');
   const menu = el.querySelector('.ffb-ball-menu');
@@ -335,20 +341,16 @@ function showFloatingLibraryPanel() {
   hideAutoSaveToast(resultCard);
 
   const body = resultCard.querySelector('.g-rc-body');
-  body.innerHTML = `
-    <div class="g-floating-library">
-      <button class="g-floating-library-item" type="button" data-library-action="vocabulary">
-        <span>${FFB_ICON_NOTEBOOK}</span>
-        <strong>單字本</strong>
-        <em>今日新增、複習、錯題回看、匯出</em>
-      </button>
-      <button class="g-floating-library-item" type="button" data-library-action="history">
-        <span>${FFB_ICON_HISTORY}</span>
-        <strong>最近查詢</strong>
-        <em>回到最近翻譯、解釋、優化結果</em>
-      </button>
-    </div>
-  `;
+  const libraryItem = (action, icon, title, hint) => ffbEl('button',
+    { class: 'g-floating-library-item', type: 'button', dataset: { libraryAction: action } }, [
+      ffbEl('span', null, floatingBallIcon(icon)),
+      ffbEl('strong', null, title),
+      ffbEl('em', null, hint)
+    ]);
+  ffbClear(body).appendChild(ffbEl('div', { class: 'g-floating-library' }, [
+    libraryItem('vocabulary', FFB_ICON_NOTEBOOK, '單字本', '今日新增、複習、錯題回看、匯出'),
+    libraryItem('history', FFB_ICON_HISTORY, '最近查詢', '回到最近翻譯、解釋、優化結果')
+  ]));
 
   body.querySelector('[data-library-action="vocabulary"]')?.addEventListener('click', e => {
     e.stopPropagation();
@@ -378,18 +380,14 @@ async function showFloatingHistoryPanel() {
   if (!history.length) {
     ffbClear(body).appendChild(ffbEl('div', { class: 'g-hist-empty' }, '尚無查詢紀錄'));
   } else {
-    body.innerHTML = `
-      <div class="g-floating-history">
-        ${history.map((item, index) => {
-          const label = { translate: '翻譯', explain: '解釋', optimize: '優化' }[item.action] || item.action;
-          const preview = item.text.length > 44 ? `${item.text.slice(0, 44)}…` : item.text;
-          return `<button class="g-floating-history-item" data-index="${index}">
-            <span>${escapeHtml(label)}</span>
-            <strong>${escapeHtml(preview)}</strong>
-          </button>`;
-        }).join('')}
-      </div>
-    `;
+    ffbClear(body).appendChild(ffbEl('div', { class: 'g-floating-history' }, history.map((item, index) => {
+      const label = { translate: '翻譯', explain: '解釋', optimize: '優化' }[item.action] || item.action;
+      const preview = item.text.length > 44 ? `${item.text.slice(0, 44)}…` : item.text;
+      return ffbEl('button', { class: 'g-floating-history-item', dataset: { index } }, [
+        ffbEl('span', null, label),
+        ffbEl('strong', null, preview)
+      ]);
+    })));
 
     body.querySelectorAll('.g-floating-history-item').forEach(btn => {
       btn.addEventListener('click', e => {
@@ -442,37 +440,31 @@ function renderFloatingVocabularyPanel(body, initialItems) {
   let filter = 'review';
   let query = '';
 
-  body.innerHTML = `
-    <div class="g-vocab-panel">
-      <div class="g-vocab-panel-toolbar">
-        <input class="g-vocab-search" type="search" placeholder="搜尋單字">
-        <div class="g-vocab-tabs">
-          <button type="button" class="g-vocab-tab g-active" data-filter="review">今日複習</button>
-          <button type="button" class="g-vocab-tab" data-filter="weak">錯題回看</button>
-          <button type="button" class="g-vocab-tab" data-filter="today">今日新增</button>
-          <button type="button" class="g-vocab-tab" data-filter="recent">最近遇到</button>
-          <button type="button" class="g-vocab-tab" data-filter="frequent">最常遇到</button>
-          <button type="button" class="g-vocab-tab" data-filter="learning">還不熟</button>
-          <button type="button" class="g-vocab-tab" data-filter="known">已記得</button>
-          <button type="button" class="g-vocab-tab" data-filter="all">全部</button>
-        </div>
-      </div>
-      <div class="g-vocab-panel-actions">
-        <button type="button" class="g-vocab-export" data-vocab-export="markdown">複製今日 Markdown</button>
-        <button type="button" class="g-vocab-export" data-vocab-export="csv">複製今日 CSV</button>
-      </div>
-      <div class="g-vocab-panel-list"></div>
-    </div>
-  `;
+  const VOCAB_TABS = [
+    ['review', '今日複習'], ['weak', '錯題回看'], ['today', '今日新增'], ['recent', '最近遇到'],
+    ['frequent', '最常遇到'], ['learning', '還不熟'], ['known', '已記得'], ['all', '全部']
+  ];
+  ffbClear(body).appendChild(ffbEl('div', { class: 'g-vocab-panel' }, [
+    ffbEl('div', { class: 'g-vocab-panel-toolbar' }, [
+      ffbEl('input', { class: 'g-vocab-search', type: 'search', placeholder: '搜尋單字' }),
+      ffbEl('div', { class: 'g-vocab-tabs' }, VOCAB_TABS.map(([value, label]) => ffbEl('button',
+        { type: 'button', class: value === filter ? 'g-vocab-tab g-active' : 'g-vocab-tab', dataset: { filter: value } }, label)))
+    ]),
+    ffbEl('div', { class: 'g-vocab-panel-actions' }, [
+      ffbEl('button', { type: 'button', class: 'g-vocab-export', dataset: { vocabExport: 'markdown' } }, '複製今日 Markdown'),
+      ffbEl('button', { type: 'button', class: 'g-vocab-export', dataset: { vocabExport: 'csv' } }, '複製今日 CSV')
+    ]),
+    ffbEl('div', { class: 'g-vocab-panel-list' })
+  ]));
 
   const listEl = body.querySelector('.g-vocab-panel-list');
   const searchEl = body.querySelector('.g-vocab-search');
 
   const render = () => {
     const visible = filterVocabularyPanelItems(items, filter, query);
-    listEl.innerHTML = visible.length
-      ? visible.map(item => buildVocabularyPanelItemHtml(item)).join('')
-      : `<div class="g-hist-empty">${escapeHtml(getVocabularyPanelEmptyText(items, filter, query))}</div>`;
+    ffbClear(listEl).append(...(visible.length
+      ? visible.map(item => buildVocabularyPanelItem(item))
+      : [ffbEl('div', { class: 'g-hist-empty' }, getVocabularyPanelEmptyText(items, filter, query))]));
 
     listEl.querySelectorAll('[data-vocab-delete]').forEach(button => {
       button.addEventListener('click', async e => {
@@ -626,45 +618,39 @@ function getVocabularyItemTime(item) {
   return Date.parse(item?.lastSeenAt || item?.createdAt || 0) || 0;
 }
 
-function buildVocabularyPanelItemHtml(item) {
+function buildVocabularyPanelItem(item) {
   const translations = Array.isArray(item.translations) ? item.translations.slice(0, 3).join('；') : '';
   const count = Number(item.count || 1);
-  const exportedBadge = item.obsidianExportedAt ? '<span>已匯出</span>' : '';
   const isKnown = item.status === 'known';
-  const statusBadge = isKnown ? '<span class="g-vocab-known">已記得</span>' : '<span class="g-vocab-learning">還不熟</span>';
-  const reviewBadge = item.reviewMode ? `<span>${item.due ? '到期' : '下次'} ${escapeHtml(formatVocabularyReviewDate(item.nextReviewAt))}</span>` : '';
-  const weakBadge = item.weakReviewMode ? '<span>錯題回看</span>' : '';
-  const nextStatus = isKnown ? 'learning' : 'known';
-  const statusLabel = isKnown ? '還不熟' : '我記得了';
+  const statusButton = (attrs, title, label) => ffbEl('button', { class: 'g-vocab-status', type: 'button', ...attrs, title }, label);
   const statusActions = item.reviewMode
-    ? `
-        <button class="g-vocab-status" type="button" data-vocab-review="${escapeHtml(item.id)}" data-review-status="known" title="標記為已記得">記得</button>
-        <button class="g-vocab-status" type="button" data-vocab-review="${escapeHtml(item.id)}" data-review-status="learning" title="明天再複習">還不熟</button>
-      `
-    : `<button class="g-vocab-status" type="button" data-vocab-status="${escapeHtml(item.id)}" data-next-status="${nextStatus}" title="更新熟悉度">${statusLabel}</button>`;
-  return `
-    <div class="g-vocab-panel-item">
-      <div class="g-vocab-panel-main">
-        <div class="g-vocab-panel-word">${escapeHtml(item.word || '')}</div>
-        <div class="g-vocab-panel-meta">
-          ${item.pos ? `<span>${escapeHtml(item.pos)}</span>` : ''}
-          <span>${escapeHtml(item.lang || 'und')}</span>
-          <span>遇到 ${count} 次</span>
-          ${statusBadge}
-          ${exportedBadge}
-          ${weakBadge}
-          ${reviewBadge}
-        </div>
-        ${translations ? `<div class="g-vocab-panel-meaning">${escapeHtml(translations)}</div>` : ''}
-        ${item.definition ? `<div class="g-vocab-panel-def">${escapeHtml(item.definition)}</div>` : ''}
-      </div>
-      <div class="g-vocab-panel-item-actions">
-        ${statusActions}
-        <button class="g-vocab-copy" type="button" data-vocab-copy="${escapeHtml(item.id)}" title="複製 Markdown">複製</button>
-        <button class="g-vocab-delete" type="button" data-vocab-delete="${escapeHtml(item.id)}" title="刪除">刪除</button>
-      </div>
-    </div>
-  `;
+    ? [
+        statusButton({ dataset: { vocabReview: item.id, reviewStatus: 'known' } }, '標記為已記得', '記得'),
+        statusButton({ dataset: { vocabReview: item.id, reviewStatus: 'learning' } }, '明天再複習', '還不熟')
+      ]
+    : [statusButton({ dataset: { vocabStatus: item.id, nextStatus: isKnown ? 'learning' : 'known' } }, '更新熟悉度', isKnown ? '還不熟' : '我記得了')];
+
+  return ffbEl('div', { class: 'g-vocab-panel-item' }, [
+    ffbEl('div', { class: 'g-vocab-panel-main' }, [
+      ffbEl('div', { class: 'g-vocab-panel-word' }, item.word || ''),
+      ffbEl('div', { class: 'g-vocab-panel-meta' }, [
+        item.pos && ffbEl('span', null, item.pos),
+        ffbEl('span', null, item.lang || 'und'),
+        ffbEl('span', null, `遇到 ${count} 次`),
+        isKnown ? ffbEl('span', { class: 'g-vocab-known' }, '已記得') : ffbEl('span', { class: 'g-vocab-learning' }, '還不熟'),
+        item.obsidianExportedAt && ffbEl('span', null, '已匯出'),
+        item.weakReviewMode && ffbEl('span', null, '錯題回看'),
+        item.reviewMode && ffbEl('span', null, `${item.due ? '到期' : '下次'} ${formatVocabularyReviewDate(item.nextReviewAt)}`)
+      ]),
+      translations && ffbEl('div', { class: 'g-vocab-panel-meaning' }, translations),
+      item.definition && ffbEl('div', { class: 'g-vocab-panel-def' }, item.definition)
+    ]),
+    ffbEl('div', { class: 'g-vocab-panel-item-actions' }, [
+      ...statusActions,
+      ffbEl('button', { class: 'g-vocab-copy', type: 'button', dataset: { vocabCopy: item.id }, title: '複製 Markdown' }, '複製'),
+      ffbEl('button', { class: 'g-vocab-delete', type: 'button', dataset: { vocabDelete: item.id }, title: '刪除' }, '刪除')
+    ])
+  ]);
 }
 
 function formatVocabularyReviewDate(value) {

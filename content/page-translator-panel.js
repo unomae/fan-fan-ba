@@ -77,33 +77,36 @@ function ensurePageTranslationPanel() {
   if (pageTranslationPanel && document.body.contains(pageTranslationPanel)) return pageTranslationPanel;
   pageTranslationPanel = document.createElement('div');
   pageTranslationPanel.className = 'ffb-page-translation-panel';
-  pageTranslationPanel.innerHTML = `
-    <div class="ffb-page-panel-head">
-      <div class="ffb-page-panel-title">全文翻譯 <span>Beta</span></div>
-      <div class="ffb-page-panel-count">0/0</div>
-    </div>
-    <div class="ffb-page-panel-status"></div>
-    <div class="ffb-page-panel-progress" hidden role="progressbar" aria-valuemin="0" aria-valuemax="100">
-      <div class="ffb-page-panel-progress-label"></div>
-      <div class="ffb-page-panel-progress-track"><div class="ffb-page-panel-progress-bar"></div></div>
-    </div>
-    <div class="ffb-page-embedded-summary" hidden></div>
-    <div class="ffb-page-usage-summary" hidden></div>
-    <div class="ffb-page-learning-summary" hidden></div>
-    <div class="ffb-page-panel-controls">
-      <div class="ffb-page-panel-modes" aria-label="全文翻譯顯示模式">
-        <button type="button" data-mode="bilingual" title="雙語" aria-label="顯示雙語">雙</button>
-        <button type="button" data-mode="translation" title="只看譯文" aria-label="只看譯文">譯</button>
-        <button type="button" data-mode="original" title="只看原文" aria-label="只看原文">原</button>
-      </div>
-      <div class="ffb-page-panel-actions">
-        <button type="button" data-action="copy-translation" title="複製譯文" aria-label="複製全文翻譯譯文">譯</button>
-        <button type="button" data-action="copy-bilingual" title="複製雙語" aria-label="複製全文翻譯雙語對照">雙</button>
-        <button type="button" data-action="stop" title="停止" aria-label="停止全文翻譯">■</button>
-        <button type="button" data-action="restore" title="還原" aria-label="還原全文翻譯">↺</button>
-      </div>
-    </div>
-  `;
+  const button = (attrs, text) => ffbEl('button', { type: 'button', ...attrs }, text);
+  pageTranslationPanel.append(
+    ffbEl('div', { class: 'ffb-page-panel-head' }, [
+      ffbEl('div', { class: 'ffb-page-panel-title' }, ['全文翻譯 ', ffbEl('span', null, 'Beta')]),
+      ffbEl('div', { class: 'ffb-page-panel-count' }, '0/0')
+    ]),
+    ffbEl('div', { class: 'ffb-page-panel-status' }),
+    ffbEl('div', {
+      class: 'ffb-page-panel-progress', hidden: '', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': 100
+    }, [
+      ffbEl('div', { class: 'ffb-page-panel-progress-label' }),
+      ffbEl('div', { class: 'ffb-page-panel-progress-track' }, ffbEl('div', { class: 'ffb-page-panel-progress-bar' }))
+    ]),
+    ffbEl('div', { class: 'ffb-page-embedded-summary', hidden: '' }),
+    ffbEl('div', { class: 'ffb-page-usage-summary', hidden: '' }),
+    ffbEl('div', { class: 'ffb-page-learning-summary', hidden: '' }),
+    ffbEl('div', { class: 'ffb-page-panel-controls' }, [
+      ffbEl('div', { class: 'ffb-page-panel-modes', 'aria-label': '全文翻譯顯示模式' }, [
+        button({ 'data-mode': 'bilingual', title: '雙語', 'aria-label': '顯示雙語' }, '雙'),
+        button({ 'data-mode': 'translation', title: '只看譯文', 'aria-label': '只看譯文' }, '譯'),
+        button({ 'data-mode': 'original', title: '只看原文', 'aria-label': '只看原文' }, '原')
+      ]),
+      ffbEl('div', { class: 'ffb-page-panel-actions' }, [
+        button({ 'data-action': 'copy-translation', title: '複製譯文', 'aria-label': '複製全文翻譯譯文' }, '譯'),
+        button({ 'data-action': 'copy-bilingual', title: '複製雙語', 'aria-label': '複製全文翻譯雙語對照' }, '雙'),
+        button({ 'data-action': 'stop', title: '停止', 'aria-label': '停止全文翻譯' }, '■'),
+        button({ 'data-action': 'restore', title: '還原', 'aria-label': '還原全文翻譯' }, '↺')
+      ])
+    ])
+  );
   pageTranslationPanel.addEventListener('mousedown', e => e.stopPropagation());
   pageTranslationPanel.addEventListener('click', e => {
     e.stopPropagation();

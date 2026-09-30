@@ -3,7 +3,7 @@
 這個專案使用 **Jest 30** + **jsdom** 作為測試框架（早期曾用 Vitest，已全面遷移到 Jest）。
 本檔說明的是**自動化單元測試**；需要在真實瀏覽器執行的**手動驗收**請見 [`MANUAL-QA.md`](MANUAL-QA.md)。
 
-最後更新：2026-09-30 · <!-- ffb:suites -->33<!-- /ffb:suites --> suites / <!-- ffb:tests -->450<!-- /ffb:tests --> tests 全綠（0 failed、0 skipped）。
+最後更新：2026-09-30 · <!-- ffb:suites -->34<!-- /ffb:suites --> suites / <!-- ffb:tests -->517<!-- /ffb:tests --> tests 全綠（0 failed、0 skipped）。
 
 ---
 
@@ -39,7 +39,7 @@ tests/
 ├── welcome.test.js              # welcome.js：首次安裝頁
 └── content/
     ├── utils.test.js            # escapeHtml / formatMarkdown / parseJSON / getWeekLabel 等
-    ├── dom.test.js              # ffbText / ffbEl / ffbClear 安全 DOM helper
+    ├── dom.test.js              # ffbText / ffbEl / ffbSvg / ffbFragment / ffbClear 安全 DOM helper
     ├── css.test.js              # content.css 規則回歸（list-style / 隔離等）
     ├── site-policy.test.js      # 敏感網域 denylist / top-frame 判斷
     ├── toolbar.test.js          # 懸浮工具列
@@ -49,6 +49,7 @@ tests/
     ├── page-translator.test.js  # 全文 + 單段翻譯 5+1 拆檔（vm-harness + istanbul）
     ├── vocabulary.test.js
     ├── vocabulary-highlighter.test.js
+    ├── render-parity.test.js    # 各渲染點輸出對照改寫前基準（__fixtures__/）＋ Trusted Types 模擬（不得用 HTML 字串寫入點）
     └── xss-regression.test.js   # XSS 硬化回歸
 ```
 
