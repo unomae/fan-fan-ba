@@ -503,10 +503,13 @@ function renderDictionaryModelSelect() {
 function renderFeatureActionModelRows() {
   const body = $('featureActionModelRows');
   if (!body) return;
+  // 清單被別處改動而重畫時，保留使用者在表上還沒存的選擇
+  const unsaved = new Map(readUnsavedActionModels());
   Dom.ffbClear(body).append(...actionListState.map(action => {
     const id = `featureModel-${action.id}`;
-    const select = Dom.ffbEl('select', { id, dataset: { featureModel: '', actionId: action.id } }, buildFeatureModelOptions('default'));
-    setModelSelectValue(select, action.model || 'default');
+    const savedModel = action.model || 'default';
+    const select = Dom.ffbEl('select', { id, dataset: { featureModel: '', actionId: action.id, savedModel } }, buildFeatureModelOptions('default'));
+    setModelSelectValue(select, unsaved.get(action.id) || savedModel);
     return Dom.ffbEl('tr', null, [
       Dom.ffbEl('th', { scope: 'row' }, Dom.ffbEl('label', { for: id }, action.builtin ? action.name : `自訂：${action.name}`)),
       Dom.ffbEl('td', null, select)
@@ -567,16 +570,35 @@ function initFeatureModelHints() {
   });
 }
 
-// 按「儲存設定」時把表上各動作的模型寫回動作清單；沒有變動就不寫
+// 表上改過、還沒存的動作模型：[[動作 id, 模型], …]
+function readUnsavedActionModels() {
+  return [...document.querySelectorAll('select[data-action-id]')]
+    .filter(select => (select.value || 'default') !== select.dataset.savedModel)
+    .map(select => [select.dataset.actionId, select.value || 'default']);
+}
+
+// 按「儲存設定」時把表上改過的動作模型寫回動作清單；沒有變動就不寫。
+// 先重讀 storage 裡最新的清單，只改這幾個動作的 model，不蓋掉別的分頁剛改的釘選或順序
 async function saveFeatureActionModels() {
-  const selected = new Map([...document.querySelectorAll('select[data-action-id]')]
-    .map(select => [select.dataset.actionId, select.value || 'default']));
-  const changed = actionListState.some(action => selected.has(action.id) && selected.get(action.id) !== (action.model || 'default'));
-  if (!changed) return;
-  actionListState = await CustomActions.saveActionList(actionListState.map(action => (
-    selected.has(action.id) ? { ...action, model: selected.get(action.id) } : action
+  const changed = new Map(readUnsavedActionModels());
+  if (!changed.size) return;
+  const latest = await CustomActions.loadActionList();
+  actionListState = await CustomActions.saveActionList(latest.map(action => (
+    changed.has(action.id) ? { ...action, model: changed.get(action.id) } : action
   )));
   renderActionList();
+}
+
+// 網頁「⋯」選單或其他設定分頁改了動作清單：換上最新清單，之後的排序、啟用、存檔才不會拿舊資料蓋回去。
+// 內容跟手上一樣（多半是這頁自己剛存的）就不重畫，以免打斷鍵盤焦點
+function initActionListSync() {
+  chrome.storage.onChanged?.addListener((changes, area) => {
+    if (area !== 'local' || !changes[CustomActions.STORAGE_KEY]) return;
+    const next = CustomActions.normalizeActionList(changes[CustomActions.STORAGE_KEY].newValue);
+    if (JSON.stringify(next) === JSON.stringify(CustomActions.normalizeActionList(actionListState))) return;
+    actionListState = next;
+    renderActionList();
+  });
 }
 
 function renderLanguageSelects() {
@@ -1477,6 +1499,7 @@ function initActionEditor() {
     button.addEventListener('click', () => setActionPreviewWidth(Number(button.dataset.previewWidth)));
   });
 
+  initActionListSync();
   return loadActionEditorList();
 }
 

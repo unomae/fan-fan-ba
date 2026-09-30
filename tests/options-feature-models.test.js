@@ -36,6 +36,7 @@ async function loadOptions({ local = {}, sync = {} } = {}) {
   jest.resetModules();
   document.body.innerHTML = bodyHtml;
   mockLocalStorage(local);
+  chrome.storage.onChanged = { addListener: jest.fn() };
   chrome.storage.sync.get.mockResolvedValue(sync);
   const options = require('../options');
   await flush();
@@ -159,5 +160,64 @@ describe('設定頁：各功能使用的模型', () => {
     expect($('pageTranslationModel').value).toBe('builtin:translator');
     expect($('featureModel-explain').value).toBe(GROQ);
     expect(hintOf('dictionaryModel').textContent).toContain('缺 Gemini API Key');
+  });
+});
+
+describe('設定頁：動作清單被別處改動時不拿舊資料蓋回去', () => {
+  const BUILTINS = [{ id: 'translate', builtin: true }, { id: 'explain', builtin: true }, { id: 'optimize', builtin: true }];
+  let originalConfirm;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    global.fetch = jest.fn();
+    originalConfirm = window.confirm;
+    window.confirm = jest.fn(() => false);
+  });
+  afterEach(() => { window.confirm = originalConfirm; });
+
+  // 模擬網頁「⋯」選單直接改 storage，並把變更事件送給設定頁
+  const unpinElsewhere = (id, { notify = true } = {}) => {
+    store.actionList = store.actionList.map(action => (action.id === id ? { ...action, pinned: false } : action));
+    if (notify) chrome.storage.onChanged.addListener.mock.calls.forEach(([listener]) => listener({ actionList: { newValue: store.actionList } }, 'local'));
+  };
+  const pinnedOf = id => store.actionList.find(action => action.id === id).pinned;
+
+  it('存模型時先重讀最新清單：還沒收到變更事件也不會把釘選蓋回去', async () => {
+    await loadOptions({ local: { actionList: BUILTINS } });
+    unpinElsewhere('explain', { notify: false });
+    typeInto('groqApiKey', 'gsk_test');
+    choose('model', GROQ);
+    choose('featureModel-optimize', GEMINI);
+    await clickSave();
+    expect(pinnedOf('explain')).toBe(false);
+    expect(store.actionList.find(action => action.id === 'optimize').model).toBe(GEMINI);
+  });
+
+  it('收到變更事件後，在自訂動作分頁排序也保留別處的釘選', async () => {
+    await loadOptions({ local: { actionList: BUILTINS } });
+    unpinElsewhere('explain');
+    const row = [...document.querySelectorAll('#actionList .action-row')].find(item => item.dataset.id === 'optimize');
+    row.querySelector('button').click(); // 上移
+    await flush(); await flush();
+    expect(store.actionList.map(action => action.id)).toEqual(['translate', 'optimize', 'explain']);
+    expect(pinnedOf('explain')).toBe(false);
+  });
+
+  it('變更事件重畫對照表時，保留還沒存的選擇', async () => {
+    await loadOptions({ local: { actionList: BUILTINS } });
+    choose('featureModel-explain', GROQ);
+    unpinElsewhere('translate');
+    expect($('featureModel-explain').value).toBe(GROQ);
+    expect($('featureModel-translate').value).toBe('default');
+  });
+
+  it('這頁自己剛存的變更事件不重畫，鍵盤焦點留在原按鈕', async () => {
+    await loadOptions({ local: { actionList: BUILTINS } });
+    const row = [...document.querySelectorAll('#actionList .action-row')].find(item => item.dataset.id === 'optimize');
+    row.querySelector('button').click();
+    await flush(); await flush();
+    const focused = document.activeElement;
+    expect(focused?.tagName).toBe('BUTTON');
+    chrome.storage.onChanged.addListener.mock.calls.forEach(([listener]) => listener({ actionList: { newValue: store.actionList } }, 'local'));
+    expect(document.activeElement).toBe(focused);
   });
 });
