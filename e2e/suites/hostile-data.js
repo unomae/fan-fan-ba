@@ -102,8 +102,7 @@ module.exports = {
       await opt.evaluate(() => chrome.storage.sync.remove('vocabularyHighlightMode'));
       await web.reload({ waitUntil: 'domcontentloaded' });
       await web.waitForTimeout(1200);
-      await H.expandBall(web);
-      await H.clickStable(web, '[data-action="vocab-highlight"]');
+      await H.clickBallItem(web, 'vocab-highlight');
       await web.waitForTimeout(3500);
       const h = await web.evaluate(() => ({
         total: document.querySelectorAll('mark.g-vocab-highlight').length,

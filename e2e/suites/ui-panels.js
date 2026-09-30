@@ -149,9 +149,8 @@ module.exports = {
       await opt.evaluate(() => chrome.storage.sync.remove('vocabularyHighlightMode'));
       const web = await s.newPage('/highlight', { width: 1280, height: 900 });
       const modeBefore = await opt.evaluate(() => chrome.storage.sync.get('vocabularyHighlightMode'));
-      await H.expandBall(web);
-      await H.clickStable(web, '[data-action="vocab-highlight"]');
-      await web.waitForTimeout(3000);
+      await H.clickBallItem(web, 'vocab-highlight');
+      await web.waitForFunction(() => document.querySelectorAll('mark.g-vocab-highlight').length > 0, null, { timeout: 10000 }).catch(() => { });
       const modeAfter = await opt.evaluate(() => chrome.storage.sync.get('vocabularyHighlightMode'));
       const marks = await web.locator('mark.g-vocab-highlight').count();
       const inForm = await web.locator('form mark.g-vocab-highlight, pre mark.g-vocab-highlight').count();
@@ -161,10 +160,11 @@ module.exports = {
       await s.shot(web, 'ui-T5-highlight-on');
       // 記憶：重整後應自動高亮
       await web.reload({ waitUntil: 'domcontentloaded' });
-      await web.waitForTimeout(2500);
+      await web.waitForFunction(() => document.querySelectorAll('mark.g-vocab-highlight').length > 0, null, { timeout: 10000 }).catch(() => { });
       const afterReload = await web.locator('mark.g-vocab-highlight').count();
       // 關掉，避免影響後續案
-      await H.expandBall(web); await H.clickStable(web, '[data-action="vocab-highlight"]'); await web.waitForTimeout(800);
+      await H.clickBallItem(web, 'vocab-highlight');
+      await web.waitForFunction(() => !document.querySelector('mark.g-vocab-highlight'), null, { timeout: 10000 }).catch(() => { });
       const off = await web.locator('mark.g-vocab-highlight').count();
       await web.close();
       rec.pass('T5 高亮開關（mark／tooltip／再點還原）',
@@ -229,8 +229,7 @@ module.exports = {
     // ── B1〜B5：全文翻譯的嵌入提示（collector 在 API 呼叫之前跑，無 key 也驗得到）──
     const embedHint = async route => {
       const web = await s.newPage(route, { width: 1280, height: 900 });
-      await H.expandBall(web);
-      await H.clickStable(web, '[data-action="page-translate"]');
+      await H.clickBallItem(web, 'page-translate');
       await web.waitForTimeout(2500);
       const el = web.locator('.ffb-page-embedded-summary');
       const exists = await el.count();
