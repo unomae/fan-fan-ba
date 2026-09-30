@@ -720,7 +720,48 @@
         flex: 1;
       }
     }
+
+    /* ── 自訂動作 ── */
+    .action-list { list-style: none; margin: 0 0 10px; padding: 0; border: 1px solid rgba(24, 32, 51, 0.1); border-radius: 8px; }
+    .action-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; }
+    .action-row + .action-row { border-top: 1px solid rgba(24, 32, 51, 0.08); }
+    .action-row-name { flex: 1; display: flex; align-items: center; gap: 6px; font-weight: 700; min-width: 0; }
+    .action-row-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .action-badge { font-size: 11px; font-weight: 700; color: #666; background: #f0f0f0; border-radius: 999px; padding: 1px 8px; }
+    .action-row .btn-test { min-height: 30px; padding: 4px 10px; font-size: 12.5px; }
+    .action-row.is-disabled .action-row-name { color: #999; }
+    .action-status { font-size: 12px; color: #666; min-height: 16px; }
+    .action-editor { border: 1px solid rgba(24, 32, 51, 0.12); border-radius: 10px; padding: 16px; }
+    .action-editor-title { margin: 0 0 12px; font-size: 15px; }
+    .action-icon-picker { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+    .action-icon-picker legend { font-size: 13px; font-weight: 700; margin-bottom: 6px; padding: 0; }
+    .action-icon-option { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #ddd; border-radius: 8px; padding: 5px 8px; font-size: 12px; cursor: pointer; }
+    .action-icon-option:has(input:checked) { border-color: var(--green); background: #f5fbee; }
+    .action-icon-option:focus-within { outline: 2px solid var(--green); outline-offset: 1px; }
+    .action-var-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+    .action-var-buttons .btn-test { min-height: 28px; padding: 3px 8px; font-size: 12px; font-family: ui-monospace, monospace; }
+    .action-fields { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+    .action-field-row { display: grid; grid-template-columns: 1fr 1fr 2fr auto; gap: 6px; align-items: center; }
+    .action-field-row .btn-test { min-height: 32px; padding: 4px 10px; }
+    .action-error { color: #b3261e; font-size: 12.5px; min-height: 18px; margin: 8px 0; }
+    .action-danger { color: #b3261e; border-color: #f0c2bd; background: #fff5f4; }
+    .action-preview-wrap { margin-top: 16px; border-top: 1px dashed rgba(24, 32, 51, 0.15); padding-top: 12px; }
+    .action-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 13px; font-weight: 700; }
+    .action-preview-widths { display: flex; gap: 4px; }
+    .action-preview-widths .btn-test { min-height: 28px; padding: 3px 10px; font-size: 12px; }
+    .action-preview-widths .btn-test[aria-pressed="true"] { border-color: var(--green); background: #e6f4d8; }
+    .action-preview { max-width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 12px; background: #fff; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); }
+    /* .field 是 grid，同列欄位高度不同時會把下拉選單撐高 */
+    .action-editor .field { align-content: start; }
+    @media (max-width: 640px) {
+      .action-field-row { grid-template-columns: 1fr 1fr; }
+      /* 窄螢幕：名稱獨佔一行，按鈕維持原寬（不吃 520px 以下的 .btn-test { flex: 1 }） */
+      .action-row { flex-wrap: wrap; }
+      .action-row-name { flex: 1 1 calc(100% - 32px); }
+      .action-row .btn-test { flex: 0 0 auto; }
+    }
   </style>
+  <link rel="stylesheet" href="content.css">
 </head>
 <body>
   <main class="settings-page">
@@ -744,6 +785,10 @@
         <button class="settings-tab" type="button" data-panel="language" aria-selected="false">
           語言與朗讀
           <small>5</small>
+        </button>
+        <button class="settings-tab" type="button" data-panel="actions" aria-selected="false">
+          自訂動作
+          <small>4</small>
         </button>
         <button class="settings-tab" type="button" data-panel="obsidian" aria-selected="false">
           Obsidian
@@ -954,6 +999,94 @@
           </div>
         </section>
 
+        <section class="settings-panel" data-panel-content="actions" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>自訂動作</h2>
+              <p>除了翻譯、解釋、優化，可以自己寫 prompt 做新的動作，指定模型回傳哪些欄位、用哪種版面顯示。</p>
+            </div>
+            <span class="panel-badge">最多 20 個</span>
+          </div>
+
+          <div class="form-grid">
+            <div class="field full">
+              <label id="actionListLabel">動作清單</label>
+              <ul class="action-list" id="actionList" aria-labelledby="actionListLabel"></ul>
+              <div class="backup-actions">
+                <button class="btn-test" id="btnNewAction" type="button">新增自訂動作</button>
+                <button class="btn-test" id="btnCopyAiGuide" type="button">用 AI 協助設定</button>
+              </div>
+              <div class="action-status" id="actionListStatus" aria-live="polite"></div>
+              <p class="field-note">內建動作可以停用、調整順序，不能刪除或改 prompt；按「以此為範本」會建立一份可編輯的自訂動作。「用 AI 協助設定」只會把說明文字複製到剪貼簿，貼給任何 AI 請它幫你寫，不會呼叫任何 API。</p>
+            </div>
+
+            <form class="field full action-editor" id="actionEditor" hidden novalidate>
+              <h3 class="action-editor-title" id="actionEditorTitle">編輯自訂動作</h3>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="actionName">名稱</label>
+                  <input type="text" id="actionName" maxlength="40" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="actionModel">模型</label>
+                  <select id="actionModel"></select>
+                </div>
+                <fieldset class="field full action-icon-picker" id="actionIconPicker">
+                  <legend>圖示</legend>
+                </fieldset>
+                <div class="field full">
+                  <label for="actionSystemPrompt">系統提示 <span class="hint">選填，可用 {{targetLanguage}}</span></label>
+                  <textarea id="actionSystemPrompt" rows="3" maxlength="4000" spellcheck="false"></textarea>
+                </div>
+                <div class="field full">
+                  <label for="actionUserPrompt">使用者提示</label>
+                  <div class="action-var-buttons" id="actionVarButtons" role="group" aria-label="插入變數"></div>
+                  <textarea id="actionUserPrompt" rows="5" maxlength="4000" spellcheck="false"></textarea>
+                  <p class="field-note">網頁來源的變數會自動包在「不是指令」的防注入框線內。<code>{{pageUrl}}</code> 目前不會送出網址，會替換成空白。</p>
+                </div>
+                <div class="field full">
+                  <label id="actionFieldsLabel">輸出欄位 <span class="hint">最多 8 個；模型會回傳以欄位代號為鍵的 JSON</span></label>
+                  <div class="action-fields" id="actionFields" role="group" aria-labelledby="actionFieldsLabel"></div>
+                  <button class="btn-test" id="btnAddActionField" type="button">新增欄位</button>
+                </div>
+                <div class="field">
+                  <label for="actionLayout">版面</label>
+                  <select id="actionLayout">
+                    <option value="fields">欄位卡</option>
+                    <option value="annotate">原文標註</option>
+                    <option value="compare">前後對照</option>
+                  </select>
+                  <p class="field-note" id="actionLayoutNote"></p>
+                </div>
+                <div class="field">
+                  <label for="actionSaveTo">存檔目的地</label>
+                  <select id="actionSaveTo">
+                    <option value="none">不存</option>
+                    <option value="obsidian">Obsidian 週記</option>
+                  </select>
+                </div>
+              </div>
+              <div class="action-error" id="actionEditorError" role="alert"></div>
+              <div class="btn-row">
+                <button class="btn-save" id="btnSaveAction" type="submit">儲存動作</button>
+                <button class="btn-test" id="btnCancelAction" type="button">取消</button>
+                <button class="btn-test action-danger" id="btnDeleteAction" type="button">刪除</button>
+              </div>
+
+              <div class="action-preview-wrap">
+                <div class="action-preview-head">
+                  <span id="actionPreviewLabel">預覽 <span class="hint">範例資料，不會呼叫模型</span></span>
+                  <div class="action-preview-widths" role="group" aria-label="預覽寬度">
+                    <button class="btn-test" type="button" data-preview-width="320" aria-pressed="true">320</button>
+                    <button class="btn-test" type="button" data-preview-width="500" aria-pressed="false">500</button>
+                  </div>
+                </div>
+                <div class="action-preview" id="actionPreview" aria-labelledby="actionPreviewLabel" style="width:320px"></div>
+              </div>
+            </form>
+          </div>
+        </section>
+
         <section class="settings-panel" data-panel-content="obsidian" hidden>
           <div class="panel-head">
             <div>
@@ -1024,7 +1157,7 @@
                 <button class="btn-test" id="btnImportSettings" type="button">選擇設定檔</button>
                 <input class="file-input" id="settingsImportFile" type="file" accept="application/json,.json">
               </div>
-              <p class="field-note">只接受翻翻吧設定檔，匯入時會依白名單更新支援的設定與 API Keys。</p>
+              <p class="field-note">只接受翻翻吧設定檔，匯入時會依白名單更新支援的設定與 API Keys。設定檔也會帶上「自訂動作」的清單，匯入時整份取代目前的清單（雲端同步不含自訂動作）。</p>
             </div>
 
             <div class="field full">
@@ -1157,6 +1290,9 @@
   </main>
 
   <script src="models.js"></script>
+  <script src="custom-actions.js"></script>
+  <script src="content/dom.js"></script>
+  <script src="content/custom-action-render.js"></script>
   <script src="storage.js"></script>
   <script src="cloud-sync.js"></script>
   <script src="vocabulary-backup.js"></script>

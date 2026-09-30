@@ -259,12 +259,74 @@ function buildCustomActionMarkdown(action, data) {
   return blocks.join('\n\n');
 }
 
+// ── 動作圖示（內建集合，不接外部圖示庫）─────────────
+// 設定頁挑圖示、工具列顯示都用這份；名稱就是動作資料裡的 icon 值
+const CUSTOM_ACTION_ICONS = {
+  sparkle: { label: '星光', shapes: [['path', { d: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6' }]] },
+  book: { label: '書本', shapes: [['path', { d: 'M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z' }], ['path', { d: 'M4 19V5' }]] },
+  pen: { label: '筆', shapes: [['path', { d: 'M4 20h4L19 9l-4-4L4 16z' }], ['path', { d: 'M13 7l4 4' }]] },
+  list: { label: '清單', shapes: [['path', { d: 'M9 6h11M9 12h11M9 18h11' }], ['circle', { cx: 4.5, cy: 6, r: 1 }], ['circle', { cx: 4.5, cy: 12, r: 1 }], ['circle', { cx: 4.5, cy: 18, r: 1 }]] },
+  check: { label: '勾選', shapes: [['path', { d: 'M4 12.5 9.5 18 20 6' }]] },
+  bulb: { label: '燈泡', shapes: [['path', { d: 'M9 18h6M10 21h4' }], ['path', { d: 'M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3z' }]] },
+  chat: { label: '對話', shapes: [['path', { d: 'M4 5h16v11H9l-5 4z' }]] },
+  globe: { label: '地球', shapes: [['circle', { cx: 12, cy: 12, r: 9 }], ['path', { d: 'M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18' }]] }
+};
+const CUSTOM_ACTION_DEFAULT_ICON = 'sparkle';
+
+// 頂層 const 在 classic script 不會掛到 globalThis，設定頁透過這兩個函式取用
+function listCustomActionIcons() {
+  return Object.entries(CUSTOM_ACTION_ICONS).map(([name, icon]) => ({ name, label: icon.label }));
+}
+
+function getDefaultCustomActionIcon() {
+  return CUSTOM_ACTION_DEFAULT_ICON;
+}
+
+// 不認得的名稱一律退回預設圖示
+function buildCustomActionIcon(name, size = 14) {
+  const icon = CUSTOM_ACTION_ICONS[name] || CUSTOM_ACTION_ICONS[CUSTOM_ACTION_DEFAULT_ICON];
+  return ffbSvgIcon({
+    width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+    'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true'
+  }, icon.shapes);
+}
+
+// ── 設定頁預覽用的範例資料（不呼叫模型）─────────────
+const CUSTOM_ACTION_SAMPLE_TEXT = 'She have been working here since three years.';
+
+function buildCustomActionSample(action) {
+  const fields = Array.isArray(action?.fields) ? action.fields : [];
+  const data = {};
+  fields.forEach((field, index) => {
+    const label = field.label || field.key;
+    if (action.layout === 'annotate' && index === 0) {
+      data[field.key] = [
+        { text: 'have been', type: 'grammar', note: '主詞是 She，應為 has been' },
+        { text: 'since three years', type: 'error', note: '一段時間用 for three years' }
+      ];
+    } else if (action.layout === 'compare' && field.key === 'before') {
+      data[field.key] = CUSTOM_ACTION_SAMPLE_TEXT;
+    } else if (action.layout === 'compare' && field.key === 'after') {
+      data[field.key] = 'She has been working here for three years.';
+    } else {
+      data[field.key] = `（${label}的範例內容）`;
+    }
+  });
+  return { selectedText: CUSTOM_ACTION_SAMPLE_TEXT, data };
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     readCompletedCustomFields,
     buildCustomActionContent,
     buildCustomFormatError,
     buildCustomActionMarkdown,
-    normalizeAnnotationType
+    normalizeAnnotationType,
+    CUSTOM_ACTION_ICONS,
+    CUSTOM_ACTION_DEFAULT_ICON,
+    listCustomActionIcons,
+    getDefaultCustomActionIcon,
+    buildCustomActionIcon,
+    buildCustomActionSample
   };
 }

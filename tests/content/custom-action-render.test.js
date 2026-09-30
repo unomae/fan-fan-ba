@@ -300,3 +300,17 @@ describe('結果卡：執行自訂動作', () => {
     expect(card.querySelector('.g-save-obs').hidden).toBe(false);
   });
 });
+
+describe('動作圖示', () => {
+  const { buildCustomActionIcon, listCustomActionIcons, getDefaultCustomActionIcon } = require('../../content/custom-action-render');
+
+  it('清單裡每個圖示都畫得出 SVG；不認得的名稱退回預設圖示', () => {
+    const icons = listCustomActionIcons();
+    expect(icons.length).toBeGreaterThanOrEqual(8);
+    for (const { name, label } of icons) {
+      expect(label).toBeTruthy();
+      expect(buildCustomActionIcon(name).namespaceURI).toBe('http://www.w3.org/2000/svg');
+    }
+    expect(buildCustomActionIcon('no-such-icon').outerHTML).toBe(buildCustomActionIcon(getDefaultCustomActionIcon()).outerHTML);
+  });
+});
