@@ -20,6 +20,7 @@ const SECRET_BACKUP_KDF_ITERATIONS = 210000;
 const SYNC_SETTING_KEYS = [
   'model',
   'pageTranslationModel',
+  'dictionaryModel',
   'targetLanguage',
   'explanationLanguage',
   'ttsLanguageMode',
@@ -47,8 +48,10 @@ const VOCAB_BACKUP_STALE_DAYS = 30;
 
 renderModelSelect();
 renderPageTranslationModelSelect();
+renderDictionaryModelSelect();
 renderLanguageSelects();
 initSettingsTabs();
+initFeatureModelHints();
 
 loadSettings();
 initDiagnosticsPanel();
@@ -411,7 +414,7 @@ function setModelSelectValue(select, modelId) {
 // ── 載入已儲存的設定 ─────────────────────────────────
 async function loadSettings() {
   const [
-    { model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder, customApiBase, customModelName },
+    { model, pageTranslationModel, dictionaryModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder, customApiBase, customModelName },
     { apiKey, groqApiKey, openrouterApiKey, customApiKey, ttsApiKey }
   ] = await Promise.all([
     chrome.storage.sync.get(SYNC_SETTING_KEYS),
@@ -427,7 +430,9 @@ async function loadSettings() {
   // 無儲存紀錄時預設 Groq（免費額度最大方）
   const currentModel = ModelRegistry.normalizeModel(model);
   setModelSelectValue($('model'), currentModel);
-  if ($('pageTranslationModel')) setModelSelectValue($('pageTranslationModel'), ModelRegistry.normalizeModel(pageTranslationModel || currentModel));
+  // 沒存過（或存成空字串）＝跟隨主模型
+  if ($('pageTranslationModel')) setModelSelectValue($('pageTranslationModel'), pageTranslationModel ? ModelRegistry.normalizeModel(pageTranslationModel) : '');
+  if ($('dictionaryModel')) setModelSelectValue($('dictionaryModel'), dictionaryModel || '');
   if (model && currentModel !== model) chrome.storage.sync.set({ model: currentModel });
   if ($('targetLanguage')) {
     $('targetLanguage').value = ModelRegistry.normalizeLanguage(targetLanguage, 'zh-TW');
@@ -444,6 +449,7 @@ async function loadSettings() {
   if (obsidianVault)          $('obsidianVault').value          = obsidianVault;
   if (ttsApiKey)              $('ttsApiKey').value              = ttsApiKey;
   if (obsidianDefaultFolder)  $('obsidianDefaultFolder').value  = obsidianDefaultFolder;
+  updateFeatureModelHints();
 }
 
 function renderModelSelect() {
@@ -472,9 +478,105 @@ function renderPageTranslationModelSelect() {
   const select = $('pageTranslationModel');
   if (!select || select.tagName !== 'SELECT') return;
 
-  select.innerHTML = ModelRegistry.MODELS
+  select.innerHTML = '<option value="">跟隨主模型</option>' + ModelRegistry.MODELS
     .map(model => `<option value="${model.id}">${model.name}（${model.desc}）</option>`)
     .join('');
+}
+
+// ── 各功能使用的模型 ─────────────────────────────────
+// 字典與各動作可選的模型：不含只做全文翻譯的模型（給不出結構化 JSON）
+function buildFeatureModelOptions(defaultValue) {
+  return [
+    Dom.ffbEl('option', { value: defaultValue }, '跟隨主模型'),
+    ...ModelRegistry.MODELS
+      .filter(model => !model.pageTranslationOnly)
+      .map(model => Dom.ffbEl('option', { value: model.id }, `${model.name}（${providerName(model.provider)}）`))
+  ];
+}
+
+function renderDictionaryModelSelect() {
+  const select = $('dictionaryModel');
+  if (select) Dom.ffbClear(select).append(...buildFeatureModelOptions(''));
+}
+
+// 動作清單的每個動作一列；值寫在動作的 model 欄位，按「儲存設定」才寫回
+function renderFeatureActionModelRows() {
+  const body = $('featureActionModelRows');
+  if (!body) return;
+  Dom.ffbClear(body).append(...actionListState.map(action => {
+    const id = `featureModel-${action.id}`;
+    const select = Dom.ffbEl('select', { id, dataset: { featureModel: '', actionId: action.id } }, buildFeatureModelOptions('default'));
+    setModelSelectValue(select, action.model || 'default');
+    return Dom.ffbEl('tr', null, [
+      Dom.ffbEl('th', { scope: 'row' }, Dom.ffbEl('label', { for: id }, action.builtin ? action.name : `自訂：${action.name}`)),
+      Dom.ffbEl('td', null, select)
+    ]);
+  }));
+  updateFeatureModelHints();
+}
+
+// 缺什麼才能用這個模型；回傳 null 表示可用。focusId 是「前往填寫」要聚焦的欄位
+function getFeatureModelGap(modelId) {
+  if (!modelId || modelId === 'default') return null;
+  const model = ModelRegistry.MODELS.find(item => item.id === modelId);
+  const provider = model && ModelRegistry.PROVIDERS[model.provider];
+  if (!provider || provider.keyless) return null;
+  const valueOf = id => String($(id)?.value || '').trim();
+  if (provider.userConfigured) {
+    const missing = ['customApiBase', 'customModelName', provider.apiKeyName].find(id => !valueOf(id));
+    return missing ? { message: '自訂端點的網址、模型名稱或金鑰還沒填', focusId: missing } : null;
+  }
+  return valueOf(provider.apiKeyName) ? null : { message: `缺 ${provider.label} API Key`, focusId: provider.apiKeyName };
+}
+
+// 每個功能下拉選到缺金鑰的模型時，就地顯示提示與「前往填寫」
+function updateFeatureModelHints() {
+  document.querySelectorAll('select[data-feature-model]').forEach(select => {
+    const hintId = `${select.id}-hint`;
+    let hint = $(hintId);
+    const gap = getFeatureModelGap(select.value);
+    if (!gap) {
+      hint?.remove();
+      select.removeAttribute('aria-describedby');
+      return;
+    }
+    if (!hint) {
+      hint = Dom.ffbEl('div', { id: hintId, class: 'feature-model-hint' });
+      select.after(hint);
+    }
+    const go = Dom.ffbEl('button', { type: 'button' }, '前往填寫');
+    go.addEventListener('click', () => {
+      const target = $(gap.focusId);
+      target?.scrollIntoView?.({ block: 'center' });
+      target?.focus();
+    });
+    Dom.ffbClear(hint).append(
+      Dom.ffbEl('span', { class: 'diagnostics-dot warn', 'aria-hidden': 'true' }),
+      Dom.ffbEl('span', null, [`${gap.message}，這個功能會無法使用。`, go])
+    );
+    select.setAttribute('aria-describedby', hintId);
+  });
+}
+
+function initFeatureModelHints() {
+  document.addEventListener('change', event => {
+    if (event.target?.matches?.('select[data-feature-model]')) updateFeatureModelHints();
+  });
+  ['apiKey', 'groqApiKey', 'openrouterApiKey', 'customApiKey', 'customApiBase', 'customModelName'].forEach(id => {
+    $(id)?.addEventListener('input', updateFeatureModelHints);
+  });
+}
+
+// 按「儲存設定」時把表上各動作的模型寫回動作清單；沒有變動就不寫
+async function saveFeatureActionModels() {
+  const selected = new Map([...document.querySelectorAll('select[data-action-id]')]
+    .map(select => [select.dataset.actionId, select.value || 'default']));
+  const changed = actionListState.some(action => selected.has(action.id) && selected.get(action.id) !== (action.model || 'default'));
+  if (!changed) return;
+  actionListState = await CustomActions.saveActionList(actionListState.map(action => (
+    selected.has(action.id) ? { ...action, model: selected.get(action.id) } : action
+  )));
+  renderActionList();
 }
 
 function renderLanguageSelects() {
@@ -548,7 +650,9 @@ $('btnSave').addEventListener('click', async () => {
   const groqApiKey       = $('groqApiKey').value.trim();
   const openrouterApiKey = $('openrouterApiKey').value.trim();
   const model            = $('model').value;
-  const pageTranslationModel = ModelRegistry.normalizeModel($('pageTranslationModel')?.value || model);
+  const pageTranslationValue = $('pageTranslationModel')?.value || '';
+  const pageTranslationModel = pageTranslationValue ? ModelRegistry.normalizeModel(pageTranslationValue) : '';
+  const dictionaryModel  = $('dictionaryModel')?.value || '';
   const targetLanguage   = ModelRegistry.normalizeLanguage($('targetLanguage')?.value, 'zh-TW');
   const explanationLanguage = ModelRegistry.normalizeExplanationLanguage($('explanationLanguage')?.value, 'target');
   const ttsLanguageMode  = ModelRegistry.normalizeTtsLanguageMode($('ttsLanguageMode')?.value, 'auto');
@@ -587,9 +691,15 @@ $('btnSave').addEventListener('click', async () => {
   const obsidianDefaultFolder = $('obsidianDefaultFolder').value.trim();
 
   await Promise.all([
-    chrome.storage.sync.set({ model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder, ...custom.settings }),
+    chrome.storage.sync.set({ model, pageTranslationModel, dictionaryModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder, ...custom.settings }),
     Storage.setSecrets({ apiKey, groqApiKey, openrouterApiKey, customApiKey, ttsApiKey })
   ]);
+  try {
+    await saveFeatureActionModels();
+  } catch (error) {
+    showStatus('err', `各動作的模型沒有存成功：${error.message}`);
+    return;
+  }
   showStatus('ok', removedProviderLabel ? `✓ 設定已儲存（${removedProviderLabel} API Key 已移除）` : '✓ 設定已儲存');
 });
 
@@ -1424,6 +1534,7 @@ function renderActionList() {
       up, down, ...buttons
     ]);
   }));
+  renderFeatureActionModelRows();
 }
 
 function builtinIconName(id) {
@@ -1724,6 +1835,10 @@ if (typeof module !== 'undefined' && module.exports) {
     bindToggleVis,
     renderModelSelect,
     renderPageTranslationModelSelect,
+    renderDictionaryModelSelect,
+    renderFeatureActionModelRows,
+    updateFeatureModelHints,
+    getFeatureModelGap,
     renderLanguageSelects,
     initSettingsTabs,
     loadSettings,

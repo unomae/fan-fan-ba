@@ -250,8 +250,27 @@
     return { ok: true, data };
   }
 
+  // 字典與全文翻譯不是動作清單裡的動作，用獨立的一般設定；長度規則與 background 的字典判斷一致
+  const DICTIONARY_MAX_CHARS = 20;
+
+  // 這次請求的「功能模型」：回傳模型 id，'' 表示跟隨主模型。
+  // 完整優先序是 卡內單次覆寫 > 這裡的功能模型 > 主模型；單次覆寫由呼叫端放在最前面。
+  // 存的值過期或不合法時一律當成跟隨主模型，不讓舊設定擋住請求。
+  function resolveFeatureModel({ action, customAction = null, selectedText = '' } = {}, { actionList = null, dictionaryModel = '' } = {}) {
+    const safeModel = value => {
+      let model = 'default';
+      try { model = normalizeActionModel(value); } catch { /* 不合法就跟隨主模型 */ }
+      return model === 'default' ? '' : model;
+    };
+    if (action === 'custom') return safeModel(customAction?.model);
+    if (action === 'translate' && String(selectedText).length <= DICTIONARY_MAX_CHARS) return safeModel(dictionaryModel);
+    const entry = Array.isArray(actionList) ? actionList.find(item => item?.builtin && item.id === action) : null;
+    return safeModel(entry?.model);
+  }
+
   const api = {
     STORAGE_KEY,
+    DICTIONARY_MAX_CHARS,
     MAX_CUSTOM_ACTIONS,
     MAX_FIELDS,
     MAX_PROMPT_CHARS,
@@ -269,7 +288,8 @@
     loadActionList,
     saveActionList,
     renderTemplate,
-    parseCustomActionOutput
+    parseCustomActionOutput,
+    resolveFeatureModel
   };
 
   global.FanFanBaCustomActions = api;

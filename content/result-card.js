@@ -521,7 +521,7 @@ function initModelSwitcher(el) {
   select.addEventListener('focus', () => refreshCardModelOptions(el));
   select.addEventListener('change', e => {
     const nextModel = e.currentTarget.value;
-    cardModelOverride = nextModel === FanFanBaModels.normalizeModel(activeModel) ? null : nextModel;
+    cardModelOverride = nextModel === getCardDefaultModel() ? null : nextModel;
     syncResultCardModelSelect(el);
     if (activeAction && savedSel) triggerAction(activeAction);
   });
@@ -535,8 +535,14 @@ async function refreshCardModelOptions(el = resultCard) {
   syncResultCardModelSelect(el);
 }
 
+// 沒有「僅本次」時這張卡會用的模型：這個功能設定的模型，沒設定就是主模型
+function getCardDefaultModel() {
+  const featureModel = typeof getFeatureModel === 'function' ? getFeatureModel(activeAction, savedSel?.text || '') : '';
+  return FanFanBaModels.normalizeModel(featureModel || activeModel);
+}
+
 function getCardModelOptions() {
-  const current = cardModelOverride || FanFanBaModels.normalizeModel(activeModel);
+  const current = cardModelOverride || getCardDefaultModel();
   const ids = new Set(cardAvailableModelIds || []);
   ids.add(current); // 目前實際使用的模型一定要列出來，即使它缺金鑰（選單要反映真實狀態）
   return FanFanBaModels.MODELS.filter(model => ids.has(model.id) && !model.pageTranslationOnly);
@@ -545,7 +551,7 @@ function getCardModelOptions() {
 function syncResultCardModelSelect(el = resultCard) {
   const select = el?.querySelector('.g-rc-model-select');
   if (!select) return;
-  const current = cardModelOverride || FanFanBaModels.normalizeModel(activeModel);
+  const current = cardModelOverride || getCardDefaultModel(); // 含各功能設定的模型，不只是主模型
   const options = getCardModelOptions();
   const signature = options.map(model => model.id).join('|');
   if (select.dataset.options !== signature) {

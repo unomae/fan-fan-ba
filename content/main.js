@@ -425,7 +425,7 @@ function triggerAction(action) {
   const cacheKey  = FanFanBaModels.buildCacheKey({
     action,
     text: savedSel.text,
-    model: cardModelOverride || activeModel,
+    model: getEffectiveModel(action, savedSel.text),
     targetLanguage,
     explanationLanguage,
     context,
@@ -513,7 +513,7 @@ function cancelActiveStream() {
 function sendNonStreaming(action, selectedText, context, pageTitle, cacheKey, requestId) {
   try {
     chrome.runtime.sendMessage(
-      { type: 'GEMINI_REQUEST', action, selectedText, context, pageTitle, modelOverride: cardModelOverride || '', targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' },
+      { type: 'GEMINI_REQUEST', action, selectedText, context, pageTitle, model: getFeatureModel(action, selectedText), modelOverride: cardModelOverride || '', targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' },
       response => {
         if (requestId !== activeRequestId) return;
         if (chrome.runtime.lastError) {
@@ -608,6 +608,7 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey, requ
   port.postMessage({
     requestId, action, selectedText, context, pageTitle,
     ...(action === 'custom' ? { customAction: activeCustomAction } : {}),
+    model: getFeatureModel(action, selectedText),
     modelOverride: cardModelOverride || '', targetLanguage, explanationLanguage, browserLanguage: navigator.language || ''
   });
 }
@@ -627,11 +628,31 @@ function loadToolbarActionList() {
     .catch(() => {});
 }
 
+// 這次請求的功能模型（''＝跟隨主模型）。卡內「僅本次」另外放 modelOverride，
+// background 依 modelOverride > model > 主模型 的順序選用
+function getFeatureModel(action, selectedText = '') {
+  return globalThis.FanFanBaCustomActions?.resolveFeatureModel(
+    { action, customAction: action === 'custom' ? activeCustomAction : null, selectedText },
+    { actionList: toolbarActionList, dictionaryModel }
+  ) || '';
+}
+
+// 實際會用的模型：快取 key 用
+function getEffectiveModel(action, selectedText = '') {
+  return cardModelOverride || getFeatureModel(action, selectedText) || activeModel;
+}
+
+function applyPageTranslationModel() {
+  globalThis.setPageTranslationModel?.(pageTranslationModelSetting || activeModel);
+}
+
 function initContentSettings() {
-  chrome.storage.sync.get({ model: FanFanBaModels.DEFAULT_MODEL, pageTranslationModel: '', targetLanguage: 'zh-TW', explanationLanguage: 'target', ttsLanguageMode: 'auto' })
+  chrome.storage.sync.get({ model: FanFanBaModels.DEFAULT_MODEL, pageTranslationModel: '', dictionaryModel: '', targetLanguage: 'zh-TW', explanationLanguage: 'target', ttsLanguageMode: 'auto' })
     .then(settings => {
       activeModel = FanFanBaModels.normalizeModel(settings.model);
-      globalThis.setPageTranslationModel?.(settings.pageTranslationModel || activeModel);
+      pageTranslationModelSetting = settings.pageTranslationModel || '';
+      dictionaryModel = settings.dictionaryModel || '';
+      applyPageTranslationModel();
       targetLanguage = FanFanBaModels.normalizeLanguage(settings.targetLanguage, 'zh-TW');
       explanationLanguage = FanFanBaModels.normalizeExplanationLanguage(settings.explanationLanguage, 'target');
       ttsLanguageMode = FanFanBaModels.normalizeTtsLanguageMode(settings.ttsLanguageMode, 'auto');
@@ -657,8 +678,10 @@ function initContentSettings() {
         activeModel = FanFanBaModels.normalizeModel(changes.model.newValue);
         syncResultCardModelSelect?.();
       }
-      if (changes.model && !changes.pageTranslationModel) globalThis.setPageTranslationModel?.(activeModel);
-      if (changes.pageTranslationModel) globalThis.setPageTranslationModel?.(changes.pageTranslationModel.newValue || activeModel);
+      // 全文翻譯設成「跟隨主模型」才跟著主模型變；指定了模型就維持指定的那個
+      if (changes.pageTranslationModel) pageTranslationModelSetting = changes.pageTranslationModel.newValue || '';
+      if (changes.model || changes.pageTranslationModel) applyPageTranslationModel();
+      if (changes.dictionaryModel) dictionaryModel = changes.dictionaryModel.newValue || '';
       if (changes.targetLanguage) targetLanguage = FanFanBaModels.normalizeLanguage(changes.targetLanguage.newValue, 'zh-TW');
       if (changes.explanationLanguage) explanationLanguage = FanFanBaModels.normalizeExplanationLanguage(changes.explanationLanguage.newValue, 'target');
       if (changes.ttsLanguageMode) ttsLanguageMode = FanFanBaModels.normalizeTtsLanguageMode(changes.ttsLanguageMode.newValue, 'auto');

@@ -645,7 +645,7 @@ content/page-translator-single.js</pre>
         <h2>功能狀態</h2>
         <table>
           <tr><th>功能</th><th>目前狀態</th><th>下一步</th></tr>
-          <tr><td>選字翻譯 / 解釋 / 優化</td><td><span class="pill green">已實作</span> 核心流程完整，支援 streaming、重試、pin、歷史紀錄。字典卡的例句會加粗查詢詞（含詞形變化），英文單字顯示 CEFR 難度（A1–C2）。另有兩個快捷鍵（翻譯選取文字、切換全文翻譯；popup 顯示實際綁定的鍵）與右鍵選單「翻譯選取文字」「翻譯整頁」，站點停用時都不作用。結果卡底部可「修改原文」後重查，模型選單只影響這張卡（僅本次），不改主模型。</td><td>真瀏覽器回歸 QA；以真實模型確認例句加粗與難度標註的準確度；實機按快捷鍵與右鍵選單各一次。</td></tr>
+          <tr><td>選字翻譯 / 解釋 / 優化</td><td><span class="pill green">已實作</span> 核心流程完整，支援 streaming、重試、pin、歷史紀錄。字典卡的例句會加粗查詢詞（含詞形變化），英文單字顯示 CEFR 難度（A1–C2）。另有兩個快捷鍵（翻譯選取文字、切換全文翻譯；popup 顯示實際綁定的鍵）與右鍵選單「翻譯選取文字」「翻譯整頁」，站點停用時都不作用。結果卡底部可「修改原文」後重查，模型選單只影響這張卡（僅本次），不改主模型。設定頁「模型與 API Key」有各功能模型對照表（字典、各動作含自訂、全文翻譯），預設跟隨主模型；請求時的優先序是 卡內僅本次 &gt; 功能設定 &gt; 主模型，選到缺金鑰的模型會就地提示並可跳到金鑰欄位。</td><td>真瀏覽器回歸 QA；以真實模型確認例句加粗與難度標註的準確度；實機按快捷鍵與右鍵選單各一次。</td></tr>
           <tr><td>自訂 OpenAI 相容端點</td><td><span class="pill green">已實作</span> 設定頁可填 https 網址、模型名稱與金鑰，當作一個模型使用（主模型、全文翻譯、結果卡僅本次都能選）。儲存或測試時只請求該網域的存取權，拒絕就不儲存；金鑰只存本機，不進雲端同步與一般匯出。測試連線分辨網路、權限不足、認證失敗、回應格式不相容。</td><td>用真實的相容端點實際翻譯一次；確認網域授權提示與撤銷後的錯誤訊息。</td></tr>
           <tr><td>整頁翻譯</td><td><span class="pill green">已實作</span> 支援雙語卡、停止、還原、續翻、定位原文、複製。</td><td>針對 Gmail / Notion / Google Docs / 長文 / iframe 頁測互動狀態。</td></tr>
           <tr><td>單段翻譯</td><td><span class="pill green">v1.9.7 完成</span> 使用 <code>Alt+T</code> 翻譯游標／選取所在段落；會遮擋原文的 hover 浮鈕已移除。</td><td>驗證快捷鍵、局部重試、與整頁翻譯混用。</td></tr>
@@ -709,7 +709,7 @@ content/page-translator-single.js</pre>
         <div class="grid">
           <div class="card">
             <h3>自動測試</h3>
-            <p>目前測試框架是 Jest 30 + jsdom。2026-09-30 fresh run 為 <code><!-- ffb:suites -->38<!-- /ffb:suites --> suites / <!-- ffb:tests -->598<!-- /ffb:tests --> tests</code> 全綠。<strong>專案內若有 <code>.claude/worktrees/</code>，jest 會連 worktree 的 <code>tests/</code> 一起掃、筆數灌水一倍</strong>，驗收前先 <code>git worktree list</code>，並用下面第二條指令取值。</p>
+            <p>目前測試框架是 Jest 30 + jsdom。2026-09-30 fresh run 為 <code><!-- ffb:suites -->39<!-- /ffb:suites --> suites / <!-- ffb:tests -->619<!-- /ffb:tests --> tests</code> 全綠。<strong>專案內若有 <code>.claude/worktrees/</code>，jest 會連 worktree 的 <code>tests/</code> 一起掃、筆數灌水一倍</strong>，驗收前先 <code>git worktree list</code>，並用下面第二條指令取值。</p>
             <pre>npm test
 npx jest --testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</pre>
           </div>
@@ -726,7 +726,7 @@ npx jest --testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</pre>
 
         <table style="margin-top:12px;">
           <tr><th>發布前 gate</th><th>狀態</th><th>說明</th></tr>
-          <tr><td>Jest</td><td><span class="pill green">fresh run 通過</span></td><td>2026-09-30：<code><!-- ffb:suites -->38<!-- /ffb:suites --> suites / <!-- ffb:tests -->598<!-- /ffb:tests --> tests</code>，0 failed、0 skipped（主樹實跑，取值請帶 <code>--testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</code>；Git Bash 下不能寫裸 <code>'/\.claude/'</code>，會被改寫成路徑而失效）。</td></tr>
+          <tr><td>Jest</td><td><span class="pill green">fresh run 通過</span></td><td>2026-09-30：<code><!-- ffb:suites -->39<!-- /ffb:suites --> suites / <!-- ffb:tests -->619<!-- /ffb:tests --> tests</code>，0 failed、0 skipped（主樹實跑，取值請帶 <code>--testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</code>；Git Bash 下不能寫裸 <code>'/\.claude/'</code>，會被改寫成路徑而失效）。</td></tr>
           <tr><td>Manual QA</td><td><span class="pill red">待真瀏覽器重跑</span></td><td>Phase 0-C～4-B：<code>60 TC / 32 PASS / 4 FAIL / 24 SKIP</code>。QA-P1-001、QA-P1-003、QA-P2-002 已於 2026-07-28 修復並補回歸測試；4 個失敗 TC 的真瀏覽器重跑清單、加上同日接線輪 6 條的新驗收項，都在 <code>MANUAL-QA.md</code>。完整報告見 <code>qa-reports/fan-fan-ba-qa-report-20260724.html</code>。</td></tr>
           <tr><td>OAuth / Cloud Sync</td><td><span class="pill red">T7 待人工</span></td><td>Chrome native auth 與 Edge Web Auth fallback 都要回填結果；Google Cloud Console 設定送審前必查。</td></tr>
           <tr><td>Chrome Web Store</td><td><span class="pill orange">checkpoint</span></td><td>等產品打磨完成後，再依 <code>STORE-SUBMISSION.md</code> 送審。</td></tr>

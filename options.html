@@ -237,7 +237,8 @@
 
     .field.full { grid-column: 1 / -1; }
 
-    label {
+    label,
+    .field-label {
       display: block;
       color: #3f4b5f;
       font-size: 12px;
@@ -394,6 +395,50 @@
       border-radius: 999px;
       background: #98a2b3;
     }
+
+    .feature-models {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .feature-models th,
+    .feature-models td {
+      padding: 6px 8px 6px 0;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--line, #e5e7eb);
+    }
+
+    .feature-models thead th { color: var(--muted); font-weight: 600; font-size: 12px; }
+    .feature-models tbody th { width: 40%; }
+    .feature-models tbody th label { color: var(--ink); font-size: 13px; font-weight: 600; }
+    .feature-models select { width: 100%; min-width: 0; }
+
+    .feature-model-hint {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin-top: 6px;
+      color: #8a5a00;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .feature-model-hint[hidden] { display: none; }
+    .feature-model-hint .diagnostics-dot { margin-top: 4px; flex: 0 0 auto; }
+    .feature-model-hint button {
+      margin-left: 4px;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--green-deep);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .feature-model-hint button:hover { text-decoration: underline; }
 
     .diagnostics-dot.ok { background: var(--green-deep); }
     .diagnostics-dot.warn { background: #c77a00; }
@@ -828,9 +873,26 @@
           </div>
 
           <div class="field full">
-            <label for="pageTranslationModel">全文翻譯模型</label>
-            <select id="pageTranslationModel"></select>
-            <p class="field-note">由右側懸浮球啟動的全文翻譯會使用此模型；建議選擇速度快、額度充足的模型。</p>
+            <span class="field-label" id="featureModelsLabel">各功能使用的模型</span>
+            <table class="feature-models" aria-labelledby="featureModelsLabel">
+              <thead>
+                <tr><th scope="col">功能</th><th scope="col">模型</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row"><label for="dictionaryModel">字典（20 字以內的翻譯）</label></th>
+                  <td><select id="dictionaryModel" data-feature-model></select></td>
+                </tr>
+              </tbody>
+              <tbody id="featureActionModelRows"></tbody>
+              <tbody>
+                <tr>
+                  <th scope="row"><label for="pageTranslationModel">全文翻譯</label></th>
+                  <td><select id="pageTranslationModel" data-feature-model></select></td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="field-note">預設「跟隨主模型」；結果卡底部「僅本次」選的模型優先於這裡。全文翻譯由右側懸浮球啟動，建議選擇速度快、額度充足的模型，也可以用瀏覽器內建翻譯（不需金鑰）。</p>
           </div>
 
           <div class="provider-grid">
