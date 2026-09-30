@@ -96,14 +96,51 @@ async function clickStable(page, selector, settleMs = 450) {
   await page.waitForTimeout(settleMs);
   await page.click(selector, { force: true });
 }
+// 浮球先插在頁面靜態位置（左側），等 restoreFloatingBallPosition 的 storage 讀取回來才移到右緣
+// 並寫入 style.top。storage 慢時（新 profile／重新打包後首跑）若在這段空窗展開選單，
+// 球移走後游標不在球上 → mouseleave → 選單 220ms 後自己收起，接下來的點擊全部落空。
+// 所以「就緒」的訊號是 style.top 已寫入，不是 .ffb-ball-main 出現。
+async function waitBallReady(page) {
+  await page.waitForFunction(() => {
+    const f = document.getElementById('fanfanba-floating');
+    return !!(f && f.style.top && f.querySelector('.ffb-ball-main'));
+  }, null, { timeout: 20000 });
+}
+// 收起的選單是 opacity 0＋pointer-events none，Playwright 仍判 visible，
+// 所以「選單開著」要看 ffb-menu-open 與轉場跑完（opacity 1），不能用 waitForSelector(visible)
+async function waitMenuOpen(page, timeout = 10000) {
+  await page.waitForFunction(() => {
+    const f = document.getElementById('fanfanba-floating');
+    const menu = f?.querySelector('.ffb-ball-menu');
+    return !!(menu && f.classList.contains('ffb-menu-open') && getComputedStyle(menu).opacity === '1');
+  }, null, { timeout });
+}
 async function expandBall(page) {
-  await page.waitForSelector('.ffb-ball-main', { timeout: 20000 });
+  await waitBallReady(page);
   await clickStable(page, '.ffb-ball-main', 250);
-  await page.waitForSelector('[data-action="library"]', { state: 'visible', timeout: 10000 });
+  await waitMenuOpen(page);
+}
+// 點浮球選單項目：點之前確認選單真的開著（被收起就重新展開），點之後確認 click 事件
+// 真的送達該按鈕。force click 打在 pointer-events none 的元素上會穿透到底下的頁面、
+// 不報錯，以前會變成「mode {}→{}」「（無面板）」這類難懂的假 FAIL。
+async function clickBallItem(page, action) {
+  const sel = `[data-action="${action}"]`;
+  const isOpen = () => page.evaluate(() =>
+    !!document.getElementById('fanfanba-floating')?.classList.contains('ffb-menu-open'));
+  if (!await isOpen()) await expandBall(page);
+  await waitMenuOpen(page);
+  // 主世界的監聽器與 content script 收到的是同一個 DOM 事件，可當送達證據
+  await page.evaluate(s => {
+    window.__ffbDelivered = false;
+    document.querySelector(s).addEventListener('click', () => { window.__ffbDelivered = true; }, { once: true, capture: true });
+  }, sel);
+  await page.click(sel, { force: true });
+  if (!await page.evaluate(() => window.__ffbDelivered)) {
+    throw new Error(`浮球選單「${action}」的點擊沒有送達（選單在點擊前被收起）`);
+  }
 }
 async function openLibrary(page) {
-  await expandBall(page);
-  await clickStable(page, '[data-action="library"]');
+  await clickBallItem(page, 'library');
   await page.waitForSelector('#gemini-result-card.g-show', { timeout: 10000 });
   await page.waitForTimeout(400);
 }
@@ -192,6 +229,6 @@ async function launch(cfg) {
 module.exports = {
   loadConfig, buildPages, serve, launch, createRecorder,
   send, seed, listWords, snapshots,
-  clickStable, expandBall, openLibrary, openVocabPanel, openOptionsPanel, openBackupTab, importVocabFile,
+  clickStable, waitBallReady, expandBall, clickBallItem, openLibrary, openVocabPanel, openOptionsPanel, openBackupTab, importVocabFile,
   isoHoursAgo, DEFAULT_EXT_ID,
 };

@@ -85,10 +85,9 @@ module.exports = {
       // openOptionsPage() 會聚焦既有的設定分頁而不是開新的，先關掉才驗得到
       await s.closeOptions();
       const web = await s.newPage('/plain');
-      await H.expandBall(web);
       const [newPage] = await Promise.all([
         s.ctx.waitForEvent('page', { timeout: 20000 }),
-        H.clickStable(web, '[data-action="settings"]'),
+        H.clickBallItem(web, 'settings'),
       ]);
       // page 事件在分頁還是空白時就觸發，太早讀 url() 會拿到空字串
       await newPage.waitForURL(/options\.html/, { timeout: 20000 });
@@ -157,8 +156,7 @@ module.exports = {
     // ── §4-5 局部重試 UI（無 key ⇒ 每段必失敗，正好驗失敗態）──
     try {
       const web = await s.newPage('/plain');
-      await H.expandBall(web);
-      await H.clickStable(web, '[data-action="page-translate"]');
+      await H.clickBallItem(web, 'page-translate');
       await web.waitForTimeout(4000);
       const snap = () => web.evaluate(() => ({
         retry: document.querySelectorAll('.ffb-page-retry').length,
@@ -355,8 +353,7 @@ module.exports = {
       const hist = await web.locator('.g-floating-history-item').count();
       await H.openVocabPanel(web).catch(() => { });
       const rows = await web.locator('.g-vocab-panel-item').count();
-      await H.expandBall(web);
-      await H.clickStable(web, '[data-action="vocab-highlight"]');
+      await H.clickBallItem(web, 'vocab-highlight');
       await web.waitForTimeout(2500);
       const marks = await web.locator('mark.g-vocab-highlight').count();
       await s.shot(web, 'legacy-regression');

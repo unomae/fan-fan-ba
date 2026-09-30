@@ -106,3 +106,8 @@ node e2e/run.js --list
 9. 存 API Key 的 dummy 值要符合 provider 前綴（Groq 是 `gsk_`），否則被格式驗證擋下；
    清空目前選用模型的 API Key 欄位後儲存會跳出移除確認；確認後以空值覆蓋已儲存的 key，取消則維持必填錯誤。QA 僅使用 dummy 值，不配置真實 API key。
 10. 快照輪替 24 小時一次且 `snapshotCheckedAt` 存在 SW 記憶體 → 要驗輪替得先 `relaunch()`。
+11. **浮球選單項目一律用 `H.clickBallItem(page, action)`**，不要 `expandBall` 後自己 `clickStable`。
+    收起的選單是 `opacity: 0`＋`pointer-events: none`，Playwright 仍判 visible，force click 會穿透到底下頁面、
+    不報錯，結果就是「mode {}→{}」「（無面板）」這類假 FAIL。另外浮球先插在頁面左側、等 storage 讀回來
+    才移到右緣（寫入 `style.top`）；storage 慢時在這段空窗展開選單，球一移走選單就自己收起。
+    `expandBall` 會等 `style.top` 與選單轉場跑完，`clickBallItem` 會確認 click 真的送達該按鈕。

@@ -81,6 +81,18 @@
 
 **驗證**：`--selftest` 新增 2 案（worktree 內不濾掉自己、主樹仍排除並行 worktree），11/11 PASS；退回舊 pattern 時新案紅 1 條（10/11）、還原後全綠。worktree 內 `check-docs --verify` exit 0（27／373）；主樹以新 pattern `jest --listTests` 得 27 支、未過濾為 80 支。
 
+## 2026-09-30 — e2e 首跑間歇紅燈：浮球選單點擊靜默落空
+
+**症狀**：全新 profile 或重新打包後的第一次完整跑，ui-panels 的 T2／T5／T6、B1／B2 間歇紅（`mode {}→{}`、「（無面板）」、等 `#gemini-result-card.g-show` 逾時），重跑即綠。
+
+**根因（harness）**：收起的浮球選單是 `opacity: 0`＋`pointer-events: none`，Playwright 仍判 visible；`clickStable` 用 force click，打在收起的選單上會穿透到底下頁面、不報錯。選單被收起的觸發點：浮球先插在頁面左側，等 `storage.local` 讀回位置才移到右緣；storage 慢時 harness 在這段空窗就展開選單，球一移走游標就不在球上 → mouseleave → 220ms 後選單自己收起。
+
+**修正**：`expandBall` 改等浮球定位完成（`style.top` 已寫入）與選單轉場跑完（`ffb-menu-open`＋opacity 1）；新增 `clickBallItem`，點之前確認選單開著、點之後確認 click 事件真的送達按鈕，否則明確報錯。T5／T6 的固定等待改成等高亮結果出現／消失。
+
+**驗證**：受控重現（展開後讓游標離開）舊 harness 點擊落空、`vocabularyHighlightMode` 維持 `{}`，新 harness 寫入 `auto`；定位空窗重現：空窗內展開 → 位置還原後選單 `open=false`。全新 profile 連三次首跑皆 41 PASS / 0 FAIL / 4 PARTIAL；Jest 27 suites／373 tests 全過。
+
+**未重現**：原始環境下 storage 讀取為何慢到超過 250ms（本機閒置時空窗約 5ms，加 CPU 負載也未重現）屬推論。
+
 ## 2026-09-21 — 內建模型下載進度條
 
 內建翻譯首次使用要下載語言包（實測 4.8–14.8 秒），原本這段完全沒有回饋，使用者只會看到面板卡住。
