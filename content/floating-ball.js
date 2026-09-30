@@ -331,6 +331,7 @@ function showFloatingLibraryPanel() {
   resultCard.querySelector('.g-rc-tag').textContent = '收藏 / 紀錄';
   resultCard.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
   resultCard.querySelector('.g-history-panel')?.classList.remove('g-hist-open');
+  setResultCardQueryMode?.(false);
   hideAutoSaveToast(resultCard);
 
   const body = resultCard.querySelector('.g-rc-body');
@@ -369,6 +370,7 @@ async function showFloatingHistoryPanel() {
   resultCard.querySelector('.g-rc-tag').textContent = '最近查詢';
   resultCard.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
   resultCard.querySelector('.g-history-panel')?.classList.remove('g-hist-open');
+  setResultCardQueryMode?.(false);
   hideAutoSaveToast(resultCard);
 
   const body = resultCard.querySelector('.g-rc-body');
@@ -412,6 +414,7 @@ async function showFloatingVocabularyPanel() {
   resultCard.querySelector('.g-rc-tag').textContent = '單字本';
   resultCard.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
   resultCard.querySelector('.g-history-panel')?.classList.remove('g-hist-open');
+  setResultCardQueryMode?.(false);
   hideAutoSaveToast(resultCard);
 
   const body = resultCard.querySelector('.g-rc-body');

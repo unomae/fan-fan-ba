@@ -26,6 +26,7 @@ describe('result card positioning', () => {
         normalizeModel: model => model || 'gemini-3'
       },
       activeModel: 'gemini-3',
+      cardModelOverride: null,
       userDragged: false,
       resultCardAnchorRect: null,
       responseCache: new Map(),
@@ -75,6 +76,7 @@ describe('result card positioning', () => {
         normalizeModel: model => model || 'gemini-3'
       },
       activeModel: 'gemini-3',
+      cardModelOverride: null,
       responseCache: new Map(),
       escapeHtml: value => String(value),
       loadRecentFolders: jest.fn(async () => []),
@@ -111,6 +113,7 @@ describe('result card positioning', () => {
         normalizeModel: model => model || 'gemini-3'
       },
       activeModel: 'gemini-3',
+      cardModelOverride: null,
       userDragged: false,
       resultCardAnchorRect: null,
       responseCache: new Map(),
@@ -163,6 +166,7 @@ describe('result card positioning', () => {
         normalizeModel: model => model || 'gemini-3'
       },
       activeModel: 'gemini-3',
+      cardModelOverride: null,
       userDragged: false,
       resultCardAnchorRect: null,
       responseCache: new Map(),
@@ -207,6 +211,7 @@ describe('result card positioning', () => {
         normalizeModel: model => model || 'gemini-3'
       },
       activeModel: 'gemini-3',
+      cardModelOverride: null,
       userDragged: false,
       // 觸發時已存好的工具列錨點
       resultCardAnchorRect: { left: 268, right: 388, top: 110, bottom: 152 },

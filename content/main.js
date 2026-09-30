@@ -62,6 +62,7 @@ function translateSelectionFromTrigger({ requireFocus = false } = {}) {
   const selectionData = getWindowSelectionData() || getEditableSelectionData();
   if (!selectionData?.text) return false;
   savedSel = selectionData;
+  cardModelOverride = null;
   showToolbar();
   triggerAction('translate');
   return true;
@@ -137,6 +138,7 @@ function onMouseUp(e) {
 
 function onKeyUp(e) {
   if (fanFanBaPaused) return;
+  if (isInOurUI(e.target)) return; // 在結果卡的原文輸入框移動游標，不能被當成新的選取
   if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(e.key)) {
     setTimeout(checkSelection, 20);
   }
@@ -167,6 +169,7 @@ function checkSelection(point = null, options = {}) {
   if (selectionData?.text) {
     try {
       savedSel = selectionData;
+      cardModelOverride = null; // 新的選取＝新的一張卡，「僅本次」模型不沿用
       showToolbar();
     } catch { /* 跨 iframe 等情況靜默忽略 */ }
   } else if (options.allowGoogleDocsFallback && isGoogleDocsDocumentPage()) {
@@ -383,6 +386,7 @@ function triggerAction(action) {
   );
 
   if (!resultCard || !document.body.contains(resultCard)) resultCard = createResultCard();
+  setResultCardQueryMode(true);
 
   // 新請求時收合 Obsidian 面板與存入提示
   resultCard.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
@@ -418,10 +422,11 @@ function triggerAction(action) {
     ? ''
     : extractContext(savedSel.text, savedSel.range);
   const pageTitle = document.title;
+  syncResultCardModelSelect?.(resultCard);
   const cacheKey  = FanFanBaModels.buildCacheKey({
     action,
     text: savedSel.text,
-    model: activeModel,
+    model: cardModelOverride || activeModel,
     targetLanguage,
     explanationLanguage,
     context,
@@ -503,7 +508,7 @@ function cancelActiveStream() {
 function sendNonStreaming(action, selectedText, context, pageTitle, cacheKey, requestId) {
   try {
     chrome.runtime.sendMessage(
-      { type: 'GEMINI_REQUEST', action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' },
+      { type: 'GEMINI_REQUEST', action, selectedText, context, pageTitle, modelOverride: cardModelOverride || '', targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' },
       response => {
         if (requestId !== activeRequestId) return;
         if (chrome.runtime.lastError) {
@@ -588,7 +593,7 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey, requ
     }
   });
 
-  port.postMessage({ requestId, action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' });
+  port.postMessage({ requestId, action, selectedText, context, pageTitle, modelOverride: cardModelOverride || '', targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' });
 }
 
 function initContentSettings() {

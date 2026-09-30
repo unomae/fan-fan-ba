@@ -3,6 +3,23 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-30 — 結果卡：僅本次切換模型＋修改原文後重查
+
+**範圍**：結果卡**標題列的模型選單移除**，改到新的底部列：左邊「修改原文」、右邊模型選單＋「僅本次」。改選模型只影響這張卡接下來的查詢，**不寫回全域主模型**（主模型仍在 popup／設定頁切）。「修改原文」展開可編輯的輸入框，「重新查詢」或 ⌘／Ctrl+Enter 送出、Esc 取消。
+
+**做法**：
+- `content/state.js` 新增 `cardModelOverride`；換新選取、快捷鍵選字、關卡時清掉。請求多帶 `modelOverride` 欄位（字典與串流兩條路都有），快取 key 以「單次模型或主模型」計算，所以切回主模型會命中原本的結果、不重送。
+- `background.js`：`validateAIRequest` 新增 `normalizeModelOverride()`——必須是清冊內的 id，只做頁面翻譯的內建模型不能拿來查選取文字，否則回「不支援的模型」／「此模型只能用於全文翻譯」。**與既有 `model` 欄位分開**，因為 `model` 可能帶舊版遺留的 id（由 `normalizeModel`／`getModel` 容錯），不能一起嚴格擋。`handleAIRequest` 補轉傳這個欄位（它原本逐一列欄位，漏列就會靜默失效）。
+- 可選模型由新的 `MODEL_AVAILABILITY` 訊息取得：background 依金鑰有無回傳模型 id 清單，**不回金鑰內容**，content 不直接讀金鑰。目前主模型即使缺金鑰也會列出，選單才反映真實狀態。
+- 浮球的「收藏／最近查詢／單字本」面板借用同一張卡，新增 `setResultCardQueryMode()`，只有選字查詢時才顯示底部列（施工時從 e2e 截圖發現底部列跑進單字本面板，連帶修改 `content/floating-ball.js` 三處）。
+- `onKeyUp` 補「事件發生在我們自己的 UI 內就略過」：否則在原文輸入框按方向鍵會被當成新的選取，把卡片收掉。
+
+**刻意變更的既有測試**：`css.test.js` 原本鎖「模型選單在標題列」與窄螢幕 `order: 3`，改為鎖底部列與原文編輯區樣式；`result-card-position.test.js` 的 vm context 補 `cardModelOverride`。
+
+**驗證**：新增 19 條（background 驗證／路由／可用清單 7、content 單次模型與原文重查 9、底部列只在查詢模式 3）。全套 32 suites／428 tests exit 0、0 skipped；`check-docs --verify` exit 0。**fail-then-pass**：六支實作檔退回 A2 版時紅 18 條（另 1 條「舊 `model` 欄位維持寬鬆」是守衛，本就該綠），還原後 SHA-256 一致、全綠。e2e 連兩次 41 PASS／0 FAIL／4 PARTIAL（另一個 session 同時佔用 4801，改用 `FFB_E2E_PORT=4811`）；另以 harness 實際開頁選字截圖，確認標題列無選單、底部列與原文編輯區版面正常、單字本面板不顯示底部列。
+
+**未驗**：真實模型切換後的回應（需 API key），已列入 `MANUAL-QA.md`。
+
 ## 2026-09-30 — 快捷鍵＋右鍵選單
 
 **範圍**：`manifest.json` 加 `contextMenus` 權限與兩個 `commands`——「翻譯選取文字」（Win `Alt+S`、Mac `⌃⇧S`）、「切換全文翻譯」（Win `Alt+A`、Mac `⌃⇧A`）；右鍵選單兩項：「翻翻吧：翻譯選取文字」（contexts: selection）、「翻翻吧：翻譯整頁」（contexts: page）。`background.js` 新增 `registerContextMenus()`／`handleContextMenuClick()`／`handleCommand()`，只把 `{ type: 'FFB_TRIGGER', trigger }` 轉給分頁；`content/main.js` 新增 `onExtensionTrigger()` 接收。popup 新增「快捷鍵」區，用 `chrome.commands.getAll()` 顯示實際綁定的鍵，沒綁上顯示「未設定」，「變更快捷鍵 →」以 `chrome.tabs.create` 開 `chrome://extensions/shortcuts`。

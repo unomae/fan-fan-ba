@@ -82,7 +82,7 @@ const MAX_PAGE_TITLE_CHARS = 300;
 const MAX_TTS_TEXT_CHARS = 160;
 const MAX_OBSIDIAN_URIS = 50;
 const MAX_OBSIDIAN_URI_CHARS = 4096;
-const ALLOWED_MESSAGE_TYPES = new Set(['GEMINI_REQUEST', 'TTS_REQUEST', 'OPEN_OPTIONS', 'OBSIDIAN_URI', 'VOCABULARY_STORE']);
+const ALLOWED_MESSAGE_TYPES = new Set(['GEMINI_REQUEST', 'TTS_REQUEST', 'OPEN_OPTIONS', 'OBSIDIAN_URI', 'VOCABULARY_STORE', 'MODEL_AVAILABILITY']);
 
 // ── Exponential Backoff with Full Jitter ──────────
 function createAbortError() {
@@ -186,6 +186,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     handleAIRequest(safeAIRequest)
       .then(result => { recordAiDiagnostics(request); reply(result); })
       .catch(err => { recordDiagnosticError(); reply({ error: err.message }); });
+    return true;
+  }
+  if (request.type === 'MODEL_AVAILABILITY') {
+    // 結果卡「僅本次」模型選單用：只回可用的模型 id，不回任何金鑰內容
+    if (!isTrustedExtensionSender(sender)) {
+      reply({ error: '請求來源不正確' });
+      return false;
+    }
+    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '' })
+      .then(secrets => reply({ models: getAvailableCardModelIds(secrets) }))
+      .catch(() => reply({ models: [] }));
     return true;
   }
   if (request.type === 'TTS_REQUEST') {
@@ -367,9 +378,33 @@ function validateAIRequest(request = {}) {
     explanationLanguage: normalizeOptionalBoundedString(request.explanationLanguage, 32, '解釋語言'),
     browserLanguage: normalizeOptionalBoundedString(request.browserLanguage, 32, '瀏覽器語言'),
     model: normalizeOptionalBoundedString(request.model, 160, '模型'),
+    modelOverride: normalizeModelOverride(request.modelOverride, !!request.pageTranslation),
     requestId: normalizeCorrelationId(request.requestId, 80),
     pageTranslation: normalizePageTranslationMeta(request.pageTranslation)
   };
+}
+
+// 結果卡「僅本次」指定的模型：必須是清冊內的 id，只做頁面翻譯的模型不能拿來查選取文字。
+// 與 `model` 欄位分開，是因為 `model` 可能帶著舊版遺留的 id（由 normalizeModel／getModel 容錯），
+// 不能一起嚴格擋掉。
+function normalizeModelOverride(value, isPageTranslation) {
+  if (value == null || value === '') return '';
+  if (typeof value !== 'string' || value.length > 160) throw new Error('模型格式不正確');
+  const model = ModelRegistry.MODELS.find(item => item.id === value);
+  if (!model) throw new Error('不支援的模型');
+  if (model.pageTranslationOnly && !isPageTranslation) throw new Error('此模型只能用於全文翻譯');
+  return model.id;
+}
+
+// 結果卡可選的模型：有金鑰或免金鑰，且不是只做頁面翻譯的模型
+function getAvailableCardModelIds(secrets = {}) {
+  return ModelRegistry.MODELS
+    .filter(model => !model.pageTranslationOnly)
+    .filter(model => {
+      const provider = ModelRegistry.PROVIDERS[model.provider];
+      return provider?.keyless || !!secrets[provider?.apiKeyName];
+    })
+    .map(model => model.id);
 }
 
 function validateTtsRequest(request = {}) {
@@ -411,12 +446,12 @@ function normalizePageTranslationMeta(value) {
 }
 
 // ── 非 streaming：維持原有邏輯（字典 JSON 需要完整回應）──
-async function handleAIRequest({ action, selectedText, context, pageTitle, model, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }) {
+async function handleAIRequest({ action, selectedText, context, pageTitle, model, modelOverride, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   try {
-    return await _handleAIRequest({ action, selectedText, context, pageTitle, model, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }, controller.signal);
+    return await _handleAIRequest({ action, selectedText, context, pageTitle, model, modelOverride, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }, controller.signal);
   } catch (err) {
     if (err.name === 'AbortError') throw new Error('請求逾時或已取消，請稍後重試');
     throw err;
@@ -469,12 +504,12 @@ function resolveRoute(selectedModel, { apiKey, groqApiKey, openrouterApiKey }) {
   return { kind: 'gemini', apiKey, model: selectedModel, label: 'Gemini' };
 }
 
-async function _handleAIRequest({ action, selectedText, context, pageTitle, model: requestedModel, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }, signal) {
+async function _handleAIRequest({ action, selectedText, context, pageTitle, model: requestedModel, modelOverride, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }, signal) {
   const [{ model = DEFAULT_MODEL }, { apiKey = '', groqApiKey = '', openrouterApiKey = '' }] = await Promise.all([
     chrome.storage.sync.get({ model: DEFAULT_MODEL }),
     Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '' })
   ]);
-  const selectedModel = ModelRegistry.normalizeModel(requestedModel || model);
+  const selectedModel = ModelRegistry.normalizeModel(modelOverride || requestedModel || model);
 
   const route = resolveRoute(selectedModel, { apiKey, groqApiKey, openrouterApiKey });
 
@@ -655,12 +690,12 @@ async function handleOpenAICompatRequest({ action, selectedText, context, pageTi
 }
 
 // ── Streaming 分流 ─────────────────────────────────
-async function _streamAIRequest({ action, selectedText, context, pageTitle, model: requestedModel, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }, onChunk, onStatus = () => {}, signal) {
+async function _streamAIRequest({ action, selectedText, context, pageTitle, model: requestedModel, modelOverride, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }, onChunk, onStatus = () => {}, signal) {
   const [{ model = DEFAULT_MODEL }, { apiKey = '', groqApiKey = '', openrouterApiKey = '' }] = await Promise.all([
     chrome.storage.sync.get({ model: DEFAULT_MODEL }),
     Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '' })
   ]);
-  const selectedModel = ModelRegistry.normalizeModel(requestedModel || model);
+  const selectedModel = ModelRegistry.normalizeModel(modelOverride || requestedModel || model);
 
   const prompt = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage, pageTranslation });
 
@@ -1026,4 +1061,4 @@ ${selectedText}`;
   }
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { registerContextMenus, handleContextMenuClick, handleCommand, sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, validateAIRequest, validateTtsRequest, validateObsidianUriRequest, resolveRoute, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, handleBuiltinTranslateRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { normalizeModelOverride, getAvailableCardModelIds, registerContextMenus, handleContextMenuClick, handleCommand, sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, validateAIRequest, validateTtsRequest, validateObsidianUriRequest, resolveRoute, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, handleBuiltinTranslateRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }
