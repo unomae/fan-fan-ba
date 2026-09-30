@@ -244,7 +244,7 @@
           </thead>
           <tbody>
             <tr>
-              <td>API Key（Gemini / Groq / OpenRouter / TTS）</td>
+              <td>API Key（Gemini / Groq / OpenRouter / 自訂端點 / TTS）</td>
               <td>呼叫使用者自選的 AI 服務</td>
               <td>僅存於 <code>chrome.storage.local</code>（本地裝置，不跟 Chrome 帳號同步）</td>
             </tr>
@@ -257,6 +257,11 @@
               <td>最近 5 筆查詢紀錄</td>
               <td>顯示歷史紀錄供快速回顧</td>
               <td>僅存於 <code>chrome.storage.local</code>（本地裝置）</td>
+            </tr>
+            <tr>
+              <td>自訂端點的網址與模型名稱</td>
+              <td>讓使用者改用自己指定、相容 OpenAI 格式的 AI 服務</td>
+              <td>存於 <code>chrome.storage.sync</code>；開啟雲端同步或匯出設定時會一併帶出，但不含 API Key</td>
             </tr>
             <tr>
               <td>偏好設定（模型、Obsidian Vault）</td>
@@ -280,6 +285,7 @@
           <li><strong>Google Gemini API</strong>（<a href="https://policies.google.com/privacy" target="_blank">隱私權政策</a>）</li>
           <li><strong>Groq API</strong>（<a href="https://groq.com/privacy-policy/" target="_blank">隱私權政策</a>）</li>
           <li><strong>OpenRouter API</strong>（<a href="https://openrouter.ai/privacy" target="_blank">隱私權政策</a>）</li>
+          <li><strong>使用者自訂的端點</strong>（選用）— 選用「自訂端點」模型時，選取文字、頁面標題與必要的鄰近上下文會送到使用者自行填寫的網址。該端點由使用者自行選擇與信任，資料如何處理依該服務自己的政策，翻翻吧無法得知或控管。</li>
           <li><strong>Google Cloud Text-to-Speech</strong>（<a href="https://policies.google.com/privacy" target="_blank">隱私權政策</a>）— 選填功能</li>
           <li><strong>Google Drive appData</strong>（<a href="https://policies.google.com/privacy" target="_blank">隱私權政策</a>）— 選填雲端同步功能，僅同步一般設定，不包含 API Key</li>
         </ul>
@@ -340,6 +346,10 @@
             <tr>
               <td>API host permissions</td>
               <td>允許直接呼叫 Gemini / Groq / OpenRouter / TTS / Google Drive API</td>
+            </tr>
+            <tr>
+              <td>選用網域存取（optional host permissions）</td>
+              <td>只在使用者設定自訂端點並按下儲存或測試時，向瀏覽器請求使用者填寫的那一個網域的存取權，可以拒絕；沒設定自訂端點就不會請求，也不會用來讀取你瀏覽的網頁</td>
             </tr>
           </tbody>
         </table>

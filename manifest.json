@@ -26,6 +26,9 @@
     "https://www.googleapis.com/drive/v3/*",
     "https://www.googleapis.com/upload/drive/v3/*"
   ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
   "background": {
     "service_worker": "background.js"
   },

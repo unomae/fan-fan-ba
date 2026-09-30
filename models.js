@@ -9,6 +9,9 @@
   const GROQ_FALLBACK_MODEL_ID = 'openai/gpt-oss-20b';
   // 瀏覽器內建 Translator API（Chrome 138+）；沒有備援模型，掛掉就回報、由使用者改選雲端
   const BUILTIN_TRANSLATOR_MODEL = 'builtin:translator';
+  // 使用者自訂的 OpenAI 相容端點：只有一個固定 id，實際網址與模型名稱存在設定
+  //（customApiBase／customModelName），金鑰存本機（customApiKey）
+  const CUSTOM_ENDPOINT_MODEL = 'custom:endpoint';
 
   // provider 級靜態資料的單一事實來源（WS-E M3''）：
   // background 請求路徑、options 測試連線與 key 前綴驗證共用，
@@ -43,6 +46,15 @@
       keyPrefix: '',
       apiBase: '',
       keyless: true
+    },
+    // 自訂端點：apiBase 由使用者提供，不在 manifest 的 host_permissions，
+    // 改走 optional_host_permissions、儲存時只請求使用者填的那個網域
+    custom: {
+      label: '自訂端點',
+      apiKeyName: 'customApiKey',
+      keyPrefix: '',
+      apiBase: '',
+      userConfigured: true
     }
   };
 
@@ -97,6 +109,34 @@
     badgeClass: 'badge-builtin',
     pageTranslationOnly: true
   });
+
+  MODELS.push({
+    id: CUSTOM_ENDPOINT_MODEL,
+    provider: 'custom',
+    apiKeyName: 'customApiKey',
+    name: '自訂端點',
+    desc: 'OpenAI 相容 · 自行設定網址與模型',
+    badge: '自訂',
+    badgeClass: 'badge-or'
+  });
+
+  // 自訂端點網址正規化：只收 https、不帶帳密／query／hash，去掉結尾斜線。
+  // 回傳 { base, originPattern }；originPattern 給 chrome.permissions 用（只請求這個網域）
+  function normalizeCustomEndpoint(value) {
+    const raw = String(value || '').trim();
+    if (!raw) throw new Error('請輸入自訂端點網址');
+    let url;
+    try {
+      url = new URL(raw);
+    } catch (error) {
+      throw new Error('自訂端點網址格式不正確');
+    }
+    if (url.protocol !== 'https:') throw new Error('自訂端點網址必須以 https:// 開頭');
+    if (url.username || url.password) throw new Error('自訂端點網址不能包含帳號密碼，金鑰請填在 API Key 欄位');
+    if (url.search || url.hash) throw new Error('自訂端點網址不能包含 ? 或 # 之後的內容');
+    const base = `${url.origin}${url.pathname}`.replace(/\/+$/, '');
+    return { base, originPattern: `${url.origin}/*` };
+  }
 
   const MODEL_MIGRATIONS = {
     'gemini-3-flash-preview': 'gemini-3.5-flash',
@@ -211,6 +251,7 @@
     if (normalized.startsWith('groq:')) return 'groq';
     if (normalized.startsWith('openrouter:')) return 'openrouter';
     if (normalized.startsWith('builtin:')) return 'builtin';
+    if (normalized.startsWith('custom:')) return 'custom';
     return 'gemini';
   }
 
@@ -282,6 +323,7 @@
     OPENROUTER_FALLBACK_MODEL_ID,
     GROQ_FALLBACK_MODEL_ID,
     BUILTIN_TRANSLATOR_MODEL,
+    CUSTOM_ENDPOINT_MODEL,
     PROVIDERS,
     MODELS,
     MODEL_MIGRATIONS,
@@ -290,6 +332,7 @@
     EXPLANATION_LANGUAGE_OPTIONS,
     TTS_LANGUAGE_OPTIONS,
     normalizeModel,
+    normalizeCustomEndpoint,
     getModel,
     getProvider,
     getModelDisplayName,

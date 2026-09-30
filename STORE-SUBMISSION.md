@@ -28,6 +28,7 @@ Windows 用 .NET ZipArchive 產生 forward-slash 路徑（Compress-Archive 的�
   - `contextMenus`（右鍵選單「翻譯選取文字」「翻譯整頁」）← 2026-09-30 新增並已補進隱私表，別漏填
   - `<all_urls>` content script（任意網頁注入工具列、偵測選取）
   - host permissions（直連 Gemini / Groq / OpenRouter / TTS / Google Drive API；Google API host 已收斂到 Drive / upload path）
+  - optional host permissions `https://*/*`（**選用**：只在使用者設定自訂端點並按下儲存或測試時，請求使用者填寫的那一個網域，可拒絕；沒設定就不請求，也不讀取瀏覽的網頁）← 2026-09-30 新增並已補進隱私表，別漏填
 - [ ] **資料用途揭露**：填「處理的使用者資料」= 網站內容（選取文字），用途=提供功能；勾選「不販售/不轉移」「僅供宣告用途」。
 - [ ] **遠端程式碼**：宣告「不使用遠端程式碼」（所有 JS 都打包在內，無 eval / 動態載入外部 script）。
 - [ ] **隱私政策 URL**：`https://unomae.github.io/fan-fan-ba/privacy-policy.html` 可正常開啟、內容與實際行為一致（無 telemetry、API Key 僅本機）。

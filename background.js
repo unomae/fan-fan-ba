@@ -194,8 +194,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       reply({ error: '請求來源不正確' });
       return false;
     }
-    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '' })
-      .then(secrets => reply({ models: getAvailableCardModelIds(secrets) }))
+    Promise.all([
+      Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', customApiKey: '' }),
+      chrome.storage.sync.get({ customApiBase: '', customModelName: '' })
+    ])
+      .then(([secrets, settings]) => reply({ models: getAvailableCardModelIds(secrets, settings) }))
       .catch(() => reply({ models: [] }));
     return true;
   }
@@ -396,12 +399,14 @@ function normalizeModelOverride(value, isPageTranslation) {
   return model.id;
 }
 
-// 結果卡可選的模型：有金鑰或免金鑰，且不是只做頁面翻譯的模型
-function getAvailableCardModelIds(secrets = {}) {
+// 結果卡可選的模型：有金鑰或免金鑰，且不是只做頁面翻譯的模型；
+// 自訂端點另外要網址與模型名稱都填了
+function getAvailableCardModelIds(secrets = {}, settings = {}) {
   return ModelRegistry.MODELS
     .filter(model => !model.pageTranslationOnly)
     .filter(model => {
       const provider = ModelRegistry.PROVIDERS[model.provider];
+      if (provider?.userConfigured && !(settings.customApiBase && settings.customModelName)) return false;
       return provider?.keyless || !!secrets[provider?.apiKeyName];
     })
     .map(model => model.id);
@@ -460,6 +465,14 @@ async function handleAIRequest({ action, selectedText, context, pageTitle, model
   }
 }
 
+// 自訂端點的網域權限是使用者在設定頁儲存時授予的（optional_host_permissions）；
+// 換裝置匯入設定、或使用者到擴充功能頁撤銷後，這裡要明講缺權限，不要讓 fetch 丟模糊的網路錯誤
+async function assertRoutePermission(route) {
+  if (!route.originPattern) return;
+  const granted = await chrome.permissions.contains({ origins: [route.originPattern] }).catch(() => false);
+  if (!granted) throw new Error('尚未授權連線到自訂端點，請到設定頁面重新儲存並允許存取');
+}
+
 // 路由決策的唯一正本。非串流（`_handleAIRequest`）與串流（`_streamAIRequest`）原本
 // 各有一段幾乎逐字相同的 provider if 鏈：判斷前綴、挑金鑰、組 baseUrl、給 label，
 // 差別只在後面接哪個執行器。
@@ -470,7 +483,7 @@ async function handleAIRequest({ action, selectedText, context, pageTitle, model
 //
 // 「無前綴 id＝Gemini」是史前遺留 id 依賴的路由約定，`provider-endpoints.test.js`
 // 兩個 describe 各有一條鎖住它。
-function resolveRoute(selectedModel, { apiKey, groqApiKey, openrouterApiKey }) {
+function resolveRoute(selectedModel, { apiKey, groqApiKey, openrouterApiKey, customApiKey }, settings = {}) {
   if (selectedModel.startsWith('groq:')) {
     if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
     return {
@@ -500,18 +513,36 @@ function resolveRoute(selectedModel, { apiKey, groqApiKey, openrouterApiKey }) {
     return { kind: 'builtin', label: '瀏覽器內建' };
   }
 
+  if (selectedModel.startsWith('custom:')) {
+    const modelId = String(settings.customModelName || '').trim();
+    if (!settings.customApiBase || !modelId) throw new Error('請先在設定頁面填寫自訂端點的網址與模型名稱');
+    if (!customApiKey) throw new Error('請先在設定頁面輸入自訂端點 API Key');
+    const { base, originPattern } = ModelRegistry.normalizeCustomEndpoint(settings.customApiBase);
+    return {
+      kind:          'openai-compat',
+      modelId,
+      apiKey:        customApiKey,
+      baseUrl:       `${base}/chat/completions`,
+      label:         '自訂端點',
+      extraHeaders:  {},
+      originPattern // 呼叫端要先確認使用者授權過這個網域
+    };
+  }
+
   if (!apiKey) throw new Error('請先在擴充功能設定頁面輸入 Gemini API Key');
   return { kind: 'gemini', apiKey, model: selectedModel, label: 'Gemini' };
 }
 
 async function _handleAIRequest({ action, selectedText, context, pageTitle, model: requestedModel, modelOverride, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }, signal) {
-  const [{ model = DEFAULT_MODEL }, { apiKey = '', groqApiKey = '', openrouterApiKey = '' }] = await Promise.all([
-    chrome.storage.sync.get({ model: DEFAULT_MODEL }),
-    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '' })
+  const [{ model = DEFAULT_MODEL, ...settings }, secrets] = await Promise.all([
+    chrome.storage.sync.get({ model: DEFAULT_MODEL, customApiBase: '', customModelName: '' }),
+    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', customApiKey: '' })
   ]);
+  const { apiKey = '' } = secrets;
   const selectedModel = ModelRegistry.normalizeModel(modelOverride || requestedModel || model);
 
-  const route = resolveRoute(selectedModel, { apiKey, groqApiKey, openrouterApiKey });
+  const route = resolveRoute(selectedModel, secrets, settings);
+  await assertRoutePermission(route);
 
   if (route.kind === 'builtin') {
     return handleBuiltinTranslateRequest({ action, selectedText, targetLanguage, browserLanguage, pageTranslation, signal });
@@ -691,15 +722,17 @@ async function handleOpenAICompatRequest({ action, selectedText, context, pageTi
 
 // ── Streaming 分流 ─────────────────────────────────
 async function _streamAIRequest({ action, selectedText, context, pageTitle, model: requestedModel, modelOverride, targetLanguage, explanationLanguage, browserLanguage, pageTranslation }, onChunk, onStatus = () => {}, signal) {
-  const [{ model = DEFAULT_MODEL }, { apiKey = '', groqApiKey = '', openrouterApiKey = '' }] = await Promise.all([
-    chrome.storage.sync.get({ model: DEFAULT_MODEL }),
-    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '' })
+  const [{ model = DEFAULT_MODEL, ...settings }, secrets] = await Promise.all([
+    chrome.storage.sync.get({ model: DEFAULT_MODEL, customApiBase: '', customModelName: '' }),
+    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', customApiKey: '' })
   ]);
+  const { apiKey = '' } = secrets;
   const selectedModel = ModelRegistry.normalizeModel(modelOverride || requestedModel || model);
 
   const prompt = buildPrompt(action, selectedText, context, pageTitle, { targetLanguage, explanationLanguage, browserLanguage, pageTranslation });
 
-  const route = resolveRoute(selectedModel, { apiKey, groqApiKey, openrouterApiKey });
+  const route = resolveRoute(selectedModel, secrets, settings);
+  await assertRoutePermission(route);
 
   if (route.kind === 'builtin') {
     // 內建 API 沒有串流；一次算完再用單一 chunk 交付，維持串流端既有契約
@@ -1061,4 +1094,4 @@ ${selectedText}`;
   }
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { normalizeModelOverride, getAvailableCardModelIds, registerContextMenus, handleContextMenuClick, handleCommand, sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, validateAIRequest, validateTtsRequest, validateObsidianUriRequest, resolveRoute, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, handleBuiltinTranslateRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { assertRoutePermission, normalizeModelOverride, getAvailableCardModelIds, registerContextMenus, handleContextMenuClick, handleCommand, sleep, jitteredDelay, isRetryable, withRetry, checkedFetch, formatApiErrorMessage, validateAIRequest, validateTtsRequest, validateObsidianUriRequest, resolveRoute, handleAIRequest, _handleAIRequest, handleOpenAICompatRequest, handleBuiltinTranslateRequest, _streamAIRequest, streamGemini, streamOpenAICompat, parseSseStream, handleTtsRequest, buildPrompt }; }

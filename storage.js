@@ -1,7 +1,7 @@
 (function initFanFanBaStorage(global) {
   'use strict';
 
-  const SECRET_KEYS = ['apiKey', 'groqApiKey', 'openrouterApiKey', 'ttsApiKey'];
+  const SECRET_KEYS = ['apiKey', 'groqApiKey', 'openrouterApiKey', 'customApiKey', 'ttsApiKey'];
   let migrationPromise = null;
 
   function pickSecrets(values = {}) {

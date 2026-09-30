@@ -56,6 +56,10 @@ global.chrome = {
     create: jest.fn(),
     onClicked: { addListener: jest.fn() },
     removeAll: jest.fn(cb => cb && cb())
+  },
+  permissions: {
+    contains: jest.fn().mockResolvedValue(true),
+    request: jest.fn().mockResolvedValue(true)
   }
 };
 

@@ -3,6 +3,26 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-30 — 自訂 OpenAI 相容端點
+
+**範圍**：設定頁新增「自訂端點」卡片，可填 API 網址、模型名稱與 API Key，另有「測試自訂端點」按鈕。填好之後，「自訂端點」會像一般模型一樣出現在主模型、全文翻譯與結果卡「僅本次」的選單裡。沒有備援模型，端點掛了就如實回報。
+
+**做法**：
+- `models.js`：新 provider `custom`，只有一個固定 id `custom:endpoint`。實際網址與模型名稱存在 `chrome.storage.sync` 的 `customApiBase`／`customModelName`，這兩項不是機密，會跟著一般設定備份與雲端同步；金鑰 `customApiKey` 加進 `storage.js` 的 `SECRET_KEYS`，只存本機，不進雲端同步與一般匯出（勾選加密匯出時才以加密形式帶出）。`normalizeCustomEndpoint()` 由設定頁與 background 共用：只收 `https://`，不能帶帳密、`?` 或 `#`，結尾斜線會去掉。
+- 權限：`manifest.json` 加 `optional_host_permissions: ["https://*/*"]`。安裝時不會給這項權限；使用者按儲存或測試時，才用 `chrome.permissions.request` **只請求填寫的那一個網域**，拒絕就整個不儲存。請求排在任何 `await` 與 `confirm` 之前，避免瀏覽器判定不是使用者操作。
+- `background.js`：`resolveRoute` 認 `custom:` 前綴，走既有的 OpenAI 相容執行器（`{網址}/chat/completions`）。新增 `assertRoutePermission()`，送出前確認網域仍有授權。換裝置只匯入了設定、或使用者到擴充功能頁撤銷權限時，會明講「尚未授權」，不讓 fetch 丟出模糊的網路錯誤。結果卡的可用清單另外要求網址與模型名稱都已填寫。
+- 測試連線打 `{網址}/models`，錯誤分成網路、權限不足、認證失敗（401／403）、回應格式不相容（其他 4xx 或沒有 `data` 陣列）四種，另有伺服器錯誤（5xx）與「連上了但清單找不到這個模型」。上游回傳的錯誤內容不顯示在畫面上，沿用 `formatApiErrorMessage` 的原則。
+- 匯入設定時，網址若不是合法 https 就清空，避免備份檔把請求導到別處。
+- 網址欄用 `type="text" inputmode="url"`，這樣會沿用既有欄位樣式，不必動 CSS。
+
+**刻意變更的既有測試**：`models-registry.test.js` 與 `popup.test.js` 鎖住的模型清冊從 5 顆改為 6 顆；「PROVIDERS ⟺ host_permissions」對賬的略過清單改為恰為 `['builtin', 'custom']`，並斷言萬用權限只出現在 `optional_host_permissions`、不在必要權限裡。`jest.setup.js` 的 chrome mock 補上 `permissions`。
+
+**隱私權政策**：`privacy-policy.html` 補上自訂端點的資料流向（選取文字會送到使用者自行填寫的網址）、設定儲存位置與選用網域存取權限，文字已經 KAKA 核准；商店送審文件的權限清單同步更新。
+
+**驗證**：新增 21 條（`tests/custom-endpoint.test.js`：網址驗證、路由、授權撤銷、可用清單、金鑰只存本機、儲存與權限拒絕、測試連線分類、雲端同步與匯出不含金鑰、匯入網址過濾）。全套 33 suites／450 tests exit 0、0 skipped；`check-docs --verify` exit 0。**fail-then-pass**：五支實作檔退回 A3 版時紅 25 條，還原後 SHA-256 一致、全綠。e2e 41 PASS／0 FAIL／4 PARTIAL。另以 harness 開設定頁截圖，桌機與 375 寬的四張供應商卡片版面正常、無水平溢出。
+
+**未驗**：未以真實模型驗證；也還沒用真實的相容端點實際翻譯過，瀏覽器的網域授權提示也還沒實機看過。這些已列入 `MANUAL-QA.md`。
+
 ## 2026-09-30 — 結果卡：僅本次切換模型＋修改原文後重查
 
 **範圍**：結果卡**標題列的模型選單移除**，改到新的底部列：左邊「修改原文」、右邊模型選單＋「僅本次」。改選模型只影響這張卡接下來的查詢，**不寫回全域主模型**（主模型仍在 popup／設定頁切）。「修改原文」展開可編輯的輸入框，「重新查詢」或 ⌘／Ctrl+Enter 送出、Esc 取消。
