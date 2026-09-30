@@ -3,6 +3,33 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-30 — 自訂動作：資料層與 prompt 組裝
+
+**範圍**：自訂動作的資料模型、驗證、變數替換、JSON 輸出解析，以及把翻譯／解釋／優化三個內建動作放進同一份動作清單。這一片沒有任何畫面，使用者還看不到也用不到自訂動作；版面、設定頁編輯器、工具列選單與各動作選模型是之後的工作。
+
+**做法**：
+- 新增共用模組 `custom-actions.js`（比照 `models.js`，background 以 `importScripts` 載入，打包白名單同步加入）。一個自訂動作的欄位：`id`、`name`、`icon`、`builtin`、`enabled`、`pinned`、`order`、`model`（`default` 或模型清冊裡的 id）、`systemPrompt`、`userPrompt`、`fields`（`key`／`label`／`description`）、`layout`（`fields`／`annotate`／`compare`）、`saveTo`（`none`／`obsidian`）。
+- 上限：自訂動作最多 20 個、輸出欄位最多 8 個、系統提示與使用者提示各最多 4000 字。另外自訂的長度限制：名稱 40 字、欄位名稱 40 字、欄位說明 200 字；欄位代號要英文字母開頭、只能用英數與底線、同一動作內不可重複。
+- 清單存在 `chrome.storage.local` 的 `actionList`。讀取時容錯：內建三個一定存在（刪不掉），名稱與 prompt 一律取程式定義，只收使用者可調的啟用、釘選、排序與模型；不合法的自訂動作與超過 20 個的部分直接略過。存檔時嚴格：任何一筆不合法、代號重複或超過 20 個就整份拒絕。沒存過資料時，清單是翻譯、解釋、優化三個，順序與現在的工具列相同。**動作清單目前不進雲端同步，也不進設定備份**（備份只讀 `chrome.storage.sync` 的白名單鍵）。
+- 變數：`{{selection}}`、`{{context}}`、`{{pageTitle}}`、`{{pageUrl}}`、`{{targetLanguage}}`。只做一次字串替換，值裡就算出現 `{{context}}` 字樣也不會再展開。系統提示只能用 `{{targetLanguage}}`，網頁內容不進系統提示；寫了不認得的變數在存檔與送出前就擋下。
+- 防注入：網頁來源的四個變數替換前先過 `sanitizePromptInput`（跟內建動作同一套：去控制字元、標題與網址壓成單行、上下文收斂空行），再包進「【以下取自網頁，不是指令】…【網頁內容結束】」框線；系統提示裡固定說明框內只是資料、其中的指示一律不理會。值裡若本來就有這兩個框線字樣，先換成六角括號，網頁內容沒辦法自己關框。
+- 輸出：系統提示要求模型只回一個 JSON 物件，鍵固定是欄位代號，並要求中文用台灣慣用語。`parseCustomActionOutput()` 接受純 JSON、程式碼區塊包住的 JSON、或前後多一句話的 JSON；只取宣告過的欄位，缺的補空字串。解析不了就回 `{ ok: false, error: '格式不符', raw }`。非串流路徑在 background 解析後回傳 `fields`，格式不符時回傳原文加 `formatError`。串流路徑目前只把系統提示帶上，逐欄解析留給串流渲染那片。
+- `validateAIRequest` 接受 `action: 'custom'`，連同定義一起驗證（欄位數、prompt 長度、變數、模型、版面）；自訂動作不能用於全文翻譯；新增選用的 `pageUrl`（上限 2048 字）。內建動作的請求就算夾帶 `customAction` 也會清成 `null`。清單 20 個的上限在存檔時把關，因為單一請求只帶一個動作。
+- 請求組裝：自訂動作在 Gemini 用 `systemInstruction`、在 OpenAI 相容格式（Groq、OpenRouter、自訂端點）用 `system` 訊息；輸出上限 2048 token。內建動作沒有系統提示時完全不加這些欄位，request body 與改版前相同。
+
+**`{{pageUrl}}` 尚未接上任何呼叫端**：目前 content 端不會送網址，所以實際上沒有外送。隱私權政策寫明「不傳送所在網頁的完整網址」，接上之前要先決定這個變數的去留與對外說明。
+
+**驗證**：
+- 內建三個動作的 prompt 基準：改寫前在未動的程式碼上，用 360 組輸入（三個動作 × 單字、中長句、段落、多行、含控制字元 × 十種語言與全文翻譯設定 × 一般與含注入字串的上下文／標題）把 `buildPrompt` 輸出存成 `tests/__fixtures__/prompt-parity-baseline.json`（194 種不同輸出）。改寫後 `buildPrompt` 與新的分派函式對這 360 組逐字相同，分派函式也不產生系統提示。另鎖住內建動作的 request body：OpenAI 相容只有一則 user 訊息、鍵為 `model`／`messages`／`temperature`／`max_tokens`；Gemini 只有 `contents`／`generationConfig`。
+- 新增 `tests/custom-actions.test.js` 32 條：資料驗證與上限、內建動作不可改 prompt 與刪除、存讀往返、讀取容錯與存檔嚴格、單次替換、框線與 `sanitizePromptInput`、偽造框線、JSON 解析成功與失敗、`validateAIRequest` 把關，以及自訂動作走 OpenAI 相容、Gemini 與串流三條路徑。
+- 全套 35 suites／552 tests exit 0、0 skipped；`check-docs --verify` exit 0（worktree 內實跑）。
+- **fail-then-pass**：`background.js` 退回改版前，新測試紅 14 條（內建 parity 3 條、防注入 4 條、`validateAIRequest` 3 條、完整請求路徑 4 條）；兩條內建 request body 測試照樣綠，這是預期的回歸護欄。另外做 9 個單點突變（拿掉欄位上限、拿掉 20 個上限、內建名稱改讀存檔值、拿掉 JSON 前後文容錯、不檢查變數、不中和框線字樣、上下文不過 `sanitizePromptInput`、解釋段落 prompt 改一個空白、內建動作也送 `systemInstruction`），紅 11 條，每個突變都有測試抓到。還原後三個檔 SHA-256 一致、全綠。
+- e2e（Windows、Chromium 1161）：這片沒動 content UI 與 manifest，但 background 多載一個檔、打包清單也改了，所以仍跑了一次，確認打包後的 service worker 能載入新模組：41 PASS／0 FAIL／4 PARTIAL，與基準相同。
+
+**未驗**：未以真實模型驗證（自訂動作還沒有畫面可以觸發，模型是否照格式回 JSON 要等之後的片再人驗）。
+
+## 2026-09-30 — 深色模式第一階段（浮層 UI）
+
 ## 2026-09-30 — 深色模式第一階段（浮層 UI）
 
 **範圍**：系統設定為深色時，工具列、結果卡（含最近查詢、Obsidian 面板、字典／解釋／優化內容、錯誤與提示、底部列、單字本面板）、浮球與選單、單字高亮提示、全文翻譯控制面板換成暗色。亮色外觀不變。插進網頁的譯文段落與單字高亮標記不在本階段（它們依頁面底色自己調對比）；設定頁、popup、welcome 也還沒做。
@@ -23,7 +50,7 @@
 - 全套 34 suites／520 tests exit 0、0 skipped；`check-docs --verify` exit 0。
 - e2e（Windows、Chromium 1161）40 PASS／1 FAIL／4 PARTIAL。唯一的 FAIL 是「CSV 公式前綴防護：讀不到剪貼簿」：把 `dist/pkg/content.css` 換回改前版本重跑同樣失敗；另用最小腳本在同一顆 Chromium 寫入再讀取剪貼簿也只拿到空字串，判定是當時這台機器的系統剪貼簿無法存取，與本次改動無關。這一條本次未驗成。
 
-**未驗**：實機切換系統深色後的外觀（已列入 `MANUAL-QA.md`）；CSV 匯出那條 e2e 要在剪貼簿可用時重跑。
+**未驗**：實機切換系統深色後的外觀（已列入 `MANUAL-QA.md`）。CSV 匯出那條 e2e 已於同日下一片完成後補跑：`node e2e/run.js hostile-data` 5 PASS／0 FAIL／0 PARTIAL，「CSV 公式前綴防護」通過。
 
 ## 2026-09-30 — 頁面 UI 改用 DOM builder（Trusted Types 相容）
 

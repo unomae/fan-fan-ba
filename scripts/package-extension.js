@@ -23,6 +23,7 @@ const INCLUDE_FILES = [
   'cloud-sync.js',
   'vocabulary-store.js',
   'vocabulary-backup.js',
+  'custom-actions.js',
   'content.css',
   'popup.html', 'popup.js',
   'options.html', 'options.js',
