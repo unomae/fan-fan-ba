@@ -129,7 +129,7 @@
 
 ```bash
 npm test                                  # Jest 30 + jsdom（覆蓋率預設開）
-npx jest --testPathIgnorePatterns '/\.claude/'   # 主樹取值用
+npx jest --testPathIgnorePatterns '<rootDir>/\.claude/'   # 主樹取值用（要錨定 <rootDir>，Git Bash 會把 / 開頭的參數改寫成路徑）
 npm run package                           # 產 dist/pkg + zip（e2e / 載入前必跑）
 npm run e2e                               # Playwright 真 Chrome 45 案
 npm run check-models                      # OpenRouter 模型下架對賬（免 key；0=通過 1=有下架 2=未檢）
