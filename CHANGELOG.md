@@ -18,7 +18,7 @@
 
 **驗證**：新增 24 條（background 分派 10、content 接收 10、popup 4）：command／右鍵分派到正確 frame、找不到 tab 時改查目前分頁、送不到時回 false 不丟錯、停用站點不作用、沒選字不作用、無焦點 frame 與焦點在子 iframe 時讓出、切換與「只開始」語意、子 frame 不處理全文翻譯、快捷鍵顯示「未設定」、描述含 HTML 只當文字。全套 30 suites／409 tests exit 0、0 skipped；`check-docs --verify` exit 0。**fail-then-pass**：五支實作檔退回 A1 版時 24 條全紅，還原後 SHA-256 一致、全綠。e2e 重新打包後連跑三次皆 41 PASS／0 FAIL／4 PARTIAL。
 
-**未驗**：實機按快捷鍵與右鍵選單（e2e 無法按瀏覽器層快捷鍵，也點不到原生右鍵選單），已列入 `MANUAL-QA.md`。**隱私權政策尚未補 `contextMenus` 的用途說明，補上前不可送審。**
+**未驗**：實機按快捷鍵與右鍵選單（e2e 無法按瀏覽器層快捷鍵，也點不到原生右鍵選單），已列入 `MANUAL-QA.md`。隱私權政策權限表已補 `contextMenus` 用途（文字經 KAKA 核准）。
 
 ## 2026-09-30 — 字典卡：例句加粗查詢詞＋CEFR 難度標籤
 
