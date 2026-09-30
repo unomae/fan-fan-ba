@@ -1660,6 +1660,44 @@ del.g-diff-del {
   font-weight: 650 !important;
 }
 
+/* ── 自訂動作版面（欄位卡／原文標註／前後對照）── */
+.g-icon-btn[hidden] { display: none !important; }
+.g-ca-field + .g-ca-field,
+.g-ca-compare-block + .g-ca-compare-block,
+.g-ca-compare-block + .g-ca-field,
+.g-ca-notes + .g-ca-field,
+.g-ca-annotated + .g-ca-field { margin-top: 10px !important; }
+.g-ca-label {
+  font-size:      10.5px !important;
+  font-weight:    700 !important;
+  color:          #888 !important;
+  letter-spacing: 0.4px !important;
+  margin-bottom:  4px !important;
+}
+.g-ca-value { font-size: 13.5px !important; line-height: 1.65 !important; white-space: normal !important; }
+.g-ca-pending .g-shimmer-line { margin-bottom: 6px !important; }
+.g-ca-annotated { font-size: 13.5px !important; line-height: 1.9 !important; }
+.g-ca-mark {
+  background:    rgba(249, 212, 35, 0.35) !important;
+  color:         inherit !important;
+  border-radius: 3px !important;
+  padding:       0 2px !important;
+}
+.g-ca-mark.g-ca-type-grammar,
+.g-ca-note-text.g-ca-type-grammar { background: rgba(138, 180, 248, 0.30) !important; }
+.g-ca-mark.g-ca-type-error,
+.g-ca-note-text.g-ca-type-error { background: rgba(234, 67, 53, 0.22) !important; }
+.g-ca-note-text { border-radius: 3px !important; padding: 0 2px !important; background: rgba(249, 212, 35, 0.35) !important; }
+.g-ca-unmatched .g-ca-note-text { background: transparent !important; }
+.g-ca-notes { margin-top: 8px !important; font-size: 12.5px !important; }
+.g-ca-before .g-ca-value {
+  background: #f6f6f6 !important; border-radius: 8px !important; padding: 8px 10px !important; color: #555 !important;
+}
+.g-ca-after .g-ca-value {
+  background: #e6f4ea !important; border: 1px solid #a8d5b5 !important; border-radius: 8px !important; padding: 8px 10px !important;
+}
+.g-ca-error-label { font-size: 12px !important; color: #b3261e !important; margin-bottom: 6px !important; }
+
 /* ════════════════════════════════════════════════
    17. 右側常駐懸浮球
    ════════════════════════════════════════════════ */
@@ -2976,6 +3014,17 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
     color: #d3ecc2 !important;
   }
   #gemini-result-card .g-optimize-reasons { border-top-color: var(--ffb-dark-border) !important; }
+  #gemini-result-card .g-ca-label { color: var(--ffb-dark-text-muted) !important; }
+  #gemini-result-card .g-ca-before .g-ca-value {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: var(--ffb-dark-text) !important;
+  }
+  #gemini-result-card .g-ca-after .g-ca-value {
+    background: var(--ffb-dark-green-bg) !important;
+    border-color: rgba(163, 209, 121, 0.35) !important;
+    color: #d3ecc2 !important;
+  }
+  #gemini-result-card .g-ca-error-label { color: #f2b8b5 !important; }
   #gemini-result-card .g-opt-copy-btn {
     border-color: var(--ffb-dark-border-strong) !important;
     color: var(--ffb-dark-text-muted) !important;

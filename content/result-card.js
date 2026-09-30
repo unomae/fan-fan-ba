@@ -448,9 +448,23 @@ function getSavedSelectionRect() {
 // fromHistory：true 表示從歷史紀錄還原，不重複寫入 storage
 function renderResult(action, rawResult, selectedText, { fromHistory = false } = {}) {
   lastDictData  = null;
+  lastCustomOutput = null;
   lastRawResult = rawResult;
   const body = resultCard?.querySelector('.g-rc-body');
   if (!body) return;
+
+  // 自訂動作：解析 JSON 後依版面渲染；不寫入最近紀錄（紀錄不存動作定義，無法還原版面），
+  // 所以從紀錄還原的一律照舊走純文字
+  if (action === 'custom' && !fromHistory) {
+    const parsed = FanFanBaCustomActions.parseCustomActionOutput(rawResult, activeCustomAction?.fields);
+    if (parsed.ok) {
+      lastCustomOutput = { action: activeCustomAction, data: parsed.data };
+      ffbClear(body).appendChild(buildCustomActionContent(activeCustomAction, parsed.data, { selectedText }));
+    } else {
+      ffbClear(body).appendChild(buildCustomFormatError(rawResult));
+    }
+    return;
+  }
 
   if (action === 'translate' && selectedText.length <= 20) {
     try {

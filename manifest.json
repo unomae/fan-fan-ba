@@ -72,10 +72,12 @@
       ],
       "js": [
         "models.js",
+        "custom-actions.js",
         "content/site-policy.js",
         "content/state.js",
         "content/utils.js",
         "content/dom.js",
+        "content/custom-action-render.js",
         "content/vocabulary.js",
         "content/vocabulary-highlighter.js",
         "content/obsidian.js",

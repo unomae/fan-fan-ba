@@ -3,6 +3,30 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-30 — 自訂動作：三種版面與串流渲染
+
+**範圍**：自訂動作在結果卡上的顯示。三種固定版面、串流時逐欄出現、格式不符的畫面、存 Obsidian 的輸出。工具列還沒有按鈕可以觸發自訂動作（那是工具列選單那片），設定頁編輯器也還沒做，所以使用者目前仍用不到。
+
+**做法**：
+- 新增 `content/custom-action-render.js`（manifest 核心選字層接在 `content/dom.js` 後面），`custom-actions.js` 也加進同一層，content 端直接用它的 `parseCustomActionOutput()` 做最終解析，不另寫一份。打包本來就收整個 `content/` 資料夾與 `custom-actions.js`，打包白名單不用改。
+- 三種版面全部用 `ffbEl` 建 DOM，模型回傳的任何字串都只當文字：
+  - `fields`：每個欄位一段（欄位名＋內容）；字串保留換行，陣列逐項列出，物件退回 JSON 文字。
+  - `annotate`：取第一個值是陣列的欄位當標註（`[{ text, type, note }]`），依序在選取原文裡找片段，找到的包成 `<mark>`、說明放 `title`，並在下方列出所有標註；原文找不到或與前一段重疊的只列在下方、不標。`type` 只收英數與連字號代號（會進 class 名稱），其他一律當 `other`。
+  - `compare`：`before`／`after`／`notes` 三個欄位；動作沒宣告 `before` 時以選取原文當修改前。其他欄位接在後面以欄位卡顯示。
+- 串流：`readCompletedCustomFields()` 掃描收到一半的 JSON，只取頂層已完整收到的欄位（字串要看到結尾引號、陣列與物件要括號閉合、數字要看到後面的分隔字元），其餘欄位顯示骨架；收完再交給 `parseCustomActionOutput()` 做最終解析。解析失敗顯示「格式不符」與原始內容（純文字）。
+- 請求：`runCustomAction(action)` 記下動作定義後走原本的 `triggerAction`，重試沿用同一份定義。自訂動作一律串流、不走快取（動作內容可能被改過），也不寫入最近查詢紀錄（紀錄不存動作定義，還原不了版面）；舊紀錄裡若有 `custom` 這個動作名稱，照舊以純文字顯示。**content 端刻意不送網址**，`{{pageUrl}}` 在 background 替換成空白，隱私權政策「不傳送所在網頁的完整網址」維持不變。
+- 寶石鈕：自訂動作只有存檔目的地是 Obsidian 時才顯示，換回內建動作恢復。存入週記的內容是每欄「**欄位名**＋內容」，標註陣列轉成清單。
+- `content.css` 補三種版面樣式與深色模式覆寫（接在既有深色區塊內）；`.g-icon-btn[hidden]` 補 `display: none`，因為 `.g-icon-btn` 的 `display: flex !important` 會蓋掉 `hidden`。
+
+**驗證**：
+- 新增 `tests/content/custom-action-render.test.js` 18 條：部分 JSON（未收完的字串／陣列、跳脫引號與括號、數字邊界、程式碼區塊、非 JSON）、三種版面、骨架、標註比對不到與 `type` 中和、惡意字串（`<script>`、事件屬性、`javascript:` 連結）在三種版面與格式不符畫面都只當文字、Obsidian markdown，以及載入真的 `content/main.js`／`result-card.js`／`obsidian.js` 跑一次串流：請求帶動作定義且不含網址、逐欄出現、收完骨架消失、格式不符、寶石鈕顯示與隱藏。
+- 全套 36 suites／570 tests exit 0、0 skipped（worktree 內實跑）。
+- **fail-then-pass**：三個突變各跑一次——欄位值改用 `innerHTML` 寫入紅 3 條、串流時不做部分解析紅 5 條、送出時帶 `location.href` 紅 1 條；還原後全綠。
+- 同步測試數（`TESTING.md`、`MANUAL-QA.md`、`PLAN.md`、`project-overview.html` 兩處）後 `check-docs --verify` exit 0（worktree 內實跑，36／570 與實跑一致）。
+- e2e（Mac、Chrome for Testing 1228）：動到 manifest 與 content UI，`npm run package` 後跑 41 PASS／0 FAIL／4 PARTIAL，與基準相同。e2e 沒有自訂動作的案例（目前沒有入口可以點）。
+
+**未驗**：未以真實模型驗證（模型是否照格式回 JSON、欄位逐一出現的實際節奏）；實機畫面與深色模式外觀也還沒人看過，人驗項已加進 `MANUAL-QA.md`，要等工具列有入口才能跑。
+
 ## 2026-09-30 — 自訂動作：資料層與 prompt 組裝
 
 **範圍**：自訂動作的資料模型、驗證、變數替換、JSON 輸出解析，以及把翻譯／解釋／優化三個內建動作放進同一份動作清單。這一片沒有任何畫面，使用者還看不到也用不到自訂動作；版面、設定頁編輯器、工具列選單與各動作選模型是之後的工作。

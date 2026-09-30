@@ -354,8 +354,16 @@ function hideAll() {
 }
 
 // ── 觸發 AI 功能 ─────────────────────────────────────
+// 自訂動作的入口：記下動作定義後走同一條 triggerAction（重試也會沿用這份定義）
+function runCustomAction(customAction) {
+  if (!customAction) return;
+  activeCustomAction = customAction;
+  triggerAction('custom');
+}
+
 function triggerAction(action) {
   if (!savedSel) return;
+  if (action === 'custom' && !activeCustomAction) return;
   if (savedSel.pendingGoogleDocsSelection) {
     resolvePendingGoogleDocsSelection(action);
     return;
@@ -378,7 +386,9 @@ function triggerAction(action) {
   resultCard.querySelector('.g-obs-dropdown')?.classList.remove('g-obs-dd-open');
   hideAutoSaveToast(resultCard);
 
-  setResultCardTag(resultCard.querySelector('.g-rc-tag'), action);
+  setResultCardTag(resultCard.querySelector('.g-rc-tag'), action === 'custom' ? activeCustomAction.name : action);
+  // 自訂動作只有 saveTo 為 obsidian 時才顯示寶石鈕；內建動作照舊
+  resultCard.querySelector('.g-save-obs')?.toggleAttribute('hidden', action === 'custom' && activeCustomAction.saveTo !== 'obsidian');
   ffbClear(resultCard.querySelector('.g-rc-body')).appendChild(ffbEl('div', { class: 'g-shimmer-wrap' }, [
     ffbEl('div', { class: 'g-shimmer-line' }),
     ffbEl('div', { class: 'g-shimmer-line' }),
@@ -419,6 +429,12 @@ function triggerAction(action) {
     context,
     pageTitle
   });
+
+  // 自訂動作不走快取（動作內容可能被編輯過），一律串流
+  if (action === 'custom') {
+    startStreaming(action, savedSel.text, context, pageTitle, null, requestId);
+    return;
+  }
 
   // 快取命中：直接渲染，不發 API 請求
   if (responseCache.has(cacheKey)) {
@@ -552,7 +568,7 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey, requ
       // Stream 完成：交由 renderResult 做結構化渲染
       renderResult(action, accumulated, selectedText);
       if (streamNotice) showResultNotice(streamNotice);
-      responseCache.set(cacheKey, accumulated);
+      if (cacheKey) responseCache.set(cacheKey, accumulated);
       // 同上：箭頭函式傳 anchorRect，避免 rAF timestamp 觸發選字置中分支
       requestAnimationFrame(() => positionResultCard(resultCardAnchorRect));
       if (activeStreamPort === port) activeStreamPort = null;
@@ -561,8 +577,15 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey, requ
     }
     if (msg.chunk) {
       accumulated += msg.chunk;
+      // 自訂動作：只顯示已完整收到的欄位，其餘顯示骨架
+      if (body && action === 'custom') {
+        const partial = readCompletedCustomFields(accumulated, activeCustomAction.fields);
+        ffbClear(body).append(
+          ...(streamNotice ? [ffbEl('div', { class: 'g-provider-notice' }, streamNotice)] : []),
+          buildCustomActionContent(activeCustomAction, partial, { selectedText, pending: true })
+        );
       // 串流進行中：純文字 + 游標，DEEP 標記顯示為分隔線
-      if (body) {
+      } else if (body) {
         ffbClear(body).append(
           ...(streamNotice ? [ffbEl('div', { class: 'g-provider-notice' }, streamNotice)] : []),
           ffbEl('div', { class: 'g-text-body g-streaming' }, buildStreamingText(accumulated))
@@ -579,7 +602,12 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey, requ
     }
   });
 
-  port.postMessage({ requestId, action, selectedText, context, pageTitle, modelOverride: cardModelOverride || '', targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' });
+  // 自訂動作只多帶動作定義；刻意不送網址（{{pageUrl}} 在 background 會替換成空白）
+  port.postMessage({
+    requestId, action, selectedText, context, pageTitle,
+    ...(action === 'custom' ? { customAction: activeCustomAction } : {}),
+    modelOverride: cardModelOverride || '', targetLanguage, explanationLanguage, browserLanguage: navigator.language || ''
+  });
 }
 
 // 串流中的暫時顯示：純文字，換行 → <br>，DEEP 標記 → 分隔線
