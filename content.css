@@ -485,6 +485,112 @@
   flex:    0 0 auto !important;
 }
 
+/* 結果卡底部列：修改原文＋「僅本次」模型選單 */
+.g-rc-footer {
+  display:         none !important;
+  align-items:     center !important;
+  justify-content: space-between !important;
+  gap:             8px !important;
+  padding:         6px 10px 7px !important;
+  border-top:      1px solid rgba(0, 0, 0, 0.06) !important;
+  background:      rgba(250, 250, 250, 0.6) !important;
+}
+
+.g-rc-edit-source,
+.g-rc-source-cancel,
+.g-rc-source-submit {
+  min-height:    26px !important;
+  padding:       3px 10px !important;
+  border:        1px solid rgba(0, 0, 0, 0.1) !important;
+  border-radius: 8px !important;
+  background:    rgba(255, 255, 255, 0.72) !important;
+  color:         #374151 !important;
+  font-size:     11px !important;
+  font-weight:   700 !important;
+  line-height:   1.2 !important;
+  cursor:        pointer !important;
+  outline:       none !important;
+}
+
+.g-rc-edit-source:hover,
+.g-rc-source-cancel:hover { background: rgba(255, 255, 255, 0.95) !important; }
+
+.g-rc-source-submit {
+  border-color: rgba(26, 115, 232, 0.3) !important;
+  background:   #1a73e8 !important;
+  color:        #fff !important;
+}
+
+.g-rc-edit-source:focus-visible,
+.g-rc-source-cancel:focus-visible,
+.g-rc-source-submit:focus-visible,
+.g-rc-source-input:focus-visible {
+  outline: 2px solid rgba(26, 115, 232, 0.34) !important;
+  outline-offset: 2px !important;
+}
+
+.g-rc-model-wrap {
+  display:     inline-flex !important;
+  align-items: center !important;
+  gap:         6px !important;
+  min-width:   0 !important;
+}
+
+.g-rc-model-once {
+  flex-shrink: 0 !important;
+  font-size:   10.5px !important;
+  color:       #999 !important;
+}
+
+.g-rc-model-once.g-rc-model-once-active {
+  color:       #1a73e8 !important;
+  font-weight: 700 !important;
+}
+
+.g-rc-source {
+  display: none !important;
+  padding: 8px 10px 4px !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+#gemini-result-card.g-rc-query-mode .g-rc-footer {
+  display: flex !important;
+}
+
+#gemini-result-card.g-rc-query-mode .g-rc-source.g-rc-source-open {
+  display: block !important;
+}
+
+.g-rc-source-input {
+  display:       block !important;
+  box-sizing:    border-box !important;
+  width:         100% !important;
+  min-height:    64px !important;
+  max-height:    180px !important;
+  padding:       6px 8px !important;
+  border:        1px solid rgba(0, 0, 0, 0.14) !important;
+  border-radius: 8px !important;
+  background:    #fff !important;
+  color:         #1f2937 !important;
+  font-size:     12.5px !important;
+  line-height:   1.5 !important;
+  resize:        vertical !important;
+}
+
+.g-rc-source-actions {
+  display:         flex !important;
+  align-items:     center !important;
+  justify-content: flex-end !important;
+  gap:             6px !important;
+  margin-top:      6px !important;
+}
+
+.g-rc-source-hint {
+  margin-right: auto !important;
+  font-size:    10.5px !important;
+  color:        #999 !important;
+}
+
 .g-rc-model-select {
   flex: 0 1 142px !important;
   max-width: 142px !important;
@@ -1247,6 +1353,29 @@ del.g-diff-del {
 .g-ex-context {
   background: rgba(26, 115, 232, 0.1) !important;
   color:      #1a73e8 !important;
+}
+
+/* 例句中的查詢詞（只加粗、不換色，避免跟語境徽章的藍色混淆） */
+.g-ex-hit {
+  font-weight: 700 !important;
+  color:       inherit !important;
+}
+
+/* 字典卡右上角的 CEFR 難度標籤 */
+.g-dict-cefr {
+  display:       inline-flex !important;
+  align-items:   center !important;
+  flex-shrink:   0 !important;
+  min-height:    20px !important;
+  padding:       1px 7px !important;
+  border:        1px solid rgba(0, 0, 0, 0.12) !important;
+  border-radius: 6px !important;
+  font-size:     11px !important;
+  font-weight:   700 !important;
+  letter-spacing: 0.02em !important;
+  color:         #555 !important;
+  background:    rgba(0, 0, 0, 0.04) !important;
+  line-height:   1.4 !important;
 }
 
 .g-ex-src {
@@ -2345,12 +2474,6 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
 
   .g-rc-tag {
     flex: 1 1 calc(100% - 140px) !important;
-  }
-
-  .g-rc-model-select {
-    flex: 1 1 100% !important;
-    max-width: none !important;
-    order: 3 !important;
   }
 
   .g-rc-actions {

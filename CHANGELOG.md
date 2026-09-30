@@ -3,6 +3,84 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-09-30 — 自訂 OpenAI 相容端點
+
+**範圍**：設定頁新增「自訂端點」卡片，可填 API 網址、模型名稱與 API Key，另有「測試自訂端點」按鈕。填好之後，「自訂端點」會像一般模型一樣出現在主模型、全文翻譯與結果卡「僅本次」的選單裡。沒有備援模型，端點掛了就如實回報。
+
+**做法**：
+- `models.js`：新 provider `custom`，只有一個固定 id `custom:endpoint`。實際網址與模型名稱存在 `chrome.storage.sync` 的 `customApiBase`／`customModelName`，這兩項不是機密，會跟著一般設定備份與雲端同步；金鑰 `customApiKey` 加進 `storage.js` 的 `SECRET_KEYS`，只存本機，不進雲端同步與一般匯出（勾選加密匯出時才以加密形式帶出）。`normalizeCustomEndpoint()` 由設定頁與 background 共用：只收 `https://`，不能帶帳密、`?` 或 `#`，結尾斜線會去掉。
+- 權限：`manifest.json` 加 `optional_host_permissions: ["https://*/*"]`。安裝時不會給這項權限；使用者按儲存或測試時，才用 `chrome.permissions.request` **只請求填寫的那一個網域**，拒絕就整個不儲存。請求排在任何 `await` 與 `confirm` 之前，避免瀏覽器判定不是使用者操作。
+- `background.js`：`resolveRoute` 認 `custom:` 前綴，走既有的 OpenAI 相容執行器（`{網址}/chat/completions`）。新增 `assertRoutePermission()`，送出前確認網域仍有授權。換裝置只匯入了設定、或使用者到擴充功能頁撤銷權限時，會明講「尚未授權」，不讓 fetch 丟出模糊的網路錯誤。結果卡的可用清單另外要求網址與模型名稱都已填寫。
+- 測試連線打 `{網址}/models`，錯誤分成網路、權限不足、認證失敗（401／403）、回應格式不相容（其他 4xx 或沒有 `data` 陣列）四種，另有伺服器錯誤（5xx）與「連上了但清單找不到這個模型」。上游回傳的錯誤內容不顯示在畫面上，沿用 `formatApiErrorMessage` 的原則。
+- 匯入設定時，網址若不是合法 https 就清空，避免備份檔把請求導到別處。
+- 網址欄用 `type="text" inputmode="url"`，這樣會沿用既有欄位樣式，不必動 CSS。
+
+**刻意變更的既有測試**：`models-registry.test.js` 與 `popup.test.js` 鎖住的模型清冊從 5 顆改為 6 顆；「PROVIDERS ⟺ host_permissions」對賬的略過清單改為恰為 `['builtin', 'custom']`，並斷言萬用權限只出現在 `optional_host_permissions`、不在必要權限裡。`jest.setup.js` 的 chrome mock 補上 `permissions`。
+
+**隱私權政策**：`privacy-policy.html` 補上自訂端點的資料流向（選取文字會送到使用者自行填寫的網址）、設定儲存位置與選用網域存取權限，文字已經 KAKA 核准；商店送審文件的權限清單同步更新。
+
+**驗證**：新增 21 條（`tests/custom-endpoint.test.js`：網址驗證、路由、授權撤銷、可用清單、金鑰只存本機、儲存與權限拒絕、測試連線分類、雲端同步與匯出不含金鑰、匯入網址過濾）。全套 33 suites／450 tests exit 0、0 skipped；`check-docs --verify` exit 0。**fail-then-pass**：五支實作檔退回 A3 版時紅 25 條，還原後 SHA-256 一致、全綠。e2e 41 PASS／0 FAIL／4 PARTIAL。另以 harness 開設定頁截圖，桌機與 375 寬的四張供應商卡片版面正常、無水平溢出。
+
+**未驗**：未以真實模型驗證；也還沒用真實的相容端點實際翻譯過，瀏覽器的網域授權提示也還沒實機看過。這些已列入 `MANUAL-QA.md`。
+
+## 2026-09-30 — 結果卡：僅本次切換模型＋修改原文後重查
+
+**範圍**：結果卡**標題列的模型選單移除**，改到新的底部列：左邊「修改原文」、右邊模型選單＋「僅本次」。改選模型只影響這張卡接下來的查詢，**不寫回全域主模型**（主模型仍在 popup／設定頁切）。「修改原文」展開可編輯的輸入框，「重新查詢」或 ⌘／Ctrl+Enter 送出、Esc 取消。
+
+**做法**：
+- `content/state.js` 新增 `cardModelOverride`；換新選取、快捷鍵選字、關卡時清掉。請求多帶 `modelOverride` 欄位（字典與串流兩條路都有），快取 key 以「單次模型或主模型」計算，所以切回主模型會命中原本的結果、不重送。
+- `background.js`：`validateAIRequest` 新增 `normalizeModelOverride()`——必須是清冊內的 id，只做頁面翻譯的內建模型不能拿來查選取文字，否則回「不支援的模型」／「此模型只能用於全文翻譯」。**與既有 `model` 欄位分開**，因為 `model` 可能帶舊版遺留的 id（由 `normalizeModel`／`getModel` 容錯），不能一起嚴格擋。`handleAIRequest` 補轉傳這個欄位（它原本逐一列欄位，漏列就會靜默失效）。
+- 可選模型由新的 `MODEL_AVAILABILITY` 訊息取得：background 依金鑰有無回傳模型 id 清單，**不回金鑰內容**，content 不直接讀金鑰。目前主模型即使缺金鑰也會列出，選單才反映真實狀態。
+- 浮球的「收藏／最近查詢／單字本」面板借用同一張卡，新增 `setResultCardQueryMode()`，只有選字查詢時才顯示底部列（施工時從 e2e 截圖發現底部列跑進單字本面板，連帶修改 `content/floating-ball.js` 三處）。
+- `onKeyUp` 補「事件發生在我們自己的 UI 內就略過」：否則在原文輸入框按方向鍵會被當成新的選取，把卡片收掉。
+
+**刻意變更的既有測試**：`css.test.js` 原本鎖「模型選單在標題列」與窄螢幕 `order: 3`，改為鎖底部列與原文編輯區樣式；`result-card-position.test.js` 的 vm context 補 `cardModelOverride`。
+
+**驗證**：新增 19 條（background 驗證／路由／可用清單 7、content 單次模型與原文重查 9、底部列只在查詢模式 3）。全套 32 suites／428 tests exit 0、0 skipped；`check-docs --verify` exit 0。**fail-then-pass**：六支實作檔退回 A2 版時紅 18 條（另 1 條「舊 `model` 欄位維持寬鬆」是守衛，本就該綠），還原後 SHA-256 一致、全綠。e2e 連兩次 41 PASS／0 FAIL／4 PARTIAL（另一個 session 同時佔用 4801，改用 `FFB_E2E_PORT=4811`）；另以 harness 實際開頁選字截圖，確認標題列無選單、底部列與原文編輯區版面正常、單字本面板不顯示底部列。
+
+**未驗**：真實模型切換後的回應（需 API key），已列入 `MANUAL-QA.md`。
+
+## 2026-09-30 — 快捷鍵＋右鍵選單
+
+**範圍**：`manifest.json` 加 `contextMenus` 權限與兩個 `commands`——「翻譯選取文字」（Win `Alt+S`、Mac `⌃⇧S`）、「切換全文翻譯」（Win `Alt+A`、Mac `⌃⇧A`）；右鍵選單兩項：「翻翻吧：翻譯選取文字」（contexts: selection）、「翻翻吧：翻譯整頁」（contexts: page）。`background.js` 新增 `registerContextMenus()`／`handleContextMenuClick()`／`handleCommand()`，只把 `{ type: 'FFB_TRIGGER', trigger }` 轉給分頁；`content/main.js` 新增 `onExtensionTrigger()` 接收。popup 新增「快捷鍵」區，用 `chrome.commands.getAll()` 顯示實際綁定的鍵，沒綁上顯示「未設定」，「變更快捷鍵 →」以 `chrome.tabs.create` 開 `chrome://extensions/shortcuts`。
+
+**設計決定**：
+- **background 不讀網頁內容**：站點是否停用、有沒有選字都由 content 端自己判斷。停用站點（浮球「暫停」）三種觸發都不作用；沒選字就什麼都不做，不跳錯誤。敏感網域本來就不注入 content script，訊息送不到會靜默略過。
+- **快捷鍵不知道焦點在哪個 frame**，所以選取翻譯廣播給全部 frame，只有 `document.hasFocus()` 且焦點不在子 iframe 上的那個處理，避免上下層重複開卡。右鍵選單有 `info.frameId`，直接送到那個 frame、不檢查焦點。
+- 快捷鍵是「切換」（已啟用就還原），右鍵「翻譯整頁」只開始、不會反過來把翻譯收掉。全文翻譯只在最上層 frame 處理。
+- Mac 預設用 `⌃⇧` 而非 Option：Option＋字母是輸入特殊字元的鍵，被快捷鍵攔走會影響打字。預設鍵若與其他擴充衝突，瀏覽器不會綁上，popup 會如實顯示「未設定」。
+- 更新擴充時先 `contextMenus.removeAll()` 再建立，避免重複 id 錯誤。
+
+**測試基礎**：真正生效的 chrome mock 是 `jest.setup.js`（`tests/setup.js` 未被引用），補上 `tabs.sendMessage`、`commands`，`contextMenus.removeAll` 改成會呼叫 callback。
+
+**驗證**：新增 24 條（background 分派 10、content 接收 10、popup 4）：command／右鍵分派到正確 frame、找不到 tab 時改查目前分頁、送不到時回 false 不丟錯、停用站點不作用、沒選字不作用、無焦點 frame 與焦點在子 iframe 時讓出、切換與「只開始」語意、子 frame 不處理全文翻譯、快捷鍵顯示「未設定」、描述含 HTML 只當文字。全套 30 suites／409 tests exit 0、0 skipped；`check-docs --verify` exit 0。**fail-then-pass**：五支實作檔退回 A1 版時 24 條全紅，還原後 SHA-256 一致、全綠。e2e 重新打包後連跑三次皆 41 PASS／0 FAIL／4 PARTIAL。
+
+**未驗**：實機按快捷鍵與右鍵選單（e2e 無法按瀏覽器層快捷鍵，也點不到原生右鍵選單），已列入 `MANUAL-QA.md`。隱私權政策權限表已補 `contextMenus` 用途（文字經 KAKA 核准）。
+
+## 2026-09-30 — 字典卡：例句加粗查詢詞＋CEFR 難度標籤
+
+**範圍**：字典 JSON 每個 example 新增 `surface`（查詢詞在該例句中的原樣，可含詞形變化），頂層新增 `cefr`（僅英文，A1–C2，否則空字串）。`content/utils.js` 新增 `highlightExampleHtml()`、`normalizeCefr()`；`buildDictHTML()` 用它們渲染；`content.css` 加 `.g-ex-hit`、`.g-dict-cefr`；`buildCacheKey()` 前綴 `p${PROMPT_VERSION}`（本次為 2）。
+
+**設計決定**：
+- **加粗只取第一個大小寫不敏感的完整比對，比對不到就整句純文字**，不做詞幹還原或模糊比對——模型給錯 surface 時寧可不標，也不標錯字。拉丁／希臘／西里爾字母與數字要落在詞界上（`art` 不會命中 `Start`），中日韓無空格文字不檢查詞界。
+- surface 經 regex 跳脫後以字面比對（`C++`、`(approx.)` 不會變成 pattern），切段後逐段 `escapeHtml` 才組字串，surface 本身含 HTML 也只會變成文字。
+- `cefr` 只接受 `/^[ABC][12]$/`（大小寫、空白容忍），其餘一律不顯示；標籤放在單字列最右側。
+- 舊格式結果（歷史紀錄、改版前的回應）沒有新欄位時照常顯示，不補猜。
+
+**驗證**：新增 `tests/content/dict-examples.test.js` 12 條（surface 存在／缺欄位／不在句中或只在別的詞內／regex 特殊字元／中日文／HTML 跳脫／cefr 合法與非法值／prompt 規格／快取版本）；既有 XSS 回歸測試改注入新 helper。全套 28 suites／385 tests exit 0、0 skipped；`check-docs --verify` exit 0。**fail-then-pass**：五支實作檔退回 HEAD 時紅 10 條（另 2 條是舊格式相容與「非字典 prompt 不帶新欄位」守衛，本就該綠），還原後 SHA-256 一致、全綠。e2e（Mac Chrome for Testing）重新打包後首跑 37/4/4，連兩次重跑皆 41 PASS／0 FAIL／4 PARTIAL，與基準相同；紅的 T5、T6、B1、B2 與本次改動無關，未改碼的基準首跑同樣紅過（見下方「已知」）。
+
+**未驗**：**未以真實模型驗證**——模型實際回傳的 surface 與 cefr 準確度，已列入 `MANUAL-QA.md`。
+
+**已知**：本機 e2e 在全新 profile 或重新打包後的第一次完整跑，ui-panels／legacy-regression 間歇會紅 3–4 案（不是每次），重跑即恢復，根因未查。
+
+## 2026-09-30 — `check-docs --verify` 在 worktree 內無法執行
+
+`scripts/check-doc-numbers.js` 實跑 jest 時帶 `--testPathIgnorePatterns /\.claude/`，本意是排除主樹底下 `.claude/worktrees/` 的並行 worktree。但若 checkout 本身就在 `.claude/worktrees/<name>/` 裡，自己的測試路徑也含 `/.claude/`，會被整批濾掉、jest 以「找不到測試」失敗，`--verify` 回 exit 2「未檢」。
+
+**修法**：pattern 改成 `<rootDir>/\.claude/`，只排除「本 checkout 根目錄底下」的 `.claude/`。主樹行為不變。
+
+**驗證**：`--selftest` 新增 2 案（worktree 內不濾掉自己、主樹仍排除並行 worktree），11/11 PASS；退回舊 pattern 時新案紅 1 條（10/11）、還原後全綠。worktree 內 `check-docs --verify` exit 0（27／373）；主樹以新 pattern `jest --listTests` 得 27 支、未過濾為 80 支。
+
 ## 2026-09-30 — e2e 首跑間歇紅燈：浮球選單點擊靜默落空
 
 **症狀**：全新 profile 或重新打包後的第一次完整跑，ui-panels 的 T2／T5／T6、B1／B2 間歇紅（`mode {}→{}`、「（無面板）」、等 `#gemini-result-card.g-show` 逾時），重跑即綠。

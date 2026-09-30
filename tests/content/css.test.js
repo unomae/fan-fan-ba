@@ -29,9 +29,22 @@ describe('content CSS UI safeguards', () => {
     expect(css).toContain('.ffb-page-panel-progress-bar');
   });
 
-  it('keeps the result card model switcher styled inside the compact header', () => {
+  it('keeps the result card model switcher styled in the card footer', () => {
+    expect(css).toContain('.g-rc-footer');
     expect(css).toContain('.g-rc-model-select');
     expect(css).toContain('flex: 0 1 142px !important;');
+  });
+
+  it('keeps the source editor hidden until opened and its controls focus-visible', () => {
+    expect(css).toMatch(/\.g-rc-source\s*{[^}]*display:\s*none !important;/);
+    expect(css).toMatch(/\.g-rc-source\.g-rc-source-open\s*{[^}]*display:\s*block !important;/);
+    expect(css).toContain('.g-rc-source-input:focus-visible');
+    expect(css).toContain('.g-rc-edit-source:focus-visible');
+  });
+
+  it('shows the card footer only while the card is in query mode', () => {
+    expect(css).toMatch(/\.g-rc-footer\s*{[^}]*display:\s*none !important;/);
+    expect(css).toMatch(/#gemini-result-card\.g-rc-query-mode \.g-rc-footer\s*{[^}]*display:\s*flex !important;/);
   });
 
   it('keeps the pinned status line inside the result-card header', () => {
@@ -55,7 +68,6 @@ describe('content CSS UI safeguards', () => {
   it('lets the result card header wrap cleanly on small viewports', () => {
     expect(css).toContain('@media (max-width: 560px)');
     expect(css).toContain('flex-wrap: wrap !important;');
-    expect(css).toContain('order: 3 !important;');
   });
 
   it('keeps page translation progress notes hidden from users', () => {

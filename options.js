@@ -19,7 +19,10 @@ const SYNC_SETTING_KEYS = [
   'ttsLanguageMode',
   'vocabularyHighlightMode',
   'obsidianVault',
-  'obsidianDefaultFolder'
+  'obsidianDefaultFolder',
+  // 自訂端點的網址與模型名稱不是機密，跟著備份與雲端同步；金鑰 customApiKey 另存本機
+  'customApiBase',
+  'customModelName'
 ];
 const DIAGNOSTICS_SETTING_KEYS = [
   'model',
@@ -401,16 +404,19 @@ function setModelSelectValue(select, modelId) {
 // ── 載入已儲存的設定 ─────────────────────────────────
 async function loadSettings() {
   const [
-    { model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder },
-    { apiKey, groqApiKey, openrouterApiKey, ttsApiKey }
+    { model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder, customApiBase, customModelName },
+    { apiKey, groqApiKey, openrouterApiKey, customApiKey, ttsApiKey }
   ] = await Promise.all([
     chrome.storage.sync.get(SYNC_SETTING_KEYS),
-    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', ttsApiKey: '' })
+    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', customApiKey: '', ttsApiKey: '' })
   ]);
 
   if (apiKey)                 $('apiKey').value                 = apiKey;
   if (groqApiKey)             $('groqApiKey').value             = groqApiKey;
   if (openrouterApiKey)       $('openrouterApiKey').value       = openrouterApiKey;
+  if (customApiBase && $('customApiBase'))     $('customApiBase').value   = customApiBase;
+  if (customModelName && $('customModelName')) $('customModelName').value = customModelName;
+  if (customApiKey && $('customApiKey'))       $('customApiKey').value    = customApiKey;
   // 無儲存紀錄時預設 Groq（免費額度最大方）
   const currentModel = ModelRegistry.normalizeModel(model);
   setModelSelectValue($('model'), currentModel);
@@ -440,12 +446,13 @@ function renderModelSelect() {
   const providerLabels = {
     groq: 'Groq（需 Groq API Key）',
     gemini: 'Gemini（需 Gemini API Key）',
-    openrouter: 'OpenRouter（需 OpenRouter API Key）'
+    openrouter: 'OpenRouter（需 OpenRouter API Key）',
+    custom: '自訂端點（需在下方填寫網址、模型與金鑰）'
   };
 
   // pageTranslationOnly 的模型（瀏覽器內建）刻意不進主選單：它給不出詞典要的結構化 JSON，
   // 讓人選得到只會換來必定失敗的操作。它只出現在下方的頁面翻譯專用選單。
-  select.innerHTML = ['groq', 'gemini', 'openrouter'].map(provider => {
+  select.innerHTML = ['groq', 'gemini', 'openrouter', 'custom'].map(provider => {
     const options = ModelRegistry.MODELS
       .filter(model => model.provider === provider && !model.pageTranslationOnly)
       .map(model => `<option value="${model.id}">${model.name}（${model.desc}）</option>`)
@@ -521,6 +528,8 @@ bindToggleVis('toggleVis',    'apiKey',           'eye-show',      'eye-hide');
 bindToggleVis('toggleGroqVis','groqApiKey',        'groq-eye-show', 'groq-eye-hide');
 bindToggleVis('toggleOrVis',  'openrouterApiKey',  'or-eye-show',   'or-eye-hide');
 bindToggleVis('toggleTtsVis', 'ttsApiKey',         'tts-eye-show',  'tts-eye-hide');
+if ($('toggleCustomVis')) bindToggleVis('toggleCustomVis', 'customApiKey', 'custom-eye-show', 'custom-eye-hide');
+$('btnTestCustom')?.addEventListener('click', () => testCustomEndpoint());
 bindBackupControls();
 bindCloudSyncControls();
 loadCloudWebAuthClientId();
@@ -537,15 +546,23 @@ $('btnSave').addEventListener('click', async () => {
   const explanationLanguage = ModelRegistry.normalizeExplanationLanguage($('explanationLanguage')?.value, 'target');
   const ttsLanguageMode  = ModelRegistry.normalizeTtsLanguageMode($('ttsLanguageMode')?.value, 'auto');
   const vocabularyHighlightMode = $('vocabularyHighlightMode')?.value === 'auto' ? 'auto' : 'off';
-  const isGroq           = model.startsWith('groq:');
-  const isOpenRouter     = model.startsWith('openrouter:');
+  const customApiKey     = $('customApiKey')?.value.trim() || '';
+
+  // 自訂端點要先做：chrome.permissions.request 必須在使用者點擊後立刻呼叫，
+  // 前面若先 await 別的東西或跳 confirm，瀏覽器可能判定不是使用者操作而拒絕
+  const custom = await prepareCustomEndpointSettings({
+    apiBase: $('customApiBase')?.value,
+    modelName: $('customModelName')?.value,
+    required: ModelRegistry.getProvider(model) === 'custom'
+  });
+  if (!custom.ok) { showStatus('err', custom.error); return; }
 
   // 依選擇的模型驗證對應 API Key（前綴與顯示名來源：ModelRegistry.PROVIDERS）
   let removedProviderLabel = '';
   {
     const provider = ModelRegistry.getProvider(model);
     const info = ModelRegistry.PROVIDERS[provider];
-    const keyValue = provider === 'groq' ? groqApiKey : provider === 'openrouter' ? openrouterApiKey : apiKey;
+    const keyValue = { groq: groqApiKey, openrouter: openrouterApiKey, custom: customApiKey }[provider] ?? apiKey;
     // keyless provider（瀏覽器內建）沒有 key，跳過整段驗證；否則會拿別家的空欄位去問「要不要移除金鑰」
     if (info.keyless) { /* 無需驗證 */ }
     else if (!keyValue) {
@@ -563,8 +580,8 @@ $('btnSave').addEventListener('click', async () => {
   const obsidianDefaultFolder = $('obsidianDefaultFolder').value.trim();
 
   await Promise.all([
-    chrome.storage.sync.set({ model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder }),
-    Storage.setSecrets({ apiKey, groqApiKey, openrouterApiKey, ttsApiKey })
+    chrome.storage.sync.set({ model, pageTranslationModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder, ...custom.settings }),
+    Storage.setSecrets({ apiKey, groqApiKey, openrouterApiKey, customApiKey, ttsApiKey })
   ]);
   showStatus('ok', removedProviderLabel ? `✓ 設定已儲存（${removedProviderLabel} API Key 已移除）` : '✓ 設定已儲存');
 });
@@ -572,6 +589,7 @@ $('btnSave').addEventListener('click', async () => {
 // ── 測試連線 ─────────────────────────────────────────
 $('btnTest').addEventListener('click', async () => {
   const model        = $('model').value || ModelRegistry.DEFAULT_MODEL;
+  if (ModelRegistry.getProvider(model) === 'custom') return testCustomEndpoint();
   const isGroq       = model.startsWith('groq:');
   const isOpenRouter = model.startsWith('openrouter:');
   const P            = ModelRegistry.PROVIDERS; // URL / 顯示名單一來源（WS-E M3''）
@@ -633,6 +651,97 @@ $('btnTest').addEventListener('click', async () => {
     $('btnTest').disabled = false;
   }
 });
+
+// ── 自訂 OpenAI 相容端點 ─────────────────────────────
+// 儲存前的檢查與網域授權。網址留空＝不使用自訂端點（主模型選它時才必填）；
+// 有填就只收 https，並只請求這一個網域的存取權，使用者拒絕就整個不儲存
+async function prepareCustomEndpointSettings({ apiBase = '', modelName = '', required = false } = {}) {
+  const rawBase = String(apiBase || '').trim();
+  const customModelName = String(modelName || '').trim();
+  if (!rawBase) {
+    if (required) return { ok: false, error: '使用自訂端點請先填寫 API 網址與模型名稱' };
+    return { ok: true, settings: { customApiBase: '', customModelName } };
+  }
+  let endpoint;
+  try {
+    endpoint = ModelRegistry.normalizeCustomEndpoint(rawBase);
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!customModelName) return { ok: false, error: '請填寫自訂端點的模型名稱' };
+  const granted = await requestCustomEndpointPermission(endpoint.originPattern);
+  if (!granted) return { ok: false, error: formatCustomEndpointTestResult({ kind: 'permission' }).message };
+  return { ok: true, settings: { customApiBase: endpoint.base, customModelName } };
+}
+
+async function requestCustomEndpointPermission(originPattern) {
+  try {
+    return await chrome.permissions.request({ origins: [originPattern] });
+  } catch (error) {
+    return false;
+  }
+}
+
+// 測試連線打 {base}/models。上游錯誤訊息不顯示給使用者（同 background 的 formatApiErrorMessage 原則）
+function classifyCustomEndpointResponse({ status = 0, ok = false, body = null, modelName = '' } = {}) {
+  if (status === 401 || status === 403) return formatCustomEndpointTestResult({ kind: 'auth' });
+  if (!ok && status >= 500) return formatCustomEndpointTestResult({ kind: 'server', status });
+  if (!ok) return formatCustomEndpointTestResult({ kind: 'incompatible', status });
+  const models = Array.isArray(body?.data) ? body.data : null;
+  if (!models) return formatCustomEndpointTestResult({ kind: 'incompatible' });
+  const found = !modelName || models.some(item => item?.id === modelName);
+  return formatCustomEndpointTestResult({ kind: found ? 'ok' : 'model-missing', modelName });
+}
+
+function formatCustomEndpointTestResult({ kind, status = 0, modelName = '' }) {
+  const messages = {
+    network: '連線失敗（網路）：無法連到自訂端點，請檢查網址是否正確、網路是否正常',
+    permission: '連線失敗（權限不足）：沒有取得連到這個網域的權限，請在瀏覽器詢問時選擇「允許」',
+    auth: '連線失敗（認證失敗）：自訂端點拒絕這把 API Key，請檢查金鑰或帳號權限',
+    server: `連線失敗：自訂端點暫時無法回應（HTTP ${status}），請稍後再試`,
+    incompatible: status
+      ? `連線失敗（回應格式不相容）：端點回應 HTTP ${status}，請確認網址是 OpenAI 相容 API 的根路徑（通常以 /v1 結尾）`
+      : '連線失敗（回應格式不相容）：/models 沒有回傳模型清單，請確認這是 OpenAI 相容的 API',
+    'model-missing': `已連上自訂端點，但模型清單裡找不到「${modelName}」，請確認模型名稱`,
+    ok: `✓ 連線成功！模型：${modelName || '（未填模型名稱）'}`
+  };
+  const level = kind === 'ok' ? 'ok' : kind === 'model-missing' ? 'info' : 'err';
+  return { kind, level, message: messages[kind] };
+}
+
+async function testCustomEndpoint() {
+  const apiKey = $('customApiKey')?.value.trim() || '';
+  const modelName = $('customModelName')?.value.trim() || '';
+  let endpoint;
+  try {
+    endpoint = ModelRegistry.normalizeCustomEndpoint($('customApiBase')?.value);
+  } catch (error) {
+    showStatus('err', error.message);
+    return;
+  }
+  if (!apiKey) { showStatus('err', '請先輸入自訂端點 API Key'); return; }
+  // 權限請求要在使用者點擊後立刻做，所以排在任何 await 之前
+  const granted = await requestCustomEndpointPermission(endpoint.originPattern);
+  const show = result => showStatus(result.level, result.message);
+  if (!granted) { show(formatCustomEndpointTestResult({ kind: 'permission' })); return; }
+
+  showStatus('info', '測試中...');
+  const button = $('btnTestCustom');
+  if (button) button.disabled = true;
+  try {
+    let res;
+    try {
+      res = await fetch(`${endpoint.base}/models`, { headers: { Authorization: `Bearer ${apiKey}` } });
+    } catch (error) {
+      show(formatCustomEndpointTestResult({ kind: 'network' }));
+      return;
+    }
+    const body = res.ok ? await res.json().catch(() => null) : null;
+    show(classifyCustomEndpointResponse({ status: res.status, ok: res.ok, body, modelName }));
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
 
 // ── 工具函式 ─────────────────────────────────────────
 function showStatus(type, msg) {
@@ -1115,6 +1224,13 @@ function normalizeImportedSetting(key, value) {
   if (key === 'vocabularyHighlightMode') {
     return value === 'auto' ? 'auto' : 'off';
   }
+  if (key === 'customApiBase') {
+    try {
+      return ModelRegistry.normalizeCustomEndpoint(value).base;
+    } catch (error) {
+      return '';
+    }
+  }
   return String(value || '').trim();
 }
 
@@ -1180,6 +1296,10 @@ if (typeof module !== 'undefined' && module.exports) {
     formatImportSettingsStatus,
     confirmSecretsExport,
     confirmRemoveProviderKey,
+    prepareCustomEndpointSettings,
+    classifyCustomEndpointResponse,
+    formatCustomEndpointTestResult,
+    testCustomEndpoint,
     confirmCloudUploadOverwrite,
     confirmCloudDownloadOverwrite,
     bindCloudSyncControls,

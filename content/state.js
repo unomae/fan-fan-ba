@@ -9,6 +9,7 @@ let pageTranslationPanel = null; // 全文翻譯 Beta 控制面板
 let savedSel     = null;   // { text, range } 最近一次選取
 let activeAction = null;
 let activeModel  = FanFanBaModels.DEFAULT_MODEL;
+let cardModelOverride = null; // 結果卡底部「僅本次」選的模型；換選取或關卡就清掉，不寫回全域設定
 let targetLanguage = 'zh-TW';
 let explanationLanguage = 'target';
 let ttsLanguageMode = 'auto';

@@ -9,7 +9,8 @@
   "permissions": [
     "storage",
     "unlimitedStorage",
-    "identity"
+    "identity",
+    "contextMenus"
   ],
   "oauth2": {
     "client_id": "746116206567-g0nf43b660e9022117gvp8p7cme1i82v.apps.googleusercontent.com",
@@ -25,8 +26,27 @@
     "https://www.googleapis.com/drive/v3/*",
     "https://www.googleapis.com/upload/drive/v3/*"
   ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
   "background": {
     "service_worker": "background.js"
+  },
+  "commands": {
+    "toggle-page-translation": {
+      "suggested_key": {
+        "default": "Alt+A",
+        "mac": "MacCtrl+Shift+A"
+      },
+      "description": "切換全文翻譯"
+    },
+    "translate-selection": {
+      "suggested_key": {
+        "default": "Alt+S",
+        "mac": "MacCtrl+Shift+S"
+      },
+      "description": "翻譯選取文字"
+    }
   },
   "content_scripts": [
     {

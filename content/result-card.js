@@ -6,7 +6,6 @@ function createResultCard() {
   el.innerHTML = `
     <div class="g-rc-header">
       <span class="g-rc-tag"></span>
-      <select class="g-rc-model-select" title="切換模型" aria-label="切換模型"></select>
       <div class="g-rc-actions">
         <button class="g-icon-btn g-pin" type="button" title="釘住結果卡" aria-label="釘住結果卡">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -75,9 +74,28 @@ function createResultCard() {
         </button>
       </div>
     </div>
+
+    <!-- 修改原文後重查（僅影響這張卡，不改網頁內容）-->
+    <div class="g-rc-source">
+      <textarea class="g-rc-source-input" rows="3" aria-label="修改要查詢的原文"></textarea>
+      <div class="g-rc-source-actions">
+        <span class="g-rc-source-hint">⌘／Ctrl + Enter 送出</span>
+        <button class="g-rc-source-cancel" type="button">取消</button>
+        <button class="g-rc-source-submit" type="button">重新查詢</button>
+      </div>
+    </div>
+
+    <div class="g-rc-footer">
+      <button class="g-rc-edit-source" type="button" aria-expanded="false">修改原文</button>
+      <div class="g-rc-model-wrap">
+        <select class="g-rc-model-select" title="這張卡使用的模型" aria-label="這張卡使用的模型（僅本次）"></select>
+        <span class="g-rc-model-once">僅本次</span>
+      </div>
+    </div>
   `;
 
   initModelSwitcher(el);
+  initSourceEditor(el);
 
   // ── Pin 按鈕 ───────────────────────────────────────
   el.querySelector('.g-pin').addEventListener('click', e => {
@@ -378,6 +396,8 @@ function hideAutoSaveToast(el) {
 
 function hideResultCard() {
   resultCard?.classList.remove('g-show');
+  closeSourceEditor();
+  cardModelOverride = null;
 }
 
 function positionResultCard(anchorRect = resultCardAnchorRect) {
@@ -479,40 +499,115 @@ function renderResult(action, rawResult, selectedText, { fromHistory = false } =
   if (!fromHistory) saveToHistory(action, selectedText, rawResult, null);
 }
 
+// 底部模型選單：只列有金鑰或免金鑰的模型（由 background 判斷，content 不讀金鑰），
+// 改選只影響這張卡接下來的查詢，不寫回全域主模型。
+let cardAvailableModelIds = null;
+
 function initModelSwitcher(el) {
   const select = el.querySelector('.g-rc-model-select');
   if (!select) return;
-  select.innerHTML = FanFanBaModels.MODELS.map(model =>
-    `<option value="${escapeHtml(model.id)}">${escapeHtml(model.name)}</option>`
-  ).join('');
   syncResultCardModelSelect(el);
+  refreshCardModelOptions(el);
 
   select.addEventListener('mousedown', e => e.stopPropagation());
   select.addEventListener('click', e => e.stopPropagation());
-  select.addEventListener('change', async e => {
-    const nextModel = FanFanBaModels.normalizeModel(e.currentTarget.value);
-    if (nextModel === activeModel) return;
-    activeModel = nextModel;
-    responseCache.clear();
+  select.addEventListener('focus', () => refreshCardModelOptions(el));
+  select.addEventListener('change', e => {
+    const nextModel = e.currentTarget.value;
+    cardModelOverride = nextModel === FanFanBaModels.normalizeModel(activeModel) ? null : nextModel;
     syncResultCardModelSelect(el);
-    await chrome.storage.sync.set({ model: nextModel });
     if (activeAction && savedSel) triggerAction(activeAction);
   });
+}
+
+async function refreshCardModelOptions(el = resultCard) {
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'MODEL_AVAILABILITY' });
+    if (Array.isArray(response?.models)) cardAvailableModelIds = response.models;
+  } catch { /* 擴充失效或背景未就緒：維持現有選項 */ }
+  syncResultCardModelSelect(el);
+}
+
+function getCardModelOptions() {
+  const current = cardModelOverride || FanFanBaModels.normalizeModel(activeModel);
+  const ids = new Set(cardAvailableModelIds || []);
+  ids.add(current); // 目前實際使用的模型一定要列出來，即使它缺金鑰（選單要反映真實狀態）
+  return FanFanBaModels.MODELS.filter(model => ids.has(model.id) && !model.pageTranslationOnly);
 }
 
 function syncResultCardModelSelect(el = resultCard) {
   const select = el?.querySelector('.g-rc-model-select');
   if (!select) return;
-  const normalized = FanFanBaModels.normalizeModel(activeModel);
-  if ([...select.options].some(option => option.value === normalized)) {
-    select.value = normalized;
+  const current = cardModelOverride || FanFanBaModels.normalizeModel(activeModel);
+  const options = getCardModelOptions();
+  const signature = options.map(model => model.id).join('|');
+  if (select.dataset.options !== signature) {
+    select.textContent = '';
+    options.forEach(model => {
+      const option = document.createElement('option');
+      option.value = model.id;
+      option.textContent = model.name;
+      select.appendChild(option);
+    });
+    select.dataset.options = signature;
   }
+  if ([...select.options].some(option => option.value === current)) select.value = current;
+  el.querySelector('.g-rc-model-once')?.classList.toggle('g-rc-model-once-active', !!cardModelOverride);
+}
+
+// ── 修改原文後重查 ─────────────────────────────────────
+function initSourceEditor(el) {
+  const panel = el.querySelector('.g-rc-source');
+  const input = el.querySelector('.g-rc-source-input');
+  const toggle = el.querySelector('.g-rc-edit-source');
+  if (!panel || !input || !toggle) return;
+
+  const submit = () => {
+    const text = input.value.trim();
+    if (!text || !savedSel) return;
+    closeSourceEditor(el);
+    if (text === savedSel.text) return;
+    // 保留原本的 range：上下文與卡片定位仍以原選取位置為準
+    savedSel = { ...savedSel, text, pendingGoogleDocsSelection: false };
+    triggerAction(activeAction || 'translate');
+  };
+
+  toggle.addEventListener('click', e => {
+    e.stopPropagation();
+    if (panel.classList.contains('g-rc-source-open')) {
+      closeSourceEditor(el);
+      return;
+    }
+    input.value = savedSel?.text || '';
+    panel.classList.add('g-rc-source-open');
+    toggle.setAttribute('aria-expanded', 'true');
+    input.focus();
+  });
+  el.querySelector('.g-rc-source-submit').addEventListener('click', e => { e.stopPropagation(); submit(); });
+  el.querySelector('.g-rc-source-cancel').addEventListener('click', e => { e.stopPropagation(); closeSourceEditor(el); toggle.focus(); });
+  input.addEventListener('keydown', e => {
+    e.stopPropagation(); // 不讓網頁自己的快捷鍵吃到打字
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); }
+    if (e.key === 'Escape') { e.preventDefault(); closeSourceEditor(el); toggle.focus(); }
+  });
+}
+
+// 底部列只屬於「選字查詢」：浮球的收藏／最近查詢／單字本面板借用同一張卡時要收起
+function setResultCardQueryMode(on, el = resultCard) {
+  el?.classList.toggle('g-rc-query-mode', !!on);
+  if (!on) closeSourceEditor(el);
+}
+
+function closeSourceEditor(el = resultCard) {
+  el?.querySelector('.g-rc-source')?.classList.remove('g-rc-source-open');
+  el?.querySelector('.g-rc-edit-source')?.setAttribute('aria-expanded', 'false');
 }
 
 const CHEVRON_SVG = `<svg class="g-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
 
 function buildDictHTML(d) {
   const translations = normalizeTranslations(d.translations);
+  const cefr = normalizeCefr(d.cefr);
 
   const synonymHtml = d.synonym?.word ? `
     <div class="g-dict-divider"></div>
@@ -528,7 +623,7 @@ function buildDictHTML(d) {
       : '<span class="g-ex-badge g-ex-general">通用</span>';
     return `
       <div class="g-example">
-        <div class="g-ex-src">${badge}<span class="g-ex-en">${escapeHtml(ex.src || ex.en || '')}</span></div>
+        <div class="g-ex-src">${badge}<span class="g-ex-en">${highlightExampleHtml(ex.src || ex.en || '', ex.surface)}</span></div>
         <div class="g-ex-zh">${escapeHtml(ex.zh || '')}</div>
       </div>`;
   }).join('');
@@ -553,6 +648,7 @@ function buildDictHTML(d) {
         </svg>
         <span>收藏</span>
       </button>
+      ${cefr ? `<span class="g-dict-cefr" title="CEFR 難度 ${cefr}" aria-label="CEFR 難度 ${cefr}">${cefr}</span>` : ''}
     </div>
     ${d.phonetic ? `<div class="g-dict-phonetic">${escapeHtml(d.phonetic)}</div>` : ''}
     ${d.pos || d.definition ? `

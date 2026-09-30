@@ -90,10 +90,12 @@ describe('模型清冊完整性（增刪改都必須是刻意的）', () => {
     ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite', 'gemini', false],
     ['openrouter:google/gemma-4-31b-it:free', 'Gemma 4 31B', 'openrouter', true],
     // 瀏覽器內建 Translator API：無 endpoint、無 key、無備援模型（掛掉就回報，讓使用者改選雲端）
-    ['builtin:translator', '瀏覽器內建翻譯', 'builtin', false]
+    ['builtin:translator', '瀏覽器內建翻譯', 'builtin', false],
+    // 自訂 OpenAI 相容端點：網址與模型名稱由使用者設定，不做備援
+    ['custom:endpoint', '自訂端點', 'custom', false]
   ];
 
-  test('清冊剛好是這五顆、順序不變（popup 依此順序渲染選項）', () => {
+  test('清冊剛好是這六顆、順序不變（popup 依此順序渲染選項）', () => {
     expect(M.MODELS.map(entry => entry.id)).toEqual(EXPECTED.map(([id]) => id));
   });
 
@@ -115,12 +117,17 @@ describe('PROVIDERS ⟺ manifest host_permissions 對賬', () => {
   test('每個 provider apiBase 的 origin 都被 host_permissions 覆蓋', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf8'));
     const permittedOrigins = manifest.host_permissions.map(p => new URL(p.replace('/*', '/')).origin);
-    // keyless provider（瀏覽器內建）沒有 endpoint，沒有 origin 可對；略過但要**證明它真的是 keyless**，
-    // 免得日後某個有 endpoint 的 provider 漏填 apiBase 時，被這個分支靜默放行。
+    // 沒有固定 apiBase 的 provider 只能是兩種，且要**證明身分**，免得日後某個有 endpoint 的
+    // provider 漏填 apiBase 時被這個分支靜默放行：瀏覽器內建（keyless，沒有 endpoint），
+    // 以及自訂端點（網址由使用者設定，走 optional_host_permissions、儲存時才請求該網域）。
     const entries = Object.entries(M.PROVIDERS);
     const skipped = entries.filter(([, info]) => !info.apiBase);
-    skipped.forEach(([name, info]) => expect(info.keyless).toBe(true));
-    expect(skipped.map(([name]) => name)).toEqual(['builtin']);
+    expect(skipped.map(([name]) => name)).toEqual(['builtin', 'custom']);
+    expect(M.PROVIDERS.builtin.keyless).toBe(true);
+    expect(M.PROVIDERS.custom.userConfigured).toBe(true);
+    expect(manifest.optional_host_permissions).toEqual(['https://*/*']);
+    // 自訂端點的萬用權限只能放 optional，不能進必要權限（否則一安裝就能連所有網站）
+    expect(manifest.host_permissions).not.toContain('https://*/*');
 
     entries.filter(([, info]) => info.apiBase).forEach(([, info]) => {
       expect(permittedOrigins).toContain(new URL(info.apiBase).origin);

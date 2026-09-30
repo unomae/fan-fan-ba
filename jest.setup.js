@@ -42,7 +42,12 @@ global.chrome = {
     create: jest.fn(),
     query: jest.fn(),
     remove: jest.fn(),
-    update: jest.fn()
+    update: jest.fn(),
+    sendMessage: jest.fn().mockResolvedValue(undefined)
+  },
+  commands: {
+    getAll: jest.fn().mockResolvedValue([]),
+    onCommand: { addListener: jest.fn() }
   },
   windows: {
     update: jest.fn()
@@ -50,7 +55,11 @@ global.chrome = {
   contextMenus: {
     create: jest.fn(),
     onClicked: { addListener: jest.fn() },
-    removeAll: jest.fn()
+    removeAll: jest.fn(cb => cb && cb())
+  },
+  permissions: {
+    contains: jest.fn().mockResolvedValue(true),
+    request: jest.fn().mockResolvedValue(true)
   }
 };
 

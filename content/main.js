@@ -30,6 +30,51 @@ if (fanFanBaShouldActivate()) {
   });
 
   initContentSettings();
+  chrome.runtime.onMessage?.addListener(onExtensionTrigger);
+}
+
+// ── 快捷鍵／右鍵選單觸發（由 background 轉來）──────────
+// 站點停用時一律不作用；沒有選取文字就什麼都不做（不跳錯誤、不彈 UI）。
+function onExtensionTrigger(message) {
+  if (!message || message.type !== 'FFB_TRIGGER') return false;
+  if (fanFanBaPaused || !fanFanBaShouldActivate()) return false;
+  if (message.trigger === 'translate-selection') {
+    translateSelectionFromTrigger({ requireFocus: !!message.requireFocus });
+  } else if (message.trigger === 'toggle-page-translation') {
+    runPageTranslationTrigger({ toggle: true });
+  } else if (message.trigger === 'start-page-translation') {
+    runPageTranslationTrigger({ toggle: false });
+  }
+  return false;
+}
+
+// 快捷鍵是廣播給每個 frame 的，只讓持有鍵盤焦點的那個處理；
+// 焦點在子 frame 時，上層 frame 的 activeElement 是 iframe 本身，要讓給它。
+function frameHasKeyboardFocus() {
+  if (!document.hasFocus()) return false;
+  const tag = document.activeElement?.tagName;
+  return tag !== 'IFRAME' && tag !== 'FRAME';
+}
+
+function translateSelectionFromTrigger({ requireFocus = false } = {}) {
+  if (requireFocus && !frameHasKeyboardFocus()) return false;
+  // 只讀本 frame 自己的選取：子 frame 各自有 content script，會自己處理
+  const selectionData = getWindowSelectionData() || getEditableSelectionData();
+  if (!selectionData?.text) return false;
+  savedSel = selectionData;
+  cardModelOverride = null;
+  showToolbar();
+  triggerAction('translate');
+  return true;
+}
+
+// 全文翻譯只在最上層 frame 載入（manifest 第二組 content script）
+function runPageTranslationTrigger({ toggle }) {
+  if (!fanFanBaIsTopFrame() || typeof startPageTranslationBeta !== 'function') return false;
+  const active = typeof pageTranslationState !== 'undefined' && pageTranslationState.activated;
+  if (toggle && active) restorePageTranslationBeta();
+  else startPageTranslationBeta();
+  return true;
 }
 
 // ── 拖曳（rAF throttle）──────────────────────────────
@@ -93,6 +138,7 @@ function onMouseUp(e) {
 
 function onKeyUp(e) {
   if (fanFanBaPaused) return;
+  if (isInOurUI(e.target)) return; // 在結果卡的原文輸入框移動游標，不能被當成新的選取
   if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(e.key)) {
     setTimeout(checkSelection, 20);
   }
@@ -123,6 +169,7 @@ function checkSelection(point = null, options = {}) {
   if (selectionData?.text) {
     try {
       savedSel = selectionData;
+      cardModelOverride = null; // 新的選取＝新的一張卡，「僅本次」模型不沿用
       showToolbar();
     } catch { /* 跨 iframe 等情況靜默忽略 */ }
   } else if (options.allowGoogleDocsFallback && isGoogleDocsDocumentPage()) {
@@ -339,6 +386,7 @@ function triggerAction(action) {
   );
 
   if (!resultCard || !document.body.contains(resultCard)) resultCard = createResultCard();
+  setResultCardQueryMode(true);
 
   // 新請求時收合 Obsidian 面板與存入提示
   resultCard.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
@@ -374,10 +422,11 @@ function triggerAction(action) {
     ? ''
     : extractContext(savedSel.text, savedSel.range);
   const pageTitle = document.title;
+  syncResultCardModelSelect?.(resultCard);
   const cacheKey  = FanFanBaModels.buildCacheKey({
     action,
     text: savedSel.text,
-    model: activeModel,
+    model: cardModelOverride || activeModel,
     targetLanguage,
     explanationLanguage,
     context,
@@ -459,7 +508,7 @@ function cancelActiveStream() {
 function sendNonStreaming(action, selectedText, context, pageTitle, cacheKey, requestId) {
   try {
     chrome.runtime.sendMessage(
-      { type: 'GEMINI_REQUEST', action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' },
+      { type: 'GEMINI_REQUEST', action, selectedText, context, pageTitle, modelOverride: cardModelOverride || '', targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' },
       response => {
         if (requestId !== activeRequestId) return;
         if (chrome.runtime.lastError) {
@@ -544,7 +593,7 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey, requ
     }
   });
 
-  port.postMessage({ requestId, action, selectedText, context, pageTitle, targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' });
+  port.postMessage({ requestId, action, selectedText, context, pageTitle, modelOverride: cardModelOverride || '', targetLanguage, explanationLanguage, browserLanguage: navigator.language || '' });
 }
 
 function initContentSettings() {

@@ -158,6 +158,27 @@ describe('floating library panel', () => {
     expect(card.querySelector('[data-library-action="vocabulary"]')).not.toBeNull();
     expect(card.querySelector('[data-library-action="history"]')).not.toBeNull();
   });
+
+  it('借用結果卡時收起選字查詢專用的底部列（修改原文／僅本次模型）', () => {
+    const setup = createContentContext();
+    const context = setup.context;
+    ['content/site-policy.js', 'content/state.js', 'content/dom.js', 'content/utils.js',
+      'content/vocabulary.js', 'content/result-card.js', 'content/floating-ball.js'].forEach(file => runContentScript(file, context));
+    // resultCard 是 state.js 的 let 綁定，要在 context 內賦值才會是同一張卡
+    vm.runInContext(`
+      resultCard = createResultCard();
+      document.body.appendChild(resultCard);
+      setResultCardQueryMode(true);
+      resultCard.querySelector('.g-rc-source').classList.add('g-rc-source-open');
+    `, context);
+
+    document.getElementById('fanfanba-floating').querySelector('[data-action="library"]').click();
+
+    expect(document.querySelectorAll('#gemini-result-card')).toHaveLength(1);
+    const card = document.getElementById('gemini-result-card');
+    expect(card.classList.contains('g-rc-query-mode')).toBe(false);
+    expect(card.querySelector('.g-rc-source').classList.contains('g-rc-source-open')).toBe(false);
+  });
 });
 
 // 半接線接完工：toggleVocabularyHighlightForSite 之前零 production caller，
