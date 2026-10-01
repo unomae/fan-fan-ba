@@ -44,6 +44,16 @@ const DIAGNOSTICS_SETTING_KEYS = [
 // renderVocabularyBackupStaleness() 會在 TDZ 讀到它而炸掉（QA-P2-002）。
 const LAST_VOCAB_BACKUP_KEY = 'lastVocabularyBackupAt';
 const VOCAB_BACKUP_STALE_DAYS = 30;
+// 新功能標籤：已點過的項目 id 存本機（只是介面狀態，不進備份與雲端同步）
+const SEEN_FEATURE_BADGES_KEY = 'seenFeatureBadges';
+const FEATURE_BADGE_TEXT = { new: '新增', updated: '已更新' };
+// 動作清單上的標籤（清單是動態產生的）；其他標籤直接寫在 options.html 的 data-badge-for
+const ACTION_FEATURE_BADGES = { analyze: 'new', optimize: 'updated' };
+const SEARCH_RESULT_LIMIT = 8;
+const SEARCH_HIT_MS = 2000;
+// null＝還沒讀到已看過清單，標籤先全部藏著，避免載入時閃一下
+let seenFeatureBadges = null;
+let settingsSearchState = { results: [], active: 0 };
 // provider 顯示名／key 欄位名／前綴統一取自 ModelRegistry.PROVIDERS（WS-E M3''）
 
 renderModelSelect();
@@ -51,12 +61,14 @@ renderPageTranslationModelSelect();
 renderDictionaryModelSelect();
 renderLanguageSelects();
 initSettingsTabs();
+initSettingsSearch();
 initFeatureModelHints();
 
 loadSettings();
 initDiagnosticsPanel();
 initVocabularyBackup();
 initActionEditor();
+initFeatureBadges();
 
 // ── 單字本備份 / 還原（Phase B）──────────────────────
 function initVocabularyBackup() {
@@ -622,26 +634,231 @@ function renderLanguageSelects() {
   }
 }
 
+function activateSettingsPanel(panelName) {
+  document.querySelectorAll('.settings-tab[data-panel]').forEach(tab => {
+    const isActive = tab.dataset.panel === panelName;
+    tab.classList.toggle('is-active', isActive);
+    tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+
+  document.querySelectorAll('.settings-panel[data-panel-content]').forEach(panel => {
+    panel.hidden = panel.dataset.panelContent !== panelName;
+  });
+}
+
 function initSettingsTabs() {
   const tabs = document.querySelectorAll('.settings-tab[data-panel]');
   const panels = document.querySelectorAll('.settings-panel[data-panel-content]');
   if (!tabs.length || !panels.length) return;
 
-  function activatePanel(panelName) {
-    tabs.forEach(tab => {
-      const isActive = tab.dataset.panel === panelName;
-      tab.classList.toggle('is-active', isActive);
-      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
-    });
-
-    panels.forEach(panel => {
-      panel.hidden = panel.dataset.panelContent !== panelName;
-    });
-  }
-
   tabs.forEach(tab => {
-    tab.addEventListener('click', () => activatePanel(tab.dataset.panel));
+    tab.addEventListener('click', () => activateSettingsPanel(tab.dataset.panel));
   });
+}
+
+// ── 設定搜尋（⌘K／Ctrl+K）────────────────────────────
+// 比對各分頁的標題、小標、欄位標籤與功能說明；選中後切到該分頁、捲過去並短暫高亮。
+// 索引每次搜尋時現場從 DOM 收集，動作清單這類動態列也找得到。
+
+// 取元素的可搜尋文字：去掉新功能標籤、「必填／選填」提示與分頁上的數字
+function searchableText(el) {
+  if (!el) return '';
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll('.feature-badge, .hint, small').forEach(node => node.remove());
+  return clone.textContent.replace(/\s+/g, ' ').trim();
+}
+
+// 元素到所在分頁之間只要有一層 hidden（例如關著的動作編輯器）就不收
+function isHiddenInPanel(el, panel) {
+  for (let node = el; node && node !== panel; node = node.parentElement) {
+    if (node.hidden) return true;
+  }
+  return false;
+}
+
+function collectSettingsSearchEntries() {
+  const entries = [];
+  const seen = new Set();
+  const add = (panel, panelTitle, text, target) => {
+    const key = `${panel}\n${text}`;
+    if (!text || seen.has(key)) return;
+    seen.add(key);
+    entries.push({ panel, panelTitle, text, target });
+  };
+  document.querySelectorAll('.settings-panel[data-panel-content]').forEach(panel => {
+    const panelName = panel.dataset.panelContent;
+    const tab = document.querySelector(`.settings-tab[data-panel="${panelName}"]`);
+    const panelTitle = searchableText(tab) || searchableText(panel.querySelector('h2'));
+    // 左側分頁名稱和面板大標可能不同（「模型與金鑰」／「模型與 API Key」），兩個都收
+    add(panelName, panelTitle, panelTitle, panel.querySelector('.panel-head') || panel);
+    panel.querySelectorAll('h2, h3, label, .field-label, .feature-list li').forEach(el => {
+      if (!isHiddenInPanel(el, panel)) add(panelName, panelTitle, searchableText(el), el);
+    });
+  });
+  return entries;
+}
+
+// 不分大小寫；以空白分開的每個詞都要出現。開頭就符合的排前面。
+function searchSettings(query) {
+  const terms = String(query || '').toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return [];
+  const hits = collectSettingsSearchEntries().filter(entry => {
+    const text = entry.text.toLowerCase();
+    return terms.every(term => text.includes(term));
+  });
+  const starts = hits.filter(entry => entry.text.toLowerCase().startsWith(terms[0]));
+  const rest = hits.filter(entry => !starts.includes(entry));
+  return [...starts, ...rest].slice(0, SEARCH_RESULT_LIMIT);
+}
+
+function setSettingsSearchOpen(open) {
+  const list = $('settingsSearchResults');
+  const input = $('settingsSearch');
+  list.hidden = !open;
+  input.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (!open) input.removeAttribute('aria-activedescendant');
+}
+
+function renderSettingsSearchResults() {
+  const list = $('settingsSearchResults');
+  const input = $('settingsSearch');
+  const { results, active } = settingsSearchState;
+  if (!input.value.trim()) {
+    Dom.ffbClear(list);
+    setSettingsSearchOpen(false);
+    return;
+  }
+  if (!results.length) {
+    Dom.ffbClear(list).append(Dom.ffbEl('li', { class: 'search-empty', role: 'presentation' }, '沒有符合的設定'));
+    setSettingsSearchOpen(true);
+    return;
+  }
+  Dom.ffbClear(list).append(...results.map((entry, index) => {
+    const item = Dom.ffbEl('li', {
+      class: 'search-result',
+      role: 'option',
+      id: `settingsSearchResult${index}`,
+      'aria-selected': index === active ? 'true' : 'false'
+    }, [
+      Dom.ffbEl('span', null, entry.text),
+      entry.text !== entry.panelTitle && Dom.ffbEl('small', null, entry.panelTitle)
+    ]);
+    // mousedown 先擋掉，焦點才不會在 click 之前離開搜尋框把清單關掉
+    item.addEventListener('mousedown', event => event.preventDefault());
+    item.addEventListener('click', () => jumpToSettingsSearchResult(entry));
+    return item;
+  }));
+  input.setAttribute('aria-activedescendant', `settingsSearchResult${active}`);
+  setSettingsSearchOpen(true);
+}
+
+function jumpToSettingsSearchResult(entry) {
+  if (!entry) return false;
+  activateSettingsPanel(entry.panel);
+  const block = entry.target.closest('tr, .provider-card, .field, .feature-list li, .security-note, .panel-head') || entry.target;
+  block.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+  // 欄位標籤直接把焦點交給對應的輸入框，跳過去就能改
+  const control = entry.target.htmlFor ? $(entry.target.htmlFor) : null;
+  control?.focus({ preventScroll: true });
+  block.classList.remove('search-hit');
+  void block.offsetWidth; // 重新觸發高亮動畫
+  block.classList.add('search-hit');
+  setTimeout(() => block.classList.remove('search-hit'), SEARCH_HIT_MS);
+
+  $('settingsSearch').value = '';
+  settingsSearchState = { results: [], active: 0 };
+  renderSettingsSearchResults();
+  return true;
+}
+
+function updateSettingsSearch() {
+  settingsSearchState = { results: searchSettings($('settingsSearch').value), active: 0 };
+  renderSettingsSearchResults();
+}
+
+function initSettingsSearch() {
+  const input = $('settingsSearch');
+  if (!input) return;
+  const isMac = /Mac|iPhone|iPad/.test(globalThis.navigator?.platform || '');
+  if ($('settingsSearchKbd')) $('settingsSearchKbd').textContent = isMac ? '⌘K' : 'Ctrl K';
+
+  input.addEventListener('input', updateSettingsSearch);
+  input.addEventListener('focus', () => { if (input.value.trim()) updateSettingsSearch(); });
+  input.addEventListener('blur', () => setSettingsSearchOpen(false));
+  input.addEventListener('keydown', event => {
+    const { results, active } = settingsSearchState;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      if (!results.length) return;
+      event.preventDefault();
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      settingsSearchState.active = (active + step + results.length) % results.length;
+      renderSettingsSearchResults();
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      jumpToSettingsSearchResult(results[active]);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      input.value = '';
+      updateSettingsSearch();
+    }
+  });
+
+  document.addEventListener('keydown', event => {
+    if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      input.focus();
+      input.select();
+    }
+  });
+}
+
+// ── 新功能標籤 ─────────────────────────────────────
+// 標籤預設 hidden；讀到已看過清單後，沒看過的才顯示。使用者在該項目內點任何地方
+// （分頁是點開分頁）就記為已看過。
+
+function buildFeatureBadge(id, kind) {
+  return Dom.ffbEl('span', { class: 'feature-badge', dataset: { badgeFor: id, kind }, hidden: true }, FEATURE_BADGE_TEXT[kind]);
+}
+
+function applyFeatureBadges() {
+  document.querySelectorAll('.feature-badge[data-badge-for]').forEach(badge => {
+    badge.hidden = !seenFeatureBadges || seenFeatureBadges.has(badge.dataset.badgeFor);
+  });
+  // 分頁本身有標籤時不再加圓點；否則分頁裡有沒看過的標籤就加圓點
+  document.querySelectorAll('.settings-tab[data-panel]').forEach(tab => {
+    const ownBadge = tab.querySelector('.feature-badge:not([hidden])');
+    const panel = document.querySelector(`.settings-panel[data-panel-content="${tab.dataset.panel}"]`);
+    const unseen = !!panel && !!panel.querySelector('.feature-badge[data-badge-for]:not([hidden])');
+    tab.classList.toggle('has-unseen', !ownBadge && unseen);
+  });
+}
+
+async function markFeatureSeen(id) {
+  if (!seenFeatureBadges || !id || seenFeatureBadges.has(id)) return false;
+  seenFeatureBadges.add(id);
+  applyFeatureBadges();
+  try {
+    await chrome.storage.local.set({ [SEEN_FEATURE_BADGES_KEY]: [...seenFeatureBadges] });
+  } catch (error) {
+    console.warn('[翻翻吧] 新功能標籤狀態儲存失敗', error);
+  }
+  return true;
+}
+
+async function initFeatureBadges() {
+  document.addEventListener('click', event => {
+    const item = event.target.closest?.('[data-feature-item]');
+    if (item) markFeatureSeen(item.dataset.featureItem);
+  });
+  let stored = [];
+  try {
+    ({ [SEEN_FEATURE_BADGES_KEY]: stored } = await chrome.storage.local.get({ [SEEN_FEATURE_BADGES_KEY]: [] }));
+  } catch (error) {
+    console.warn('[翻翻吧] 新功能標籤狀態讀取失敗', error);
+  }
+  seenFeatureBadges = new Set(Array.isArray(stored) ? stored.filter(id => typeof id === 'string') : []);
+  applyFeatureBadges();
+  return seenFeatureBadges;
 }
 
 // ── 顯示 / 隱藏 API Key 共用函式 ─────────────────────
@@ -1556,17 +1773,24 @@ function renderActionList() {
       else openActionEditor(createActionFromBuiltin(action.id), { isNew: true });
     }));
 
-    return Dom.ffbEl('li', { class: `action-row${action.enabled ? '' : ' is-disabled'}`, dataset: { id: action.id } }, [
+    const badgeKind = action.builtin ? ACTION_FEATURE_BADGES[action.id] : null;
+    const badgeId = badgeKind ? `action-${action.id}` : null;
+    return Dom.ffbEl('li', {
+      class: `action-row${action.enabled ? '' : ' is-disabled'}`,
+      dataset: { id: action.id, featureItem: badgeId }
+    }, [
       enabled,
       Dom.ffbEl('span', { class: 'action-row-name' }, [
         ActionRender.buildCustomActionIcon(action.builtin ? builtinIconName(action.id) : action.icon, 16),
         Dom.ffbEl('span', null, action.name),
-        action.builtin && Dom.ffbEl('span', { class: 'action-badge' }, '內建')
+        action.builtin && Dom.ffbEl('span', { class: 'action-badge' }, '內建'),
+        badgeKind && buildFeatureBadge(badgeId, badgeKind)
       ]),
       up, down, ...buttons
     ]);
   }));
   renderFeatureActionModelRows();
+  applyFeatureBadges();
 }
 
 function builtinIconName(id) {
@@ -1873,6 +2097,11 @@ if (typeof module !== 'undefined' && module.exports) {
     getFeatureModelGap,
     renderLanguageSelects,
     initSettingsTabs,
+    activateSettingsPanel,
+    searchSettings,
+    jumpToSettingsSearchResult,
+    markFeatureSeen,
+    initFeatureBadges,
     loadSettings,
     buildSettingsBackupPayload,
     encryptBackupSecrets,

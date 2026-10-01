@@ -805,6 +805,95 @@
       .action-row-name { flex: 1 1 calc(100% - 32px); }
       .action-row .btn-test { flex: 0 0 auto; }
     }
+
+    /* 設定搜尋（⌘K／Ctrl+K） */
+    .settings-search { position: relative; margin-bottom: 4px; }
+    .settings-search input {
+      width: 100%;
+      padding: 9px 52px 9px 11px;
+      color: var(--ink);
+      background: #fff;
+      border: 1px solid rgba(24, 32, 51, 0.14);
+      border-radius: 8px;
+      font: inherit;
+      font-size: 13px;
+    }
+    .settings-search input:focus { outline: 2px solid rgba(90, 154, 46, 0.45); outline-offset: 1px; }
+    .search-kbd {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 0 6px;
+      color: var(--muted);
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 18px;
+      pointer-events: none;
+    }
+    /* 打字後藏起快捷鍵提示，讓出位置給瀏覽器的清除鈕 */
+    .settings-search input:not(:placeholder-shown) + .search-kbd { display: none; }
+    .settings-search-results {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      z-index: 20;
+      width: max(100%, 280px);
+      max-height: 320px;
+      overflow-y: auto;
+      margin: 0;
+      padding: 4px;
+      list-style: none;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .search-result { padding: 7px 9px; border-radius: 6px; color: var(--ink); font-size: 13px; cursor: pointer; }
+    .search-result span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .search-result small { display: block; color: var(--muted); font-size: 11px; }
+    .search-result[aria-selected="true"], .search-result:hover { background: #f2f9e8; }
+    .search-empty { padding: 7px 9px; color: var(--muted); font-size: 12px; }
+    .search-hit { border-radius: 8px; animation: ffb-search-hit 2s ease-out; }
+    @keyframes ffb-search-hit {
+      0%, 40% { box-shadow: 0 0 0 3px rgba(249, 212, 35, 0.9); background-color: rgba(249, 212, 35, 0.16); }
+      100% { box-shadow: 0 0 0 3px rgba(249, 212, 35, 0); }
+    }
+
+    /* 新功能標籤：使用者點過該項後消失；分頁裡還有沒看過的標籤時，分頁右上角顯示小圓點 */
+    .feature-badge {
+      display: inline-block;
+      padding: 0 7px;
+      color: #fff;
+      background: #c62f35;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 17px;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    .feature-badge[data-kind="updated"] { background: #3154ad; }
+    .feature-badge[hidden] { display: none; }
+    .field-label-row { display: flex; align-items: center; gap: 6px; }
+    .feature-list kbd { font-family: inherit; font-weight: 700; }
+    .settings-tab { position: relative; }
+    .settings-tab.has-unseen::after {
+      content: '';
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 7px;
+      height: 7px;
+      background: #c62f35;
+      border-radius: 50%;
+    }
+    @media (max-width: 860px) {
+      .settings-search { grid-column: 1 / -1; }
+    }
   </style>
   <link rel="stylesheet" href="content.css">
 </head>
@@ -823,6 +912,11 @@
 
     <section class="settings-shell" aria-label="翻翻吧設定">
       <nav class="settings-nav" aria-label="設定分類">
+        <div class="settings-search" role="search">
+          <input type="search" id="settingsSearch" placeholder="搜尋設定" aria-label="搜尋設定" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="settingsSearchResults" aria-keyshortcuts="Control+K Meta+K" autocomplete="off" spellcheck="false">
+          <kbd class="search-kbd" id="settingsSearchKbd" aria-hidden="true">Ctrl K</kbd>
+          <ul class="settings-search-results" id="settingsSearchResults" role="listbox" aria-label="搜尋結果" hidden></ul>
+        </div>
         <button class="settings-tab is-active" type="button" data-panel="model" aria-selected="true">
           模型與金鑰
           <small>3</small>
@@ -831,8 +925,8 @@
           語言與朗讀
           <small>5</small>
         </button>
-        <button class="settings-tab" type="button" data-panel="actions" aria-selected="false">
-          自訂動作
+        <button class="settings-tab" type="button" data-panel="actions" aria-selected="false" data-feature-item="panel-actions">
+          <span>自訂動作 <span class="feature-badge" data-badge-for="panel-actions" data-kind="new" hidden>新增</span></span>
           <small>4</small>
         </button>
         <button class="settings-tab" type="button" data-panel="obsidian" aria-selected="false">
@@ -872,8 +966,8 @@
             <select id="model"></select>
           </div>
 
-          <div class="field full">
-            <span class="field-label" id="featureModelsLabel">各功能使用的模型</span>
+          <div class="field full" data-feature-item="feature-models">
+            <span class="field-label-row"><span class="field-label" id="featureModelsLabel">各功能使用的模型</span> <span class="feature-badge" data-badge-for="feature-models" data-kind="new" hidden>新增</span></span>
             <table class="feature-models" aria-labelledby="featureModelsLabel">
               <thead>
                 <tr><th scope="col">功能</th><th scope="col">模型</th></tr>
@@ -968,9 +1062,9 @@
               </div>
             </div>
 
-            <div class="provider-card" id="customEndpointCard">
+            <div class="provider-card" id="customEndpointCard" data-feature-item="custom-endpoint">
               <div class="provider-head">
-                <h3>自訂端點</h3>
+                <h3>自訂端點 <span class="feature-badge" data-badge-for="custom-endpoint" data-kind="new" hidden>新增</span></h3>
                 <span class="mini-badge violet">OpenAI 相容</span>
               </div>
               <div class="field">
@@ -1323,6 +1417,18 @@
             <li>
               <span class="badge badge-optimize">優化</span>
               重寫選取內容，使表達更清晰流暢。
+            </li>
+            <li data-feature-item="dict-examples">
+              <span class="badge badge-translate">字典卡</span>
+              <span>例句裡的查詢詞會加粗；英文單字旁標出 CEFR 難度（A1–C2）。 <span class="feature-badge" data-badge-for="dict-examples" data-kind="new" hidden>新增</span></span>
+            </li>
+            <li data-feature-item="shortcuts">
+              <span class="badge badge-explain">快捷鍵</span>
+              <span>翻譯選取文字（Windows <kbd>Alt+S</kbd>、Mac <kbd>⌃⇧S</kbd>）、切換全文翻譯（Windows <kbd>Alt+A</kbd>、Mac <kbd>⌃⇧A</kbd>）；右鍵選單也能翻譯選取文字或整頁。按鍵可在擴充功能的快捷鍵頁面更改。 <span class="feature-badge" data-badge-for="shortcuts" data-kind="new" hidden>新增</span></span>
+            </li>
+            <li data-feature-item="card-model">
+              <span class="badge badge-optimize">結果卡</span>
+              <span>底部可以「僅本次」換一個模型重查，也可以修改原文後重新查詢（⌘／Ctrl+Enter 送出）。 <span class="feature-badge" data-badge-for="card-model" data-kind="new" hidden>新增</span></span>
             </li>
           </ul>
 

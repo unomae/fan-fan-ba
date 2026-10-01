@@ -42,7 +42,7 @@ async function loadOptions(initialStore = {}) {
   return options;
 }
 
-const listNames = () => [...document.querySelectorAll('#actionList .action-row .action-row-name > span:not(.action-badge)')]
+const listNames = () => [...document.querySelectorAll('#actionList .action-row .action-row-name > span:not(.action-badge):not(.feature-badge)')]
   .map(el => el.textContent);
 const row = name => [...document.querySelectorAll('#actionList .action-row')]
   .find(item => item.querySelector('.action-row-name').textContent.startsWith(name));
