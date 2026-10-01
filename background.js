@@ -423,11 +423,7 @@ function normalizeModelOverride(value, isPageTranslation) {
 function getAvailableCardModelIds(secrets = {}, settings = {}) {
   return ModelRegistry.MODELS
     .filter(model => !model.pageTranslationOnly)
-    .filter(model => {
-      const provider = ModelRegistry.PROVIDERS[model.provider];
-      if (provider?.userConfigured && !(settings.customApiBase && settings.customModelName)) return false;
-      return provider?.keyless || !!secrets[provider?.apiKeyName];
-    })
+    .filter(model => ModelRegistry.isModelConfigured(model, secrets, settings))
     .map(model => model.id);
 }
 

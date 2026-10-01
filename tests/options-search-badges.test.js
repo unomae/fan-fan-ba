@@ -63,7 +63,7 @@ const actionRow = id => document.querySelector(`#actionList .action-row[data-id=
 
 const ALL_BADGES = [
   'action-analyze', 'action-optimize', 'card-model', 'custom-endpoint',
-  'dict-examples', 'feature-models', 'panel-actions', 'panel-glossary', 'shortcuts'
+  'dict-examples', 'feature-models', 'panel-actions', 'panel-compare', 'panel-glossary', 'shortcuts'
 ];
 
 // 第一次 require options.js 要轉譯＋插樁（單跑約 2 秒），全套平行時可能超過 5 秒預設逾時；

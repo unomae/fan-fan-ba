@@ -886,6 +886,20 @@
     .glossary-table td:last-child { width: 1%; white-space: nowrap; }
     .glossary-table input { width: 100%; }
     #glossarySites { width: 100%; padding: 10px 12px; color: var(--ink); background: #fff; border: 1px solid #dce3db; border-radius: 8px; font: inherit; font-size: 13.5px; resize: vertical; outline: none; }
+    #compareText { width: 100%; padding: 10px 12px; color: var(--ink); background: #fff; border: 1px solid #dce3db; border-radius: 8px; font: inherit; font-size: 13.5px; resize: vertical; outline: none; }
+    #compareText:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(163, 209, 121, 0.2); }
+
+    /* 模型比較 */
+    .compare-models { min-width: 0; margin: 0; padding: 0; border: 0; }
+    #compareModelList { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
+    #compareModelList label { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+    .compare-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 16px; }
+    .compare-card { min-width: 0; padding: 12px 14px; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+    .compare-card h3 { margin: 0; font-size: 14px; }
+    .compare-card .compare-meta { margin: 2px 0 8px; color: var(--muted); font-size: 12px; }
+    .compare-card .compare-output { margin: 0; color: var(--ink); font-size: 13.5px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .compare-card.is-error { border-color: #f1b5b7; }
+    .compare-card.is-error .compare-output { color: #b4232a; }
     #glossarySites:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(163, 209, 121, 0.2); }
     .glossary-table .is-invalid input { border-color: #c62f35; }
     .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -947,6 +961,10 @@
         </button>
         <button class="settings-tab" type="button" data-panel="glossary" aria-selected="false" data-feature-item="panel-glossary">
           <span>術語表 <span class="feature-badge" data-badge-for="panel-glossary" data-kind="new" hidden>新增</span></span>
+          <small>2</small>
+        </button>
+        <button class="settings-tab" type="button" data-panel="compare" aria-selected="false" data-feature-item="panel-compare">
+          <span>模型比較 <span class="feature-badge" data-badge-for="panel-compare" data-kind="new" hidden>新增</span></span>
           <small>2</small>
         </button>
         <button class="settings-tab" type="button" data-panel="obsidian" aria-selected="false">
@@ -1301,6 +1319,39 @@
               <p class="field-note">只套用在「翻譯」與全文翻譯；解釋、優化、長難句分析與自訂動作不套用。<strong>瀏覽器內建翻譯不套用術語表</strong>（它不接受額外指示）。修改後請按「儲存設定」。</p>
             </div>
           </div>
+        </section>
+
+        <section class="settings-panel" data-panel-content="compare" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>模型比較</h2>
+              <p>同一段文字同時交給幾個模型翻譯，並排比較譯文與花費時間，再決定預設用哪一個。</p>
+            </div>
+            <span class="panel-badge">不存進查詢紀錄</span>
+          </div>
+
+          <form class="form-grid" id="compareForm" novalidate>
+            <div class="field full">
+              <label for="compareText">要翻譯的文字 <span class="hint">最多 2000 字</span></label>
+              <textarea id="compareText" rows="4" maxlength="2000" spellcheck="false" placeholder="貼上一段要比較的文字"></textarea>
+            </div>
+
+            <fieldset class="field full compare-models">
+              <legend class="field-label">比較哪些模型</legend>
+              <div id="compareModelList"></div>
+              <p class="field-note" id="compareModelEmpty" hidden>還沒有可以比較的模型：先到「模型與金鑰」填 API Key 並按「儲存設定」。</p>
+              <p class="field-note">只列出已儲存金鑰的模型與瀏覽器內建翻譯。每個模型都會實際送一次請求，會用到各家的額度；譯成「語言與朗讀」裡設定的翻譯目標語言，術語表沒有限定網站時照常套用（內建翻譯除外）。</p>
+            </fieldset>
+
+            <div class="field full">
+              <div class="backup-actions">
+                <button class="btn-test" id="btnRunCompare" type="submit">開始比較</button>
+              </div>
+              <div class="action-status" id="compareStatus" aria-live="polite"></div>
+            </div>
+          </form>
+
+          <div class="compare-results" id="compareResults" aria-live="polite"></div>
         </section>
 
         <section class="settings-panel" data-panel-content="obsidian" hidden>
