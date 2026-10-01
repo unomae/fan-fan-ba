@@ -540,6 +540,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
               <li><code>popup.html</code> / <code>popup.js</code>：工具列 popup。</li>
               <li><code>options.html</code> / <code>options.js</code>：完整設定頁、備份、Cloud Sync、診斷。左側頂端有設定搜尋（⌘K／Ctrl+K 聚焦），比對各分頁標題、小標、欄位標籤與功能說明，選中後切到該分頁、捲過去並短暫高亮。新功能與更新過的內建動作標「新增／已更新」，使用者在該項目內點過（分頁是點開）就消失，狀態存本機 <code>seenFeatureBadges</code>（不進備份與雲端同步）；分頁裡還有沒看過的標籤時，分頁右上角顯示小圓點。</li>
               <li><code>content/glossary.js</code>：術語表（原文、譯文、備註＋生效網站），background 與設定頁共用。翻譯（選字與全文翻譯）時，background 依訊息來源分頁的網址判斷網站範圍，只把這段文字裡實際出現的術語（不分大小寫、英文完整詞，最多 30 條、長的優先）附進 prompt；網址只在本機比對、不進 prompt。瀏覽器內建翻譯、解釋、優化、長難句分析與自訂動作不套用。存 <code>chrome.storage.local</code> 的 <code>glossary</code>，跟著設定檔匯出與雲端同步（不含 API Key）；CSV 匯入匯出沿用單字本的公式注入防護。</li>
+              <li>單字卡四級評分：今日複習改「忘了／吃力／記得／很熟」四顆，排程用簡化 SM-2（<code>content/vocabulary.js</code> 的 <code>scheduleVocabularyReview()</code>，新欄位 <code>ease</code>、<code>intervalDays</code>、<code>reps</code>）。舊條目只有 <code>status</code>，讀取時才推導初始值（learning → 1 天、known → 7 天，ease 2.5），第一次評分才寫回；三欄跟著 <code>status</code> 等複習欄位在備份合併與 cutover 時整組跟著勝方走。完整 CSV 匯出 17 欄。</li>
               <li><code>options.js</code> 的「模型比較」分頁：一段文字同時送給勾選的模型（只列 <code>ModelRegistry.isModelConfigured()</code> 判定可用的：已存金鑰、自訂端點網址與模型名稱齊全，加上免金鑰的瀏覽器內建翻譯），每張卡片收到自己的結果就更新，顯示譯文與耗時，單一模型失敗只影響自己那張。請求走既有的 <code>GEMINI_REQUEST</code>，一律帶 <code>pageTranslation: true</code>（非批次）＋單次模型，讓所有模型用同一份段落翻譯 prompt、內建翻譯也能比；不寫查詢紀錄（本機診斷次數會算進全文翻譯）。</li>
               <li><code>welcome.html</code> / <code>welcome.js</code>：首次安裝 onboarding。</li>
             </ul>
@@ -711,7 +712,7 @@ content/page-translator-single.js</pre>
         <div class="grid">
           <div class="card">
             <h3>自動測試</h3>
-            <p>目前測試框架是 Jest 30 + jsdom。2026-10-01 fresh run 為 <code><!-- ffb:suites -->48<!-- /ffb:suites --> suites / <!-- ffb:tests -->741<!-- /ffb:tests --> tests</code> 全綠。<strong>專案內若有 <code>.claude/worktrees/</code>，jest 會連 worktree 的 <code>tests/</code> 一起掃、筆數灌水一倍</strong>，驗收前先 <code>git worktree list</code>，並用下面第二條指令取值。</p>
+            <p>目前測試框架是 Jest 30 + jsdom。2026-10-01 fresh run 為 <code><!-- ffb:suites -->48<!-- /ffb:suites --> suites / <!-- ffb:tests -->754<!-- /ffb:tests --> tests</code> 全綠。<strong>專案內若有 <code>.claude/worktrees/</code>，jest 會連 worktree 的 <code>tests/</code> 一起掃、筆數灌水一倍</strong>，驗收前先 <code>git worktree list</code>，並用下面第二條指令取值。</p>
             <pre>npm test
 npx jest --testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</pre>
           </div>
@@ -728,7 +729,7 @@ npx jest --testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</pre>
 
         <table style="margin-top:12px;">
           <tr><th>發布前 gate</th><th>狀態</th><th>說明</th></tr>
-          <tr><td>Jest</td><td><span class="pill green">fresh run 通過</span></td><td>2026-10-01：<code><!-- ffb:suites -->48<!-- /ffb:suites --> suites / <!-- ffb:tests -->741<!-- /ffb:tests --> tests</code>，0 failed、0 skipped（worktree 實跑，取值請帶 <code>--testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</code>；Git Bash 下不能寫裸 <code>'/\.claude/'</code>，會被改寫成路徑而失效）。</td></tr>
+          <tr><td>Jest</td><td><span class="pill green">fresh run 通過</span></td><td>2026-10-01：<code><!-- ffb:suites -->48<!-- /ffb:suites --> suites / <!-- ffb:tests -->754<!-- /ffb:tests --> tests</code>，0 failed、0 skipped（worktree 實跑，取值請帶 <code>--testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</code>；Git Bash 下不能寫裸 <code>'/\.claude/'</code>，會被改寫成路徑而失效）。</td></tr>
           <tr><td>Manual QA</td><td><span class="pill red">待真瀏覽器重跑</span></td><td>Phase 0-C～4-B：<code>60 TC / 32 PASS / 4 FAIL / 24 SKIP</code>。QA-P1-001、QA-P1-003、QA-P2-002 已於 2026-07-28 修復並補回歸測試；4 個失敗 TC 的真瀏覽器重跑清單、加上同日接線輪 6 條的新驗收項，都在 <code>MANUAL-QA.md</code>。完整報告見 <code>qa-reports/fan-fan-ba-qa-report-20260724.html</code>。</td></tr>
           <tr><td>OAuth / Cloud Sync</td><td><span class="pill red">T7 待人工</span></td><td>Chrome native auth 與 Edge Web Auth fallback 都要回填結果；Google Cloud Console 設定送審前必查。</td></tr>
           <tr><td>Chrome Web Store</td><td><span class="pill orange">checkpoint</span></td><td>等產品打磨完成後，再依 <code>STORE-SUBMISSION.md</code> 送審。</td></tr>

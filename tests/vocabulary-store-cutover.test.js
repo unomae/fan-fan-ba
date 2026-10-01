@@ -102,6 +102,29 @@ describe('cutover：IDB → mirror-only', () => {
     expect(data[SNAPSHOT_KEY]).toBeUndefined();
   });
 
+  // 四級評分欄位：cutover 是整筆勝出，ease／intervalDays／reps 要跟著勝方，不拆不丟
+  it('四級評分欄位跟著勝方整筆走（IDB 較新帶進來、鏡像較新不被 IDB 蓋掉）', async () => {
+    const mirrorSrs = { status: 'known', ease: 2.65, intervalDays: 23, reps: 4, reviewedAt: '2026-07-10T00:00:00.000Z', nextReviewAt: '2026-08-02T00:00:00.000Z' };
+    const idbSrs = { status: 'known', ease: 2.2, intervalDays: 18, reps: 3, reviewedAt: '2026-07-12T00:00:00.000Z', nextReviewAt: '2026-07-30T00:00:00.000Z' };
+    const mirror = {
+      'en:mirrorwins': entry('en:mirrorwins', 'mirrorwins', mirrorSrs),
+      'en:idbwins': entry('en:idbwins', 'idbwins', { status: 'learning', reviewedAt: '2026-07-01T00:00:00.000Z' })
+    };
+    const idbRows = [
+      entry('en:mirrorwins', 'mirrorwins', { status: 'learning', ease: 1.3, intervalDays: 1, reps: 0, reviewedAt: '2026-07-01T00:00:00.000Z' }),
+      entry('en:idbwins', 'idbwins', idbSrs)
+    ];
+    const data = installStatefulLocalStorage({ [KEY]: mirror });
+    global.indexedDB = makeFakeIndexedDb(idbRows);
+
+    const Store = freshStore();
+    await Store.listItems();
+
+    expect(data[KEY]['en:mirrorwins']).toMatchObject(mirrorSrs);
+    expect(data[KEY]['en:idbwins']).toMatchObject(idbSrs);
+    expect(global.indexedDB.state.deleted).toContain(DB_NAME); // 守門通過才刪庫
+  });
+
   it('冪等重試不覆寫備份鍵（write-if-absent）', async () => {
     const data = installStatefulLocalStorage({
       [KEY]: { 'en:cat': entry('en:cat', 'cat') }

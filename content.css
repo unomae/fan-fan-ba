@@ -121,6 +121,14 @@
   gap: 6px !important;
 }
 
+/* 複習模式的四級評分：在單字下方橫跨整張卡、四顆等寬 */
+.g-vocab-review-grades {
+  grid-column: 1 / -1 !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+}
+
 .g-vocab-panel-word {
   color: #1f2937 !important;
   font-size: 15px !important;

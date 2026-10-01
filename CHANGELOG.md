@@ -3,6 +3,27 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-10-01 — 單字卡四級評分
+
+**範圍**：單字本「今日複習」的「記得／還不熟」兩顆改成「忘了／吃力／記得／很熟」四顆，排程改用簡化 SM-2；每顆按鈕滑過去顯示幾天後再複習。其他分頁的「我記得了／還不熟」切換保留。
+
+**做法**：
+- 排程（`content/vocabulary.js`）：新增欄位 `ease`（預設 2.5、下限 1.3）、`intervalDays`（上限 365 天）、`reps`。忘了：重來、隔天、ease −0.2；吃力：間隔 ×1.2、ease −0.15；記得：第一次 1 天、之後 ×ease（至少多 1 天）；很熟：第一次 4 天、之後 ×ease×1.3、ease +0.15。`nextReviewAt` 一律等於 `reviewedAt` 加 `intervalDays` 天。
+- `status` 跟著這次評分走：忘了／吃力＝還不熟，記得／很熟＝已記得，所以「已記得／還不熟／錯題回看」篩選仍是「上一次複習的結果」。列表上的切換改成套用舊資料的對照值（已記得 7 天、還不熟 1 天），ease 保留。
+- 舊資料：只有 `status` 的條目在讀取時才推導初始值（learning → 1 天、reps 0；known → 7 天、reps 1；ease 2.5），**不批次改寫 storage**，第一次評分才寫回。存著的三欄只有在「`nextReviewAt` − `reviewedAt` 剛好等於 `intervalDays`」時才採用；尚未升級的裝置只會改 `status` 與兩個日期、把三欄原樣留著，日期對不上就改回 `status` 對照值（ease 沿用）。
+- 資料層：`vocabulary-backup.js` 的合併與 `vocabulary-store.js` 的 cutover 都是整筆跟著勝方，邏輯不用改，只補測試鎖住三欄跟著 `status` 等複習欄位一起走、不各自取新，勝方沒有的欄位也不會從敗方補過來。完整 CSV 匯出加 `ease`、`intervalDays`、`reps` 三欄（14 → 17 欄），沒評過分的舊條目留空；浮球「複製今日 CSV」8 欄不變。單字本仍只存本機、不進雲端同步，資料流向沒變。
+
+**刻意變更的既有測試**：`floating-ball.test.js` 錯題回看那條改驗四顆按鈕與「很熟」寫回；`vocabulary-backup.test.js` 的 CSV 表頭與 round-trip 改成 17 欄；`render-parity` 基準檔只替換 `vocab-panel` 一個情境（今日複習的按鈕換了；其他 16 個情境不動）；e2e `legacy-regression` §6-2／§6-3 改成點「記得」與「忘了」並驗評分欄位，條數不變；`e2e/README.md` 陷阱說明改成 `[data-review-grade]`。
+
+**驗證**：
+- 新增 13 條：`tests/content/vocabulary.test.js` 8 條（舊資料推導、欄位與日期對不上時退回、從還不熟與已記得各按四級、ease 下限與間隔上限、寫回與日期、列表切換、按鈕提示天數）、`tests/vocabulary-backup.test.js` 4 條（三欄跟著勝方、勝方沒有不補、JSON 匯出入不掉欄位且型別不變、CSV 三欄）、`tests/vocabulary-store-cutover.test.js` 1 條（cutover 兩方向）。
+- 全套 48 suites／754 tests exit 0、0 skipped（worktree 內實跑）。
+- **fail-then-pass**：十四個突變，十三個變紅、還原後 SHA-256 一致——已記得對照成 1 天（紅 5）、日期對不上仍信任欄位（紅 1）、忘了不重設 reps（紅 1）、很熟少乘 1.3（紅 2）、ease 沒有下限（紅 1）、間隔沒有上限（紅 1）、吃力算已記得（紅 2）、列表切換重設 ease（紅 1）、合併時 ease 各自取（紅 2）、備份正規化掉欄位（紅 3）、CSV 少一欄（紅 3）、cutover 勝出時丟欄位（紅 1）、按鈕一律送「記得」（紅 1）；「`reviewVocabularyEntry` 不擋未知評分」沒變紅——排程函式本身就會擋，那行是多餘的，已拿掉。
+- 實機（Windows、Chromium 1161、真擴充、全新拋棄式 profile）：塞四筆只有 `status` 的舊格式單字，今日複習每張卡四顆按鈕的提示天數與單元測試一致（還不熟 1／1／1／4、已記得 1／8／18／23）；四個字各按一級，寫回的 status／ease／intervalDays／reps 與距今天數都符合預期，按完全部離開今日複習，錯題回看剩「忘了」與「吃力」那兩個；390px 寬加深色模式四顆排成一列、畫面不左右捲動；console 0 錯誤。
+- e2e：全新 profile 41 PASS／0 FAIL／4 PARTIAL，與基準相同（§6-2／§6-3 是改過的新斷言，實跑通過）。
+
+**未驗**：真的從舊版升級（實機是直接塞舊格式資料，不是裝舊版再升級）；Mac 實機；匯出 CSV 用 Excel 開。列入 `MANUAL-QA.md`「單字卡四級評分」。
+
 ## 2026-10-01 — 模型比較頁
 
 **範圍**：設定頁新增「模型比較」分頁：輸入一段文字（最多 2000 字）、勾選要比的模型，按「開始比較」同時送出，並排顯示各模型的譯文與耗時；單一模型失敗只影響自己那張卡片。

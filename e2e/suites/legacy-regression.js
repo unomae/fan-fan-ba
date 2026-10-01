@@ -255,24 +255,30 @@ module.exports = {
         activeTab === 'review' && due.length > 0 && !due.includes('known1'),
         `預設分頁=${activeTab}／清單 ${JSON.stringify(due)}（已記得的不該在此）`);
 
-      // 今日複習分頁的按鈕是 [data-vocab-review][data-review-status]，不是 [data-vocab-status]
-      const clickReview = async status => {
-        const sel = `[data-review-status="${status}"]`;
+      // 今日複習分頁是四級評分鈕 [data-vocab-review][data-review-grade]，不是 [data-vocab-status]
+      const clickReview = async grade => {
+        const sel = `[data-review-grade="${grade}"]`;
         if (!await web.locator(sel).count()) return null;
         const id = await web.locator(sel).first().getAttribute('data-vocab-review');
         await web.locator(sel).first().click();
         await web.waitForTimeout(1500);
         const it = (await H.send(opt, 'get', { id })).item;
-        return { id, status: it?.status, days: it?.nextReviewAt ? Math.round((Date.parse(it.nextReviewAt) - Date.now()) / 864e5) : null };
+        return {
+          id, status: it?.status, ease: it?.ease, intervalDays: it?.intervalDays, reps: it?.reps,
+          days: it?.nextReviewAt ? Math.round((Date.parse(it.nextReviewAt) - Date.now()) / 864e5) : null
+        };
       };
-      const r7 = await clickReview('known');
-      rec.pass('§6-2 點「記得」→ 已記得、約 7 天後',
-        !!r7 && r7.status === 'known' && r7.days >= 6 && r7.days <= 8,
-        r7 ? `${r7.id}：status=${r7.status}、距今 ${r7.days} 天（期望 7）` : '找不到「記得」鈕');
-      const r1 = await clickReview('learning');
-      rec.pass('§6-3 點「還不熟」→ 維持 learning、約 1 天後',
-        !!r1 && r1.status === 'learning' && r1.days >= 0 && r1.days <= 2,
-        r1 ? `${r1.id}：status=${r1.status}、距今 ${r1.days} 天（期望 1）` : '找不到「還不熟」鈕');
+      // 種子是沒有評分欄位的舊條目（status learning → 初始 1 天、ease 2.5、reps 0）
+      const rGood = await clickReview('good');
+      rec.pass('§6-2 舊條目點「記得」→ 已記得、首次約 1 天後、寫入評分欄位',
+        !!rGood && rGood.status === 'known' && rGood.intervalDays === 1 && rGood.reps === 1 && rGood.ease === 2.5
+          && rGood.days >= 0 && rGood.days <= 2,
+        rGood ? `${rGood.id}：status=${rGood.status}、ease=${rGood.ease}、intervalDays=${rGood.intervalDays}、reps=${rGood.reps}、距今 ${rGood.days} 天（期望 known／2.5／1／1）` : '找不到「記得」鈕');
+      const rAgain = await clickReview('again');
+      rec.pass('§6-3 舊條目點「忘了」→ 維持 learning、約 1 天後、ease 降到 2.3',
+        !!rAgain && rAgain.status === 'learning' && rAgain.intervalDays === 1 && rAgain.reps === 0 && rAgain.ease === 2.3
+          && rAgain.days >= 0 && rAgain.days <= 2,
+        rAgain ? `${rAgain.id}：status=${rAgain.status}、ease=${rAgain.ease}、intervalDays=${rAgain.intervalDays}、距今 ${rAgain.days} 天（期望 learning／2.3／1）` : '找不到「忘了」鈕');
 
       await web.click('[data-filter="weak"]');
       await web.waitForTimeout(800);

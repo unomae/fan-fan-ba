@@ -117,12 +117,62 @@ describe('vocabulary backup', () => {
       expect(items['en:cat'].lastSeenAt).toBe('2026-06-10T00:00:00.000Z');
     });
 
+    // 四級評分新增的 ease／intervalDays／reps 屬於複習狀態，要跟 status 等三欄一起整組跟著勝方走，
+    // 不能各自取新——拆開會併出「status 來自 A、intervalDays 來自 B」的排程
+    it('moves ease / intervalDays / reps together with the merge winner', () => {
+      const older = { status: 'learning', ease: 2.3, intervalDays: 1, reps: 0, reviewedAt: '2026-06-01T00:00:00.000Z', nextReviewAt: '2026-06-02T00:00:00.000Z' };
+      const newer = { status: 'known', ease: 2.65, intervalDays: 23, reps: 4, reviewedAt: '2026-06-20T00:00:00.000Z', nextReviewAt: '2026-07-13T00:00:00.000Z' };
+
+      const incomingWins = Backup.mergeBackup(
+        { 'en:cat': entry('en:cat', 'cat', { count: 9, ...older }) },
+        { 'en:cat': entry('en:cat', 'cat', { count: 2, ...newer }) }
+      ).items['en:cat'];
+      expect(incomingWins).toMatchObject(newer);
+
+      const existingWins = Backup.mergeBackup(
+        { 'en:cat': entry('en:cat', 'cat', { count: 1, ...newer }) },
+        { 'en:cat': entry('en:cat', 'cat', { count: 8, ...older }) }
+      ).items['en:cat'];
+      expect(existingWins).toMatchObject(newer);
+    });
+
+    // 新版複習較新、但另一台還沒升級（沒有這三欄）：勝方沒有的欄位不得從敗方補進來
+    it('does not graft SRS fields from the losing side onto a winner without them', () => {
+      const existing = { 'en:cat': entry('en:cat', 'cat', {
+        status: 'known', ease: 1.9, intervalDays: 30, reps: 5,
+        reviewedAt: '2026-06-01T00:00:00.000Z', nextReviewAt: '2026-07-01T00:00:00.000Z'
+      }) };
+      const incoming = { 'en:cat': entry('en:cat', 'cat', {
+        status: 'learning', reviewedAt: '2026-06-20T00:00:00.000Z', nextReviewAt: '2026-06-21T00:00:00.000Z'
+      }) };
+      const merged = Backup.mergeBackup(existing, incoming).items['en:cat'];
+      expect(merged).toMatchObject({ status: 'learning', reviewedAt: '2026-06-20T00:00:00.000Z' });
+      expect(merged.ease).toBeUndefined();
+      expect(merged.intervalDays).toBeUndefined();
+      expect(merged.reps).toBeUndefined();
+    });
+
     it('replace mode discards existing entries', () => {
       const existing = { 'en:cat': entry('en:cat', 'cat') };
       const incoming = { 'en:dog': entry('en:dog', 'dog') };
       const { items, summary } = Backup.mergeBackup(existing, incoming, 'replace');
       expect(Object.keys(items)).toEqual(['en:dog']);
       expect(summary).toMatchObject({ added: 1, total: 1 });
+    });
+  });
+
+  describe('JSON 備份 round-trip（四級評分欄位）', () => {
+    it('keeps ease / intervalDays / reps with their number types through export and import', () => {
+      const srs = { status: 'known', ease: 2.65, intervalDays: 23, reps: 4, reviewedAt: '2026-06-20T00:00:00.000Z', nextReviewAt: '2026-07-13T00:00:00.000Z' };
+      const json = JSON.stringify(Backup.buildBackup({ 'en:cat': entry('en:cat', 'cat', srs), 'en:dog': entry('en:dog', 'dog', { status: 'learning' }) }));
+      const parsed = Backup.parseBackup(json);
+
+      expect(parsed['en:cat']).toEqual(entry('en:cat', 'cat', srs));
+      // 匯入到空單字本與合併到既有單字本都不掉欄位
+      expect(Backup.mergeBackup({}, parsed).items['en:cat']).toEqual(entry('en:cat', 'cat', srs));
+      expect(Backup.mergeBackup({}, parsed, 'replace').items['en:cat']).toEqual(entry('en:cat', 'cat', srs));
+      // 舊條目沒有這三欄，round-trip 後也不會憑空長出來
+      expect(parsed['en:dog']).not.toHaveProperty('ease');
     });
   });
 
@@ -140,14 +190,24 @@ describe('vocabulary backup', () => {
 
       expect(rows[0]).toEqual([
         'word', 'lang', 'pos', 'translations', 'definition', 'count', 'createdAt',
-        'lastSeenAt', 'status', 'reviewedAt', 'nextReviewAt', 'sourceTitle',
-        'sourceUrl', 'sourceContext'
+        'lastSeenAt', 'status', 'reviewedAt', 'nextReviewAt', 'ease', 'intervalDays',
+        'reps', 'sourceTitle', 'sourceUrl', 'sourceContext'
       ]);
       expect(rows[1]).toContain('Beacon');
       expect(rows[1]).toContain('燈塔；信標');
       expect(rows[1]).toContain('https://example.com');
       // D5：status 欄真的匯出值（原 familiarity 欄無寫入端、恆為空字串）
       expect(rows[1]).toContain('learning');
+    });
+
+    it('exports the four-grade SRS columns, leaving them blank for entries never graded', () => {
+      const rows = Backup.buildCsvRows({
+        'en:graded': entry('en:graded', 'graded', { lastSeenAt: '2026-06-02T00:00:00.000Z', status: 'known', ease: 2.65, intervalDays: 23, reps: 4 }),
+        'en:legacy': entry('en:legacy', 'legacy', { status: 'learning' })
+      });
+      const col = (row, name) => row[rows[0].indexOf(name)];
+      expect([col(rows[1], 'ease'), col(rows[1], 'intervalDays'), col(rows[1], 'reps')]).toEqual(['2.65', '23', '4']);
+      expect([col(rows[2], 'ease'), col(rows[2], 'intervalDays'), col(rows[2], 'reps')]).toEqual(['', '', '']);
     });
 
     it('emits BOM, CRLF and quotes cells containing commas or quotes', () => {
@@ -228,7 +288,7 @@ describe('vocabulary backup', () => {
       return rows;
     }
 
-    it('每一列都是 14 欄，惡意與多行值都完整讀回', () => {
+    it('每一列都是 17 欄，惡意與多行值都完整讀回', () => {
       const csv = Backup.buildVocabularyCsv({
         'en:nasty': entry('en:nasty', 'Signal, flare', {
           translations: ['信號彈', '照明彈'],
@@ -249,9 +309,9 @@ describe('vocabulary backup', () => {
 
       const rows = parseCsv(csv);
       const header = rows[0];
-      expect(header).toHaveLength(14);
+      expect(header).toHaveLength(17);
       expect(rows).toHaveLength(5);
-      rows.forEach(row => expect(row).toHaveLength(14));
+      rows.forEach(row => expect(row).toHaveLength(17));
 
       const byWord = new Map(rows.slice(1).map(row => [row[0], row]));
       const col = (word, name) => byWord.get(word)[header.indexOf(name)];

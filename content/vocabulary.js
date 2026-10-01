@@ -7,6 +7,12 @@ const VOCABULARY_SRS_INTERVAL_DAYS = {
   learning: 1,
   known: 7
 };
+// 四級評分（簡化 SM-2）：ease 預設 2.5、下限 1.3；間隔以天計、上限 365 天
+const VOCABULARY_SRS_DEFAULT_EASE = 2.5;
+const VOCABULARY_SRS_MIN_EASE = 1.3;
+const VOCABULARY_SRS_MAX_INTERVAL_DAYS = 365;
+const VOCABULARY_SRS_GRADES = ['again', 'hard', 'good', 'easy'];
+const VOCABULARY_DAY_MS = 24 * 60 * 60 * 1000;
 
 function getVocabularyId(word, lang) {
   const normalizedWord = String(word || '')
@@ -79,17 +85,33 @@ async function deleteVocabularyEntry(id) {
   return Boolean(response.deleted);
 }
 
+// 列表上的「我記得了／還不熟」切換：間隔與次數套用舊資料的對照值，ease 保留
 async function updateVocabularyEntryStatus(id, status) {
   const normalizedStatus = status === 'known' ? 'known' : 'learning';
   const existing = await getVocabularyEntry(id);
   if (!existing) return null;
+  const reviewedAt = new Date().toISOString();
+  const defaults = getVocabularySrsDefaults(normalizedStatus);
   const updated = {
     ...existing,
     status: normalizedStatus,
-    reviewedAt: new Date().toISOString()
+    ease: getVocabularySrsState(existing).ease,
+    intervalDays: defaults.intervalDays,
+    reps: defaults.reps,
+    reviewedAt,
+    nextReviewAt: addVocabularyDays(reviewedAt, defaults.intervalDays)
   };
-  updated.nextReviewAt = getVocabularyNextReviewAt(updated, updated.reviewedAt);
   return upsertVocabularyEntry(updated);
+}
+
+// 複習卡的四級評分：算出下一次排程後整筆寫回
+async function reviewVocabularyEntry(id, grade) {
+  const existing = await getVocabularyEntry(id);
+  if (!existing) return null;
+  return upsertVocabularyEntry({
+    ...existing,
+    ...scheduleVocabularyReview(existing, grade, new Date().toISOString())
+  });
 }
 
 async function saveVocabularyEntry(dictData, selectedText) {
@@ -338,6 +360,73 @@ function getVocabularyNextReviewAt(item, reviewedAt = new Date().toISOString()) 
     ? VOCABULARY_SRS_INTERVAL_DAYS[status]
     : VOCABULARY_SRS_INTERVAL_DAYS.new;
   return new Date(reviewedTime + intervalDays * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function addVocabularyDays(isoTime, days) {
+  return new Date(Date.parse(isoTime) + days * VOCABULARY_DAY_MS).toISOString();
+}
+
+function roundVocabularyEase(value) {
+  return Math.max(VOCABULARY_SRS_MIN_EASE, Math.round(value * 100) / 100);
+}
+
+function getVocabularySrsDefaults(status) {
+  return status === 'known'
+    ? { ease: VOCABULARY_SRS_DEFAULT_EASE, intervalDays: VOCABULARY_SRS_INTERVAL_DAYS.known, reps: 1 }
+    : { ease: VOCABULARY_SRS_DEFAULT_EASE, intervalDays: VOCABULARY_SRS_INTERVAL_DAYS.learning, reps: 0 };
+}
+
+// 讀出目前的排程狀態。舊條目只有 status，這裡才推導初始值（不批次改寫 storage）。
+// 只有在「nextReviewAt − reviewedAt 剛好等於 intervalDays」時才信任存著的欄位：
+// 尚未升級的裝置只會改 status 與兩個日期、把這三欄原樣留著，日期對不上就代表
+// 欄位已過時，改以 status 對照值為準（ease 仍可沿用）。
+function getVocabularySrsState(item) {
+  const defaults = getVocabularySrsDefaults(item?.status === 'known' ? 'known' : 'learning');
+  const ease = Number(item?.ease);
+  const intervalDays = Number(item?.intervalDays);
+  const reps = Number(item?.reps);
+  const easeValid = typeof item?.ease === 'number' && Number.isFinite(ease) && ease >= VOCABULARY_SRS_MIN_EASE;
+  const fieldsValid = easeValid
+    && typeof item?.intervalDays === 'number' && Number.isInteger(intervalDays) && intervalDays >= 1
+    && typeof item?.reps === 'number' && Number.isInteger(reps) && reps >= 0;
+  if (!fieldsValid) return easeValid ? { ...defaults, ease } : defaults;
+  const spanDays = (Date.parse(item.nextReviewAt) - Date.parse(item.reviewedAt)) / VOCABULARY_DAY_MS;
+  if (!Number.isFinite(spanDays) || Math.abs(spanDays - intervalDays) > 0.01) return { ...defaults, ease };
+  return { ease, intervalDays, reps };
+}
+
+// 簡化 SM-2。忘了：重來、隔天；吃力：間隔 ×1.2；記得：首次 1 天、之後 ×ease；
+// 很熟：首次 4 天、之後 ×ease×1.3。status 跟著這次評分：忘了／吃力＝還不熟、記得／很熟＝已記得，
+// 讓「已記得／還不熟／錯題回看」篩選維持「上一次複習結果」的意思。
+function computeVocabularySrs(state, grade) {
+  const { ease, intervalDays, reps } = state;
+  const cap = days => Math.min(VOCABULARY_SRS_MAX_INTERVAL_DAYS, Math.max(1, Math.round(days)));
+  const good = reps === 0 ? 1 : cap(Math.max(intervalDays + 1, intervalDays * ease));
+  if (grade === 'again') return { ease: roundVocabularyEase(ease - 0.2), intervalDays: 1, reps: 0 };
+  if (grade === 'hard') return { ease: roundVocabularyEase(ease - 0.15), intervalDays: cap(intervalDays * 1.2), reps: reps + 1 };
+  if (grade === 'good') return { ease, intervalDays: good, reps: reps + 1 };
+  const easy = reps === 0 ? 4 : cap(Math.max(good + 1, intervalDays * ease * 1.3));
+  return { ease: roundVocabularyEase(ease + 0.15), intervalDays: easy, reps: reps + 1 };
+}
+
+function scheduleVocabularyReview(item, grade, reviewedAt = new Date().toISOString()) {
+  if (!VOCABULARY_SRS_GRADES.includes(grade)) throw new Error('未知的複習評分');
+  const next = computeVocabularySrs(getVocabularySrsState(item), grade);
+  return {
+    status: grade === 'again' || grade === 'hard' ? 'learning' : 'known',
+    ...next,
+    reviewedAt,
+    nextReviewAt: addVocabularyDays(reviewedAt, next.intervalDays)
+  };
+}
+
+// 按鈕提示用：每一級按下去後幾天再複習
+function previewVocabularyReviewIntervals(item) {
+  const state = getVocabularySrsState(item);
+  return VOCABULARY_SRS_GRADES.reduce((acc, grade) => {
+    acc[grade] = computeVocabularySrs(state, grade).intervalDays;
+    return acc;
+  }, {});
 }
 
 // CSV 公式注入防護（2026-08-13 TC-F3-004 實測抓到）：Excel／Sheets 會把

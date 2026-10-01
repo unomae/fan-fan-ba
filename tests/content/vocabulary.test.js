@@ -336,3 +336,127 @@ describe('Vocabulary storage helper', () => {
     expect(updated.obsidianExportedAt).toBe(before.obsidianExportedAt);
   });
 });
+
+// 單字卡四級評分：簡化 SM-2（ease／intervalDays／reps）。
+// 舊資料只有 status，讀取時才推導初始值、不批次改寫 storage；第一次評分才寫回。
+describe('Vocabulary four-grade review scheduling', () => {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const NOW = '2026-05-26T04:00:00.000Z';
+
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(new Date(NOW));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  const state = (context, item) => ({ ...context.getVocabularySrsState(item) });
+
+  it('migrates legacy status into initial SRS values without touching storage', () => {
+    const { context } = createVocabularyContext();
+    expect(state(context, { id: 'en:a', word: 'a', status: 'learning' })).toEqual({ ease: 2.5, intervalDays: 1, reps: 0 });
+    expect(state(context, { id: 'en:b', word: 'b', status: 'known' })).toEqual({ ease: 2.5, intervalDays: 7, reps: 1 });
+    // 沒有 status（很舊的條目）視同 learning
+    expect(state(context, { id: 'en:c', word: 'c' })).toEqual({ ease: 2.5, intervalDays: 1, reps: 0 });
+    // 欄位壞掉（字串、負數、低於 ease 下限）一律退回 status 對照
+    expect(state(context, { id: 'en:d', word: 'd', status: 'known', ease: 'x', intervalDays: -3, reps: 1.5 }))
+      .toEqual({ ease: 2.5, intervalDays: 7, reps: 1 });
+  });
+
+  it('trusts stored SRS fields only when they still match the stored review dates', () => {
+    const { context } = createVocabularyContext();
+    const consistent = {
+      id: 'en:a', word: 'a', status: 'known', ease: 2.2, intervalDays: 18, reps: 3,
+      reviewedAt: '2026-05-01T00:00:00.000Z', nextReviewAt: '2026-05-19T00:00:00.000Z'
+    };
+    expect(state(context, consistent)).toEqual({ ease: 2.2, intervalDays: 18, reps: 3 });
+
+    // 舊版裝置只改 status／reviewedAt／nextReviewAt、把新欄位原樣留著：日期對不上 → 以 status 為準、保留 ease
+    const touchedByOldVersion = {
+      ...consistent, status: 'learning',
+      reviewedAt: '2026-05-20T00:00:00.000Z', nextReviewAt: '2026-05-21T00:00:00.000Z'
+    };
+    expect(state(context, touchedByOldVersion)).toEqual({ ease: 2.2, intervalDays: 1, reps: 0 });
+  });
+
+  it('schedules the four grades from a migrated learning entry', () => {
+    const { context } = createVocabularyContext();
+    const item = { id: 'en:a', word: 'a', status: 'learning' };
+    const pick = grade => {
+      const next = context.scheduleVocabularyReview(item, grade, NOW);
+      return { status: next.status, ease: next.ease, intervalDays: next.intervalDays, reps: next.reps };
+    };
+    expect(pick('again')).toEqual({ status: 'learning', ease: 2.3, intervalDays: 1, reps: 0 });
+    expect(pick('hard')).toEqual({ status: 'learning', ease: 2.35, intervalDays: 1, reps: 1 });
+    expect(pick('good')).toEqual({ status: 'known', ease: 2.5, intervalDays: 1, reps: 1 });
+    expect(pick('easy')).toEqual({ status: 'known', ease: 2.65, intervalDays: 4, reps: 1 });
+  });
+
+  it('schedules the four grades from a migrated known entry', () => {
+    const { context } = createVocabularyContext();
+    const item = { id: 'en:b', word: 'b', status: 'known' };
+    const pick = grade => {
+      const next = context.scheduleVocabularyReview(item, grade, NOW);
+      return { status: next.status, ease: next.ease, intervalDays: next.intervalDays, reps: next.reps };
+    };
+    expect(pick('again')).toEqual({ status: 'learning', ease: 2.3, intervalDays: 1, reps: 0 });
+    expect(pick('hard')).toEqual({ status: 'learning', ease: 2.35, intervalDays: 8, reps: 2 });
+    expect(pick('good')).toEqual({ status: 'known', ease: 2.5, intervalDays: 18, reps: 2 });
+    expect(pick('easy')).toEqual({ status: 'known', ease: 2.65, intervalDays: 23, reps: 2 });
+  });
+
+  it('keeps ease above the floor and intervals under the cap', () => {
+    const { context } = createVocabularyContext();
+    const low = {
+      id: 'en:low', word: 'low', status: 'learning', ease: 1.35, intervalDays: 1, reps: 0,
+      reviewedAt: '2026-05-25T04:00:00.000Z', nextReviewAt: '2026-05-26T04:00:00.000Z'
+    };
+    expect(context.scheduleVocabularyReview(low, 'again', NOW).ease).toBe(1.3);
+    expect(context.scheduleVocabularyReview({ ...low, ease: 1.3 }, 'hard', NOW).ease).toBe(1.3);
+
+    const long = {
+      id: 'en:long', word: 'long', status: 'known', ease: 3, intervalDays: 300, reps: 6,
+      reviewedAt: '2025-07-30T04:00:00.000Z', nextReviewAt: '2026-05-26T04:00:00.000Z'
+    };
+    expect(context.scheduleVocabularyReview(long, 'easy', NOW).intervalDays).toBe(365);
+    expect(context.scheduleVocabularyReview(long, 'good', NOW).intervalDays).toBe(365);
+  });
+
+  it('writes the graded entry back with nextReviewAt = reviewedAt + intervalDays', async () => {
+    const { context, localStore } = createVocabularyContext();
+    const { item } = await context.saveVocabularyEntry({ word: 'Harbor', lang: 'en' }, 'Harbor context');
+
+    const reviewed = await context.reviewVocabularyEntry(item.id, 'easy');
+
+    expect(reviewed).toMatchObject({ id: item.id, word: 'Harbor', count: 1, status: 'known', ease: 2.65, intervalDays: 4, reps: 1 });
+    expect(reviewed.reviewedAt).toBe(NOW);
+    expect(Date.parse(reviewed.nextReviewAt) - Date.parse(reviewed.reviewedAt)).toBe(4 * DAY_MS);
+    expect(localStore.fanFanBaVocabularyItems[item.id]).toMatchObject({ ease: 2.65, intervalDays: 4, reps: 1 });
+    // 寫回後再讀，欄位與日期一致 → 直接信任，不會被退回 status 對照
+    expect(state(context, localStore.fanFanBaVocabularyItems[item.id])).toEqual({ ease: 2.65, intervalDays: 4, reps: 1 });
+
+    await expect(context.reviewVocabularyEntry(item.id, 'perfect')).rejects.toThrow();
+    expect(await context.reviewVocabularyEntry('en:missing', 'good')).toBeNull();
+  });
+
+  it('keeps the list-view status toggle consistent with the SRS fields', async () => {
+    const { context, localStore } = createVocabularyContext();
+    const { item } = await context.saveVocabularyEntry({ word: 'Tide', lang: 'en' }, 'Tide context');
+    await context.reviewVocabularyEntry(item.id, 'hard'); // ease 2.35
+
+    const known = await context.updateVocabularyEntryStatus(item.id, 'known');
+    expect(known).toMatchObject({ status: 'known', ease: 2.35, intervalDays: 7, reps: 1 });
+    expect(known.nextReviewAt).toBe('2026-06-02T04:00:00.000Z');
+
+    const learning = await context.updateVocabularyEntryStatus(item.id, 'learning');
+    expect(learning).toMatchObject({ status: 'learning', ease: 2.35, intervalDays: 1, reps: 0 });
+    expect(state(context, localStore.fanFanBaVocabularyItems[item.id])).toEqual({ ease: 2.35, intervalDays: 1, reps: 0 });
+  });
+
+  it('previews the next interval of each grade for the button hints', () => {
+    const { context } = createVocabularyContext();
+    expect({ ...context.previewVocabularyReviewIntervals({ id: 'en:b', word: 'b', status: 'known' }) })
+      .toEqual({ again: 1, hard: 8, good: 18, easy: 23 });
+  });
+});

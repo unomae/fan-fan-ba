@@ -532,13 +532,19 @@ describe('floating vocabulary panel', () => {
     expect([...document.querySelectorAll('.g-vocab-panel-word')].map(node => node.textContent)).toEqual(['Compass', 'Beacon']);
     expect(document.querySelector('.g-vocab-panel-meta').textContent).toContain('錯題回看');
     expect(document.querySelector('.g-vocab-panel-meta').textContent).toContain('到期');
-    expect(document.querySelector('[data-vocab-review="en:compass"][data-review-status="known"]').textContent).toBe('記得');
-    expect(document.querySelector('[data-vocab-review="en:compass"][data-review-status="learning"]').textContent).toBe('還不熟');
+    // 四級評分：按鈕順序與文字固定，提示顯示按下去後幾天再複習（舊條目 learning → 1／1／1／4 天）
+    const grades = [...document.querySelectorAll('[data-vocab-review="en:compass"]')];
+    expect(grades.map(node => [node.dataset.reviewGrade, node.textContent, node.title])).toEqual([
+      ['again', '忘了', '1 天後再複習'],
+      ['hard', '吃力', '1 天後再複習'],
+      ['good', '記得', '1 天後再複習'],
+      ['easy', '很熟', '4 天後再複習']
+    ]);
 
-    document.querySelector('[data-vocab-review="en:compass"][data-review-status="known"]').click();
+    document.querySelector('[data-vocab-review="en:compass"][data-review-grade="easy"]').click();
     for (let i = 0; i < 20; i += 1) await Promise.resolve();
 
-    expect(setup.localStore.fanFanBaVocabularyItems['en:compass'].status).toBe('known');
+    expect(setup.localStore.fanFanBaVocabularyItems['en:compass']).toMatchObject({ status: 'known', ease: 2.65, intervalDays: 4, reps: 1 });
     for (let i = 0; i < 20; i += 1) await Promise.resolve();
     expect([...document.querySelectorAll('.g-vocab-panel-word')].map(node => node.textContent)).toEqual(['Beacon']);
   });
