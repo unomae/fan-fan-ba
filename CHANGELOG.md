@@ -3,6 +3,17 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-10-01 — 術語表比對：轉小寫會變長的字元不再讓後面的術語位移
+
+**範圍**：術語比對原本先把整段文字轉小寫找位置，再用同一個位置回原文檢查詞界。土耳其文的 `İ` 轉小寫後會從 1 個字元變成 2 個，所以文字裡只要前面出現 `İ`，後面的位置就全部差一格，詞界檢查讀到錯的字元，術語比對不到（例如 `İstanbul lead time` 比對不到 `lead time`）。
+
+**做法**：`content/glossary.js` 新增 `lowerSameLength()`，逐字轉小寫，轉小寫後長度會變的字元保留原樣，讓小寫字串和原字串的位置一一對應；文字與術語都用它。
+
+**驗證**：
+- `tests/glossary.test.js` 新增 1 條（`İ` 出現在前面時照樣比對得到，且 `leadership` 仍不會被當成 `lead`）。全套 48 suites／755 tests exit 0、0 skipped（worktree 內實跑）。
+- **fail-then-pass**：改回整串 `toLowerCase()` 時新測試變紅（紅 1），還原後 SHA-256 一致。
+- e2e 未重跑：`content/glossary.js` 只由 background 與設定頁載入，不是 content script，這次也沒改 content UI 或 manifest。
+
 ## 2026-10-01 — 單字卡四級評分
 
 **範圍**：單字本「今日複習」的「記得／還不熟」兩顆改成「忘了／吃力／記得／很熟」四顆，排程改用簡化 SM-2；每顆按鈕滑過去顯示幾天後再複習。其他分頁的「我記得了／還不熟」切換保留。

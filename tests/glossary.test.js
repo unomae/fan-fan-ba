@@ -84,6 +84,13 @@ describe('findMatchingTerms', () => {
     expect(findMatchingTerms(terms, '台灣的供應鏈管理').map(term => term.source)).toEqual(['供應鏈']);
   });
 
+  // 有些字元轉小寫後會變長（土耳其文 İ → i̇），前面出現這種字元時，後面的位置不能跟著位移
+  it('轉小寫會變長的字元出現在前面時，後面的術語照樣比對得到、詞界照樣檢查', () => {
+    expect(findMatchingTerms(terms, 'İstanbul lead time').map(term => term.source)).toEqual(['lead time', 'lead']);
+    expect(findMatchingTerms(terms, 'İİİ art')).toHaveLength(1);
+    expect(findMatchingTerms(terms, 'İstanbul leadership')).toEqual([]);
+  });
+
   it('長的詞排前面，一次最多附 30 條', () => {
     const many = Array.from({ length: 40 }, (_, i) => ({ source: `w${i}`, target: `詞${i}` }));
     const text = many.map(term => term.source).join(' ');

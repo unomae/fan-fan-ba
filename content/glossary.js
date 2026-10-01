@@ -74,9 +74,18 @@
     return sites.some(site => host === site || host.endsWith(`.${site}`));
   }
 
+  // 逐字轉小寫但不改變長度：轉小寫後會變長的字元（如土耳其文 İ → i̇）保留原樣，
+  // 小寫字串的位置才能直接拿回原字串切詞界，否則後面的術語全部位移、比對不到
+  function lowerSameLength(text) {
+    return Array.from(text, ch => {
+      const lower = ch.toLowerCase();
+      return lower.length === ch.length ? lower : ch;
+    }).join('');
+  }
+
   function containsTerm(haystack, needle) {
-    const lowerHay = haystack.toLowerCase();
-    const lowerNeedle = needle.toLowerCase();
+    const lowerHay = lowerSameLength(haystack);
+    const lowerNeedle = lowerSameLength(needle);
     const headIsWord = WORD_CHAR.test(Array.from(needle)[0]);
     const tailIsWord = WORD_CHAR.test(Array.from(needle).pop());
     let from = 0;
