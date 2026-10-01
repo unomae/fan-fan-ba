@@ -60,6 +60,10 @@ async function clickSave() {
   for (let i = 0; i < 5; i++) await flush();
 }
 
+// 第一次 require options.js 要轉譯＋插樁，全套平行、快取冷時可能超過 5 秒預設逾時；
+// 先在這裡載入一次，成本不算進第一條測試
+beforeAll(() => loadOptions(), 30000);
+
 describe('設定頁：各功能使用的模型', () => {
   let originalConfirm;
   beforeEach(() => {

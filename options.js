@@ -8,6 +8,7 @@ const Storage = globalThis.FanFanBaStorage || require('./storage');
 const CloudSync = globalThis.FanFanBaCloudSync || require('./cloud-sync');
 const VocabBackup = globalThis.FanFanBaVocabularyBackup || require('./vocabulary-backup');
 const CustomActions = globalThis.FanFanBaCustomActions || require('./custom-actions');
+const Glossary = globalThis.FanFanBaGlossary || require('./content/glossary');
 // 設定頁與 content 共用 DOM helper 與自訂動作版面（瀏覽器端由 <script> 掛在全域）
 const Dom = typeof globalThis.ffbEl === 'function' ? globalThis : require('./content/dom');
 const ActionRender = typeof globalThis.buildCustomActionContent === 'function'
@@ -68,6 +69,7 @@ loadSettings();
 initDiagnosticsPanel();
 initVocabularyBackup();
 initActionEditor();
+initGlossaryEditor();
 initFeatureBadges();
 
 // ── 單字本備份 / 還原（Phase B）──────────────────────
@@ -907,6 +909,13 @@ $('btnSave').addEventListener('click', async () => {
   });
   if (!custom.ok) { showStatus('err', custom.error); return; }
 
+  const glossaryDraft = glossaryEditorLoaded ? readGlossaryEditor() : null;
+  if (glossaryDraft?.errors.length) {
+    activateSettingsPanel('glossary');
+    showStatus('err', `術語表：${glossaryDraft.errors[0]}`);
+    return;
+  }
+
   // 依選擇的模型驗證對應 API Key（前綴與顯示名來源：ModelRegistry.PROVIDERS）
   let removedProviderLabel = '';
   {
@@ -938,6 +947,14 @@ $('btnSave').addEventListener('click', async () => {
   } catch (error) {
     showStatus('err', `各動作的模型沒有存成功：${error.message}`);
     return;
+  }
+  if (glossaryDraft) {
+    try {
+      await chrome.storage.local.set({ [Glossary.STORAGE_KEY]: glossaryDraft.glossary });
+    } catch (error) {
+      showStatus('err', `術語表沒有存成功：${error.message}`);
+      return;
+    }
   }
   showStatus('ok', removedProviderLabel ? `✓ 設定已儲存（${removedProviderLabel} API Key 已移除）` : '✓ 設定已儲存');
 });
@@ -1208,9 +1225,12 @@ function bindCloudSyncControls() {
     const settings = normalizeImportedSettings(payload.settings || {});
     if (!Object.keys(settings).length) throw new Error('雲端設定檔沒有可還原的設定');
     await chrome.storage.sync.set(settings);
+    const cloudGlossary = payload.settings?.glossary && typeof payload.settings.glossary === 'object'
+      ? await saveImportedGlossary(payload.settings.glossary)
+      : null;
     await loadSettings();
     await renderCloudSyncStatus(`已下載雲端設定：${payload.updatedAt || '未知時間'}`);
-    showStatus('ok', `✓ 已還原 ${Object.keys(settings).length} 個一般設定`);
+    showStatus('ok', `✓ 已還原 ${Object.keys(settings).length} 個一般設定${cloudGlossary ? `與術語表（${cloudGlossary.terms.length} 筆）` : ''}`);
   }));
 
   signOutButton?.addEventListener('click', () => runCloudSyncAction(signOutButton, async () => {
@@ -1242,7 +1262,8 @@ async function runCloudSyncAction(button, action) {
 
 async function buildCloudSettingsPayload() {
   const backup = await buildSettingsBackupPayload(false);
-  return CloudSync.buildCloudSettingsPayload(backup.settings, {
+  const settings = backup.glossary ? { ...backup.settings, glossary: backup.glossary } : backup.settings;
+  return CloudSync.buildCloudSettingsPayload(settings, {
     appVersion: chrome.runtime?.getManifest?.().version || ''
   });
 }
@@ -1272,7 +1293,7 @@ async function renderCloudSyncStatus(message = '') {
     ['同步摘要', formatCloudSyncSummary(meta)],
     ['登入狀態', formatCloudSignedInStatus(meta)],
     ['目前版本', getCurrentAppVersion()],
-    ['同步範圍', '一般設定，不含 API Key、單字本、查詢歷史'],
+    ['同步範圍', '一般設定與術語表，不含 API Key、單字本、查詢歷史'],
     ['儲存位置', 'Google Drive 隱藏 appDataFolder'],
     ['操作方向', '上傳：這台覆蓋雲端；下載：雲端覆蓋這台'],
     ['登入流程', authMode],
@@ -1380,6 +1401,10 @@ async function buildSettingsBackupPayload(includeSecrets = false, options = {}) 
   // 動作清單只進本機設定檔、不進雲端同步（雲端 payload 只取 settings）；沒存過就不帶這個鍵
   const { [CustomActions.STORAGE_KEY]: storedActions } = await chrome.storage.local.get({ [CustomActions.STORAGE_KEY]: [] });
   if (Array.isArray(storedActions) && storedActions.length) payload.actions = storedActions;
+
+  // 術語表跟著設定檔匯出，也跟著雲端同步（見 buildCloudSettingsPayload）；空的就不帶
+  const glossary = await loadStoredGlossary();
+  if (glossary.terms.length || glossary.sites.length) payload.glossary = glossary;
 
   return payload;
 }
@@ -1523,8 +1548,9 @@ async function importSettingsBackupFile(file, options = {}) {
   const settings = normalizeImportedSettings(payload.settings || {});
   const secrets = await resolveImportedBackupSecrets(payload, options.password || '');
   const hasActions = Array.isArray(payload.actions);
+  const hasGlossary = !!payload.glossary && typeof payload.glossary === 'object';
 
-  if (!Object.keys(settings).length && !Object.keys(secrets).length && !hasActions) {
+  if (!Object.keys(settings).length && !Object.keys(secrets).length && !hasActions && !hasGlossary) {
     throw new Error('設定檔沒有可匯入的設定');
   }
 
@@ -1534,6 +1560,9 @@ async function importSettingsBackupFile(file, options = {}) {
   // 動作清單整份取代：讀取端容錯（壞掉的自訂動作略過），再走嚴格存檔
   let actions = null;
   if (hasActions) writes.push(CustomActions.saveActionList(CustomActions.normalizeActionList(payload.actions)).then(list => { actions = list; }));
+  // 術語表整份取代，壞掉的列略過
+  let glossary = null;
+  if (hasGlossary) writes.push(saveImportedGlossary(payload.glossary).then(saved => { glossary = saved; }));
   await Promise.all(writes);
   await loadSettings();
   const result = { settingsCount: Object.keys(settings).length, secretsCount: Object.keys(secrets).length };
@@ -1542,6 +1571,7 @@ async function importSettingsBackupFile(file, options = {}) {
     actionListState = actions;
     renderActionList();
   }
+  if (glossary) result.glossaryCount = glossary.terms.length;
   return result;
 }
 
@@ -1615,11 +1645,12 @@ async function readTextFile(file) {
   });
 }
 
-function formatImportSettingsStatus({ settingsCount = 0, secretsCount = 0, actionsCount = null } = {}) {
+function formatImportSettingsStatus({ settingsCount = 0, secretsCount = 0, actionsCount = null, glossaryCount = null } = {}) {
   const parts = [];
   if (settingsCount) parts.push(`${settingsCount} 個設定`);
   if (secretsCount) parts.push(`${secretsCount} 個 API Key`);
   if (actionsCount !== null) parts.push(`動作清單（${actionsCount} 個自訂動作）`);
+  if (glossaryCount !== null) parts.push(`術語表（${glossaryCount} 筆）`);
   return `✓ 設定檔已匯入${parts.length ? `：${parts.join('、')}` : ''}`;
 }
 
@@ -1688,6 +1719,192 @@ const BUILTIN_ACTION_TEMPLATES = {
     ]
   }
 };
+
+// ── 術語表 ─────────────────────────────────────────
+// 編輯器直接用表格列當狀態，按「儲存設定」時才讀回、驗證、寫進 chrome.storage.local。
+// 還沒從 storage 讀完就不寫，免得用空表蓋掉已存的術語表。
+let glossaryEditorLoaded = false;
+const GLOSSARY_CSV_MAX_BYTES = 1024 * 1024;
+
+function setGlossaryStatus(message) {
+  if ($('glossaryStatus')) $('glossaryStatus').textContent = message;
+}
+
+function buildGlossaryRow(term = {}) {
+  const input = (field, label, maxlength) => {
+    const el = Dom.ffbEl('input', { type: 'text', class: `glossary-${field}`, maxlength, 'aria-label': label, autocomplete: 'off', spellcheck: 'false' });
+    el.value = term[field] || '';
+    return el;
+  };
+  const remove = Dom.ffbEl('button', { class: 'btn-test', type: 'button', 'aria-label': '刪除這一列' }, '刪除');
+  const row = Dom.ffbEl('tr', { class: 'glossary-row' }, [
+    Dom.ffbEl('td', null, input('source', '原文', Glossary.MAX_SOURCE_CHARS)),
+    Dom.ffbEl('td', null, input('target', '譯文', Glossary.MAX_TARGET_CHARS)),
+    Dom.ffbEl('td', null, input('note', '備註', Glossary.MAX_NOTE_CHARS)),
+    Dom.ffbEl('td', null, remove)
+  ]);
+  // 改過內容就先拿掉錯誤標示，存檔時再重新檢查
+  row.addEventListener('input', () => row.classList.remove('is-invalid'));
+  remove.addEventListener('click', () => {
+    const rows = $('glossaryRows');
+    const next = row.nextElementSibling || row.previousElementSibling;
+    row.remove();
+    if (!rows.children.length) rows.append(buildGlossaryRow());
+    (next || rows.firstElementChild).querySelector('input').focus();
+  });
+  return row;
+}
+
+function readGlossaryRow(row) {
+  const value = field => row.querySelector(`.glossary-${field}`).value.trim();
+  return { source: value('source'), target: value('target'), note: value('note') };
+}
+
+function isBlankGlossaryRow(row) {
+  const { source, target, note } = readGlossaryRow(row);
+  return !source && !target && !note;
+}
+
+function renderGlossaryEditor(glossary) {
+  const rows = $('glossaryRows');
+  if (!rows) return;
+  const terms = glossary.terms.length ? glossary.terms : [{}];
+  Dom.ffbClear(rows).append(...terms.map(term => buildGlossaryRow(term)));
+  $('glossarySites').value = glossary.sites.join('\n');
+}
+
+// 讀回編輯器內容；有錯就列在 errors，呼叫端不存檔
+function readGlossaryEditor() {
+  const errors = [];
+  const terms = [];
+  const seen = new Set();
+  [...$('glossaryRows').querySelectorAll('.glossary-row')].forEach((row, index) => {
+    row.classList.remove('is-invalid');
+    if (isBlankGlossaryRow(row)) return;
+    const term = readGlossaryRow(row);
+    if (!term.source || !term.target) {
+      errors.push(`第 ${index + 1} 列缺${term.source ? '譯文' : '原文'}`);
+      row.classList.add('is-invalid');
+      return;
+    }
+    const key = term.source.toLowerCase();
+    if (seen.has(key)) {
+      errors.push(`原文重複：${term.source}`);
+      row.classList.add('is-invalid');
+      return;
+    }
+    seen.add(key);
+    terms.push(term);
+  });
+  if (terms.length > Glossary.MAX_TERMS) errors.push(`術語最多 ${Glossary.MAX_TERMS} 筆，目前 ${terms.length} 筆`);
+
+  const sites = $('glossarySites').value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const badSites = sites.filter(site => !Glossary.normalizeSite(site));
+  if (badSites.length) errors.push(`看不懂的網站：${badSites.slice(0, 3).join('、')}`);
+  if (sites.length > Glossary.MAX_SITES) errors.push(`網站最多 ${Glossary.MAX_SITES} 個`);
+
+  return { errors, glossary: Glossary.normalizeGlossary({ terms, sites }) };
+}
+
+async function loadStoredGlossary() {
+  const { [Glossary.STORAGE_KEY]: stored } = await chrome.storage.local.get({ [Glossary.STORAGE_KEY]: null });
+  return Glossary.normalizeGlossary(stored);
+}
+
+async function loadGlossaryEditor() {
+  let glossary = Glossary.normalizeGlossary(null);
+  try {
+    glossary = await loadStoredGlossary();
+  } catch (error) {
+    console.warn('[翻翻吧] 術語表讀取失敗', error);
+  }
+  renderGlossaryEditor(glossary);
+  glossaryEditorLoaded = true;
+  return glossary;
+}
+
+async function saveImportedGlossary(raw) {
+  const glossary = Glossary.normalizeGlossary(raw);
+  await chrome.storage.local.set({ [Glossary.STORAGE_KEY]: glossary });
+  renderGlossaryEditor(glossary);
+  return glossary;
+}
+
+// 匯入的 CSV 接在現有列後面；原文和現有列重複的略過（保留先前那筆）
+async function importGlossaryCsvFile(file) {
+  if (file?.size > GLOSSARY_CSV_MAX_BYTES) {
+    setGlossaryStatus('檔案太大（上限 1MB），請確認是術語表 CSV。');
+    return null;
+  }
+  const { terms, skipped } = Glossary.parseGlossaryCsv(await readTextFile(file));
+  const rows = $('glossaryRows');
+  [...rows.children].forEach(row => { if (isBlankGlossaryRow(row)) row.remove(); });
+  const existing = new Set([...rows.children].map(row => readGlossaryRow(row).source.toLowerCase()));
+  let added = 0;
+  let duplicated = 0;
+  for (const term of terms) {
+    const key = term.source.toLowerCase();
+    if (existing.has(key)) { duplicated++; continue; }
+    existing.add(key);
+    rows.append(buildGlossaryRow(term));
+    added++;
+  }
+  if (!rows.children.length) rows.append(buildGlossaryRow());
+  const parts = [`已加入 ${added} 筆`];
+  if (duplicated) parts.push(`${duplicated} 筆原文重複略過`);
+  if (skipped) parts.push(`${skipped} 列缺原文或譯文略過`);
+  setGlossaryStatus(`${parts.join('，')}；按「儲存設定」才會生效。`);
+  return { added, duplicated, skipped };
+}
+
+function exportGlossaryCsv() {
+  const { terms } = readGlossaryEditor().glossary;
+  if (!terms.length) {
+    setGlossaryStatus('術語表是空的，沒有可匯出的內容。');
+    return null;
+  }
+  // 公式注入防護沿用單字本 CSV 的 escapeCsvCell
+  const csv = Glossary.buildGlossaryCsv(terms, VocabBackup.escapeCsvCell);
+  const blob = new Blob([csv], { type: VocabBackup.CSV_MIME_TYPE });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `fan-fan-ba-glossary-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setGlossaryStatus(`已匯出 ${terms.length} 筆術語成 CSV。`);
+  return csv;
+}
+
+function initGlossaryEditor() {
+  if (!$('glossaryRows')) return undefined;
+  $('btnAddGlossaryTerm').addEventListener('click', () => {
+    const row = buildGlossaryRow();
+    $('glossaryRows').append(row);
+    row.querySelector('input').focus();
+  });
+  $('btnImportGlossary').addEventListener('click', () => $('glossaryCsvFile').click());
+  $('glossaryCsvFile').addEventListener('change', async event => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      await importGlossaryCsvFile(file);
+    } catch {
+      setGlossaryStatus('CSV 讀取失敗，請確認檔案格式。');
+    }
+  });
+  $('btnExportGlossary').addEventListener('click', () => {
+    try {
+      exportGlossaryCsv();
+    } catch {
+      setGlossaryStatus('CSV 匯出失敗，請再試一次。');
+    }
+  });
+  return loadGlossaryEditor();
+}
 
 let actionListState = [];
 let actionEditorState = null; // { action, isNew }
@@ -2098,6 +2315,10 @@ if (typeof module !== 'undefined' && module.exports) {
     renderLanguageSelects,
     initSettingsTabs,
     activateSettingsPanel,
+    readGlossaryEditor,
+    loadGlossaryEditor,
+    importGlossaryCsvFile,
+    exportGlossaryCsv,
     searchSettings,
     jumpToSettingsSearchResult,
     markFeatureSeen,
