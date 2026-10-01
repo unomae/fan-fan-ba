@@ -97,7 +97,7 @@ node e2e/run.js --list
 1. 連續兩案的狀態列訊息可能**字字相同**，別拿「文字有沒有變」當完成訊號 → 先清空再等非空。
 2. `#vocabularyBackupStatus` 沒字時零尺寸，Playwright 判 hidden，不能當分頁就緒探針。
 3. 單字本面板**預設分頁是「今日複習」**（複習佇列順序），驗 `lastSeenAt` 排序要切「全部」。
-4. 今日複習分頁的狀態鈕是 `[data-vocab-review][data-review-status]`，其他分頁才是 `[data-vocab-status]`。
+4. 今日複習分頁是四級評分鈕 `[data-vocab-review][data-review-grade]`（again／hard／good／easy），其他分頁才是 `[data-vocab-status]`。
 5. 高亮案要**先歸零** `vocabularyHighlightMode`，否則第一次點是「關閉」。
 6. 品牌字型只套 `#gemini-result-card *`（浮球刻意用系統字型），且字型用到才載入；
    比對 FontFace 狀態要**精確等於 `loaded`**——`/loaded/` 會 match `unloaded`。

@@ -8,6 +8,7 @@ const Storage = globalThis.FanFanBaStorage || require('./storage');
 const CloudSync = globalThis.FanFanBaCloudSync || require('./cloud-sync');
 const VocabBackup = globalThis.FanFanBaVocabularyBackup || require('./vocabulary-backup');
 const CustomActions = globalThis.FanFanBaCustomActions || require('./custom-actions');
+const Glossary = globalThis.FanFanBaGlossary || require('./content/glossary');
 // 設定頁與 content 共用 DOM helper 與自訂動作版面（瀏覽器端由 <script> 掛在全域）
 const Dom = typeof globalThis.ffbEl === 'function' ? globalThis : require('./content/dom');
 const ActionRender = typeof globalThis.buildCustomActionContent === 'function'
@@ -44,6 +45,16 @@ const DIAGNOSTICS_SETTING_KEYS = [
 // renderVocabularyBackupStaleness() 會在 TDZ 讀到它而炸掉（QA-P2-002）。
 const LAST_VOCAB_BACKUP_KEY = 'lastVocabularyBackupAt';
 const VOCAB_BACKUP_STALE_DAYS = 30;
+// 新功能標籤：已點過的項目 id 存本機（只是介面狀態，不進備份與雲端同步）
+const SEEN_FEATURE_BADGES_KEY = 'seenFeatureBadges';
+const FEATURE_BADGE_TEXT = { new: '新增', updated: '已更新' };
+// 動作清單上的標籤（清單是動態產生的）；其他標籤直接寫在 options.html 的 data-badge-for
+const ACTION_FEATURE_BADGES = { analyze: 'new', optimize: 'updated' };
+const SEARCH_RESULT_LIMIT = 8;
+const SEARCH_HIT_MS = 2000;
+// null＝還沒讀到已看過清單，標籤先全部藏著，避免載入時閃一下
+let seenFeatureBadges = null;
+let settingsSearchState = { results: [], active: 0 };
 // provider 顯示名／key 欄位名／前綴統一取自 ModelRegistry.PROVIDERS（WS-E M3''）
 
 renderModelSelect();
@@ -51,12 +62,16 @@ renderPageTranslationModelSelect();
 renderDictionaryModelSelect();
 renderLanguageSelects();
 initSettingsTabs();
+initSettingsSearch();
 initFeatureModelHints();
 
 loadSettings();
 initDiagnosticsPanel();
 initVocabularyBackup();
 initActionEditor();
+initGlossaryEditor();
+initModelCompare();
+initFeatureBadges();
 
 // ── 單字本備份 / 還原（Phase B）──────────────────────
 function initVocabularyBackup() {
@@ -622,26 +637,231 @@ function renderLanguageSelects() {
   }
 }
 
+function activateSettingsPanel(panelName) {
+  document.querySelectorAll('.settings-tab[data-panel]').forEach(tab => {
+    const isActive = tab.dataset.panel === panelName;
+    tab.classList.toggle('is-active', isActive);
+    tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+
+  document.querySelectorAll('.settings-panel[data-panel-content]').forEach(panel => {
+    panel.hidden = panel.dataset.panelContent !== panelName;
+  });
+}
+
 function initSettingsTabs() {
   const tabs = document.querySelectorAll('.settings-tab[data-panel]');
   const panels = document.querySelectorAll('.settings-panel[data-panel-content]');
   if (!tabs.length || !panels.length) return;
 
-  function activatePanel(panelName) {
-    tabs.forEach(tab => {
-      const isActive = tab.dataset.panel === panelName;
-      tab.classList.toggle('is-active', isActive);
-      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
-    });
-
-    panels.forEach(panel => {
-      panel.hidden = panel.dataset.panelContent !== panelName;
-    });
-  }
-
   tabs.forEach(tab => {
-    tab.addEventListener('click', () => activatePanel(tab.dataset.panel));
+    tab.addEventListener('click', () => activateSettingsPanel(tab.dataset.panel));
   });
+}
+
+// ── 設定搜尋（⌘K／Ctrl+K）────────────────────────────
+// 比對各分頁的標題、小標、欄位標籤與功能說明；選中後切到該分頁、捲過去並短暫高亮。
+// 索引每次搜尋時現場從 DOM 收集，動作清單這類動態列也找得到。
+
+// 取元素的可搜尋文字：去掉新功能標籤、「必填／選填」提示與分頁上的數字
+function searchableText(el) {
+  if (!el) return '';
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll('.feature-badge, .hint, small').forEach(node => node.remove());
+  return clone.textContent.replace(/\s+/g, ' ').trim();
+}
+
+// 元素到所在分頁之間只要有一層 hidden（例如關著的動作編輯器）就不收
+function isHiddenInPanel(el, panel) {
+  for (let node = el; node && node !== panel; node = node.parentElement) {
+    if (node.hidden) return true;
+  }
+  return false;
+}
+
+function collectSettingsSearchEntries() {
+  const entries = [];
+  const seen = new Set();
+  const add = (panel, panelTitle, text, target) => {
+    const key = `${panel}\n${text}`;
+    if (!text || seen.has(key)) return;
+    seen.add(key);
+    entries.push({ panel, panelTitle, text, target });
+  };
+  document.querySelectorAll('.settings-panel[data-panel-content]').forEach(panel => {
+    const panelName = panel.dataset.panelContent;
+    const tab = document.querySelector(`.settings-tab[data-panel="${panelName}"]`);
+    const panelTitle = searchableText(tab) || searchableText(panel.querySelector('h2'));
+    // 左側分頁名稱和面板大標可能不同（「模型與金鑰」／「模型與 API Key」），兩個都收
+    add(panelName, panelTitle, panelTitle, panel.querySelector('.panel-head') || panel);
+    panel.querySelectorAll('h2, h3, label, .field-label, .feature-list li').forEach(el => {
+      if (!isHiddenInPanel(el, panel)) add(panelName, panelTitle, searchableText(el), el);
+    });
+  });
+  return entries;
+}
+
+// 不分大小寫；以空白分開的每個詞都要出現。開頭就符合的排前面。
+function searchSettings(query) {
+  const terms = String(query || '').toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return [];
+  const hits = collectSettingsSearchEntries().filter(entry => {
+    const text = entry.text.toLowerCase();
+    return terms.every(term => text.includes(term));
+  });
+  const starts = hits.filter(entry => entry.text.toLowerCase().startsWith(terms[0]));
+  const rest = hits.filter(entry => !starts.includes(entry));
+  return [...starts, ...rest].slice(0, SEARCH_RESULT_LIMIT);
+}
+
+function setSettingsSearchOpen(open) {
+  const list = $('settingsSearchResults');
+  const input = $('settingsSearch');
+  list.hidden = !open;
+  input.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (!open) input.removeAttribute('aria-activedescendant');
+}
+
+function renderSettingsSearchResults() {
+  const list = $('settingsSearchResults');
+  const input = $('settingsSearch');
+  const { results, active } = settingsSearchState;
+  if (!input.value.trim()) {
+    Dom.ffbClear(list);
+    setSettingsSearchOpen(false);
+    return;
+  }
+  if (!results.length) {
+    Dom.ffbClear(list).append(Dom.ffbEl('li', { class: 'search-empty', role: 'presentation' }, '沒有符合的設定'));
+    setSettingsSearchOpen(true);
+    return;
+  }
+  Dom.ffbClear(list).append(...results.map((entry, index) => {
+    const item = Dom.ffbEl('li', {
+      class: 'search-result',
+      role: 'option',
+      id: `settingsSearchResult${index}`,
+      'aria-selected': index === active ? 'true' : 'false'
+    }, [
+      Dom.ffbEl('span', null, entry.text),
+      entry.text !== entry.panelTitle && Dom.ffbEl('small', null, entry.panelTitle)
+    ]);
+    // mousedown 先擋掉，焦點才不會在 click 之前離開搜尋框把清單關掉
+    item.addEventListener('mousedown', event => event.preventDefault());
+    item.addEventListener('click', () => jumpToSettingsSearchResult(entry));
+    return item;
+  }));
+  input.setAttribute('aria-activedescendant', `settingsSearchResult${active}`);
+  setSettingsSearchOpen(true);
+}
+
+function jumpToSettingsSearchResult(entry) {
+  if (!entry) return false;
+  activateSettingsPanel(entry.panel);
+  const block = entry.target.closest('tr, .provider-card, .field, .feature-list li, .security-note, .panel-head') || entry.target;
+  block.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+  // 欄位標籤直接把焦點交給對應的輸入框，跳過去就能改
+  const control = entry.target.htmlFor ? $(entry.target.htmlFor) : null;
+  control?.focus({ preventScroll: true });
+  block.classList.remove('search-hit');
+  void block.offsetWidth; // 重新觸發高亮動畫
+  block.classList.add('search-hit');
+  setTimeout(() => block.classList.remove('search-hit'), SEARCH_HIT_MS);
+
+  $('settingsSearch').value = '';
+  settingsSearchState = { results: [], active: 0 };
+  renderSettingsSearchResults();
+  return true;
+}
+
+function updateSettingsSearch() {
+  settingsSearchState = { results: searchSettings($('settingsSearch').value), active: 0 };
+  renderSettingsSearchResults();
+}
+
+function initSettingsSearch() {
+  const input = $('settingsSearch');
+  if (!input) return;
+  const isMac = /Mac|iPhone|iPad/.test(globalThis.navigator?.platform || '');
+  if ($('settingsSearchKbd')) $('settingsSearchKbd').textContent = isMac ? '⌘K' : 'Ctrl K';
+
+  input.addEventListener('input', updateSettingsSearch);
+  input.addEventListener('focus', () => { if (input.value.trim()) updateSettingsSearch(); });
+  input.addEventListener('blur', () => setSettingsSearchOpen(false));
+  input.addEventListener('keydown', event => {
+    const { results, active } = settingsSearchState;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      if (!results.length) return;
+      event.preventDefault();
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      settingsSearchState.active = (active + step + results.length) % results.length;
+      renderSettingsSearchResults();
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      jumpToSettingsSearchResult(results[active]);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      input.value = '';
+      updateSettingsSearch();
+    }
+  });
+
+  document.addEventListener('keydown', event => {
+    if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      input.focus();
+      input.select();
+    }
+  });
+}
+
+// ── 新功能標籤 ─────────────────────────────────────
+// 標籤預設 hidden；讀到已看過清單後，沒看過的才顯示。使用者在該項目內點任何地方
+// （分頁是點開分頁）就記為已看過。
+
+function buildFeatureBadge(id, kind) {
+  return Dom.ffbEl('span', { class: 'feature-badge', dataset: { badgeFor: id, kind }, hidden: true }, FEATURE_BADGE_TEXT[kind]);
+}
+
+function applyFeatureBadges() {
+  document.querySelectorAll('.feature-badge[data-badge-for]').forEach(badge => {
+    badge.hidden = !seenFeatureBadges || seenFeatureBadges.has(badge.dataset.badgeFor);
+  });
+  // 分頁本身有標籤時不再加圓點；否則分頁裡有沒看過的標籤就加圓點
+  document.querySelectorAll('.settings-tab[data-panel]').forEach(tab => {
+    const ownBadge = tab.querySelector('.feature-badge:not([hidden])');
+    const panel = document.querySelector(`.settings-panel[data-panel-content="${tab.dataset.panel}"]`);
+    const unseen = !!panel && !!panel.querySelector('.feature-badge[data-badge-for]:not([hidden])');
+    tab.classList.toggle('has-unseen', !ownBadge && unseen);
+  });
+}
+
+async function markFeatureSeen(id) {
+  if (!seenFeatureBadges || !id || seenFeatureBadges.has(id)) return false;
+  seenFeatureBadges.add(id);
+  applyFeatureBadges();
+  try {
+    await chrome.storage.local.set({ [SEEN_FEATURE_BADGES_KEY]: [...seenFeatureBadges] });
+  } catch (error) {
+    console.warn('[翻翻吧] 新功能標籤狀態儲存失敗', error);
+  }
+  return true;
+}
+
+async function initFeatureBadges() {
+  document.addEventListener('click', event => {
+    const item = event.target.closest?.('[data-feature-item]');
+    if (item) markFeatureSeen(item.dataset.featureItem);
+  });
+  let stored = [];
+  try {
+    ({ [SEEN_FEATURE_BADGES_KEY]: stored } = await chrome.storage.local.get({ [SEEN_FEATURE_BADGES_KEY]: [] }));
+  } catch (error) {
+    console.warn('[翻翻吧] 新功能標籤狀態讀取失敗', error);
+  }
+  seenFeatureBadges = new Set(Array.isArray(stored) ? stored.filter(id => typeof id === 'string') : []);
+  applyFeatureBadges();
+  return seenFeatureBadges;
 }
 
 // ── 顯示 / 隱藏 API Key 共用函式 ─────────────────────
@@ -690,6 +910,13 @@ $('btnSave').addEventListener('click', async () => {
   });
   if (!custom.ok) { showStatus('err', custom.error); return; }
 
+  const glossaryDraft = glossaryEditorLoaded ? readGlossaryEditor() : null;
+  if (glossaryDraft?.errors.length) {
+    activateSettingsPanel('glossary');
+    showStatus('err', `術語表：${glossaryDraft.errors[0]}`);
+    return;
+  }
+
   // 依選擇的模型驗證對應 API Key（前綴與顯示名來源：ModelRegistry.PROVIDERS）
   let removedProviderLabel = '';
   {
@@ -721,6 +948,14 @@ $('btnSave').addEventListener('click', async () => {
   } catch (error) {
     showStatus('err', `各動作的模型沒有存成功：${error.message}`);
     return;
+  }
+  if (glossaryDraft) {
+    try {
+      await chrome.storage.local.set({ [Glossary.STORAGE_KEY]: glossaryDraft.glossary });
+    } catch (error) {
+      showStatus('err', `術語表沒有存成功：${error.message}`);
+      return;
+    }
   }
   showStatus('ok', removedProviderLabel ? `✓ 設定已儲存（${removedProviderLabel} API Key 已移除）` : '✓ 設定已儲存');
 });
@@ -991,9 +1226,12 @@ function bindCloudSyncControls() {
     const settings = normalizeImportedSettings(payload.settings || {});
     if (!Object.keys(settings).length) throw new Error('雲端設定檔沒有可還原的設定');
     await chrome.storage.sync.set(settings);
+    const cloudGlossary = payload.settings?.glossary && typeof payload.settings.glossary === 'object'
+      ? await saveImportedGlossary(payload.settings.glossary)
+      : null;
     await loadSettings();
     await renderCloudSyncStatus(`已下載雲端設定：${payload.updatedAt || '未知時間'}`);
-    showStatus('ok', `✓ 已還原 ${Object.keys(settings).length} 個一般設定`);
+    showStatus('ok', `✓ 已還原 ${Object.keys(settings).length} 個一般設定${cloudGlossary ? `與術語表（${cloudGlossary.terms.length} 筆）` : ''}`);
   }));
 
   signOutButton?.addEventListener('click', () => runCloudSyncAction(signOutButton, async () => {
@@ -1025,7 +1263,8 @@ async function runCloudSyncAction(button, action) {
 
 async function buildCloudSettingsPayload() {
   const backup = await buildSettingsBackupPayload(false);
-  return CloudSync.buildCloudSettingsPayload(backup.settings, {
+  const settings = backup.glossary ? { ...backup.settings, glossary: backup.glossary } : backup.settings;
+  return CloudSync.buildCloudSettingsPayload(settings, {
     appVersion: chrome.runtime?.getManifest?.().version || ''
   });
 }
@@ -1055,7 +1294,7 @@ async function renderCloudSyncStatus(message = '') {
     ['同步摘要', formatCloudSyncSummary(meta)],
     ['登入狀態', formatCloudSignedInStatus(meta)],
     ['目前版本', getCurrentAppVersion()],
-    ['同步範圍', '一般設定，不含 API Key、單字本、查詢歷史'],
+    ['同步範圍', '一般設定與術語表，不含 API Key、單字本、查詢歷史'],
     ['儲存位置', 'Google Drive 隱藏 appDataFolder'],
     ['操作方向', '上傳：這台覆蓋雲端；下載：雲端覆蓋這台'],
     ['登入流程', authMode],
@@ -1163,6 +1402,10 @@ async function buildSettingsBackupPayload(includeSecrets = false, options = {}) 
   // 動作清單只進本機設定檔、不進雲端同步（雲端 payload 只取 settings）；沒存過就不帶這個鍵
   const { [CustomActions.STORAGE_KEY]: storedActions } = await chrome.storage.local.get({ [CustomActions.STORAGE_KEY]: [] });
   if (Array.isArray(storedActions) && storedActions.length) payload.actions = storedActions;
+
+  // 術語表跟著設定檔匯出，也跟著雲端同步（見 buildCloudSettingsPayload）；空的就不帶
+  const glossary = await loadStoredGlossary();
+  if (glossary.terms.length || glossary.sites.length) payload.glossary = glossary;
 
   return payload;
 }
@@ -1306,8 +1549,9 @@ async function importSettingsBackupFile(file, options = {}) {
   const settings = normalizeImportedSettings(payload.settings || {});
   const secrets = await resolveImportedBackupSecrets(payload, options.password || '');
   const hasActions = Array.isArray(payload.actions);
+  const hasGlossary = !!payload.glossary && typeof payload.glossary === 'object';
 
-  if (!Object.keys(settings).length && !Object.keys(secrets).length && !hasActions) {
+  if (!Object.keys(settings).length && !Object.keys(secrets).length && !hasActions && !hasGlossary) {
     throw new Error('設定檔沒有可匯入的設定');
   }
 
@@ -1317,6 +1561,9 @@ async function importSettingsBackupFile(file, options = {}) {
   // 動作清單整份取代：讀取端容錯（壞掉的自訂動作略過），再走嚴格存檔
   let actions = null;
   if (hasActions) writes.push(CustomActions.saveActionList(CustomActions.normalizeActionList(payload.actions)).then(list => { actions = list; }));
+  // 術語表整份取代，壞掉的列略過
+  let glossary = null;
+  if (hasGlossary) writes.push(saveImportedGlossary(payload.glossary).then(saved => { glossary = saved; }));
   await Promise.all(writes);
   await loadSettings();
   const result = { settingsCount: Object.keys(settings).length, secretsCount: Object.keys(secrets).length };
@@ -1325,6 +1572,7 @@ async function importSettingsBackupFile(file, options = {}) {
     actionListState = actions;
     renderActionList();
   }
+  if (glossary) result.glossaryCount = glossary.terms.length;
   return result;
 }
 
@@ -1398,11 +1646,12 @@ async function readTextFile(file) {
   });
 }
 
-function formatImportSettingsStatus({ settingsCount = 0, secretsCount = 0, actionsCount = null } = {}) {
+function formatImportSettingsStatus({ settingsCount = 0, secretsCount = 0, actionsCount = null, glossaryCount = null } = {}) {
   const parts = [];
   if (settingsCount) parts.push(`${settingsCount} 個設定`);
   if (secretsCount) parts.push(`${secretsCount} 個 API Key`);
   if (actionsCount !== null) parts.push(`動作清單（${actionsCount} 個自訂動作）`);
+  if (glossaryCount !== null) parts.push(`術語表（${glossaryCount} 筆）`);
   return `✓ 設定檔已匯入${parts.length ? `：${parts.join('、')}` : ''}`;
 }
 
@@ -1471,6 +1720,340 @@ const BUILTIN_ACTION_TEMPLATES = {
     ]
   }
 };
+
+// ── 術語表 ─────────────────────────────────────────
+// 編輯器直接用表格列當狀態，按「儲存設定」時才讀回、驗證、寫進 chrome.storage.local。
+// 還沒從 storage 讀完就不寫，免得用空表蓋掉已存的術語表。
+let glossaryEditorLoaded = false;
+const GLOSSARY_CSV_MAX_BYTES = 1024 * 1024;
+
+function setGlossaryStatus(message) {
+  if ($('glossaryStatus')) $('glossaryStatus').textContent = message;
+}
+
+function buildGlossaryRow(term = {}) {
+  const input = (field, label, maxlength) => {
+    const el = Dom.ffbEl('input', { type: 'text', class: `glossary-${field}`, maxlength, 'aria-label': label, autocomplete: 'off', spellcheck: 'false' });
+    el.value = term[field] || '';
+    return el;
+  };
+  const remove = Dom.ffbEl('button', { class: 'btn-test', type: 'button', 'aria-label': '刪除這一列' }, '刪除');
+  const row = Dom.ffbEl('tr', { class: 'glossary-row' }, [
+    Dom.ffbEl('td', null, input('source', '原文', Glossary.MAX_SOURCE_CHARS)),
+    Dom.ffbEl('td', null, input('target', '譯文', Glossary.MAX_TARGET_CHARS)),
+    Dom.ffbEl('td', null, input('note', '備註', Glossary.MAX_NOTE_CHARS)),
+    Dom.ffbEl('td', null, remove)
+  ]);
+  // 改過內容就先拿掉錯誤標示，存檔時再重新檢查
+  row.addEventListener('input', () => row.classList.remove('is-invalid'));
+  remove.addEventListener('click', () => {
+    const rows = $('glossaryRows');
+    const next = row.nextElementSibling || row.previousElementSibling;
+    row.remove();
+    if (!rows.children.length) rows.append(buildGlossaryRow());
+    (next || rows.firstElementChild).querySelector('input').focus();
+  });
+  return row;
+}
+
+function readGlossaryRow(row) {
+  const value = field => row.querySelector(`.glossary-${field}`).value.trim();
+  return { source: value('source'), target: value('target'), note: value('note') };
+}
+
+function isBlankGlossaryRow(row) {
+  const { source, target, note } = readGlossaryRow(row);
+  return !source && !target && !note;
+}
+
+function renderGlossaryEditor(glossary) {
+  const rows = $('glossaryRows');
+  if (!rows) return;
+  const terms = glossary.terms.length ? glossary.terms : [{}];
+  Dom.ffbClear(rows).append(...terms.map(term => buildGlossaryRow(term)));
+  $('glossarySites').value = glossary.sites.join('\n');
+}
+
+// 讀回編輯器內容；有錯就列在 errors，呼叫端不存檔
+function readGlossaryEditor() {
+  const errors = [];
+  const terms = [];
+  const seen = new Set();
+  [...$('glossaryRows').querySelectorAll('.glossary-row')].forEach((row, index) => {
+    row.classList.remove('is-invalid');
+    if (isBlankGlossaryRow(row)) return;
+    const term = readGlossaryRow(row);
+    if (!term.source || !term.target) {
+      errors.push(`第 ${index + 1} 列缺${term.source ? '譯文' : '原文'}`);
+      row.classList.add('is-invalid');
+      return;
+    }
+    const key = term.source.toLowerCase();
+    if (seen.has(key)) {
+      errors.push(`原文重複：${term.source}`);
+      row.classList.add('is-invalid');
+      return;
+    }
+    seen.add(key);
+    terms.push(term);
+  });
+  if (terms.length > Glossary.MAX_TERMS) errors.push(`術語最多 ${Glossary.MAX_TERMS} 筆，目前 ${terms.length} 筆`);
+
+  const sites = $('glossarySites').value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const badSites = sites.filter(site => !Glossary.normalizeSite(site));
+  if (badSites.length) errors.push(`看不懂的網站：${badSites.slice(0, 3).join('、')}`);
+  if (sites.length > Glossary.MAX_SITES) errors.push(`網站最多 ${Glossary.MAX_SITES} 個`);
+
+  return { errors, glossary: Glossary.normalizeGlossary({ terms, sites }) };
+}
+
+async function loadStoredGlossary() {
+  const { [Glossary.STORAGE_KEY]: stored } = await chrome.storage.local.get({ [Glossary.STORAGE_KEY]: null });
+  return Glossary.normalizeGlossary(stored);
+}
+
+async function loadGlossaryEditor() {
+  let glossary = Glossary.normalizeGlossary(null);
+  try {
+    glossary = await loadStoredGlossary();
+  } catch (error) {
+    console.warn('[翻翻吧] 術語表讀取失敗', error);
+  }
+  renderGlossaryEditor(glossary);
+  glossaryEditorLoaded = true;
+  return glossary;
+}
+
+async function saveImportedGlossary(raw) {
+  const glossary = Glossary.normalizeGlossary(raw);
+  await chrome.storage.local.set({ [Glossary.STORAGE_KEY]: glossary });
+  renderGlossaryEditor(glossary);
+  return glossary;
+}
+
+// 匯入的 CSV 接在現有列後面；原文和現有列重複的略過（保留先前那筆）
+async function importGlossaryCsvFile(file) {
+  if (file?.size > GLOSSARY_CSV_MAX_BYTES) {
+    setGlossaryStatus('檔案太大（上限 1MB），請確認是術語表 CSV。');
+    return null;
+  }
+  const { terms, skipped } = Glossary.parseGlossaryCsv(await readTextFile(file));
+  const rows = $('glossaryRows');
+  [...rows.children].forEach(row => { if (isBlankGlossaryRow(row)) row.remove(); });
+  const existing = new Set([...rows.children].map(row => readGlossaryRow(row).source.toLowerCase()));
+  let added = 0;
+  let duplicated = 0;
+  for (const term of terms) {
+    const key = term.source.toLowerCase();
+    if (existing.has(key)) { duplicated++; continue; }
+    existing.add(key);
+    rows.append(buildGlossaryRow(term));
+    added++;
+  }
+  if (!rows.children.length) rows.append(buildGlossaryRow());
+  const parts = [`已加入 ${added} 筆`];
+  if (duplicated) parts.push(`${duplicated} 筆原文重複略過`);
+  if (skipped) parts.push(`${skipped} 列缺原文或譯文略過`);
+  setGlossaryStatus(`${parts.join('，')}；按「儲存設定」才會生效。`);
+  return { added, duplicated, skipped };
+}
+
+function exportGlossaryCsv() {
+  const { terms } = readGlossaryEditor().glossary;
+  if (!terms.length) {
+    setGlossaryStatus('術語表是空的，沒有可匯出的內容。');
+    return null;
+  }
+  // 公式注入防護沿用單字本 CSV 的 escapeCsvCell
+  const csv = Glossary.buildGlossaryCsv(terms, VocabBackup.escapeCsvCell);
+  const blob = new Blob([csv], { type: VocabBackup.CSV_MIME_TYPE });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `fan-fan-ba-glossary-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setGlossaryStatus(`已匯出 ${terms.length} 筆術語成 CSV。`);
+  return csv;
+}
+
+function initGlossaryEditor() {
+  if (!$('glossaryRows')) return undefined;
+  $('btnAddGlossaryTerm').addEventListener('click', () => {
+    const row = buildGlossaryRow();
+    $('glossaryRows').append(row);
+    row.querySelector('input').focus();
+  });
+  $('btnImportGlossary').addEventListener('click', () => $('glossaryCsvFile').click());
+  $('glossaryCsvFile').addEventListener('change', async event => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      await importGlossaryCsvFile(file);
+    } catch {
+      setGlossaryStatus('CSV 讀取失敗，請確認檔案格式。');
+    }
+  });
+  $('btnExportGlossary').addEventListener('click', () => {
+    try {
+      exportGlossaryCsv();
+    } catch {
+      setGlossaryStatus('CSV 匯出失敗，請再試一次。');
+    }
+  });
+  return loadGlossaryEditor();
+}
+
+// ── 模型比較 ───────────────────────────────────────
+// 同一段文字同時送給勾選的模型，各自顯示譯文與耗時；一個失敗不影響其他。
+// 一律用非批次的全文翻譯模式送出：所有模型拿到同一份段落翻譯 prompt，瀏覽器內建翻譯也能一起比。
+const COMPARE_MAX_CHARS = 2000;
+let compareRunning = false;
+
+function setCompareStatus(message) {
+  if ($('compareStatus')) $('compareStatus').textContent = message;
+}
+
+// 只列已儲存金鑰的模型（自訂端點還要填好網址與模型名稱）與免金鑰的內建翻譯
+async function loadCompareModels() {
+  const [secrets, settings] = await Promise.all([
+    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', customApiKey: '' }),
+    chrome.storage.sync.get({ customApiBase: '', customModelName: '' })
+  ]);
+  return ModelRegistry.MODELS.filter(model => ModelRegistry.isModelConfigured(model, secrets, settings));
+}
+
+function compareModelLabel(id) {
+  const model = ModelRegistry.getModel(id);
+  const provider = ModelRegistry.PROVIDERS[model?.provider];
+  return provider && !provider.keyless ? `${model.name}（${provider.label}）` : (model?.name || id);
+}
+
+// 重畫時保留原本勾選的項目（金鑰改了、清單變了也不會全部被取消）
+async function renderCompareModels() {
+  const list = $('compareModelList');
+  if (!list) return [];
+  let models = [];
+  try {
+    models = await loadCompareModels();
+  } catch (error) {
+    console.warn('[翻翻吧] 讀取可比較的模型失敗', error);
+  }
+  const checked = new Set([...list.querySelectorAll('input:checked')].map(input => input.value));
+  Dom.ffbClear(list).append(...models.map(model => {
+    const input = Dom.ffbEl('input', { type: 'checkbox', name: 'compareModel', value: model.id });
+    input.checked = checked.has(model.id);
+    return Dom.ffbEl('label', null, [input, compareModelLabel(model.id)]);
+  }));
+  $('compareModelEmpty').hidden = models.length > 0;
+  return models;
+}
+
+async function compareOneModel(modelId, text, targetLanguage) {
+  const started = Date.now();
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: 'GEMINI_REQUEST',
+      action: 'translate',
+      selectedText: text,
+      modelOverride: modelId,
+      pageTranslation: true,
+      targetLanguage,
+      browserLanguage: globalThis.navigator?.language || ''
+    });
+    const ms = Date.now() - started;
+    if (!response) return { modelId, ms, error: '沒有收到回應，請重試' };
+    if (response.error) return { modelId, ms, error: String(response.error) };
+    return { modelId, ms, result: String(response.result ?? ''), notice: response.notice ? String(response.notice) : '' };
+  } catch (error) {
+    return { modelId, ms: Date.now() - started, error: error?.message || '請求失敗' };
+  }
+}
+
+function formatCompareSeconds(ms) {
+  return `${(ms / 1000).toFixed(1)} 秒`;
+}
+
+function buildCompareCard(modelId) {
+  const meta = Dom.ffbEl('p', { class: 'compare-meta' }, '翻譯中…');
+  const output = Dom.ffbEl('p', { class: 'compare-output' });
+  const el = Dom.ffbEl('article', { class: 'compare-card', dataset: { model: modelId } }, [
+    Dom.ffbEl('h3', null, compareModelLabel(modelId)),
+    meta,
+    output
+  ]);
+  return { el, meta, output };
+}
+
+// 模型回傳的內容一律當純文字
+function fillCompareCard(card, outcome) {
+  card.el.classList.toggle('is-error', !!outcome.error);
+  if (outcome.error) {
+    card.meta.textContent = `失敗 · ${formatCompareSeconds(outcome.ms)}`;
+    card.output.textContent = outcome.error;
+    return;
+  }
+  card.meta.textContent = [formatCompareSeconds(outcome.ms), outcome.notice].filter(Boolean).join(' · ');
+  card.output.textContent = outcome.result;
+}
+
+async function runModelCompare() {
+  if (compareRunning) return null;
+  const text = $('compareText').value.trim();
+  const modelIds = [...$('compareModelList').querySelectorAll('input:checked')].map(input => input.value);
+  if (!text) {
+    setCompareStatus('請先輸入要翻譯的文字。');
+    $('compareText').focus();
+    return null;
+  }
+  if (text.length > COMPARE_MAX_CHARS) {
+    setCompareStatus(`文字最多 ${COMPARE_MAX_CHARS} 字。`);
+    return null;
+  }
+  if (!modelIds.length) {
+    setCompareStatus('請至少勾選一個模型。');
+    return null;
+  }
+
+  compareRunning = true;
+  $('btnRunCompare').disabled = true;
+  const targetLanguage = ModelRegistry.normalizeLanguage($('targetLanguage')?.value, 'zh-TW');
+  const cards = modelIds.map(buildCompareCard);
+  Dom.ffbClear($('compareResults')).append(...cards.map(card => card.el));
+  setCompareStatus(`比較中：${modelIds.length} 個模型同時送出…`);
+
+  try {
+    // 全部同時送出；每張卡片收到自己的結果就更新，不等其他模型
+    const outcomes = await Promise.all(modelIds.map((modelId, index) =>
+      compareOneModel(modelId, text, targetLanguage).then(outcome => {
+        fillCompareCard(cards[index], outcome);
+        return outcome;
+      })
+    ));
+    const failed = outcomes.filter(outcome => outcome.error).length;
+    setCompareStatus(failed
+      ? `完成：${outcomes.length - failed} 個成功、${failed} 個失敗。`
+      : `完成：${outcomes.length} 個模型都有結果。`);
+    return outcomes;
+  } finally {
+    compareRunning = false;
+    $('btnRunCompare').disabled = false;
+  }
+}
+
+function initModelCompare() {
+  if (!$('compareForm')) return undefined;
+  $('compareForm').addEventListener('submit', event => {
+    event.preventDefault();
+    runModelCompare();
+  });
+  // 金鑰可能在別的分頁剛改過，切進來時重新列一次
+  document.querySelector('.settings-tab[data-panel="compare"]')?.addEventListener('click', () => renderCompareModels());
+  return renderCompareModels();
+}
 
 let actionListState = [];
 let actionEditorState = null; // { action, isNew }
@@ -1556,17 +2139,24 @@ function renderActionList() {
       else openActionEditor(createActionFromBuiltin(action.id), { isNew: true });
     }));
 
-    return Dom.ffbEl('li', { class: `action-row${action.enabled ? '' : ' is-disabled'}`, dataset: { id: action.id } }, [
+    const badgeKind = action.builtin ? ACTION_FEATURE_BADGES[action.id] : null;
+    const badgeId = badgeKind ? `action-${action.id}` : null;
+    return Dom.ffbEl('li', {
+      class: `action-row${action.enabled ? '' : ' is-disabled'}`,
+      dataset: { id: action.id, featureItem: badgeId }
+    }, [
       enabled,
       Dom.ffbEl('span', { class: 'action-row-name' }, [
         ActionRender.buildCustomActionIcon(action.builtin ? builtinIconName(action.id) : action.icon, 16),
         Dom.ffbEl('span', null, action.name),
-        action.builtin && Dom.ffbEl('span', { class: 'action-badge' }, '內建')
+        action.builtin && Dom.ffbEl('span', { class: 'action-badge' }, '內建'),
+        badgeKind && buildFeatureBadge(badgeId, badgeKind)
       ]),
       up, down, ...buttons
     ]);
   }));
   renderFeatureActionModelRows();
+  applyFeatureBadges();
 }
 
 function builtinIconName(id) {
@@ -1873,6 +2463,17 @@ if (typeof module !== 'undefined' && module.exports) {
     getFeatureModelGap,
     renderLanguageSelects,
     initSettingsTabs,
+    activateSettingsPanel,
+    readGlossaryEditor,
+    renderCompareModels,
+    runModelCompare,
+    loadGlossaryEditor,
+    importGlossaryCsvFile,
+    exportGlossaryCsv,
+    searchSettings,
+    jumpToSettingsSearchResult,
+    markFeatureSeen,
+    initFeatureBadges,
     loadSettings,
     buildSettingsBackupPayload,
     encryptBackupSecrets,

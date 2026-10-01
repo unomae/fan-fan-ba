@@ -805,6 +805,125 @@
       .action-row-name { flex: 1 1 calc(100% - 32px); }
       .action-row .btn-test { flex: 0 0 auto; }
     }
+
+    /* 設定搜尋（⌘K／Ctrl+K） */
+    .settings-search { position: relative; margin-bottom: 4px; }
+    .settings-search input {
+      width: 100%;
+      padding: 9px 52px 9px 11px;
+      color: var(--ink);
+      background: #fff;
+      border: 1px solid rgba(24, 32, 51, 0.14);
+      border-radius: 8px;
+      font: inherit;
+      font-size: 13px;
+    }
+    .settings-search input:focus { outline: 2px solid rgba(90, 154, 46, 0.45); outline-offset: 1px; }
+    .search-kbd {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 0 6px;
+      color: var(--muted);
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 18px;
+      pointer-events: none;
+    }
+    /* 打字後藏起快捷鍵提示，讓出位置給瀏覽器的清除鈕 */
+    .settings-search input:not(:placeholder-shown) + .search-kbd { display: none; }
+    .settings-search-results {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      z-index: 20;
+      width: max(100%, 280px);
+      max-height: 320px;
+      overflow-y: auto;
+      margin: 0;
+      padding: 4px;
+      list-style: none;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .search-result { padding: 7px 9px; border-radius: 6px; color: var(--ink); font-size: 13px; cursor: pointer; }
+    .search-result span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .search-result small { display: block; color: var(--muted); font-size: 11px; }
+    .search-result[aria-selected="true"], .search-result:hover { background: #f2f9e8; }
+    .search-empty { padding: 7px 9px; color: var(--muted); font-size: 12px; }
+    .search-hit { border-radius: 8px; animation: ffb-search-hit 2s ease-out; }
+    @keyframes ffb-search-hit {
+      0%, 40% { box-shadow: 0 0 0 3px rgba(249, 212, 35, 0.9); background-color: rgba(249, 212, 35, 0.16); }
+      100% { box-shadow: 0 0 0 3px rgba(249, 212, 35, 0); }
+    }
+
+    /* 新功能標籤：使用者點過該項後消失；分頁裡還有沒看過的標籤時，分頁右上角顯示小圓點 */
+    .feature-badge {
+      display: inline-block;
+      padding: 0 7px;
+      color: #fff;
+      background: #c62f35;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 17px;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    .feature-badge[data-kind="updated"] { background: #3154ad; }
+    .feature-badge[hidden] { display: none; }
+
+    /* 術語表 */
+    .glossary-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .glossary-table th { padding: 0 6px 6px; color: var(--muted); font-size: 12px; font-weight: 700; text-align: left; }
+    .glossary-table td { padding: 3px; vertical-align: middle; }
+    .glossary-table td:last-child { width: 1%; white-space: nowrap; }
+    .glossary-table input { width: 100%; }
+    #glossarySites { width: 100%; padding: 10px 12px; color: var(--ink); background: #fff; border: 1px solid #dce3db; border-radius: 8px; font: inherit; font-size: 13.5px; resize: vertical; outline: none; }
+    #compareText { width: 100%; padding: 10px 12px; color: var(--ink); background: #fff; border: 1px solid #dce3db; border-radius: 8px; font: inherit; font-size: 13.5px; resize: vertical; outline: none; }
+    #compareText:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(163, 209, 121, 0.2); }
+
+    /* 模型比較 */
+    .compare-models { min-width: 0; margin: 0; padding: 0; border: 0; }
+    #compareModelList { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
+    #compareModelList label { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+    .compare-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 16px; }
+    .compare-card { min-width: 0; padding: 12px 14px; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+    .compare-card h3 { margin: 0; font-size: 14px; }
+    .compare-card .compare-meta { margin: 2px 0 8px; color: var(--muted); font-size: 12px; }
+    .compare-card .compare-output { margin: 0; color: var(--ink); font-size: 13.5px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .compare-card.is-error { border-color: #f1b5b7; }
+    .compare-card.is-error .compare-output { color: #b4232a; }
+    #glossarySites:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(163, 209, 121, 0.2); }
+    .glossary-table .is-invalid input { border-color: #c62f35; }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    @media (max-width: 640px) {
+      .glossary-table thead { display: none; }
+      .glossary-table tr { display: grid; grid-template-columns: 1fr 1fr auto; gap: 4px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+      .glossary-table td:nth-child(3) { grid-column: 1 / 3; grid-row: 2; }
+    }
+    .field-label-row { display: flex; align-items: center; gap: 6px; }
+    .feature-list kbd { font-family: inherit; font-weight: 700; }
+    .settings-tab { position: relative; }
+    .settings-tab.has-unseen::after {
+      content: '';
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 7px;
+      height: 7px;
+      background: #c62f35;
+      border-radius: 50%;
+    }
+    @media (max-width: 860px) {
+      .settings-search { grid-column: 1 / -1; }
+    }
   </style>
   <link rel="stylesheet" href="content.css">
 </head>
@@ -823,6 +942,11 @@
 
     <section class="settings-shell" aria-label="翻翻吧設定">
       <nav class="settings-nav" aria-label="設定分類">
+        <div class="settings-search" role="search">
+          <input type="search" id="settingsSearch" placeholder="搜尋設定" aria-label="搜尋設定" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="settingsSearchResults" aria-keyshortcuts="Control+K Meta+K" autocomplete="off" spellcheck="false">
+          <kbd class="search-kbd" id="settingsSearchKbd" aria-hidden="true">Ctrl K</kbd>
+          <ul class="settings-search-results" id="settingsSearchResults" role="listbox" aria-label="搜尋結果" hidden></ul>
+        </div>
         <button class="settings-tab is-active" type="button" data-panel="model" aria-selected="true">
           模型與金鑰
           <small>3</small>
@@ -831,9 +955,17 @@
           語言與朗讀
           <small>5</small>
         </button>
-        <button class="settings-tab" type="button" data-panel="actions" aria-selected="false">
-          自訂動作
+        <button class="settings-tab" type="button" data-panel="actions" aria-selected="false" data-feature-item="panel-actions">
+          <span>自訂動作 <span class="feature-badge" data-badge-for="panel-actions" data-kind="new" hidden>新增</span></span>
           <small>4</small>
+        </button>
+        <button class="settings-tab" type="button" data-panel="glossary" aria-selected="false" data-feature-item="panel-glossary">
+          <span>術語表 <span class="feature-badge" data-badge-for="panel-glossary" data-kind="new" hidden>新增</span></span>
+          <small>2</small>
+        </button>
+        <button class="settings-tab" type="button" data-panel="compare" aria-selected="false" data-feature-item="panel-compare">
+          <span>模型比較 <span class="feature-badge" data-badge-for="panel-compare" data-kind="new" hidden>新增</span></span>
+          <small>2</small>
         </button>
         <button class="settings-tab" type="button" data-panel="obsidian" aria-selected="false">
           Obsidian
@@ -872,8 +1004,8 @@
             <select id="model"></select>
           </div>
 
-          <div class="field full">
-            <span class="field-label" id="featureModelsLabel">各功能使用的模型</span>
+          <div class="field full" data-feature-item="feature-models">
+            <span class="field-label-row"><span class="field-label" id="featureModelsLabel">各功能使用的模型</span> <span class="feature-badge" data-badge-for="feature-models" data-kind="new" hidden>新增</span></span>
             <table class="feature-models" aria-labelledby="featureModelsLabel">
               <thead>
                 <tr><th scope="col">功能</th><th scope="col">模型</th></tr>
@@ -968,9 +1100,9 @@
               </div>
             </div>
 
-            <div class="provider-card" id="customEndpointCard">
+            <div class="provider-card" id="customEndpointCard" data-feature-item="custom-endpoint">
               <div class="provider-head">
-                <h3>自訂端點</h3>
+                <h3>自訂端點 <span class="feature-badge" data-badge-for="custom-endpoint" data-kind="new" hidden>新增</span></h3>
                 <span class="mini-badge violet">OpenAI 相容</span>
               </div>
               <div class="field">
@@ -1149,6 +1281,79 @@
           </div>
         </section>
 
+        <section class="settings-panel" data-panel-content="glossary" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>術語表</h2>
+              <p>指定固定譯法，例如 lead time 一律翻成「前置時間」。翻譯時只把這段文字裡實際出現的術語附給模型。</p>
+            </div>
+            <span class="panel-badge">最多 500 筆</span>
+          </div>
+
+          <div class="form-grid">
+            <div class="field full">
+              <span class="field-label" id="glossaryTermsLabel">術語</span>
+              <table class="glossary-table" aria-labelledby="glossaryTermsLabel">
+                <thead>
+                  <tr><th scope="col">原文</th><th scope="col">譯文</th><th scope="col">備註（選填）</th><th scope="col"><span class="visually-hidden">刪除</span></th></tr>
+                </thead>
+                <tbody id="glossaryRows"></tbody>
+              </table>
+              <div class="backup-actions">
+                <button class="btn-test" id="btnAddGlossaryTerm" type="button">新增一列</button>
+                <button class="btn-test" id="btnImportGlossary" type="button">匯入 CSV</button>
+                <button class="btn-test" id="btnExportGlossary" type="button">匯出 CSV</button>
+                <input type="file" id="glossaryCsvFile" accept=".csv,text/csv" hidden>
+              </div>
+              <div class="action-status" id="glossaryStatus" aria-live="polite"></div>
+              <p class="field-note">比對不分大小寫，英文只認完整的詞（art 不會比到 start）。CSV 欄位依序是 source、target、note；匯入會接在現有清單後面，原文重複時保留先前那筆。</p>
+            </div>
+
+            <div class="field full">
+              <label for="glossarySites">只在這些網站生效 <span class="hint">選填，一行一個</span></label>
+              <textarea id="glossarySites" rows="3" placeholder="例如 example.com（留空＝所有網站）" spellcheck="false"></textarea>
+              <p class="field-note">填 example.com 也包含它的子網域。網址只在本機比對，不會送給模型。</p>
+            </div>
+
+            <div class="field full">
+              <p class="field-note">只套用在「翻譯」與全文翻譯；解釋、優化、長難句分析與自訂動作不套用。<strong>瀏覽器內建翻譯不套用術語表</strong>（它不接受額外指示）。修改後請按「儲存設定」。</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-panel" data-panel-content="compare" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>模型比較</h2>
+              <p>同一段文字同時交給幾個模型翻譯，並排比較譯文與花費時間，再決定預設用哪一個。</p>
+            </div>
+            <span class="panel-badge">不存進查詢紀錄</span>
+          </div>
+
+          <form class="form-grid" id="compareForm" novalidate>
+            <div class="field full">
+              <label for="compareText">要翻譯的文字 <span class="hint">最多 2000 字</span></label>
+              <textarea id="compareText" rows="4" maxlength="2000" spellcheck="false" placeholder="貼上一段要比較的文字"></textarea>
+            </div>
+
+            <fieldset class="field full compare-models">
+              <legend class="field-label">比較哪些模型</legend>
+              <div id="compareModelList"></div>
+              <p class="field-note" id="compareModelEmpty" hidden>還沒有可以比較的模型：先到「模型與金鑰」填 API Key 並按「儲存設定」。</p>
+              <p class="field-note">只列出已儲存金鑰的模型與瀏覽器內建翻譯。每個模型都會實際送一次請求，會用到各家的額度；譯成「語言與朗讀」裡設定的翻譯目標語言，術語表沒有限定網站時照常套用（內建翻譯除外）。</p>
+            </fieldset>
+
+            <div class="field full">
+              <div class="backup-actions">
+                <button class="btn-test" id="btnRunCompare" type="submit">開始比較</button>
+              </div>
+              <div class="action-status" id="compareStatus" aria-live="polite"></div>
+            </div>
+          </form>
+
+          <div class="compare-results" id="compareResults" aria-live="polite"></div>
+        </section>
+
         <section class="settings-panel" data-panel-content="obsidian" hidden>
           <div class="panel-head">
             <div>
@@ -1210,7 +1415,7 @@
                 <label for="backupPassword">API Key 備份密碼 <span class="hint">加密匯出 / 匯入時使用</span></label>
                 <input type="password" id="backupPassword" placeholder="至少 8 個字元，請自行保存" autocomplete="off" spellcheck="false">
               </div>
-              <p class="field-note">預設只匯出模型、語言、Obsidian 等一般設定；勾選 API Keys 時會用此密碼加密，忘記密碼就無法還原 API Key。</p>
+              <p class="field-note">預設只匯出模型、語言、Obsidian 等一般設定與術語表；勾選 API Keys 時會用此密碼加密，忘記密碼就無法還原 API Key。</p>
             </div>
 
             <div class="field full">
@@ -1257,7 +1462,7 @@
           <div class="panel-head">
             <div>
               <h2>雲端同步</h2>
-              <p>同步模型、語言、朗讀與 Obsidian 等一般設定。API Key 不會同步。</p>
+              <p>同步模型、語言、朗讀與 Obsidian 等一般設定，以及術語表。API Key 不會同步。</p>
             </div>
             <span class="panel-badge">Google Drive appData</span>
           </div>
@@ -1324,6 +1529,18 @@
               <span class="badge badge-optimize">優化</span>
               重寫選取內容，使表達更清晰流暢。
             </li>
+            <li data-feature-item="dict-examples">
+              <span class="badge badge-translate">字典卡</span>
+              <span>例句裡的查詢詞會加粗；英文單字旁標出 CEFR 難度（A1–C2）。 <span class="feature-badge" data-badge-for="dict-examples" data-kind="new" hidden>新增</span></span>
+            </li>
+            <li data-feature-item="shortcuts">
+              <span class="badge badge-explain">快捷鍵</span>
+              <span>翻譯選取文字（Windows <kbd>Alt+S</kbd>、Mac <kbd>⌃⇧S</kbd>）、切換全文翻譯（Windows <kbd>Alt+A</kbd>、Mac <kbd>⌃⇧A</kbd>）；右鍵選單也能翻譯選取文字或整頁。按鍵可在擴充功能的快捷鍵頁面更改。 <span class="feature-badge" data-badge-for="shortcuts" data-kind="new" hidden>新增</span></span>
+            </li>
+            <li data-feature-item="card-model">
+              <span class="badge badge-optimize">結果卡</span>
+              <span>底部可以「僅本次」換一個模型重查，也可以修改原文後重新查詢（⌘／Ctrl+Enter 送出）。 <span class="feature-badge" data-badge-for="card-model" data-kind="new" hidden>新增</span></span>
+            </li>
           </ul>
 
           <div class="security-note">
@@ -1355,6 +1572,7 @@
   <script src="custom-actions.js"></script>
   <script src="content/dom.js"></script>
   <script src="content/custom-action-render.js"></script>
+  <script src="content/glossary.js"></script>
   <script src="storage.js"></script>
   <script src="cloud-sync.js"></script>
   <script src="vocabulary-backup.js"></script>

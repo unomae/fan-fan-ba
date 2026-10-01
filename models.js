@@ -120,6 +120,15 @@
     badgeClass: 'badge-or'
   });
 
+  // 這個模型現在能不能用：免金鑰的直接可用；自訂端點還要填好網址與模型名稱；其餘看對應金鑰有沒有填。
+  // background（結果卡「僅本次」選單）與設定頁（模型比較）共用。
+  function isModelConfigured(model, secrets = {}, settings = {}) {
+    const provider = PROVIDERS[model?.provider];
+    if (!provider) return false;
+    if (provider.userConfigured && !(settings.customApiBase && settings.customModelName)) return false;
+    return !!provider.keyless || !!secrets[provider.apiKeyName];
+  }
+
   // 自訂端點網址正規化：只收 https、不帶帳密／query／hash，去掉結尾斜線。
   // 回傳 { base, originPattern }；originPattern 給 chrome.permissions 用（只請求這個網域）
   function normalizeCustomEndpoint(value) {
@@ -333,6 +342,7 @@
     TTS_LANGUAGE_OPTIONS,
     normalizeModel,
     normalizeCustomEndpoint,
+    isModelConfigured,
     getModel,
     getProvider,
     getModelDisplayName,

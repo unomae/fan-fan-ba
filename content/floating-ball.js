@@ -512,9 +512,8 @@ function renderFloatingVocabularyPanel(body, initialItems) {
       button.addEventListener('click', async e => {
         e.stopPropagation();
         const id = button.dataset.vocabReview;
-        const status = button.dataset.reviewStatus === 'known' ? 'known' : 'learning';
         try {
-          const updated = await updateVocabularyEntryStatus?.(id, status);
+          const updated = await reviewVocabularyEntry?.(id, button.dataset.reviewGrade);
           if (updated) {
             const refreshedItems = typeof listVocabularyItems === 'function' ? await listVocabularyItems() : items;
             items = updateVocabularyPanelItems(refreshedItems, updated);
@@ -623,12 +622,16 @@ function buildVocabularyPanelItem(item) {
   const count = Number(item.count || 1);
   const isKnown = item.status === 'known';
   const statusButton = (attrs, title, label) => ffbEl('button', { class: 'g-vocab-status', type: 'button', ...attrs, title }, label);
+  // 複習模式：四級評分另起一列；其餘分頁維持單顆熟悉度切換
   const statusActions = item.reviewMode
-    ? [
-        statusButton({ dataset: { vocabReview: item.id, reviewStatus: 'known' } }, '標記為已記得', '記得'),
-        statusButton({ dataset: { vocabReview: item.id, reviewStatus: 'learning' } }, '明天再複習', '還不熟')
-      ]
+    ? []
     : [statusButton({ dataset: { vocabStatus: item.id, nextStatus: isKnown ? 'learning' : 'known' } }, '更新熟悉度', isKnown ? '還不熟' : '我記得了')];
+  const intervals = item.reviewMode ? (previewVocabularyReviewIntervals?.(item) || {}) : null;
+  const gradeButton = (grade, label) => statusButton(
+    { dataset: { vocabReview: item.id, reviewGrade: grade } },
+    intervals?.[grade] ? `${intervals[grade]} 天後再複習` : label,
+    label
+  );
 
   return ffbEl('div', { class: 'g-vocab-panel-item' }, [
     ffbEl('div', { class: 'g-vocab-panel-main' }, [
@@ -649,6 +652,12 @@ function buildVocabularyPanelItem(item) {
       ...statusActions,
       ffbEl('button', { class: 'g-vocab-copy', type: 'button', dataset: { vocabCopy: item.id }, title: '複製 Markdown' }, '複製'),
       ffbEl('button', { class: 'g-vocab-delete', type: 'button', dataset: { vocabDelete: item.id }, title: '刪除' }, '刪除')
+    ]),
+    item.reviewMode && ffbEl('div', { class: 'g-vocab-review-grades' }, [
+      gradeButton('again', '忘了'),
+      gradeButton('hard', '吃力'),
+      gradeButton('good', '記得'),
+      gradeButton('easy', '很熟')
     ])
   ]);
 }

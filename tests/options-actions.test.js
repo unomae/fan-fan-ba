@@ -42,7 +42,7 @@ async function loadOptions(initialStore = {}) {
   return options;
 }
 
-const listNames = () => [...document.querySelectorAll('#actionList .action-row .action-row-name > span:not(.action-badge)')]
+const listNames = () => [...document.querySelectorAll('#actionList .action-row .action-row-name > span:not(.action-badge):not(.feature-badge)')]
   .map(el => el.textContent);
 const row = name => [...document.querySelectorAll('#actionList .action-row')]
   .find(item => item.querySelector('.action-row-name').textContent.startsWith(name));
@@ -62,6 +62,10 @@ async function submitEditor() {
 }
 
 const storedCustoms = () => (store.actionList || []).filter(action => !action.builtin);
+
+// 第一次 require options.js 要轉譯＋插樁，全套平行、快取冷時可能超過 5 秒預設逾時；
+// 先在這裡載入一次，成本不算進第一條測試
+beforeAll(() => loadOptions(), 30000);
 
 describe('設定頁：自訂動作清單', () => {
   beforeEach(() => {

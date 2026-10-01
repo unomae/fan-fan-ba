@@ -7,7 +7,7 @@
   //     備份（JSON），用於換機 / 重新安裝後救回單字資料。
   //   - `buildVocabularyCsv`：單向、lossy 的檢視格式，給 Excel / Sheets 看，不能還原。
   //     浮球面板另有「複製今日 CSV」（`content/vocabulary.js`，8 欄、只有今天），與此處
-  //     的 14 欄完整匯出不是同一個東西。
+  //     的 17 欄完整匯出不是同一個東西。
 
   const BACKUP_APP = 'fan-fan-ba';
   const BACKUP_SCHEMA = 'vocabulary';
@@ -30,6 +30,10 @@
     ['status', item => item.status],
     ['reviewedAt', item => item.reviewedAt],
     ['nextReviewAt', item => item.nextReviewAt],
+    // 四級評分的排程欄位；從沒用四級評分複習過的舊條目沒有這三欄，匯出留空
+    ['ease', item => item.ease],
+    ['intervalDays', item => item.intervalDays],
+    ['reps', item => item.reps],
     ['sourceTitle', item => item.sources?.[0]?.title],
     ['sourceUrl', item => item.sources?.[0]?.url],
     ['sourceContext', item => item.sources?.[0]?.context]
@@ -107,8 +111,9 @@
   // 衝突（同 id）取「同步時鐘較新」者為主，平手取匯入方；count 只取較大值、不參與勝方判定
   //（count＝遇到次數，與複習進度獨立演進；舊版先比 count，會讓另一台裝置較新的
   //  status / reviewedAt / nextReviewAt 在匯入時靜默倒退）
-  // status / reviewedAt / nextReviewAt 三欄刻意跟著勝方整組走，不各自取新——
-  // 拆開會併出「status 來自 A、nextReviewAt 來自 B」這種不一致的複習狀態。
+  // status / reviewedAt / nextReviewAt，以及四級評分的 ease / intervalDays / reps，
+  // 刻意跟著勝方整組走，不各自取新——拆開會併出「status 來自 A、nextReviewAt 來自 B」
+  // 這種不一致的複習狀態。
   function mergeEntry(existing, incoming) {
     const base = mergeClock(incoming) >= mergeClock(existing) ? incoming : existing;
     return {
