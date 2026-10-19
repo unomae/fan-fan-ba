@@ -3,6 +3,16 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-10-19 — 整版 review 第三批：修 4 個低風險問題
+
+**範圍**：同一輪 review 的低風險項，分支 `fix/review-data-loss`。
+- 新手引導把自訂端點的金鑰也算進「已設定 API Key」（`welcome.js`，`b54cc00`）。
+- 雲端上傳訊息與同步紀錄的一般設定數不再把術語表算成一個設定（`cloud-sync.js` `countCloudGeneralSettings`，`1b32a6d`）。
+- 存過但清空的術語表也帶進設定檔與雲端，還原端跟著清空；從沒存過才不帶（`options.js` `buildSettingsBackupPayload`，`412dee4`）。
+- 術語表或自訂端點網址／模型名稱改變時清空回應快取，不再拿舊譯法或舊端點的結果（`content/main.js`，`6f1220c`）。
+
+**驗證**：新增 6 條測試，修前各自實跑皆紅（R-02 先只加計數函式，確認紅在計數 3≠2 而非函式不存在）、修後皆綠；全套 48 suites／775 tests exit 0、0 skipped（worktree 內實跑）。未驗：e2e、實機擴充、真雲端同步。
+
 ## 2026-10-19 — 整版 review 第二批：修 6 個功能出錯的問題
 
 **範圍**：同一輪 review 的功能出錯類，分支 `fix/review-data-loss`。
