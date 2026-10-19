@@ -52,6 +52,19 @@ describe('Popup module', () => {
     });
   });
 
+  // 只能全文翻譯的模型（瀏覽器內建）若被選成主模型，選字翻譯／解釋／優化會全部被背景端拒絕；
+  // 設定頁主選單已排除它，popup 的快選也要排除
+  describe('renderModels', () => {
+    it('不列出只能全文翻譯的模型', () => {
+      global.popupModule.renderModels('groq:openai/gpt-oss-120b');
+      const names = [...document.querySelectorAll('#modelList .model-item .model-name')].map(el => el.textContent);
+      const pageOnly = global.popupModule.MODELS.filter(m => m.pageTranslationOnly);
+      expect(pageOnly.length).toBeGreaterThan(0);
+      pageOnly.forEach(m => expect(names).not.toContain(m.name));
+      expect(names).toHaveLength(global.popupModule.MODELS.length - pageOnly.length);
+    });
+  });
+
   describe('renderPopupOverview', () => {
     it('should summarize usable state and optional integrations', () => {
       const model = global.popupModule.MODELS[0].id;
