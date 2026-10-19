@@ -1611,6 +1611,8 @@ function normalizeImportedSettings(values = {}) {
 }
 
 function normalizeImportedSetting(key, value) {
+  // 全文翻譯的空字串＝跟隨主模型，不能被 normalizeModel 補成預設模型
+  if (key === 'pageTranslationModel' && !String(value || '').trim()) return '';
   if (key === 'model' || key === 'pageTranslationModel') {
     return ModelRegistry.normalizeModel(String(value || ''));
   }
