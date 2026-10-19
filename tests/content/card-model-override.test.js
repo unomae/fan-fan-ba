@@ -272,6 +272,30 @@ describe('各功能使用的模型', () => {
   });
 });
 
+describe('回應快取在術語表或自訂端點改變時失效', () => {
+  beforeEach(() => jest.clearAllMocks());
+  const onChanged = () => chrome.storage.onChanged.addListener.mock.calls[0][0];
+
+  // 快取 key 不含術語表與自訂端點設定：改了譯法或換了端點，同一頁再查同一段要重送，不能拿舊結果
+  it.each([
+    ['術語表', { glossary: { newValue: { terms: [{ source: 'apple', target: '蘋果公司' }], sites: [] } } }, 'local'],
+    ['自訂端點網址', { customApiBase: { newValue: 'https://llm.example.com/v1' } }, 'sync'],
+    ['自訂端點模型名稱', { customModelName: { newValue: 'my-model' } }, 'sync']
+  ])('%s改變後，同一段文字重新送出請求', async (_name, changes, area) => {
+    const { context, requests } = loadCard();
+    await openCardFor(context);
+    const sent = requests.length;
+    context.triggerAction('translate');
+    await flush();
+    expect(requests.length).toBe(sent); // 沒改設定：命中快取
+
+    onChanged()(changes, area);
+    context.triggerAction('translate');
+    await flush();
+    expect(requests.length).toBe(sent + 1);
+  });
+});
+
 describe('結果卡：從最近紀錄還原後重查', () => {
   beforeEach(() => jest.clearAllMocks());
 
