@@ -261,6 +261,24 @@ describe('設定頁：自訂動作清單', () => {
     expect($('actionEditor').hidden).toBe(true);
     expect(document.activeElement).toBe($('btnNewAction'));
   });
+
+  // .field 設了 display: grid，會蓋過 hidden 的預設隱藏；套上設定頁真的樣式檢查實際算出的 display
+  it('編輯器帶 hidden 時真的看不到：一開始、按 Esc 關閉後都是 display: none', async () => {
+    await loadOptions();
+    const style = html.match(/<style>([\s\S]*?)<\/style>/)[1];
+    const sheet = document.createElement('style');
+    sheet.textContent = style;
+    document.head.appendChild(sheet);
+    try {
+      expect(getComputedStyle($('actionEditor')).display).toBe('none');
+      $('btnNewAction').click();
+      expect(getComputedStyle($('actionEditor')).display).toBe('grid');
+      $('actionName').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(getComputedStyle($('actionEditor')).display).toBe('none');
+    } finally {
+      sheet.remove();
+    }
+  });
 });
 
 describe('設定頁：預覽', () => {
