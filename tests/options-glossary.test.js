@@ -171,11 +171,24 @@ describe('CSV 匯入匯出', () => {
 });
 
 describe('設定檔與雲端同步', () => {
-  it('匯出設定檔帶術語表；空的不帶', async () => {
+  it('匯出設定檔帶術語表；從沒存過術語表的不帶', async () => {
     await loadOptions(STORED);
     expect((await options.buildSettingsBackupPayload(false)).glossary).toEqual(STORED.glossary);
     await loadOptions();
     expect((await options.buildSettingsBackupPayload(false))).not.toHaveProperty('glossary');
+  });
+
+  // 清空也是一種狀態：不帶進去的話，另一台還原時會把它當「沒有術語表資料」而保留舊術語
+  it('存過但清空的術語表也帶進設定檔與雲端，還原端跟著清空', async () => {
+    const EMPTY = { terms: [], sites: [] };
+    await loadOptions({ glossary: EMPTY });
+    const backup = await options.buildSettingsBackupPayload(false);
+    expect(backup.glossary).toEqual(EMPTY);
+    expect((await options.buildCloudSettingsPayload()).settings.glossary).toEqual(EMPTY);
+
+    await loadOptions(STORED);
+    await options.importSettingsBackupFile({ text: async () => JSON.stringify(backup) });
+    expect(store.glossary).toEqual(EMPTY);
   });
 
   it('雲端上傳的內容含術語表、不含 API Key', async () => {
