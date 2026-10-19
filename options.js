@@ -2364,7 +2364,9 @@ function setActionEditorError(message) {
 }
 
 function readActionEditorDraft() {
-  const base = actionEditorState?.action || createBlankCustomAction();
+  // 以清單裡最新的那筆為底：編輯器開著時別處改的釘選／啟用／順序不會被開啟當下的舊值蓋回
+  const opened = actionEditorState?.action;
+  const base = (opened && actionListState.find(item => item.id === opened.id)) || opened || createBlankCustomAction();
   return {
     ...base,
     name: $('actionName').value.trim(),
