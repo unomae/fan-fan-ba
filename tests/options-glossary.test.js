@@ -228,3 +228,46 @@ describe('設定檔與雲端同步', () => {
     expect(store.glossary).toEqual(STORED.glossary);
   });
 });
+
+describe('「儲存設定」不誤蓋術語表', () => {
+  // 讀術語表失敗時編輯器是空的；這時存其他設定不能把空表寫回去，否則原有術語全被清掉
+  it('載入時術語表讀取失敗：按儲存不寫術語表，並說明這次沒存術語表', async () => {
+    jest.resetModules();
+    document.body.innerHTML = bodyHtml;
+    mockLocalStorage(STORED);
+    const read = chrome.storage.local.get.getMockImplementation();
+    let failed = false;
+    chrome.storage.local.get.mockImplementation(async keys => {
+      const wantsGlossary = keys === 'glossary' || (keys && typeof keys === 'object' && !Array.isArray(keys) && 'glossary' in keys);
+      if (wantsGlossary && !failed) { failed = true; throw new Error('暫時讀取失敗'); }
+      return read(keys);
+    });
+    chrome.storage.sync.get.mockResolvedValue({});
+    chrome.storage.sync.set.mockResolvedValue();
+    delete global.FanFanBaCloudSync;
+    require('../options');
+    await flush();
+    await flush();
+    expect(failed).toBe(true);
+
+    await clickSave();
+    expect(store.glossary).toEqual(STORED.glossary);
+    expect($('glossaryStatus').textContent).toContain('讀取失敗');
+  });
+
+  // 兩個設定頁同時開著：另一頁剛存了新術語，這頁沒動術語表就按儲存，不能拿舊表蓋回去
+  it('這頁沒改術語表：按儲存不覆寫別的分頁剛存的術語', async () => {
+    await loadOptions(STORED);
+    const fromOtherTab = { terms: [...STORED.glossary.terms, { source: 'SKU', target: '庫存單位' }], sites: STORED.glossary.sites };
+    store.glossary = fromOtherTab;
+    await clickSave();
+    expect(store.glossary).toEqual(fromOtherTab);
+  });
+
+  it('這頁有改術語表：照常寫入', async () => {
+    await loadOptions(STORED);
+    fillRow(rows()[1], { source: 'MOQ', target: '最低訂購量' });
+    await clickSave();
+    expect(store.glossary.terms[1]).toEqual({ source: 'MOQ', target: '最低訂購量' });
+  });
+});

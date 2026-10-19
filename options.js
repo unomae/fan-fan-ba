@@ -949,9 +949,10 @@ $('btnSave').addEventListener('click', async () => {
     showStatus('err', `各動作的模型沒有存成功：${error.message}`);
     return;
   }
-  if (glossaryDraft) {
+  if (glossaryDraft && isGlossaryDraftChanged(glossaryDraft.glossary)) {
     try {
       await chrome.storage.local.set({ [Glossary.STORAGE_KEY]: glossaryDraft.glossary });
+      markGlossaryEditorSynced(glossaryDraft.glossary);
     } catch (error) {
       showStatus('err', `術語表沒有存成功：${error.message}`);
       return;
@@ -1723,8 +1724,10 @@ const BUILTIN_ACTION_TEMPLATES = {
 
 // ── 術語表 ─────────────────────────────────────────
 // 編輯器直接用表格列當狀態，按「儲存設定」時才讀回、驗證、寫進 chrome.storage.local。
-// 還沒從 storage 讀完就不寫，免得用空表蓋掉已存的術語表。
+// 還沒從 storage 讀完（或讀取失敗）就不寫，免得用空表蓋掉已存的術語表；
+// 讀到後記下當時的內容，存檔時沒改就不寫，免得蓋掉別的設定分頁剛存的術語。
 let glossaryEditorLoaded = false;
+let glossaryEditorBaseline = '';
 const GLOSSARY_CSV_MAX_BYTES = 1024 * 1024;
 
 function setGlossaryStatus(message) {
@@ -1812,15 +1815,29 @@ async function loadStoredGlossary() {
   return Glossary.normalizeGlossary(stored);
 }
 
+// 編輯器內容與 storage 一致時記下基準；存檔只在內容跟基準不同時寫入
+function markGlossaryEditorSynced(glossary) {
+  glossaryEditorBaseline = JSON.stringify(Glossary.normalizeGlossary(glossary));
+  glossaryEditorLoaded = true;
+}
+
+function isGlossaryDraftChanged(glossary) {
+  return JSON.stringify(Glossary.normalizeGlossary(glossary)) !== glossaryEditorBaseline;
+}
+
 async function loadGlossaryEditor() {
   let glossary = Glossary.normalizeGlossary(null);
   try {
     glossary = await loadStoredGlossary();
   } catch (error) {
     console.warn('[翻翻吧] 術語表讀取失敗', error);
+    renderGlossaryEditor(glossary);
+    glossaryEditorLoaded = false;
+    setGlossaryStatus('術語表讀取失敗，儲存設定時不會動到術語表；請重新整理頁面再試。');
+    return glossary;
   }
   renderGlossaryEditor(glossary);
-  glossaryEditorLoaded = true;
+  markGlossaryEditorSynced(glossary);
   return glossary;
 }
 
@@ -1828,6 +1845,7 @@ async function saveImportedGlossary(raw) {
   const glossary = Glossary.normalizeGlossary(raw);
   await chrome.storage.local.set({ [Glossary.STORAGE_KEY]: glossary });
   renderGlossaryEditor(glossary);
+  markGlossaryEditorSynced(glossary);
   return glossary;
 }
 
