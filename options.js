@@ -1209,7 +1209,7 @@ function bindCloudSyncControls() {
     }
     const payload = await buildCloudSettingsPayload();
     const file = await CloudSync.uploadCloudSettings(token, payload);
-    await renderCloudSyncStatus(`已上傳 ${Object.keys(payload.settings || {}).length} 個一般設定：版本 ${payload.appVersion || '未知'}，${formatCloudSyncTime(payload.updatedAt)}`);
+    await renderCloudSyncStatus(`已上傳 ${CloudSync.countCloudGeneralSettings(payload.settings)} 個一般設定${payload.settings?.glossary ? '與術語表' : ''}：版本 ${payload.appVersion || '未知'}，${formatCloudSyncTime(payload.updatedAt)}`);
     showStatus('ok', `✓ 雲端設定已上傳${file?.id ? `（${file.id}）` : ''}`);
   }));
 

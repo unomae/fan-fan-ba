@@ -255,6 +255,34 @@ describe('Cloud Sync helper', () => {
     });
   });
 
+  // 術語表跟著雲端同步、放在 settings 底下，但它不是「一般設定」：計數不能把它算成一個
+  it('上傳與下載的一般設定數不把術語表算進去', async () => {
+    const settings = {
+      model: 'gemini-3.5-flash',
+      targetLanguage: 'zh-TW',
+      glossary: { terms: [{ source: 'MOQ', target: '最小訂購量' }], sites: [] }
+    };
+    expect(CloudSync.countCloudGeneralSettings(settings)).toBe(2);
+
+    fetch
+      .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue({ files: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue({ id: 'cloud-file-1' }) });
+    await CloudSync.uploadCloudSettings('token-test', {
+      app: 'fan-fan-ba', cloudSchemaVersion: 1, updatedAt: '2026-10-19T00:00:00.000Z', appVersion: '1.12.0', deviceId: 'device-test', settings
+    });
+    expect(chrome.storage.local.set).toHaveBeenLastCalledWith({
+      [CloudSync.CLOUD_SYNC_META_KEY]: expect.objectContaining({ lastUploadSettingsCount: 2 })
+    });
+
+    fetch
+      .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue({ files: [{ id: 'cloud-file-1', name: 'fan-fan-ba-cloud-settings.json' }] }) })
+      .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue({ app: 'fan-fan-ba', cloudSchemaVersion: 1, updatedAt: 't', settings }) });
+    await CloudSync.downloadCloudSettings('token-test');
+    expect(chrome.storage.local.set).toHaveBeenLastCalledWith({
+      [CloudSync.CLOUD_SYNC_META_KEY]: expect.objectContaining({ lastDownloadSettingsCount: 2 })
+    });
+  });
+
   it('rejects cloud payloads that include API key data', () => {
     expect(() => CloudSync.validateCloudSettingsPayload({
       app: 'fan-fan-ba',
