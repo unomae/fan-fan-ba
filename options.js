@@ -1405,9 +1405,12 @@ async function buildSettingsBackupPayload(includeSecrets = false, options = {}) 
   if (Array.isArray(storedActions) && storedActions.length) payload.actions = storedActions;
 
   // 術語表跟著設定檔匯出，也跟著雲端同步（見 buildCloudSettingsPayload）。從沒存過就不帶；
-  // 存過但清空了要帶空表，還原端才會跟著清空，而不是當成沒有術語表資料保留舊術語
+  // 存過但清空了要帶空表，還原端才會跟著清空，而不是當成沒有術語表資料保留舊術語；
+  // 存的值損毀（不是物件）就不帶，免得被當成「清空」把還原端正常的術語表清掉
   const { [Glossary.STORAGE_KEY]: storedGlossary } = await chrome.storage.local.get({ [Glossary.STORAGE_KEY]: null });
-  if (storedGlossary != null) payload.glossary = Glossary.normalizeGlossary(storedGlossary);
+  if (storedGlossary && typeof storedGlossary === 'object' && !Array.isArray(storedGlossary)) {
+    payload.glossary = Glossary.normalizeGlossary(storedGlossary);
+  }
 
   return payload;
 }

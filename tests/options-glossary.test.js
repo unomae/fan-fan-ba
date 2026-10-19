@@ -191,6 +191,12 @@ describe('設定檔與雲端同步', () => {
     expect(store.glossary).toEqual(EMPTY);
   });
 
+  // 存檔損毀（不是物件）時不能當成「清空」帶出去，否則還原端正常的術語表會被清掉
+  it.each([['字串', 'broken'], ['陣列', [1, 2]], ['數字', 42]])('存的術語表是%s時不帶進設定檔', async (_name, value) => {
+    await loadOptions({ glossary: value });
+    expect(await options.buildSettingsBackupPayload(false)).not.toHaveProperty('glossary');
+  });
+
   it('雲端上傳的內容含術語表、不含 API Key', async () => {
     await loadOptions({ ...STORED, groqApiKey: 'gsk_secret' });
     const payload = await options.buildCloudSettingsPayload();
