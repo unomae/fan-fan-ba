@@ -43,12 +43,12 @@ async function writeManualState(state) {
  */
 async function computeStepStates() {
   const [secrets, diagnostics, manual] = await Promise.all([
-    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '' }),
+    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', customApiKey: '' }),
     Storage.getDiagnostics(),
     readManualState()
   ]);
 
-  const hasAnyKey = ['apiKey', 'groqApiKey', 'openrouterApiKey'].some(key => secrets?.[key]);
+  const hasAnyKey = ['apiKey', 'groqApiKey', 'openrouterApiKey', 'customApiKey'].some(key => secrets?.[key]);
   const actions = diagnostics?.actions || {};
   const usedOnce = Number(actions.translate || 0) + Number(actions.explain || 0)
     + Number(actions.optimize || 0) + Number(diagnostics?.pageTranslations || 0) > 0;
