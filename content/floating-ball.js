@@ -394,7 +394,7 @@ async function showFloatingHistoryPanel() {
         e.stopPropagation();
         const item = history[parseInt(btn.dataset.index, 10)];
         if (!item) return;
-        applyHistoryState(item.text);
+        applyHistoryState(item.text, item.action);
         resultCard.querySelector('.g-rc-tag').textContent = ({ translate: '翻譯', explain: '解釋', optimize: '優化' }[item.action] || item.action);
         renderResult(item.action, item.result, item.text, { fromHistory: true });
       });

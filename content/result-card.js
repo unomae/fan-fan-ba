@@ -212,7 +212,7 @@ function createResultCard() {
 
           // savedSel / userDragged 必須更新，讓後續 Obsidian 存入可以正確取得文字
           // （lastDictData 不在此設定，renderResult 內部會重新解析並賦值）
-          applyHistoryState(item.text);
+          applyHistoryState(item.text, item.action);
 
           // 更新 header tag
           setResultCardTag(el.querySelector('.g-rc-tag'), item.action);
@@ -310,9 +310,12 @@ function createResultCard() {
 // ── 歷史還原時更新必要的全域狀態 ─────────────────────────
 // savedSel.text 供後續 saveToObsidian 使用；userDragged 保持卡片位置不跳動
 // （刻意的 global mutation，原因見上方註解）
-function applyHistoryState(text) {
+// activeAction 也換成這筆紀錄的動作：卡上換模型、修改原文重查時才會跑顯示中的那個動作
+// （紀錄只存內建三動作，自訂動作與長難句分析不寫入，所以不會碰到 activeCustomAction）
+function applyHistoryState(text, action) {
   savedSel    = { text, range: null };
   userDragged = true;
+  if (action) activeAction = action;
 }
 
 // ── Obsidian 面板開關（供寶石按鈕「第一次」與「更換」共用）──

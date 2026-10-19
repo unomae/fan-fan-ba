@@ -271,3 +271,28 @@ describe('各功能使用的模型', () => {
     expect(context.setPageTranslationModel).toHaveBeenLastCalledWith(GEMINI);
   });
 });
+
+describe('結果卡：從最近紀錄還原後重查', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  // 還原的是翻譯紀錄，卡上換模型重查就要跑翻譯，不能沿用還原前那次的「解釋」
+  it('先解釋、再從紀錄還原翻譯，換模型重查送的是翻譯', async () => {
+    const { context, requests } = loadCard();
+    await openCardFor(context);
+    context.triggerAction('explain');
+    await flush();
+    expect(requests.at(-1).action).toBe('explain');
+
+    context.loadHistory = async () => [{ action: 'translate', text: 'apple', result: '{"word":"apple"}', ts: Date.now() }];
+    const card = document.getElementById('gemini-result-card');
+    card.querySelector('.g-history').click();
+    await flush(); await flush();
+    card.querySelector('.g-hist-item').click();
+    await flush();
+
+    chooseModel(card, GROQ);
+    await flush();
+    expect(requests.at(-1).action).toBe('translate');
+    expect(requests.at(-1).modelOverride).toBe(GROQ);
+  });
+});
