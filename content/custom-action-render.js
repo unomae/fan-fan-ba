@@ -374,9 +374,11 @@ function getDefaultCustomActionIcon() {
   return CUSTOM_ACTION_DEFAULT_ICON;
 }
 
-// 不認得的名稱一律退回預設圖示
+// 不認得的名稱一律退回預設圖示；只查自己的鍵，constructor 之類的繼承屬性不算
 function buildCustomActionIcon(name, size = 14) {
-  const icon = CUSTOM_ACTION_ICONS[name] || CUSTOM_ACTION_ICONS[CUSTOM_ACTION_DEFAULT_ICON];
+  const icon = Object.prototype.hasOwnProperty.call(CUSTOM_ACTION_ICONS, name)
+    ? CUSTOM_ACTION_ICONS[name]
+    : CUSTOM_ACTION_ICONS[CUSTOM_ACTION_DEFAULT_ICON];
   return ffbSvgIcon({
     width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
     'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true'
