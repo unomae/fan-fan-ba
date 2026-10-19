@@ -137,6 +137,18 @@ describe('內建模型下載進度條', () => {
     expect(labelText()).toContain('42%');
   });
 
+  // content.css 的進度條寫的是 width: 0% !important，一般 inline width 壓不過它（實機長條永遠是 0）。
+  // jsdom 不算 !important 的優先序，所以這裡把兩邊對起來：CSS 有 !important，inline 就必須也是 important
+  it('寫進度條寬度時壓得過 content.css 的 !important', () => {
+    const css = require('fs').readFileSync(require('path').join(__dirname, '../../content.css'), 'utf8');
+    const rule = css.match(/\.ffb-page-panel-progress-bar\s*\{([^}]*)\}/)[1];
+    renderPageTranslationDownloadProgress(42);
+    if (/width:[^;]*!important/.test(rule)) {
+      expect(bar().style.getPropertyPriority('width')).toBe('important');
+    }
+    expect(bar().style.getPropertyValue('width')).toBe('42%');
+  });
+
   it('百分比超出範圍時夾住，不會畫出 -5% 或 250% 的長條', () => {
     renderPageTranslationDownloadProgress(-5);
     expect(bar().style.width).toBe('0%');

@@ -103,6 +103,14 @@ describe('Welcome module', () => {
     expect(stepState('firstuse').done).toBe(false);
   });
 
+  it('只設定自訂端點的金鑰也算 step 1 完成', async () => {
+    localStore.customApiKey = 'sk-dummy';
+    const welcome = load();
+    await welcome.refreshSteps();
+
+    expect(stepState('apikey')).toEqual({ done: true, label: '已設定' });
+  });
+
   it('用過任一動作（含全文翻譯）就自動勾掉 step 2', async () => {
     localStore.fanFanBaDiagnostics = {
       since: '2026-09-13T00:00:00.000Z',

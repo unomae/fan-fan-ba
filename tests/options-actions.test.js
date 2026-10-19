@@ -132,6 +132,32 @@ describe('設定頁：自訂動作清單', () => {
     expect($('actionEditorError').textContent).toBe('輸出欄位最多 8 個');
   });
 
+  // 編輯器開著時，網頁「⋯」選單把同一個動作釘選上工具列；回編輯器存 prompt 不能把釘選撤銷
+  it('編輯器開著時別處改了釘選／啟用／順序：存檔保留別處的改動，只套編輯器的欄位', async () => {
+    const custom = {
+      id: 'custom-a', name: '動作甲', icon: 'pen', builtin: false, enabled: true, pinned: false, order: 3,
+      model: 'default', systemPrompt: '', userPrompt: '{{selection}}',
+      fields: [{ key: 'result', label: '結果', description: '' }], layout: 'fields', saveTo: 'none'
+    };
+    chrome.storage.onChanged = { addListener: jest.fn() };
+    try {
+      await loadOptions({ actionList: [custom] });
+      rowButton('動作甲', '編輯').click();
+
+      store.actionList = store.actionList.map(action => (action.id === 'custom-a' ? { ...action, pinned: true, order: 0 } : action));
+      chrome.storage.onChanged.addListener.mock.calls.forEach(([listener]) => listener({ actionList: { newValue: store.actionList } }, 'local'));
+
+      $('actionUserPrompt').value = '請改寫：{{selection}}';
+      await submitEditor();
+      const saved = storedCustoms().find(action => action.id === 'custom-a');
+      expect(saved.userPrompt).toBe('請改寫：{{selection}}');
+      expect(saved.pinned).toBe(true);
+      expect(saved.order).toBe(0);
+    } finally {
+      delete chrome.storage.onChanged;
+    }
+  });
+
   it('編輯與刪除：改名後儲存；刪除要確認，取消就不刪', async () => {
     const custom = {
       id: 'custom-a', name: '舊名', icon: 'pen', builtin: false, enabled: true, pinned: false, order: 3,
@@ -234,6 +260,24 @@ describe('設定頁：自訂動作清單', () => {
     $('actionName').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect($('actionEditor').hidden).toBe(true);
     expect(document.activeElement).toBe($('btnNewAction'));
+  });
+
+  // .field 設了 display: grid，會蓋過 hidden 的預設隱藏；套上設定頁真的樣式檢查實際算出的 display
+  it('編輯器帶 hidden 時真的看不到：一開始、按 Esc 關閉後都是 display: none', async () => {
+    await loadOptions();
+    const style = html.match(/<style>([\s\S]*?)<\/style>/)[1];
+    const sheet = document.createElement('style');
+    sheet.textContent = style;
+    document.head.appendChild(sheet);
+    try {
+      expect(getComputedStyle($('actionEditor')).display).toBe('none');
+      $('btnNewAction').click();
+      expect(getComputedStyle($('actionEditor')).display).toBe('grid');
+      $('actionName').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(getComputedStyle($('actionEditor')).display).toBe('none');
+    } finally {
+      sheet.remove();
+    }
   });
 });
 

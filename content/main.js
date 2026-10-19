@@ -682,6 +682,10 @@ function initContentSettings() {
     if (area === 'local' && actionsApi && changes[actionsApi.STORAGE_KEY]) {
       setToolbarActionList(actionsApi.normalizeActionList(changes[actionsApi.STORAGE_KEY].newValue));
     }
+    // 快取 key 不含術語表與自訂端點設定，這幾項一改就清掉，免得同一段文字拿到舊譯法或舊端點的結果
+    if ((area === 'local' && changes.glossary) || (area === 'sync' && (changes.customApiBase || changes.customModelName))) {
+      responseCache.clear();
+    }
     if (area === 'sync') {
       if (changes.model) {
         activeModel = FanFanBaModels.normalizeModel(changes.model.newValue);

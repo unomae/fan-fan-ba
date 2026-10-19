@@ -9,7 +9,7 @@
 | 項目 | 狀態 |
 |------|------|
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
-| 自動化單元測試 | <!-- ffb:suites -->48<!-- /ffb:suites --> suites / <!-- ffb:tests -->755<!-- /ffb:tests --> tests 全綠（2026-10-01，含模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表、長難句分析、寫作批改、設定頁搜尋與新功能標籤、術語表、模型比較、單字卡四級評分） |
+| 自動化單元測試 | <!-- ffb:suites -->48<!-- /ffb:suites --> suites / <!-- ffb:tests -->779<!-- /ffb:tests --> tests 全綠（2026-10-19，含模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表、長難句分析、寫作批改、設定頁搜尋與新功能標籤、術語表、模型比較、單字卡四級評分） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-08-26；改 code 先 `npm run package`） |
 | 手動 QA | 全表 55/78；剩 23 項幾乎全卡「無 API key」或「需外部 App／帳號」（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | **2026-09-20 裁決：暫緩送審，先做功能**，告一段落再回頭走上架流程。Chrome Web Store 仍是 release checkpoint |
@@ -124,6 +124,29 @@
   - **現況**：2026-09-30 content script 的 HTML 字串寫入點已全數改用 DOM builder（見 `CHANGELOG.md` 同日「頁面 UI 改用 DOM builder」），jsdom 內模擬 Trusted Types 的 32 個情境都不再觸發寫入點；未用 `createPolicy` 過渡包裝。
   - **接續**：在 Google 搜尋結果頁實機操作一次（`MANUAL-QA.md`「頁面 UI 改用 DOM builder」），確認後結案。
   - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
+
+### 整版 review 遺留（2026-10-19）
+
+- **兩個設定頁都改了術語表時，後存的整份覆蓋**
+
+  - **目的**：多分頁同時編輯術語表不互相吃掉。
+  - **現況**：已修「沒改就不寫」；但編輯器不監聽 storage 變更，兩頁都改過時後存的那頁以自己的舊表整份覆蓋。
+  - **接續**：決定要監聽 `glossary` 變更刷新未改動的編輯器，或存檔前比對 storage 並提示衝突。
+  - **詳情**：`options.js` 的 `isGlossaryDraftChanged`／`loadGlossaryEditor`
+
+- **編輯期間被別處刪掉的自訂動作，存檔時會復活**
+
+  - **目的**：別的分頁刪掉的動作不被舊編輯器加回來。
+  - **現況**：`readActionEditorDraft` 在清單找不到該 id 時退回開啟當下的快照，`saveActionFromEditor` 把它附加回清單。
+  - **接續**：存檔時若動作已不在清單，改為提示「此動作已在別處刪除」並讓使用者選另存或放棄。
+  - **詳情**：`options.js` 的 `readActionEditorDraft`／`saveActionFromEditor`
+
+- **模型下架後，自訂動作的模型默默改成跟隨主模型**〔待裁決〕
+
+  - **目的**：決定要不要讓使用者知道動作的模型被換掉。
+  - **現況**：2026-10-19 修正後動作保留、模型退回 `default`，之後存檔就固定寫回 `default`；沒有任何提示。
+  - **接續**：KAKA 裁決要不要在設定頁或結果卡提示；要做再定提示位置與文案。
+  - **詳情**：`custom-actions.js` 的 `normalizeActionList`
 
 ## 驗證指令速查
 

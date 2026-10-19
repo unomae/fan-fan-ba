@@ -183,6 +183,18 @@ describe('動作清單', () => {
     expect(list.some(a => a.id === 'custom-bad')).toBe(false);
   });
 
+  // 模型下架後清冊不再有那個 id：讀取時保留動作、模型改回跟隨主模型（同內建動作的容錯），
+  // 否則下一次調順序或存檔就把使用者寫的 prompt 永久刪掉
+  it('讀取時自訂動作的模型已不在清冊：動作保留，模型改回跟隨主模型', () => {
+    const list = CustomActions.normalizeActionList([makeAction({ model: 'openrouter:gone/model:free' })]);
+    const kept = list.find(a => a.id === 'custom-vocab-note');
+    expect(kept).toBeDefined();
+    expect(kept.model).toBe('default');
+    expect(kept.userPrompt).toBe(makeAction().userPrompt);
+    // 讀出來的清單可以直接存回去，不會因為舊模型被整份拒絕
+    expect(CustomActions.validateActionList(list).some(a => a.id === 'custom-vocab-note')).toBe(true);
+  });
+
   it('存檔時嚴格：超過 20 個、代號重複、任一筆不合法都拒絕', () => {
     const twenty = Array.from({ length: 20 }, (_, i) => makeAction({ id: `custom-a${i}` }));
     expect(CustomActions.validateActionList(twenty).filter(a => !a.builtin)).toHaveLength(20);

@@ -271,3 +271,77 @@ describe('各功能使用的模型', () => {
     expect(context.setPageTranslationModel).toHaveBeenLastCalledWith(GEMINI);
   });
 });
+
+describe('回應快取在術語表或自訂端點改變時失效', () => {
+  beforeEach(() => jest.clearAllMocks());
+  const onChanged = () => chrome.storage.onChanged.addListener.mock.calls[0][0];
+
+  // 快取 key 不含術語表與自訂端點設定：改了譯法或換了端點，同一頁再查同一段要重送，不能拿舊結果
+  it.each([
+    ['術語表', { glossary: { newValue: { terms: [{ source: 'apple', target: '蘋果公司' }], sites: [] } } }, 'local'],
+    ['自訂端點網址', { customApiBase: { newValue: 'https://llm.example.com/v1' } }, 'sync'],
+    ['自訂端點模型名稱', { customModelName: { newValue: 'my-model' } }, 'sync']
+  ])('%s改變後，同一段文字重新送出請求', async (_name, changes, area) => {
+    const { context, requests } = loadCard();
+    await openCardFor(context);
+    const sent = requests.length;
+    context.triggerAction('translate');
+    await flush();
+    expect(requests.length).toBe(sent); // 沒改設定：命中快取
+
+    onChanged()(changes, area);
+    context.triggerAction('translate');
+    await flush();
+    expect(requests.length).toBe(sent + 1);
+  });
+});
+
+describe('結果卡：從最近紀錄還原後重查', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  // 還原的是翻譯紀錄，卡上換模型重查就要跑翻譯，不能沿用還原前那次的「解釋」
+  it('先解釋、再從紀錄還原翻譯，換模型重查送的是翻譯', async () => {
+    const { context, requests } = loadCard();
+    await openCardFor(context);
+    context.triggerAction('explain');
+    await flush();
+    expect(requests.at(-1).action).toBe('explain');
+
+    context.loadHistory = async () => [{ action: 'translate', text: 'apple', result: '{"word":"apple"}', ts: Date.now() }];
+    const card = document.getElementById('gemini-result-card');
+    card.querySelector('.g-history').click();
+    await flush(); await flush();
+    card.querySelector('.g-hist-item').click();
+    await flush();
+
+    chooseModel(card, GROQ);
+    await flush();
+    expect(requests.at(-1).action).toBe('translate');
+    expect(requests.at(-1).modelOverride).toBe(GROQ);
+  });
+
+  // 解釋還在串流時還原一筆翻譯紀錄：之後送達的串流內容與完成訊號不能把卡片蓋回解釋
+  it('串流進行中還原紀錄：舊串流的內容不再寫進卡片', async () => {
+    const { context, requests } = loadCard();
+    await openCardFor(context);
+    context.triggerAction('explain');
+    await flush();
+    const explainRequest = requests.at(-1);
+    expect(explainRequest.action).toBe('explain');
+    const port = chrome.runtime.connect.mock.results.at(-1).value;
+    const emit = port.onMessage.addListener.mock.calls[0][0];
+
+    context.loadHistory = async () => [{ action: 'translate', text: 'apple', result: '{"word":"apple"}', ts: Date.now() }];
+    const card = document.getElementById('gemini-result-card');
+    card.querySelector('.g-history').click();
+    await flush(); await flush();
+    card.querySelector('.g-hist-item').click();
+    await flush();
+
+    emit({ requestId: explainRequest.requestId, chunk: '舊串流的解釋內容' });
+    emit({ requestId: explainRequest.requestId, done: true });
+    await flush();
+    expect(card.querySelector('.g-rc-body').textContent).not.toContain('舊串流的解釋內容');
+    expect(vm.runInContext('activeAction', context)).toBe('translate');
+  });
+});

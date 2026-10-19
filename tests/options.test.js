@@ -143,6 +143,14 @@ describe('Options module', () => {
       });
     });
 
+    // 全文翻譯「跟隨主模型」存成空字串；匯入時若被正規化成預設模型，主模型不是 Groq 的人會被改成固定 Groq
+    it('匯入時全文翻譯「跟隨主模型」（空字串）保留，指定的舊 id 照常遷移', () => {
+      const follow = global.optionsModule.normalizeImportedSettings({ model: 'gemini-3.5-flash', pageTranslationModel: '' });
+      expect(follow.pageTranslationModel).toBe('');
+      const legacy = global.optionsModule.normalizeImportedSettings({ pageTranslationModel: 'openrouter/free' });
+      expect(legacy.pageTranslationModel).toBe('openrouter:google/gemma-4-31b-it:free');
+    });
+
     it('exports API keys as encrypted secrets when a backup password is provided', async () => {
       chrome.storage.sync.get.mockResolvedValueOnce({ model: 'gemini-3.5-flash' });
       chrome.storage.local.get.mockResolvedValueOnce({

@@ -171,11 +171,30 @@ describe('CSV 匯入匯出', () => {
 });
 
 describe('設定檔與雲端同步', () => {
-  it('匯出設定檔帶術語表；空的不帶', async () => {
+  it('匯出設定檔帶術語表；從沒存過術語表的不帶', async () => {
     await loadOptions(STORED);
     expect((await options.buildSettingsBackupPayload(false)).glossary).toEqual(STORED.glossary);
     await loadOptions();
     expect((await options.buildSettingsBackupPayload(false))).not.toHaveProperty('glossary');
+  });
+
+  // 清空也是一種狀態：不帶進去的話，另一台還原時會把它當「沒有術語表資料」而保留舊術語
+  it('存過但清空的術語表也帶進設定檔與雲端，還原端跟著清空', async () => {
+    const EMPTY = { terms: [], sites: [] };
+    await loadOptions({ glossary: EMPTY });
+    const backup = await options.buildSettingsBackupPayload(false);
+    expect(backup.glossary).toEqual(EMPTY);
+    expect((await options.buildCloudSettingsPayload()).settings.glossary).toEqual(EMPTY);
+
+    await loadOptions(STORED);
+    await options.importSettingsBackupFile({ text: async () => JSON.stringify(backup) });
+    expect(store.glossary).toEqual(EMPTY);
+  });
+
+  // 存檔損毀（不是物件）時不能當成「清空」帶出去，否則還原端正常的術語表會被清掉
+  it.each([['字串', 'broken'], ['陣列', [1, 2]], ['數字', 42]])('存的術語表是%s時不帶進設定檔', async (_name, value) => {
+    await loadOptions({ glossary: value });
+    expect(await options.buildSettingsBackupPayload(false)).not.toHaveProperty('glossary');
   });
 
   it('雲端上傳的內容含術語表、不含 API Key', async () => {
@@ -226,5 +245,50 @@ describe('設定檔與雲端同步', () => {
     for (let i = 0; i < 10; i++) await flush();
     expect(chrome.storage.sync.set).toHaveBeenCalled();
     expect(store.glossary).toEqual(STORED.glossary);
+  });
+});
+
+describe('「儲存設定」不誤蓋術語表', () => {
+  // 讀術語表失敗時編輯器是空的；這時存其他設定不能把空表寫回去，否則原有術語全被清掉
+  it('載入時術語表讀取失敗：按儲存不寫術語表，並說明這次沒存術語表', async () => {
+    jest.resetModules();
+    document.body.innerHTML = bodyHtml;
+    mockLocalStorage(STORED);
+    const read = chrome.storage.local.get.getMockImplementation();
+    let failed = false;
+    chrome.storage.local.get.mockImplementation(async keys => {
+      const wantsGlossary = keys === 'glossary' || (keys && typeof keys === 'object' && !Array.isArray(keys) && 'glossary' in keys);
+      if (wantsGlossary && !failed) { failed = true; throw new Error('暫時讀取失敗'); }
+      return read(keys);
+    });
+    chrome.storage.sync.get.mockResolvedValue({});
+    chrome.storage.sync.set.mockResolvedValue();
+    delete global.FanFanBaCloudSync;
+    require('../options');
+    await flush();
+    await flush();
+    expect(failed).toBe(true);
+
+    await clickSave();
+    expect(store.glossary).toEqual(STORED.glossary);
+    expect($('glossaryStatus').textContent).toContain('讀取失敗');
+    // 在其他分頁按儲存也要看得到：頁面上方的狀態列不能只說「設定已儲存」
+    expect($('status').textContent).toContain('術語表沒有儲存');
+  });
+
+  // 兩個設定頁同時開著：另一頁剛存了新術語，這頁沒動術語表就按儲存，不能拿舊表蓋回去
+  it('這頁沒改術語表：按儲存不覆寫別的分頁剛存的術語', async () => {
+    await loadOptions(STORED);
+    const fromOtherTab = { terms: [...STORED.glossary.terms, { source: 'SKU', target: '庫存單位' }], sites: STORED.glossary.sites };
+    store.glossary = fromOtherTab;
+    await clickSave();
+    expect(store.glossary).toEqual(fromOtherTab);
+  });
+
+  it('這頁有改術語表：照常寫入', async () => {
+    await loadOptions(STORED);
+    fillRow(rows()[1], { source: 'MOQ', target: '最低訂購量' });
+    await clickSave();
+    expect(store.glossary.terms[1]).toEqual({ source: 'MOQ', target: '最低訂購量' });
   });
 });

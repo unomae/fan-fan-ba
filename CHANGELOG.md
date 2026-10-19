@@ -3,6 +3,47 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-10-19 — 合併前自審：補修 3 條，3 條記入 PLAN
+
+**範圍**：`fix/review-data-loss` 合併前跑 `/code-review` 自審，找到 9 條；修掉這次修法帶進來或放大的 3 條。
+- 損毀（非物件）的術語表存檔不再被當成空表匯出、清掉還原端的術語表（`options.js`，`278140f`）。
+- 術語表讀取失敗時，頁面上方的儲存訊息改為錯誤樣式並講明術語表沒有存（`options.js`，`6b6b76c`）。
+- 從最近紀錄還原時作廢進行中的請求，舊串流不再把還原的卡片蓋回原本的動作（`content/result-card.js`，`375989c`）。
+- 多分頁編輯術語表互相覆蓋、編輯中被刪的自訂動作會復活、模型下架改跟隨主模型無提示：記入 `PLAN.md`〈整版 review 遺留〉。
+
+**驗證**：修前各自實跑皆紅、修後皆綠；全套 48 suites／779 tests exit 0、0 skipped。
+
+## 2026-10-19 — 整版 review 第三批：修 4 個低風險問題
+
+**範圍**：同一輪 review 的低風險項，分支 `fix/review-data-loss`。
+- 新手引導把自訂端點的金鑰也算進「已設定 API Key」（`welcome.js`，`b54cc00`）。
+- 雲端上傳訊息與同步紀錄的一般設定數不再把術語表算成一個設定（`cloud-sync.js` `countCloudGeneralSettings`，`1b32a6d`）。
+- 存過但清空的術語表也帶進設定檔與雲端，還原端跟著清空；從沒存過才不帶（`options.js` `buildSettingsBackupPayload`，`412dee4`）。
+- 術語表或自訂端點網址／模型名稱改變時清空回應快取，不再拿舊譯法或舊端點的結果（`content/main.js`，`6f1220c`）。
+
+**驗證**：新增 6 條測試，修前各自實跑皆紅（R-02 先只加計數函式，確認紅在計數 3≠2 而非函式不存在）、修後皆綠；全套 48 suites／775 tests exit 0、0 skipped（worktree 內實跑）。未驗：e2e、實機擴充、真雲端同步。
+
+## 2026-10-19 — 整版 review 第二批：修 6 個功能出錯的問題
+
+**範圍**：同一輪 review 的功能出錯類，分支 `fix/review-data-loss`。
+- popup 快選不再列出只能全文翻譯的瀏覽器內建模型；選成主模型會讓選字翻譯、解釋、優化全部被拒（`popup.js`，`e20d16e`）。
+- 匯入設定檔／雲端下載時，全文翻譯「跟隨主模型」（空字串）不再被補成預設 Groq（`options.js` `normalizeImportedSetting`，`ef213bf`）。
+- 自訂動作圖示名稱是 `constructor` 這類物件內建屬性時退回預設圖示，不再讓動作清單渲染失敗（`content/custom-action-render.js`，`82a7f3c`）。
+- 從最近紀錄還原後，換模型或改原文重查跑的是還原的那個動作，不再沿用還原前的動作（`content/result-card.js`、`content/floating-ball.js`，`dd7b0cc`）。
+- 自訂動作編輯器帶 `hidden` 時真的隱藏；原本被 `.field` 的 `display: grid` 蓋掉，一直顯示（`options.html`，`201ad8b`）。
+- 內建翻譯下載進度條的寬度改以 important 寫入，壓得過 `content.css` 的 `width: 0% !important`；原本長條永遠是 0（`content/page-translator-panel.js`，`a8d3072`）。
+
+**驗證**：新增 9 條測試，修前各自實跑皆紅、修後皆綠；全套 48 suites／769 tests exit 0、0 skipped（worktree 內實跑）。進度條與編輯器另在瀏覽器以原始 CSS 實測：進度條修前 0px、修後 84px；編輯器帶 hidden 時 display 由 grid 變 none。未驗：e2e、實機擴充、真實內建翻譯下載。
+
+## 2026-10-19 — 整版 review 第一批：修 4 個會讓使用者資料不見的問題
+
+**範圍**：v1.11.1..master 整版 review（主 session 跨模組四個重點＋Codex 逐檔）找出的資料遺失類問題，分支 `fix/review-data-loss`。
+- 自訂動作指定的模型被移出清冊後，讀取時整筆被略過、下次存檔就永久刪掉；改成模型退回跟隨主模型、動作保留（`custom-actions.js` `normalizeActionList`，`22f3319`）。
+- 術語表載入失敗時按「儲存設定」會寫回空表；兩個設定頁同時開著時，只改模型的那頁會把另一頁剛存的術語蓋回舊表。改成讀取失敗不寫、內容沒改不寫（`options.js`，`b93f40e`）。
+- 自訂動作編輯器存檔以開啟當下的快照為底，會撤銷編輯期間在別處改的釘選／順序；改以清單最新的同一筆為底（`options.js` `readActionEditorDraft`，`68ae480`）。
+
+**驗證**：新增 5 條測試，修前各自實跑皆紅、修後皆綠；全套 48 suites／760 tests exit 0、0 skipped（worktree 內實跑）。未驗：e2e、實機設定頁。
+
 ## 2026-10-01 — 術語表比對：轉小寫會變長的字元不再讓後面的術語位移
 
 **範圍**：術語比對原本先把整段文字轉小寫找位置，再用同一個位置回原文檢查詞界。土耳其文的 `İ` 轉小寫後會從 1 個字元變成 2 個，所以文字裡只要前面出現 `İ`，後面的位置就全部差一格，詞界檢查讀到錯的字元，術語比對不到（例如 `İstanbul lead time` 比對不到 `lead time`）。

@@ -28,7 +28,8 @@ function renderModels(currentId) {
   const list = document.getElementById('modelList');
   list.innerHTML = '';
 
-  MODELS.forEach(m => {
+  // 只能全文翻譯的模型（瀏覽器內建）不給選成主模型，否則選字翻譯等功能全部失敗；同設定頁主選單
+  MODELS.filter(m => !m.pageTranslationOnly).forEach(m => {
     const item = document.createElement('button');
     item.type = 'button';
     item.className = 'model-item' + (m.id === currentId ? ' active' : '');

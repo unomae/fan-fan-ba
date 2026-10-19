@@ -346,11 +346,16 @@
       signedIn: true,
       lastUploadAt: payload.updatedAt,
       lastUploadAppVersion: payload.appVersion || '',
-      lastUploadSettingsCount: Object.keys(payload.settings || {}).length,
+      lastUploadSettingsCount: countCloudGeneralSettings(payload.settings),
       lastFileId: file.id || existing?.id || '',
       lastDeviceId: payload.deviceId || ''
     });
     return file;
+  }
+
+  // 術語表放在 settings 底下一起同步，但不算「一般設定」
+  function countCloudGeneralSettings(settings = {}) {
+    return Object.keys(settings || {}).filter(key => key !== 'glossary').length;
   }
 
   async function downloadCloudSettings(token) {
@@ -363,7 +368,7 @@
       lastDownloadAt: new Date().toISOString(),
       lastCloudUpdatedAt: payload.updatedAt || '',
       lastCloudAppVersion: payload.appVersion || '',
-      lastDownloadSettingsCount: Object.keys(payload.settings || {}).length,
+      lastDownloadSettingsCount: countCloudGeneralSettings(payload.settings),
       lastFileId: file.id
     });
     return payload;
@@ -495,6 +500,7 @@
     CLOUD_OAUTH_TOKEN_KEY,
     CLOUD_WEB_AUTH_CLIENT_ID_KEY,
     DRIVE_APPDATA_SCOPE,
+    countCloudGeneralSettings,
     getOAuthConfig,
     getWebAuthConfig,
     loadWebAuthClientId,

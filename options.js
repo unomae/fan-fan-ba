@@ -949,15 +949,21 @@ $('btnSave').addEventListener('click', async () => {
     showStatus('err', `各動作的模型沒有存成功：${error.message}`);
     return;
   }
-  if (glossaryDraft) {
+  if (glossaryDraft && isGlossaryDraftChanged(glossaryDraft.glossary)) {
     try {
       await chrome.storage.local.set({ [Glossary.STORAGE_KEY]: glossaryDraft.glossary });
+      markGlossaryEditorSynced(glossaryDraft.glossary);
     } catch (error) {
       showStatus('err', `術語表沒有存成功：${error.message}`);
       return;
     }
   }
-  showStatus('ok', removedProviderLabel ? `✓ 設定已儲存（${removedProviderLabel} API Key 已移除）` : '✓ 設定已儲存');
+  const savedText = removedProviderLabel ? `✓ 設定已儲存（${removedProviderLabel} API Key 已移除）` : '✓ 設定已儲存';
+  if (glossaryLoadFailed) {
+    showStatus('err', `${savedText}；但術語表讀取失敗，術語表沒有儲存，請重新整理頁面再試`);
+  } else {
+    showStatus('ok', savedText);
+  }
 });
 
 // ── 測試連線 ─────────────────────────────────────────
@@ -1208,7 +1214,7 @@ function bindCloudSyncControls() {
     }
     const payload = await buildCloudSettingsPayload();
     const file = await CloudSync.uploadCloudSettings(token, payload);
-    await renderCloudSyncStatus(`已上傳 ${Object.keys(payload.settings || {}).length} 個一般設定：版本 ${payload.appVersion || '未知'}，${formatCloudSyncTime(payload.updatedAt)}`);
+    await renderCloudSyncStatus(`已上傳 ${CloudSync.countCloudGeneralSettings(payload.settings)} 個一般設定${payload.settings?.glossary ? '與術語表' : ''}：版本 ${payload.appVersion || '未知'}，${formatCloudSyncTime(payload.updatedAt)}`);
     showStatus('ok', `✓ 雲端設定已上傳${file?.id ? `（${file.id}）` : ''}`);
   }));
 
@@ -1403,9 +1409,13 @@ async function buildSettingsBackupPayload(includeSecrets = false, options = {}) 
   const { [CustomActions.STORAGE_KEY]: storedActions } = await chrome.storage.local.get({ [CustomActions.STORAGE_KEY]: [] });
   if (Array.isArray(storedActions) && storedActions.length) payload.actions = storedActions;
 
-  // 術語表跟著設定檔匯出，也跟著雲端同步（見 buildCloudSettingsPayload）；空的就不帶
-  const glossary = await loadStoredGlossary();
-  if (glossary.terms.length || glossary.sites.length) payload.glossary = glossary;
+  // 術語表跟著設定檔匯出，也跟著雲端同步（見 buildCloudSettingsPayload）。從沒存過就不帶；
+  // 存過但清空了要帶空表，還原端才會跟著清空，而不是當成沒有術語表資料保留舊術語；
+  // 存的值損毀（不是物件）就不帶，免得被當成「清空」把還原端正常的術語表清掉
+  const { [Glossary.STORAGE_KEY]: storedGlossary } = await chrome.storage.local.get({ [Glossary.STORAGE_KEY]: null });
+  if (storedGlossary && typeof storedGlossary === 'object' && !Array.isArray(storedGlossary)) {
+    payload.glossary = Glossary.normalizeGlossary(storedGlossary);
+  }
 
   return payload;
 }
@@ -1610,6 +1620,8 @@ function normalizeImportedSettings(values = {}) {
 }
 
 function normalizeImportedSetting(key, value) {
+  // 全文翻譯的空字串＝跟隨主模型，不能被 normalizeModel 補成預設模型
+  if (key === 'pageTranslationModel' && !String(value || '').trim()) return '';
   if (key === 'model' || key === 'pageTranslationModel') {
     return ModelRegistry.normalizeModel(String(value || ''));
   }
@@ -1723,8 +1735,11 @@ const BUILTIN_ACTION_TEMPLATES = {
 
 // ── 術語表 ─────────────────────────────────────────
 // 編輯器直接用表格列當狀態，按「儲存設定」時才讀回、驗證、寫進 chrome.storage.local。
-// 還沒從 storage 讀完就不寫，免得用空表蓋掉已存的術語表。
+// 還沒從 storage 讀完（或讀取失敗）就不寫，免得用空表蓋掉已存的術語表；
+// 讀到後記下當時的內容，存檔時沒改就不寫，免得蓋掉別的設定分頁剛存的術語。
 let glossaryEditorLoaded = false;
+let glossaryEditorBaseline = '';
+let glossaryLoadFailed = false; // 讀取失敗時儲存設定不寫術語表，儲存訊息也要講明
 const GLOSSARY_CSV_MAX_BYTES = 1024 * 1024;
 
 function setGlossaryStatus(message) {
@@ -1812,15 +1827,31 @@ async function loadStoredGlossary() {
   return Glossary.normalizeGlossary(stored);
 }
 
+// 編輯器內容與 storage 一致時記下基準；存檔只在內容跟基準不同時寫入
+function markGlossaryEditorSynced(glossary) {
+  glossaryEditorBaseline = JSON.stringify(Glossary.normalizeGlossary(glossary));
+  glossaryEditorLoaded = true;
+  glossaryLoadFailed = false;
+}
+
+function isGlossaryDraftChanged(glossary) {
+  return JSON.stringify(Glossary.normalizeGlossary(glossary)) !== glossaryEditorBaseline;
+}
+
 async function loadGlossaryEditor() {
   let glossary = Glossary.normalizeGlossary(null);
   try {
     glossary = await loadStoredGlossary();
   } catch (error) {
     console.warn('[翻翻吧] 術語表讀取失敗', error);
+    renderGlossaryEditor(glossary);
+    glossaryEditorLoaded = false;
+    glossaryLoadFailed = true;
+    setGlossaryStatus('術語表讀取失敗，儲存設定時不會動到術語表；請重新整理頁面再試。');
+    return glossary;
   }
   renderGlossaryEditor(glossary);
-  glossaryEditorLoaded = true;
+  markGlossaryEditorSynced(glossary);
   return glossary;
 }
 
@@ -1828,6 +1859,7 @@ async function saveImportedGlossary(raw) {
   const glossary = Glossary.normalizeGlossary(raw);
   await chrome.storage.local.set({ [Glossary.STORAGE_KEY]: glossary });
   renderGlossaryEditor(glossary);
+  markGlossaryEditorSynced(glossary);
   return glossary;
 }
 
@@ -2346,7 +2378,9 @@ function setActionEditorError(message) {
 }
 
 function readActionEditorDraft() {
-  const base = actionEditorState?.action || createBlankCustomAction();
+  // 以清單裡最新的那筆為底：編輯器開著時別處改的釘選／啟用／順序不會被開啟當下的舊值蓋回
+  const opened = actionEditorState?.action;
+  const base = (opened && actionListState.find(item => item.id === opened.id)) || opened || createBlankCustomAction();
   return {
     ...base,
     name: $('actionName').value.trim(),

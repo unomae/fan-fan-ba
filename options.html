@@ -236,6 +236,8 @@
     }
 
     .field.full { grid-column: 1 / -1; }
+    /* .field 的 display: grid 會蓋過 hidden 的預設隱藏（自訂動作編輯器就是 .field） */
+    .field[hidden] { display: none; }
 
     label,
     .field-label {

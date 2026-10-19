@@ -314,6 +314,11 @@ describe('動作圖示', () => {
     }
     expect(buildCustomActionIcon('no-such-icon').outerHTML).toBe(buildCustomActionIcon(getDefaultCustomActionIcon()).outerHTML);
   });
+
+  // 圖示名稱來自動作資料（可從設定檔匯入），驗證只擋格式；物件內建屬性名不能被當成圖示
+  it.each(['constructor', 'tostring', 'hasownproperty', '__proto__'])('名稱是物件內建屬性 %s 時退回預設圖示、不丟例外', name => {
+    expect(buildCustomActionIcon(name).outerHTML).toBe(buildCustomActionIcon(getDefaultCustomActionIcon()).outerHTML);
+  });
 });
 
 describe('工具列跟著動作清單更新', () => {
