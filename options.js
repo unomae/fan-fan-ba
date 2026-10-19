@@ -958,7 +958,12 @@ $('btnSave').addEventListener('click', async () => {
       return;
     }
   }
-  showStatus('ok', removedProviderLabel ? `✓ 設定已儲存（${removedProviderLabel} API Key 已移除）` : '✓ 設定已儲存');
+  const savedText = removedProviderLabel ? `✓ 設定已儲存（${removedProviderLabel} API Key 已移除）` : '✓ 設定已儲存';
+  if (glossaryLoadFailed) {
+    showStatus('err', `${savedText}；但術語表讀取失敗，術語表沒有儲存，請重新整理頁面再試`);
+  } else {
+    showStatus('ok', savedText);
+  }
 });
 
 // ── 測試連線 ─────────────────────────────────────────
@@ -1734,6 +1739,7 @@ const BUILTIN_ACTION_TEMPLATES = {
 // 讀到後記下當時的內容，存檔時沒改就不寫，免得蓋掉別的設定分頁剛存的術語。
 let glossaryEditorLoaded = false;
 let glossaryEditorBaseline = '';
+let glossaryLoadFailed = false; // 讀取失敗時儲存設定不寫術語表，儲存訊息也要講明
 const GLOSSARY_CSV_MAX_BYTES = 1024 * 1024;
 
 function setGlossaryStatus(message) {
@@ -1825,6 +1831,7 @@ async function loadStoredGlossary() {
 function markGlossaryEditorSynced(glossary) {
   glossaryEditorBaseline = JSON.stringify(Glossary.normalizeGlossary(glossary));
   glossaryEditorLoaded = true;
+  glossaryLoadFailed = false;
 }
 
 function isGlossaryDraftChanged(glossary) {
@@ -1839,6 +1846,7 @@ async function loadGlossaryEditor() {
     console.warn('[翻翻吧] 術語表讀取失敗', error);
     renderGlossaryEditor(glossary);
     glossaryEditorLoaded = false;
+    glossaryLoadFailed = true;
     setGlossaryStatus('術語表讀取失敗，儲存設定時不會動到術語表；請重新整理頁面再試。');
     return glossary;
   }

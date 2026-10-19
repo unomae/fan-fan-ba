@@ -272,6 +272,8 @@ describe('「儲存設定」不誤蓋術語表', () => {
     await clickSave();
     expect(store.glossary).toEqual(STORED.glossary);
     expect($('glossaryStatus').textContent).toContain('讀取失敗');
+    // 在其他分頁按儲存也要看得到：頁面上方的狀態列不能只說「設定已儲存」
+    expect($('status').textContent).toContain('術語表沒有儲存');
   });
 
   // 兩個設定頁同時開著：另一頁剛存了新術語，這頁沒動術語表就按儲存，不能拿舊表蓋回去
