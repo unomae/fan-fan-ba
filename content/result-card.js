@@ -312,7 +312,10 @@ function createResultCard() {
 // （刻意的 global mutation，原因見上方註解）
 // activeAction 也換成這筆紀錄的動作：卡上換模型、修改原文重查時才會跑顯示中的那個動作
 // （紀錄只存內建三動作，自訂動作與長難句分析不寫入，所以不會碰到 activeCustomAction）
+// 進行中的請求一併作廢：不然還在串流的回應會在完成時把還原的內容蓋掉
 function applyHistoryState(text, action) {
+  activeRequestId++;
+  if (typeof cancelActiveStream === 'function') cancelActiveStream();
   savedSel    = { text, range: null };
   userDragged = true;
   if (action) activeAction = action;

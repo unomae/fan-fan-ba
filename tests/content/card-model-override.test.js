@@ -319,4 +319,29 @@ describe('結果卡：從最近紀錄還原後重查', () => {
     expect(requests.at(-1).action).toBe('translate');
     expect(requests.at(-1).modelOverride).toBe(GROQ);
   });
+
+  // 解釋還在串流時還原一筆翻譯紀錄：之後送達的串流內容與完成訊號不能把卡片蓋回解釋
+  it('串流進行中還原紀錄：舊串流的內容不再寫進卡片', async () => {
+    const { context, requests } = loadCard();
+    await openCardFor(context);
+    context.triggerAction('explain');
+    await flush();
+    const explainRequest = requests.at(-1);
+    expect(explainRequest.action).toBe('explain');
+    const port = chrome.runtime.connect.mock.results.at(-1).value;
+    const emit = port.onMessage.addListener.mock.calls[0][0];
+
+    context.loadHistory = async () => [{ action: 'translate', text: 'apple', result: '{"word":"apple"}', ts: Date.now() }];
+    const card = document.getElementById('gemini-result-card');
+    card.querySelector('.g-history').click();
+    await flush(); await flush();
+    card.querySelector('.g-hist-item').click();
+    await flush();
+
+    emit({ requestId: explainRequest.requestId, chunk: '舊串流的解釋內容' });
+    emit({ requestId: explainRequest.requestId, done: true });
+    await flush();
+    expect(card.querySelector('.g-rc-body').textContent).not.toContain('舊串流的解釋內容');
+    expect(vm.runInContext('activeAction', context)).toBe('translate');
+  });
 });
