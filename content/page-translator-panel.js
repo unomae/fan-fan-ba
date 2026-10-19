@@ -141,7 +141,8 @@ function renderPageTranslationDownloadProgress(percent) {
   if (!wrap || !bar) return;
 
   const value = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
-  bar.style.width = `${value}%`;
+  // content.css 的 width: 0% !important 會壓過一般 inline 值，所以寬度也要以 important 寫入
+  bar.style.setProperty('width', `${value}%`, 'important');
   wrap.setAttribute('aria-valuenow', String(value));
 
   if (value >= 100) {
