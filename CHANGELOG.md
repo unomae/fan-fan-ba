@@ -3,6 +3,18 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-10-19 — 整版 review 第二批：修 6 個功能出錯的問題
+
+**範圍**：同一輪 review 的功能出錯類，分支 `fix/review-data-loss`。
+- popup 快選不再列出只能全文翻譯的瀏覽器內建模型；選成主模型會讓選字翻譯、解釋、優化全部被拒（`popup.js`，`e20d16e`）。
+- 匯入設定檔／雲端下載時，全文翻譯「跟隨主模型」（空字串）不再被補成預設 Groq（`options.js` `normalizeImportedSetting`，`ef213bf`）。
+- 自訂動作圖示名稱是 `constructor` 這類物件內建屬性時退回預設圖示，不再讓動作清單渲染失敗（`content/custom-action-render.js`，`82a7f3c`）。
+- 從最近紀錄還原後，換模型或改原文重查跑的是還原的那個動作，不再沿用還原前的動作（`content/result-card.js`、`content/floating-ball.js`，`dd7b0cc`）。
+- 自訂動作編輯器帶 `hidden` 時真的隱藏；原本被 `.field` 的 `display: grid` 蓋掉，一直顯示（`options.html`，`201ad8b`）。
+- 內建翻譯下載進度條的寬度改以 important 寫入，壓得過 `content.css` 的 `width: 0% !important`；原本長條永遠是 0（`content/page-translator-panel.js`，`a8d3072`）。
+
+**驗證**：新增 9 條測試，修前各自實跑皆紅、修後皆綠；全套 48 suites／769 tests exit 0、0 skipped（worktree 內實跑）。進度條與編輯器另在瀏覽器以原始 CSS 實測：進度條修前 0px、修後 84px；編輯器帶 hidden 時 display 由 grid 變 none。未驗：e2e、實機擴充、真實內建翻譯下載。
+
 ## 2026-10-19 — 整版 review 第一批：修 4 個會讓使用者資料不見的問題
 
 **範圍**：v1.11.1..master 整版 review（主 session 跨模組四個重點＋Codex 逐檔）找出的資料遺失類問題，分支 `fix/review-data-loss`。
