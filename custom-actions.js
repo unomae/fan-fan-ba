@@ -190,8 +190,11 @@
         continue;
       }
       if (customs.length >= MAX_CUSTOM_ACTIONS || seenIds.has(entry.id)) continue;
+      // 模型下架後存的 id 不在清冊：比照內建動作改回跟隨主模型，不因此丟掉整個動作
+      let model = 'default';
+      try { model = normalizeActionModel(entry.model); } catch { /* 不合法就跟隨主模型 */ }
       try {
-        customs.push(validateCustomAction(entry));
+        customs.push(validateCustomAction({ ...entry, model }));
         seenIds.add(entry.id);
       } catch { /* 略過壞資料 */ }
     }
