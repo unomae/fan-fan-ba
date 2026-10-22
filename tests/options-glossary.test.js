@@ -292,3 +292,66 @@ describe('「儲存設定」不誤蓋術語表', () => {
     expect(store.glossary.terms[1]).toEqual({ source: 'MOQ', target: '最低訂購量' });
   });
 });
+
+// 兩個設定頁都開著時，另一頁（或設定檔匯入、雲端同步）改了術語表
+describe('別處改了術語表', () => {
+  const fromOtherTab = { terms: [...STORED.glossary.terms, { source: 'SKU', target: '庫存單位' }], sites: STORED.glossary.sites };
+  const fireChange = glossary => chrome.storage.onChanged.addListener.mock.calls
+    .forEach(([listener]) => listener({ glossary: { newValue: glossary } }, 'local'));
+
+  beforeEach(() => { chrome.storage.onChanged = { addListener: jest.fn() }; });
+  afterEach(() => { delete chrome.storage.onChanged; });
+
+  it('這頁沒動過：編輯器換上新內容並提示，之後存檔不會蓋回舊表', async () => {
+    await loadOptions(STORED);
+    store.glossary = fromOtherTab;
+    fireChange(fromOtherTab);
+    expect(rowValues()[2]).toEqual(['SKU', '庫存單位', '']);
+    expect($('glossaryStatus').textContent).toContain('已換上最新內容');
+
+    await clickSave();
+    expect(store.glossary).toEqual(fromOtherTab);
+  });
+
+  it('這頁改到一半：保留手上的內容並提示，存檔時不覆蓋，其他設定照存', async () => {
+    await loadOptions(STORED);
+    fillRow(rows()[1], { source: 'MOQ', target: '最低訂購量' });
+    rows()[1].querySelector('.glossary-target').dispatchEvent(new Event('input', { bubbles: true }));
+    store.glossary = fromOtherTab;
+    fireChange(fromOtherTab);
+    expect(rowValues()[1]).toEqual(['MOQ', '最低訂購量', '']);
+    expect($('glossaryStatus').textContent).toContain('術語表已在其他分頁更新');
+
+    await clickSave();
+    expect(store.glossary).toEqual(fromOtherTab);
+    expect(chrome.storage.sync.set).toHaveBeenCalled();
+    expect($('status').textContent).toContain('術語表已在其他分頁修改，這頁的術語表沒有存');
+  });
+
+  it('沒收到變更事件也一樣：存檔前比對 storage，被別處改過就不覆蓋', async () => {
+    await loadOptions(STORED);
+    fillRow(rows()[1], { source: 'MOQ', target: '最低訂購量' });
+    store.glossary = fromOtherTab;
+    await clickSave();
+    expect(store.glossary).toEqual(fromOtherTab);
+    expect($('status').textContent).toContain('這頁的術語表沒有存');
+  });
+
+  it('自己存檔觸發的變更事件不當成別處改的', async () => {
+    await loadOptions(STORED);
+    const write = chrome.storage.local.set.getMockImplementation();
+    // 變更事件在寫入還沒回來前就送到
+    chrome.storage.local.set.mockImplementation(async data => {
+      await write(data);
+      if (data.glossary) fireChange(data.glossary);
+    });
+    fillRow(rows()[1], { source: 'MOQ', target: '最低訂購量' });
+    rows()[1].querySelector('.glossary-target').dispatchEvent(new Event('input', { bubbles: true }));
+    $('glossaryStatus').textContent = '';
+    await clickSave();
+    expect(store.glossary.terms[1]).toEqual({ source: 'MOQ', target: '最低訂購量' });
+    expect($('glossaryStatus').textContent).toBe('');
+    expect($('status').textContent).toMatch(/^✓ 設定已儲存/);
+    expect($('status').textContent).not.toContain('術語表');
+  });
+});

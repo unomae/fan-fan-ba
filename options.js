@@ -949,17 +949,22 @@ $('btnSave').addEventListener('click', async () => {
     showStatus('err', `各動作的模型沒有存成功：${error.message}`);
     return;
   }
+  let glossaryConflict = false;
   if (glossaryDraft && isGlossaryDraftChanged(glossaryDraft.glossary)) {
     try {
-      await chrome.storage.local.set({ [Glossary.STORAGE_KEY]: glossaryDraft.glossary });
-      markGlossaryEditorSynced(glossaryDraft.glossary);
+      // 開頁後別處改過術語表：不拿這頁的版本整份蓋掉
+      const stored = await loadStoredGlossary();
+      if (JSON.stringify(stored) !== glossaryEditorBaseline) glossaryConflict = true;
+      else await writeGlossary(glossaryDraft.glossary);
     } catch (error) {
       showStatus('err', `術語表沒有存成功：${error.message}`);
       return;
     }
   }
   const savedText = removedProviderLabel ? `✓ 設定已儲存（${removedProviderLabel} API Key 已移除）` : '✓ 設定已儲存';
-  if (glossaryLoadFailed) {
+  if (glossaryConflict) {
+    showStatus('err', `${savedText}；但術語表已在其他分頁修改，這頁的術語表沒有存。請先複製需要的內容，重新整理頁面後再改`);
+  } else if (glossaryLoadFailed) {
     showStatus('err', `${savedText}；但術語表讀取失敗，術語表沒有儲存，請重新整理頁面再試`);
   } else {
     showStatus('ok', savedText);
@@ -1740,6 +1745,8 @@ const BUILTIN_ACTION_TEMPLATES = {
 let glossaryEditorLoaded = false;
 let glossaryEditorBaseline = '';
 let glossaryLoadFailed = false; // 讀取失敗時儲存設定不寫術語表，儲存訊息也要講明
+let glossaryEditorDirty = false; // 使用者動過編輯器：別處更新術語表時不換掉手上的內容
+let glossaryPendingWrite = null; // 這頁正在寫入的內容：storage 變更事件回來時認得是自己寫的
 const GLOSSARY_CSV_MAX_BYTES = 1024 * 1024;
 
 function setGlossaryStatus(message) {
@@ -1832,10 +1839,40 @@ function markGlossaryEditorSynced(glossary) {
   glossaryEditorBaseline = JSON.stringify(Glossary.normalizeGlossary(glossary));
   glossaryEditorLoaded = true;
   glossaryLoadFailed = false;
+  glossaryEditorDirty = false;
 }
 
 function isGlossaryDraftChanged(glossary) {
   return JSON.stringify(Glossary.normalizeGlossary(glossary)) !== glossaryEditorBaseline;
+}
+
+// 寫入術語表並更新基準；寫入期間的 storage 變更事件靠 glossaryPendingWrite 認出是自己寫的
+async function writeGlossary(glossary) {
+  glossaryPendingWrite = JSON.stringify(Glossary.normalizeGlossary(glossary));
+  try {
+    await chrome.storage.local.set({ [Glossary.STORAGE_KEY]: glossary });
+    markGlossaryEditorSynced(glossary);
+  } finally {
+    glossaryPendingWrite = null;
+  }
+}
+
+// 別的設定分頁、設定檔匯入或雲端同步改了術語表：編輯器沒動過就換上新內容；
+// 動過就保留手上的內容並提示，存檔時再由儲存流程擋下覆蓋
+function initGlossarySync() {
+  chrome.storage.onChanged?.addListener((changes, area) => {
+    if (area !== 'local' || !changes[Glossary.STORAGE_KEY] || !glossaryEditorLoaded) return;
+    const next = Glossary.normalizeGlossary(changes[Glossary.STORAGE_KEY].newValue);
+    const nextJson = JSON.stringify(next);
+    if (nextJson === glossaryEditorBaseline || nextJson === glossaryPendingWrite) return;
+    if (glossaryEditorDirty) {
+      setGlossaryStatus('術語表已在其他分頁更新；這頁改過的內容還在，但儲存時不會覆蓋，請先複製需要的內容再重新整理頁面。');
+      return;
+    }
+    renderGlossaryEditor(next);
+    markGlossaryEditorSynced(next);
+    setGlossaryStatus('術語表已在其他分頁更新，這裡已換上最新內容。');
+  });
 }
 
 async function loadGlossaryEditor() {
@@ -1857,9 +1894,8 @@ async function loadGlossaryEditor() {
 
 async function saveImportedGlossary(raw) {
   const glossary = Glossary.normalizeGlossary(raw);
-  await chrome.storage.local.set({ [Glossary.STORAGE_KEY]: glossary });
+  await writeGlossary(glossary);
   renderGlossaryEditor(glossary);
-  markGlossaryEditorSynced(glossary);
   return glossary;
 }
 
@@ -1883,6 +1919,7 @@ async function importGlossaryCsvFile(file) {
     added++;
   }
   if (!rows.children.length) rows.append(buildGlossaryRow());
+  if (added) glossaryEditorDirty = true;
   const parts = [`已加入 ${added} 筆`];
   if (duplicated) parts.push(`${duplicated} 筆原文重複略過`);
   if (skipped) parts.push(`${skipped} 列缺原文或譯文略過`);
@@ -1913,6 +1950,11 @@ function exportGlossaryCsv() {
 
 function initGlossaryEditor() {
   if (!$('glossaryRows')) return undefined;
+  // 打字、增刪列都算動過編輯器
+  $('glossaryRows').addEventListener('input', () => { glossaryEditorDirty = true; });
+  $('glossaryRows').addEventListener('click', event => { if (event.target.closest('button')) glossaryEditorDirty = true; });
+  $('glossarySites').addEventListener('input', () => { glossaryEditorDirty = true; });
+  initGlossarySync();
   $('btnAddGlossaryTerm').addEventListener('click', () => {
     const row = buildGlossaryRow();
     $('glossaryRows').append(row);
@@ -2404,6 +2446,14 @@ async function saveActionFromEditor() {
     return false;
   }
   const exists = actionListState.some(item => item.id === action.id);
+  // 編輯期間這個動作在別處被刪了：不默默加回去，讓使用者選另存成新動作或放棄
+  if (!exists && !actionEditorState.isNew) {
+    if (!window.confirm(`「${action.name}」已在其他分頁刪除。要另存成新動作嗎？按「取消」會放棄這次的編輯。`)) {
+      closeActionEditor();
+      return false;
+    }
+    action = { ...action, id: generateCustomActionId(), order: nextActionOrder() };
+  }
   const list = exists
     ? actionListState.map(item => (item.id === action.id ? action : item))
     : [...actionListState, action];

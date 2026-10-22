@@ -3,6 +3,15 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-10-22 — 整版 review 遺留：多分頁術語表覆蓋、被刪動作復活
+
+**範圍**：`PLAN.md`〈整版 review 遺留〉的前兩條，只動 `options.js`。
+- 術語表在別處被改（其他設定分頁、設定檔匯入、雲端同步）：編輯器沒動過就換上最新內容並提示；動過就保留手上的內容並提示（`initGlossarySync`）。
+- 存檔前再讀一次 storage，開頁後被別處改過且這頁也改了，就不寫術語表、其他設定照存，訊息講明術語表沒有存。自己寫入觸發的變更事件用 `glossaryPendingWrite` 認出來，不誤報（`writeGlossary`）。
+- 編輯中的自訂動作在別處被刪：存檔時跳確認，選另存就用新 id 存成新動作，選取消就放棄編輯、不寫入（`saveActionFromEditor`）。
+
+**驗證**：新增 6 條測試（`options-glossary` 4、`options-actions` 2）。五個突變各跑一次皆紅（不監聽紅 2、不比對 storage 紅 2、不認自己寫入紅 1、拿掉刪除檢查紅 2、不換新 id 紅 1），還原後 SHA-256 一致；全套 48 suites／785 tests exit 0、0 skipped（主樹實跑）。未驗：e2e、實機兩個設定分頁同時操作。
+
 ## 2026-10-19 — 合併前自審：補修 3 條，3 條記入 PLAN
 
 **範圍**：`fix/review-data-loss` 合併前跑 `/code-review` 自審，找到 9 條；修掉這次修法帶進來或放大的 3 條。

@@ -158,6 +158,47 @@ describe('設定頁：自訂動作清單', () => {
     }
   });
 
+  describe('編輯器開著時這個動作在別處被刪了', () => {
+    const custom = {
+      id: 'custom-a', name: '動作甲', icon: 'pen', builtin: false, enabled: true, pinned: false, order: 3,
+      model: 'default', systemPrompt: '', userPrompt: '{{selection}}',
+      fields: [{ key: 'result', label: '結果', description: '' }], layout: 'fields', saveTo: 'none'
+    };
+    async function openThenDeleteElsewhere() {
+      chrome.storage.onChanged = { addListener: jest.fn() };
+      await loadOptions({ actionList: [custom] });
+      rowButton('動作甲', '編輯').click();
+      store.actionList = store.actionList.filter(action => action.id !== 'custom-a');
+      chrome.storage.onChanged.addListener.mock.calls.forEach(([listener]) => listener({ actionList: { newValue: store.actionList } }, 'local'));
+      $('actionUserPrompt').value = '請改寫：{{selection}}';
+    }
+    afterEach(() => { delete chrome.storage.onChanged; });
+
+    it('選另存：存成新 id 的新動作，舊 id 不會回來', async () => {
+      await openThenDeleteElsewhere();
+      window.confirm = jest.fn(() => true);
+      await submitEditor();
+      expect(window.confirm.mock.calls[0][0]).toContain('已在其他分頁刪除');
+      const customs = storedCustoms();
+      expect(customs).toHaveLength(1);
+      expect(customs[0].id).not.toBe('custom-a');
+      expect(customs[0].userPrompt).toBe('請改寫：{{selection}}');
+      expect($('actionEditor').hidden).toBe(true);
+    });
+
+    it('選放棄：清單不變，編輯器關掉', async () => {
+      await openThenDeleteElsewhere();
+      const before = JSON.stringify(store.actionList);
+      chrome.storage.local.set.mockClear();
+      window.confirm = jest.fn(() => false);
+      await submitEditor();
+      expect(storedCustoms()).toHaveLength(0);
+      expect(JSON.stringify(store.actionList)).toBe(before);
+      expect(chrome.storage.local.set).not.toHaveBeenCalled();
+      expect($('actionEditor').hidden).toBe(true);
+    });
+  });
+
   it('編輯與刪除：改名後儲存；刪除要確認，取消就不刪', async () => {
     const custom = {
       id: 'custom-a', name: '舊名', icon: 'pen', builtin: false, enabled: true, pinned: false, order: 3,
