@@ -3,6 +3,14 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-10-23 — Wikipedia 全文翻譯收集得到段落
+
+**範圍**：`PLAN.md`〈實機測試發現〉的 Wikipedia 一條，只動 `content/page-translator-collector.js`。
+- 原因：Wikipedia 載入後在 `<body>` 加 `uls-dialog-sticky-hide`，排除彈出視窗的規則 `[class*="dialog" i]` 往上找命中 `<body>`，整頁段落都被當成在對話框裡，面板只顯示「目前沒有新段落」。不分模型，全文翻譯、Shadow DOM 收集與單段翻譯都受影響（三者共用 `isPageTranslatableElement`）。
+- 修法：class 名稱比對抽成 `isInsideOverlayLikeClass`，最近的命中是 `<html>` 或 `<body>` 時不算。段落外面若有真正的 modal／popup，`closest` 會先碰到它，照樣排除。`role`、`aria-hidden`、`nav` 等語意規則與字詞清單不變。
+
+**驗證**：新增 4 條測試（body 帶 dialog、html 帶 modal 照樣收集；真正的 modal、cookie-popup 照樣排除）。兩個方向的突變各紅 2 條（拿掉例外紅「照樣收集」兩條、永不排除紅「照樣排除」兩條），還原後 SHA-256 一致；全套 48 suites／801 tests exit 0、0 skipped。e2e（p2 重載後逐組跑）：ui-panels 12/13（T4/T7 為既有失敗）、hostile-data 5/5、legacy-regression 16 PASS／4 PARTIAL、vocab-import 7/7。真 Chrome 156 對 Wikipedia「Supply chain」用內建翻譯：第一輪 5/5、繼續翻譯 6/6、0 錯誤。
+
 ## 2026-10-22 — 內建翻譯第一次下載模型不再逾時
 
 **範圍**：`PLAN.md`〈實機測試發現〉的三條：首次下載整輪逾時、進度條倒退與卡住、`translate()` 錯誤是英文。

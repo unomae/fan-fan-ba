@@ -758,6 +758,60 @@ function makeSourceParagraph(text) {
   return p;
 }
 
+// 實測（2026-10-22）：Wikipedia 載入後在 <body> 加 uls-dialog-sticky-hide，
+// class 名稱排除規則命中 body，整頁收集不到任何段落
+describe('class 名稱排除規則不套到 html／body', () => {
+  let originalGetComputedStyle;
+  let originalGetBoundingClientRect;
+  const ARTICLE = 'A supply chain is an interconnected network of facilities that move goods to customers.';
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    originalGetComputedStyle = window.getComputedStyle;
+    originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    installPageTranslationDomMocks();
+    resetPageTranslationState();
+  });
+
+  afterEach(() => {
+    window.getComputedStyle = originalGetComputedStyle;
+    HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    document.body.className = '';
+    document.documentElement.className = '';
+  });
+
+  const collectedTexts = () => collectVisibleTranslatableBlocks().map(item => item.text);
+
+  it('body 帶 dialog 字樣（Wikipedia）：一般段落照樣收集', () => {
+    document.body.className = 'skin-vector uls-dialog-sticky-hide';
+    makeSourceParagraph(ARTICLE);
+    expect(collectedTexts()).toEqual([ARTICLE]);
+  });
+
+  it('html 帶 modal 字樣：一般段落照樣收集', () => {
+    document.documentElement.className = 'has-modal-support';
+    makeSourceParagraph(ARTICLE);
+    expect(collectedTexts()).toEqual([ARTICLE]);
+  });
+
+  it('body 帶 dialog 字樣、段落在真正的 modal 裡：仍然排除', () => {
+    document.body.className = 'uls-dialog-sticky-hide';
+    const modal = document.createElement('div');
+    modal.className = 'signup-modal';
+    modal.append(Object.assign(document.createElement('p'), { textContent: ARTICLE }));
+    document.body.append(modal);
+    expect(collectedTexts()).toEqual([]);
+  });
+
+  it('段落在 cookie-popup 裡（body 沒有命中）：仍然排除', () => {
+    const popup = document.createElement('div');
+    popup.className = 'cookie-popup';
+    popup.append(Object.assign(document.createElement('p'), { textContent: ARTICLE }));
+    document.body.append(popup);
+    expect(collectedTexts()).toEqual([]);
+  });
+});
+
 // 實測（2026-10-22）：首次下載時整輪逾時失敗，沒有 100% 事件，進度條卡在「正在下載翻譯模型 0%」
 describe('一輪翻譯結束收起下載進度條', () => {
   let originalGetComputedStyle;

@@ -58,7 +58,7 @@ function hasSelectedPageTranslationAncestor(el, items) {
 function isPageTranslatableElement(el) {
   if (!el || el.closest('#gemini-ai-toolbar, #gemini-result-card, #fanfanba-floating, .ffb-page-translation-panel, .ffb-page-translation-block')) return false;
   if (el.closest('script, style, noscript, svg, canvas, pre, code, kbd, samp, textarea, input, select, button, nav, header, footer, aside, [aria-hidden="true"]')) return false;
-  if (el.closest('[class*="popup" i], [class*="popover" i], [class*="modal" i], [class*="dialog" i], [class*="toolbar" i], [class*="navigation" i], [class*="navbar" i], [class*="breadcrumb" i], [class*="pagination" i]')) return false;
+  if (isInsideOverlayLikeClass(el)) return false;
   if (el.closest('form') && !isAllowedFormPageTranslationElement(el)) return false;
   const editableAncestor = el.closest('[contenteditable="true"]');
   if (editableAncestor && !isAllowedEditablePageTranslationElement(el, editableAncestor)) return false;
@@ -74,6 +74,16 @@ function isPageTranslatableElement(el) {
   const style = window.getComputedStyle(el);
   if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false;
   return true;
+}
+
+// class 名稱像彈出視窗、選單、工具列的區塊不翻。命中 <html>／<body> 不算：
+// 那是整頁，不是頁面裡的一塊（Wikipedia 載入後在 body 加 uls-dialog-sticky-hide，原本整頁都被跳過）。
+// closest 回傳最近的命中，段落外面若還有真正的對話框會先碰到它，照樣排除。
+const OVERLAY_LIKE_CLASS_SELECTOR = '[class*="popup" i], [class*="popover" i], [class*="modal" i], [class*="dialog" i], [class*="toolbar" i], [class*="navigation" i], [class*="navbar" i], [class*="breadcrumb" i], [class*="pagination" i]';
+
+function isInsideOverlayLikeClass(el) {
+  const hit = el.closest(OVERLAY_LIKE_CLASS_SELECTOR);
+  return !!hit && hit !== document.body && hit !== document.documentElement;
 }
 
 function isAllowedEditablePageTranslationElement(el, editableEl) {
