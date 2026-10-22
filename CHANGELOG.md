@@ -3,6 +3,15 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-10-22 — 浮球面板不再把面板名存進 Obsidian 週記
+
+**範圍**：`PLAN.md`〈介面與操作體驗（續 3）〉浮球三面板假 `savedSel` 一條。
+- 新增 `resultCardPanelMode` 旗標（`content/state.js`）。浮球「收藏 / 紀錄」「最近查詢」「單字本」三個面板開啟時呼叫 `setResultCardPanelMode(true)`，隱藏寶石鈕並收起 Obsidian 面板（`content/result-card.js`、`content/floating-ball.js`）。
+- 從最近查詢還原一筆（`applyHistoryState`）或發出新查詢（`triggerAction`）時離開面板模式；寶石鈕回來，存入用的是真的原文（`content/main.js`）。
+- `saveToObsidian` 在面板模式下直接不送出，防之後有其他入口繞過按鈕（`content/obsidian.js`）。
+
+**驗證**：新增 5 條測試（`floating-ball` 4、`card-model-override` 1）。四個突變各跑一次皆紅（面板不設模式紅 3、存入不擋紅 3、還原不離開面板紅 1、新查詢不清旗標紅 1），還原後 SHA-256 一致；全套 48 suites／790 tests exit 0、0 skipped（主樹實跑）。e2e（`C:/tmp/ffb-qa/p2`）：最後一次完整跑 41 PASS／0 FAIL／4 PARTIAL，與修改前基準相同；同一份程式前兩次完整跑分別出現 7 個與 1 個 FAIL，失敗案每次不同（第二次只有 T8 收藏按鈕停在「收藏中」），四組分開跑全過，原因未查明，記為全量跑不穩定。實機三面板操作列入 `MANUAL-QA.md`，未驗。
+
 ## 2026-10-22 — 整版 review 遺留：多分頁術語表覆蓋、被刪動作復活
 
 **範圍**：`PLAN.md`〈整版 review 遺留〉的前兩條，只動 `options.js`。

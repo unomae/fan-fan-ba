@@ -345,3 +345,17 @@ describe('結果卡：從最近紀錄還原後重查', () => {
     expect(vm.runInContext('activeAction', context)).toBe('translate');
   });
 });
+
+// 浮球面板借用結果卡後，從面板回到一般查詢：寶石鈕要回來，存入才拿得到真的選取文字
+describe('新查詢離開浮球面板模式', () => {
+  it('面板模式下發出新查詢：清掉面板模式，寶石鈕重新顯示', async () => {
+    const { context } = loadCard();
+    await flush();
+    vm.runInContext('resultCard = createResultCard(); document.body.appendChild(resultCard); setResultCardPanelMode(true);', context);
+    expect(document.querySelector('#gemini-result-card .g-save-obs').hidden).toBe(true);
+
+    await openCardFor(context, 'apple');
+    expect(vm.runInContext('resultCardPanelMode', context)).toBe(false);
+    expect(document.querySelector('#gemini-result-card .g-save-obs').hidden).toBe(false);
+  });
+});

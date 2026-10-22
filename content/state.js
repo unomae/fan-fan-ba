@@ -7,6 +7,7 @@ let resultCard   = null;   // 結果卡 DOM
 let floatingBall = null;   // 右側常駐懸浮球 DOM
 let pageTranslationPanel = null; // 全文翻譯 Beta 控制面板
 let savedSel     = null;   // { text, range } 最近一次選取
+let resultCardPanelMode = false; // 結果卡借給浮球面板（收藏／最近查詢／單字本）顯示：savedSel 只是面板名，不能存進 Obsidian
 let activeAction = null;
 let activeModel  = FanFanBaModels.DEFAULT_MODEL;
 let cardModelOverride = null; // 結果卡底部「僅本次」選的模型；換選取或關卡就清掉，不寫回全域設定

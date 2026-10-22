@@ -316,9 +316,23 @@ function createResultCard() {
 function applyHistoryState(text, action) {
   activeRequestId++;
   if (typeof cancelActiveStream === 'function') cancelActiveStream();
+  setResultCardPanelMode(false);
   savedSel    = { text, range: null };
   userDragged = true;
   if (action) activeAction = action;
+}
+
+// ── 浮球面板借用結果卡時的模式切換 ─────────────────────
+// 面板模式下 savedSel 只是面板名、卡上沒有查詢結果，所以收起並隱藏寶石鈕；
+// 離開時只把寶石鈕放回來，自訂動作要不要顯示由 triggerAction 依動作再決定
+function setResultCardPanelMode(on, el = resultCard) {
+  resultCardPanelMode = on;
+  if (!el) return;
+  el.querySelector('.g-save-obs')?.toggleAttribute('hidden', on);
+  if (on) {
+    el.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
+    el.querySelector('.g-obs-dropdown')?.classList.remove('g-obs-dd-open');
+  }
 }
 
 // ── Obsidian 面板開關（供寶石按鈕「第一次」與「更換」共用）──

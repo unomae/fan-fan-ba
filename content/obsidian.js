@@ -77,7 +77,7 @@ function buildObsidianBlock({ tag, hm, date, preview }) {
 
 // 組裝筆記並透過 Advanced URI 存入 Obsidian（append 模式）
 async function saveToObsidian(folderPath) {
-  if (!resultCard || !savedSel) return;
+  if (!resultCard || !savedSel || resultCardPanelMode) return;
 
   const tag    = resultCard.querySelector('.g-rc-tag')?.textContent || '';
   const now    = new Date();

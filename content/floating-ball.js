@@ -333,6 +333,7 @@ function updateFloatingBallPageTranslationState({ running = false, activated = f
 function showFloatingLibraryPanel() {
   if (!resultCard || !document.body.contains(resultCard)) resultCard = createResultCard();
   savedSel = { text: '收藏 / 紀錄', range: null };
+  setResultCardPanelMode(true);
   userDragged = true;
   resultCard.querySelector('.g-rc-tag').textContent = '收藏 / 紀錄';
   resultCard.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
@@ -368,6 +369,7 @@ function showFloatingLibraryPanel() {
 async function showFloatingHistoryPanel() {
   if (!resultCard || !document.body.contains(resultCard)) resultCard = createResultCard();
   savedSel = { text: '最近查詢', range: null };
+  setResultCardPanelMode(true);
   userDragged = true;
   resultCard.querySelector('.g-rc-tag').textContent = '最近查詢';
   resultCard.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');
@@ -408,6 +410,7 @@ async function showFloatingHistoryPanel() {
 async function showFloatingVocabularyPanel() {
   if (!resultCard || !document.body.contains(resultCard)) resultCard = createResultCard();
   savedSel = { text: '單字本', range: null };
+  setResultCardPanelMode(true);
   userDragged = true;
   resultCard.querySelector('.g-rc-tag').textContent = '單字本';
   resultCard.querySelector('.g-obs-panel')?.classList.remove('g-obs-open');

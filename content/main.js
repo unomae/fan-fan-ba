@@ -388,6 +388,7 @@ function triggerAction(action) {
   );
 
   if (!resultCard || !document.body.contains(resultCard)) resultCard = createResultCard();
+  resultCardPanelMode = false; // 寶石鈕的顯示由下方依動作決定
   setResultCardQueryMode(true);
 
   // 新請求時收合 Obsidian 面板與存入提示

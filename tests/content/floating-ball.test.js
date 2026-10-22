@@ -549,3 +549,50 @@ describe('floating vocabulary panel', () => {
     expect([...document.querySelectorAll('.g-vocab-panel-word')].map(node => node.textContent)).toEqual(['Beacon']);
   });
 });
+
+// 浮球三面板借用結果卡時 savedSel 只是面板名：不能把「收藏 / 紀錄」之類當原文存進 Obsidian 週記
+describe('浮球面板不把面板名存進 Obsidian', () => {
+  const flushAll = async () => { for (let i = 0; i < 6; i++) await new Promise(resolve => setTimeout(resolve, 0)); };
+
+  function loadPanels(localStore = {}) {
+    const setup = createContentContext();
+    Object.assign(setup.localStore, localStore);
+    ['content/site-policy.js', 'content/state.js', 'content/dom.js', 'content/utils.js', 'content/vocabulary.js',
+      'content/obsidian.js', 'content/result-card.js', 'content/floating-ball.js'].forEach(file => runContentScript(file, setup.context));
+    return setup;
+  }
+  const obsidianSends = context => context.chrome.runtime.sendMessage.mock.calls.filter(([message]) => message?.type === 'OBSIDIAN_URI');
+
+  async function openPanel(name) {
+    document.getElementById('fanfanba-floating').querySelector('[data-action="library"]').click();
+    if (name !== 'library') document.querySelector(`[data-library-action="${name}"]`).click();
+    await flushAll();
+  }
+
+  it.each(['library', 'history', 'vocabulary'])('%s 面板：隱藏寶石鈕，存入呼叫也不送出', async name => {
+    const { context } = loadPanels();
+    await openPanel(name);
+    const card = document.getElementById('gemini-result-card');
+    expect(card.querySelector('.g-save-obs').hidden).toBe(true);
+
+    await vm.runInContext("saveToObsidian('Inbox')", context);
+    expect(obsidianSends(context)).toHaveLength(0);
+  });
+
+  it('從最近查詢還原一筆後，寶石鈕回來，存入的是那筆紀錄的原文', async () => {
+    const { context } = loadPanels({
+      queryHistory: [{ action: 'explain', text: 'supply chain resilience', result: '供應鏈韌性的說明', dictData: null, ts: 1 }]
+    });
+    await openPanel('history');
+    document.querySelector('.g-floating-history-item').click();
+    await flushAll();
+    const card = document.getElementById('gemini-result-card');
+    expect(card.querySelector('.g-save-obs').hidden).toBe(false);
+
+    await vm.runInContext("saveToObsidian('Inbox')", context);
+    const [[message]] = obsidianSends(context);
+    const uri = decodeURIComponent(message.url);
+    expect(uri).toContain('supply chain resilience');
+    expect(uri).not.toContain('最近查詢');
+  });
+});
