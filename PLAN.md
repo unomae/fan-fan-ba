@@ -59,7 +59,7 @@
 
   - **目的**：讓沒有金鑰的人也能用全文翻譯，有金鑰者這條路徑改走本機；詞典與 optimize 不動。
   - **現況**：主體已完成（2026-09-21，見 `CHANGELOG.md` 同日兩條）：非串流與串流都已接上、只接頁面翻譯、不進主模型選單，首次下載有進度條。**剩真實網頁端到端人驗**：自動化證據全是 mock 層與 DOM 層，還沒在真的瀏覽器裡跑過一次頁面翻譯。
-  - **接續**：由 KAKA 在 Chrome 載入擴充，對真實網頁跑一次頁面翻譯（含首次下載看進度條），確認端到端可用。三項裁決（已落地）：**KAKA 2026-09-20 已裁決**：①來源語言用 `LanguageDetector` 偵測 ②有金鑰者的預設不改（內建只當額外選項）③首次下載顯示進度條。裁決落地要點（實測依據）：`LanguageDetector` 已是 `available` 免下載，輸出為依信心排序的 `{detectedLanguage, confidence}` 陣列並含 `und`；但**短片段信心極低**（`Home` 0.645、`2026-09-20` 0.279，對照長句 1.000、`Add to cart` 0.997），所以 **batch 要合併後偵測一次、整批共用來源語言，不得逐段偵測**；另需定信心門檻的退路，以及偵測結果等於目標語言時跳過不翻。開工前只剩這兩個小決定。**完成條件**：單元測試 mock `self.Translator` 鎖住 batch id 與順序、非 translate 被擋、`create()` 失敗可辨識；既有測試全綠 0 skipped；實機在 Chrome 對真實網頁跑一次 batch。**不做**：詞典、optimize、Prompt API、既有 provider 行為。
+  - **接續**：KAKA 實機人驗（Chrome 138 以上，不需 API key）：①`npm run package` 後用全新測試 profile 載入 `dist/pkg` ②設定頁「全文翻譯」選「瀏覽器內建翻譯」 ③開一篇英文網頁，點浮球「全文翻譯 Beta」，首次下載時面板要有進度條 ④下載完成後譯文逐段插入、順序正確，再按「繼續翻譯」也正常。都過就勾掉本項並搬 `CHANGELOG.md`。
   - **詳情**：`background.js` 的 `resolveRoute`／`handleOpenAICompatRequest`（引用符號不引行號）；`models.js` 的 `PROVIDERS`；可行性實測見 `CHANGELOG.md` 2026-10-22「PLAN 第 6 項結案」與 memory `reference_chrome_builtin_ai_probe`
 
 ## 缺資料／風險處置待決
