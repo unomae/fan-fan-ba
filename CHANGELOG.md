@@ -3,6 +3,18 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-10-22 — PLAN 第 6 項結案：同類專案調研兩條線索都已實作
+
+**範圍**：`PLAN.md` 原第 6 項〈同類專案調研的兩條待裁線索〉，兩條都已做完，從 PLAN 移除。
+- **Chrome 內建 AI 翻譯** → 已做成內建翻譯 provider 與下載進度條（見 2026-09-21 兩條）；真實網頁人驗仍留在 PLAN 第 7 項。
+- **自訂 OpenAI 相容端點**（`kiss-translator`／`MTranServer` 顯示是本品類標配，與 `check-models.js` 一個偵測、一個逃生）→ 已實作（見 2026-09-30）。
+
+**保留的實測紀錄**（2026-09-20，Chrome 152，Mac；細節另見 memory `reference_chrome_builtin_ai_probe`）：
+- en→zh-Hant 首次含下載 4.8 秒；模型就緒後 20 段批次 313 ms（15.7 ms/段），並行沒有加速；譯文為全形標點；磁碟增量約 776 MB（`df` 差值，不是純語言包大小）。
+- MV3 service worker 對從未下載過的 en→ko 直接 `create()`，不需手勢就會下載（含下載 14.8 秒）；手勢限制只在一般網頁。SW 的 `availability()` 偏保守，要看 `create()` 結果。
+- `downloadable` 不是承諾：下載 100% 後仍拋過 `NotSupportedError`，`create()` 失敗要當正常路徑處理並退回雲端 provider。
+- 只能翻譯，做不到詞典結構化輸出與 optimize；Prompt API 在 Chrome 152 存在，但 KAKA 2026-09-20 裁決不驗。Edge 結果不外推 Chrome（Edge Beta 154 沒有 Prompt API、標點為半形）。
+
 ## 2026-10-22 — 浮球面板不再把面板名存進 Obsidian 週記
 
 **範圍**：`PLAN.md`〈介面與操作體驗（續 3）〉浮球三面板假 `savedSel` 一條。
