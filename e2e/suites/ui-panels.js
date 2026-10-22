@@ -113,18 +113,26 @@ module.exports = {
       await s.shot(web, 'ui-T4-375-expanded');
 
       // 拖到上下緣，選單不得被裁
-      const box = await web.$eval('.ffb-ball-main', el => { const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
-      const clip = async () => { await web.waitForTimeout(400); return web.$eval('.ffb-ball-menu', el => {
-        const r = el.getBoundingClientRect();
-        return { top: Math.round(r.top), bottom: Math.round(r.bottom - window.innerHeight) }; }); };
-      await web.mouse.move(box.x, box.y); await web.mouse.down();
-      await web.mouse.move(box.x, 12, { steps: 12 }); await web.mouse.up();
-      await H.expandBall(web).catch(() => { });
+      const center = () => web.$eval('.ffb-ball-main', el => { const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+      // 量實際往上／往下長的兩組按鈕；`.ffb-ball-menu` 只是貼著主球的 46px 外框，量它看不出按鈕被裁
+      const clip = async () => { await web.waitForTimeout(400); return web.evaluate(() => ({
+        top: Math.round(document.querySelector('.ffb-ball-menu-top').getBoundingClientRect().top),
+        bottom: Math.round(document.querySelector('.ffb-ball-menu-bottom').getBoundingClientRect().bottom - window.innerHeight)
+      })); };
+      // 每次拖曳都從「浮球現在的位置」按下去：拖到上緣後 clampFloatingBallTop 會把球往下推，
+      // 從 y=12 按會按空，球根本沒動，下緣那條檢查就變成永遠通過（2026-10-23 Mac 查到）
+      const dragTo = async y => {
+        const from = await center();
+        await web.mouse.move(from.x, from.y); await web.mouse.down();
+        await web.mouse.move(from.x, y, { steps: 12 }); await web.mouse.up();
+        await H.expandBall(web).catch(() => { });
+      };
+      await dragTo(12);
       const top = await clip();
-      await web.mouse.move(box.x, 12); await web.mouse.down();
-      await web.mouse.move(box.x, 800, { steps: 12 }); await web.mouse.up();
-      await H.expandBall(web).catch(() => { });
+      await dragTo(800);
       const bottom = await clip();
+      // 下緣必須真的拖到底：選單底緣離視窗底部超過 40px 代表球沒被拖動
+      const reachedBottom = bottom.bottom > -40;
 
       await web.setViewportSize({ width: 1280, height: 900 });
       await web.reload({ waitUntil: 'domcontentloaded' });
@@ -136,8 +144,8 @@ module.exports = {
       await opt.evaluate(() => chrome.storage.local.remove('fanFanBaFloatingPosition'));
       const allIn = Object.values(four).every(v => typeof v === 'number' && v <= 0);
       rec.pass('T4/T7 375 四鈕在畫面內、拖到上下緣不裁、桌機仍半藏',
-        idle <= 0 && allIn && top.top >= 0 && bottom.bottom <= 0 && deskIdle > 0,
-        `375 靜置主球溢出 ${idle}px／展開四鈕 ${JSON.stringify(four)}／拖上緣 top=${top.top}、拖下緣 bottom=${bottom.bottom}／桌機 1280 靜置主球超出 ${deskIdle}px（＝半藏保留）`);
+        idle <= 0 && allIn && top.top >= 0 && reachedBottom && bottom.bottom <= 0 && deskIdle > 0,
+        `375 靜置主球溢出 ${idle}px／展開四鈕 ${JSON.stringify(four)}／拖上緣 top=${top.top}、拖下緣 bottom=${bottom.bottom}${reachedBottom ? '' : '（沒拖到底）'}／桌機 1280 靜置主球超出 ${deskIdle}px（＝半藏保留）`);
     } catch (e) { rec.fail('T4/T7 375 四鈕在畫面內、拖到上下緣不裁、桌機仍半藏', 'EXCEPTION ' + e.message); }
 
     // ── T5／T6：高亮開關與記憶 ──

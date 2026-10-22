@@ -125,9 +125,9 @@
 - **e2e T4/T7 浮球版面在 375 寬失敗（修改前的程式也一樣）**
 
   - **目的**：窄螢幕的浮球與四個按鈕都在畫面內。
-  - **現況**：p2 換成現行 background 後 ui-panels 固定 12/13：展開的四個按鈕超出畫面 7.8px、拖到下緣 bottom=-690。換回修改前的程式結果相同，所以不是 2026-10-22 逾時修正造成；先前通過是因為 p2 跑的是舊 background。
-  - **接續**：查是浮球程式的問題還是 p2 留下的狀態（例如存過的浮球位置）。
-  - **詳情**：`e2e/suites/ui-panels.js` 的 T4/T7；`content/floating-ball.js`
+  - **現況**：Win p2 四個按鈕超出 7.8px；Mac 用 Chrome for Testing＋全新 profile 13/13 通過、溢出 -8px，只在 Win 出現（2026-10-23）。傳統捲軸已排除（注入後變 -24，往內移）。`bottom=-690` 是測試假綠，不是失敗原因：第二次拖曳按不到浮球，量的也只是 46px 外框；10-23 已修，Mac 量到 bottom=0，把 clamp 突變後會轉紅。
+  - **接續**：回 Win 跑 T4/T7，印出四顆按鈕的 rect、`devicePixelRatio`、浮球的 class 和 transform。懷疑方向：顯示縮放、品牌版 Chrome 156、p2 裡的其他舊狀態。
+  - **詳情**：`e2e/suites/ui-panels.js` 的 T4/T7；`content/floating-ball.js` 的 `clampFloatingBallTop`
 
 - **先前在 p2 跑的 e2e 沒測到現行 background**
 
