@@ -758,6 +758,41 @@ function makeSourceParagraph(text) {
   return p;
 }
 
+// 實測（2026-10-22）：首次下載時整輪逾時失敗，沒有 100% 事件，進度條卡在「正在下載翻譯模型 0%」
+describe('一輪翻譯結束收起下載進度條', () => {
+  let originalGetComputedStyle;
+  let originalGetBoundingClientRect;
+  const progress = () => ctx.pageTranslationPanel?.querySelector('.ffb-page-panel-progress');
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    originalGetComputedStyle = window.getComputedStyle;
+    originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    installPageTranslationDomMocks();
+    resetPageTranslationState();
+  });
+
+  afterEach(() => {
+    window.getComputedStyle = originalGetComputedStyle;
+    HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+  });
+
+  it('下載中整輪失敗：結束後收起進度條', async () => {
+    ctx.__source = makeSourceParagraph('A long enough English paragraph for the page translation queue test.');
+    ctxRun(`pageTranslationState.items = [{ el: __source, text: __source.textContent, pairId: 'dl-1', status: 'pending', translationNode: null, translatedText: '' }];
+      pageTranslationState.total = 1; pageTranslationState.running = true;`);
+    installStreamingPort({ error: '請求逾時或已取消，請稍後重試' });
+    ensurePageTranslationPanel();
+    renderPageTranslationDownloadProgress(11);
+    expect(progress().hidden).toBe(false);
+
+    await runPageTranslationQueue();
+
+    expect(ctxRun('pageTranslationState.items[0].status')).toBe('error');
+    expect(progress().hidden).toBe(true);
+  });
+});
+
 describe('page translator render helpers', () => {
   let originalGetComputedStyle;
   let originalGetBoundingClientRect;

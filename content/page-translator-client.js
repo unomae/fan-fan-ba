@@ -14,6 +14,7 @@ async function runPageTranslationQueue() {
     }
     updatePageTranslationPanel();
   }
+  hidePageTranslationDownloadProgress();
   pageTranslationState.running = false;
   pageTranslationState.stopping = false;
   pageTranslationState.canContinue = hasVisibleTranslatableBlocks();

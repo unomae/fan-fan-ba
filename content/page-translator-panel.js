@@ -156,6 +156,12 @@ function renderPageTranslationDownloadProgress(percent) {
   wrap.hidden = false;
 }
 
+// 一輪翻譯結束（成功或失敗）就收起下載進度條：失敗時不會有 100% 事件，不收會一直卡在畫面上
+function hidePageTranslationDownloadProgress() {
+  const wrap = pageTranslationPanel?.querySelector('.ffb-page-panel-progress');
+  if (wrap) wrap.hidden = true;
+}
+
 function updatePageTranslationPanel(message = '') {
   if (!pageTranslationPanel) return;
   const status = pageTranslationPanel.querySelector('.ffb-page-panel-status');

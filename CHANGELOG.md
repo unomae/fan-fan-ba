@@ -3,6 +3,17 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-10-22 — 內建翻譯第一次下載模型不再逾時
+
+**範圍**：`PLAN.md`〈實機測試發現〉的三條：首次下載整輪逾時、進度條倒退與卡住、`translate()` 錯誤是英文。
+- 串流請求原本一律 30 秒逾時；收到 `download-start`／`download-progress` 後改成「5 分鐘沒有新進度才逾時」，每次進度重新計時。非內建翻譯仍是 30 秒（`background.js` 的 `ai-stream` 監聽）。
+- `create()` 前先查 `availability()`，不是 `available` 就送 `download-start`；只用來延長逾時，不畫進度條（SW 的 availability 偏保守）。
+- 同一組語言同時只建立一個翻譯器（`acquireBuiltinTranslator`）：後到的請求接上同一個下載、先補一次目前進度；建立時不帶請求的 signal，單一請求逾時或取消只放棄自己的等待（`waitWithSignal`），最後一個使用者用完才 destroy。
+- `translate()` 失敗包成「瀏覽器內建翻譯失敗（來源 → 目標）：原因」。
+- 一輪全文翻譯結束就收起下載進度條，失敗時不再卡在「正在下載翻譯模型 0%」（`hidePageTranslationDownloadProgress`）。
+
+**驗證**：新增 7 條測試（`background` 6、`page-translator` 1），原本的進度事件測試改為先收到 `download-start`。七個突變各跑一次皆紅（下載不延長逾時、不送 download-start、不共用建立、取消不放棄等待、錯誤不包、一般逾時放寬、結束不收進度條），還原後 SHA-256 一致；全套 48 suites／797 tests exit 0、0 skipped。e2e（p2，先 `chrome.runtime.reload()` 確認是新版 background）：hostile-data 5/5、legacy-regression 16 PASS／4 PARTIAL、vocab-import 7/7、ui-panels 12/13——T4/T7 換回修改前的程式同樣失敗，另記 PLAN。真 Chrome 156 實測（目標語言暫改日文觸發新下載）：第一輪 4/4、繼續翻譯 7/7、0 錯誤。**未驗**：這次 en→ja 下載只花約 6 秒，超過 30 秒的長下載只有單元測試涵蓋。
+
 ## 2026-10-22 — PLAN 第 6 項結案：同類專案調研兩條線索都已實作
 
 **範圍**：`PLAN.md` 原第 6 項〈同類專案調研的兩條待裁線索〉，兩條都已做完，從 PLAN 移除。

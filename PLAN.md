@@ -9,7 +9,7 @@
 | 項目 | 狀態 |
 |------|------|
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
-| 自動化單元測試 | <!-- ffb:suites -->48<!-- /ffb:suites --> suites / <!-- ffb:tests -->790<!-- /ffb:tests --> tests 全綠（2026-10-22，含模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表、長難句分析、寫作批改、設定頁搜尋與新功能標籤、術語表（含多分頁同步）、模型比較、單字卡四級評分） |
+| 自動化單元測試 | <!-- ffb:suites -->48<!-- /ffb:suites --> suites / <!-- ffb:tests -->797<!-- /ffb:tests --> tests 全綠（2026-10-22，含模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表、長難句分析、寫作批改、設定頁搜尋與新功能標籤、術語表（含多分頁同步）、模型比較、單字卡四級評分） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-08-26；改 code 先 `npm run package`） |
 | 手動 QA | 全表 55/78；剩 23 項幾乎全卡「無 API key」或「需外部 App／帳號」（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | **2026-09-20 裁決：暫緩送審，先做功能**，告一段落再回頭走上架流程。Chrome Web Store 仍是 release checkpoint |
@@ -58,7 +58,7 @@
 - [ ] **7. 內建翻譯 provider｜真實網頁端到端人驗**〔待KAKA操作〕（2026-09-21）
 
   - **目的**：讓沒有金鑰的人也能用全文翻譯，有金鑰者這條路徑改走本機；詞典與 optimize 不動。
-  - **現況**：主體已完成（2026-09-21，見 `CHANGELOG.md` 同日兩條）：非串流與串流都已接上、只接頁面翻譯、不進主模型選單，首次下載有進度條。**剩真實網頁端到端人驗**：自動化證據全是 mock 層與 DOM 層，還沒在真的瀏覽器裡跑過一次頁面翻譯。2026-10-22 腳本實測：模型已下載時 4 步都過；第一次下載會逾時失敗，見〈實機測試發現〉。
+  - **現況**：主體已完成（2026-09-21，見 `CHANGELOG.md` 同日兩條）：非串流與串流都已接上、只接頁面翻譯、不進主模型選單，首次下載有進度條。**剩真實網頁端到端人驗**：自動化證據全是 mock 層與 DOM 層，還沒在真的瀏覽器裡跑過一次頁面翻譯。2026-10-22 腳本實測：模型已下載時 4 步都過；首次下載逾時已修（見 `CHANGELOG.md` 同日），但實測的下載只花 6 秒，超過 30 秒的情境只有單元測試。
   - **接續**：KAKA 實機人驗（Chrome 138 以上，不需 API key）：①`npm run package` 後用全新測試 profile 載入 `dist/pkg` ②設定頁「全文翻譯」選「瀏覽器內建翻譯」 ③開一篇英文網頁，點浮球「全文翻譯 Beta」，首次下載時面板要有進度條 ④下載完成後譯文逐段插入、順序正確，再按「繼續翻譯」也正常。都過就勾掉本項並搬 `CHANGELOG.md`。
   - **詳情**：`background.js` 的 `resolveRoute`／`handleOpenAICompatRequest`（引用符號不引行號）；`models.js` 的 `PROVIDERS`；可行性實測見 `CHANGELOG.md` 2026-10-22「PLAN 第 6 項結案」與 memory `reference_chrome_builtin_ai_probe`
 
@@ -122,20 +122,6 @@
 
 > 來源：腳本驅動真 Chrome 156＋`C:/tmp/ffb-qa/p2`，網頁 developer.chrome.com 的 Translator API 文件與 Wikipedia。以下皆已重現。
 
-- **第一次下載模型時，整輪全文翻譯逾時失敗**
-
-  - **目的**：新使用者第一次用內建翻譯就能拿到譯文。
-  - **現況**：後台每個請求 30 秒逾時，模型下載要好幾分鐘，4 段全顯示「請求逾時或已取消，請稍後重試」；模型其實在背景下完，之後「繼續翻譯」6/6 成功。
-  - **接續**：修正中，計畫待核准。
-  - **詳情**：`background.js` 的 `ai-stream` port 監聽（30 秒 `timeoutId`）、`handleBuiltinTranslateRequest`
-
-- **下載進度條會倒退，失敗後還卡在畫面上**
-
-  - **目的**：進度條如實反映下載，失敗就收起。
-  - **現況**：進度 1%→11% 後跳回 0%；全部段落失敗後面板仍顯示「正在下載翻譯模型 0%」。推測是每段各自 `create()`、各自回報進度互相覆蓋（未驗證）。
-  - **接續**：跟上一條一起處理。
-  - **詳情**：`content/page-translator-panel.js` 的 `renderPageTranslationDownloadProgress`
-
 - **Wikipedia 全文翻譯收集不到任何段落（不分模型）**
 
   - **目的**：一般文章站不被誤判成對話框。
@@ -143,12 +129,12 @@
   - **接續**：class 名稱比對不該套到 `html`／`body`；修法待定。
   - **詳情**：`content/page-translator-collector.js` 的 `isPageTranslatableElement`
 
-- **內建翻譯 `translate()` 的錯誤沒包成中文**
+- **e2e T4/T7 浮球版面在 375 寬失敗（修改前的程式也一樣）**
 
-  - **目的**：錯誤訊息讓使用者看得懂。
-  - **現況**：只有 `create()` 失敗會包成「瀏覽器內建翻譯無法啟用…」；`translate()` 失敗直接顯示英文原文（實測「Model not available」）。
-  - **接續**：小修，可跟逾時修正一起做。
-  - **詳情**：`background.js` 的 `handleBuiltinTranslateRequest`
+  - **目的**：窄螢幕的浮球與四個按鈕都在畫面內。
+  - **現況**：p2 換成現行 background 後 ui-panels 固定 12/13：展開的四個按鈕超出畫面 7.8px、拖到下緣 bottom=-690。換回修改前的程式結果相同，所以不是 2026-10-22 逾時修正造成；先前通過是因為 p2 跑的是舊 background。
+  - **接續**：查是浮球程式的問題還是 p2 留下的狀態（例如存過的浮球位置）。
+  - **詳情**：`e2e/suites/ui-panels.js` 的 T4/T7；`content/floating-ball.js`
 
 - **先前在 p2 跑的 e2e 沒測到現行 background**
 

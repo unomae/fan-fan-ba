@@ -310,6 +310,9 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+const AI_REQUEST_TIMEOUT_MS = 30000;
+const BUILTIN_DOWNLOAD_IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 實測下載曾停在同一個百分比約 2 分鐘
+
 // ── Port 監聽（長連線 streaming，用於段落翻譯 / 解釋 / 優化）──
 chrome.runtime.onConnect.addListener(port => {
   if (port.name !== 'ai-stream') return;
@@ -318,10 +321,15 @@ chrome.runtime.onConnect.addListener(port => {
     const controller = new AbortController();
     let timedOut = false;
     let completed = false;
-    const timeoutId = setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, 30000);
+    let timeoutId = null;
+    const armTimeout = ms => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, ms);
+    };
+    armTimeout(AI_REQUEST_TIMEOUT_MS);
     const abortOnDisconnect = () => {
       if (!completed) controller.abort();
     };
@@ -336,6 +344,8 @@ chrome.runtime.onConnect.addListener(port => {
           try { port.postMessage({ requestId: safeRequest.requestId, chunk }); } catch { /* port 已關閉 */ }
         },
         status => {
+          // 內建模型下載要好幾分鐘：下載期間改成「一段時間沒有新進度才逾時」，每次進度都重新計時
+          if (status?.kind === 'download-start' || status?.kind === 'download-progress') armTimeout(BUILTIN_DOWNLOAD_IDLE_TIMEOUT_MS);
           try { port.postMessage({ requestId: safeRequest.requestId, status }); } catch { /* port 已關閉 */ }
         },
         controller.signal
@@ -668,7 +678,7 @@ async function detectBuiltinSourceLanguage(text) {
   }
 }
 
-async function handleBuiltinTranslateRequest({ action, selectedText, targetLanguage, browserLanguage, pageTranslation, signal, onProgress }) {
+async function handleBuiltinTranslateRequest({ action, selectedText, targetLanguage, browserLanguage, pageTranslation, signal, onProgress, onDownloadStart }) {
   if (action !== 'translate' || !pageTranslation) {
     throw new Error('瀏覽器內建翻譯只支援網頁翻譯，其他操作請改用雲端模型');
   }
@@ -688,39 +698,107 @@ async function handleBuiltinTranslateRequest({ action, selectedText, targetLangu
       : { result: items[0].text };
   }
 
-  let translator;
-  try {
-    translator = await self.Translator.create({
-      sourceLanguage: source,
-      targetLanguage: target,
-      signal,
-      // 首次使用要下載語言包（實測 4.8–14.8 秒）。沒有回饋的話使用者只會看到畫面卡住，
-      // 所以把進度往上送；沒有 onProgress（非串流路徑）就不裝 monitor。
-      ...(onProgress ? {
-        monitor(m) {
-          m.addEventListener('downloadprogress', event => {
-            onProgress(Math.round(Number(event?.loaded || 0) * 100));
-          });
-        }
-      } : {})
-    });
-  } catch (err) {
-    // availability() 不是承諾（實測下載 100% 後仍可能 NotSupportedError），
-    // 所以這裡一律當正常路徑處理，讓使用者能改回雲端
-    throw new Error(`瀏覽器內建翻譯無法啟用（${source} → ${target}）：${err.message}`);
-  }
+  // 模型還沒下載好就先通知：串流端據此把逾時換成下載用的長度。
+  // 只延長逾時、不畫進度條——service worker 的 availability() 偏保守，模型已在也可能回 downloadable
+  if (onDownloadStart && await getBuiltinTranslatorAvailability(source, target) !== 'available') onDownloadStart();
 
+  const { entry, release } = acquireBuiltinTranslator(source, target, onProgress);
   try {
+    let translator;
+    try {
+      translator = await waitWithSignal(entry.promise, signal);
+    } catch (err) {
+      if (err?.name === 'AbortError') throw err;
+      // availability() 不是承諾（實測下載 100% 後仍可能 NotSupportedError），
+      // 所以這裡一律當正常路徑處理，讓使用者能改回雲端
+      throw new Error(`瀏覽器內建翻譯無法啟用（${source} → ${target}）：${err.message}`);
+    }
+
     const translations = [];
     for (const item of items) {
-      translations.push({ id: item.id, translation: await translator.translate(item.text) });
+      try {
+        translations.push({ id: item.id, translation: await translator.translate(item.text) });
+      } catch (err) {
+        // 實測模型沒下載完時會拋英文的「Model not available」，包成使用者看得懂的訊息
+        throw new Error(`瀏覽器內建翻譯失敗（${source} → ${target}）：${err.message}`);
+      }
     }
     return isBatch
       ? { result: JSON.stringify({ translations }) }
       : { result: translations[0].translation };
   } finally {
-    if (translator.destroy) translator.destroy();
+    release();
   }
+}
+
+async function getBuiltinTranslatorAvailability(source, target) {
+  try {
+    return await self.Translator.availability({ sourceLanguage: source, targetLanguage: target });
+  } catch {
+    return 'unknown';
+  }
+}
+
+// 同一組語言同時只建立一個翻譯器：第一次用要下載模型，後到的請求等同一個下載、收同一份進度。
+// 建立時不帶請求的 signal——某個請求逾時或取消只放棄自己的等待，不中斷背景下載；
+// 最後一個使用者用完才 destroy。
+const builtinTranslators = new Map(); // `${source}>${target}` → { promise, users, lastPercent, listeners }
+
+function acquireBuiltinTranslator(source, target, onProgress) {
+  const key = `${source}>${target}`;
+  let entry = builtinTranslators.get(key);
+  const isNew = !entry;
+  if (isNew) {
+    entry = { users: 0, lastPercent: null, listeners: new Set() };
+    builtinTranslators.set(key, entry);
+  }
+  entry.users++;
+  // 進度監聽要在 create() 之前接上，才收得到 create 一開始就送出的進度
+  if (onProgress) {
+    entry.listeners.add(onProgress);
+    // 後到的請求接上正在跑的下載：先補一次目前進度，進度條才不會從 0 重來
+    if (entry.lastPercent !== null) onProgress(entry.lastPercent);
+  }
+  if (isNew) {
+    const created = entry;
+    // 包一層 async：create 若同步拋錯也變成 rejected promise，不會留下半建立的項目
+    created.promise = (async () => self.Translator.create({
+      sourceLanguage: source,
+      targetLanguage: target,
+      monitor(m) {
+        m.addEventListener('downloadprogress', event => {
+          created.lastPercent = Math.round(Number(event?.loaded || 0) * 100);
+          created.listeners.forEach(listener => listener(created.lastPercent));
+        });
+      }
+    }))();
+    // 建立失敗就移除，下一個請求重新建立
+    created.promise.catch(() => { if (builtinTranslators.get(key) === created) builtinTranslators.delete(key); });
+  }
+  return {
+    entry,
+    release() {
+      if (onProgress) entry.listeners.delete(onProgress);
+      entry.users--;
+      if (entry.users > 0) return;
+      if (builtinTranslators.get(key) === entry) builtinTranslators.delete(key);
+      entry.promise.then(translator => translator?.destroy?.(), () => {});
+    }
+  };
+}
+
+// 等共用的 promise，但這個請求被取消時只有它自己先放棄
+function waitWithSignal(promise, signal) {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(new DOMException('Aborted', 'AbortError'));
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(new DOMException('Aborted', 'AbortError'));
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      value => { signal.removeEventListener('abort', onAbort); resolve(value); },
+      error => { signal.removeEventListener('abort', onAbort); reject(error); }
+    );
+  });
 }
 
 async function handleOpenAICompatRequest({ action, selectedText, context, pageTitle, pageUrl, customAction, targetLanguage, explanationLanguage, browserLanguage, pageTranslation, glossary, modelId, apiKey, baseUrl, label, extraHeaders = {}, signal }) {
@@ -776,7 +854,8 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle, page
     // 內建 API 沒有串流；一次算完再用單一 chunk 交付，維持串流端既有契約
     const { result } = await handleBuiltinTranslateRequest({
       action, selectedText, targetLanguage, browserLanguage, pageTranslation, signal,
-      onProgress: percent => onStatus({ kind: 'download-progress', percent })
+      onProgress: percent => onStatus({ kind: 'download-progress', percent }),
+      onDownloadStart: () => onStatus({ kind: 'download-start' })
     });
     onChunk(result);
     return;

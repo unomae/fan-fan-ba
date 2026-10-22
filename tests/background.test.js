@@ -18,6 +18,9 @@ const {
 } = require('../background');
 const { ReadableStream } = require('stream/web');
 
+// background 載入時註冊的 ai-stream port 監聽，逾時測試直接驅動它
+const aiStreamConnectListener = chrome.runtime.onConnect.addListener.mock.calls[0][0];
+
 describe('Background module', () => {
   describe('isRetryable', () => {
     it('should return true for 429 and 503', () => {
@@ -438,11 +441,170 @@ describe('Background module', () => {
         status => statuses.push(status),
         undefined
       );
+      // 模型還沒下載（availability 回 downloadable）時先送 download-start，讓串流端延長逾時
       expect(statuses).toEqual([
+        { kind: 'download-start' },
         { kind: 'download-progress', percent: 25 },
         { kind: 'download-progress', percent: 50 },
         { kind: 'download-progress', percent: 100 }
       ]);
+    });
+
+    // 實測（2026-10-22）：首次下載要好幾分鐘，原本 30 秒逾時讓整輪失敗、每個請求各自重建翻譯器、進度條倒退
+    describe('首次下載模型', () => {
+      // 可手動控制的 Translator：create 掛著不回，由測試決定何時送進度、何時完成
+      function controllableTranslator({ availability = 'downloadable', translate } = {}) {
+        const state = { createCalls: 0, progress: null, resolve: null, reject: null, destroyed: 0 };
+        global.Translator = {
+          availability: async () => availability,
+          create: (opts) => {
+            state.createCalls++;
+            opts.monitor?.({ addEventListener: (evt, fn) => { if (evt === 'downloadprogress') state.progress = fn; } });
+            return new Promise((resolve, reject) => { state.resolve = resolve; state.reject = reject; });
+          }
+        };
+        state.finish = () => state.resolve({
+          translate: translate || (async text => `[譯]${text}`),
+          destroy: () => { state.destroyed++; }
+        });
+        return state;
+      }
+
+      function openStreamPort() {
+        const posted = [];
+        let onMessage;
+        aiStreamConnectListener({
+          name: 'ai-stream',
+          sender: { id: chrome.runtime.id, tab: { url: 'https://example.com/' } },
+          postMessage: message => posted.push(message),
+          onMessage: { addListener: fn => { onMessage = fn; } },
+          onDisconnect: { addListener: () => {}, removeListener: () => {} }
+        });
+        return { posted, send: request => onMessage(request) };
+      }
+
+      const pageRequest = (model = 'builtin:translator') => ({
+        requestId: 7,
+        action: 'translate',
+        selectedText: JSON.stringify([{ id: 1, text: 'alpha' }]),
+        model,
+        pageTranslation: { batch: true, count: 1 },
+        targetLanguage: 'zh-TW'
+      });
+
+      afterEach(() => { jest.useRealTimers(); });
+
+      it('下載期間每 20 秒有進度、總共 3 分鐘：不逾時，最後拿到譯文', async () => {
+        jest.useFakeTimers();
+        mockDetector('en', 0.99);
+        const translator = controllableTranslator();
+        const { posted, send } = openStreamPort();
+        const done = send(pageRequest());
+
+        await jest.advanceTimersByTimeAsync(0);
+        for (let step = 1; step <= 9; step++) {
+          await jest.advanceTimersByTimeAsync(20000);
+          translator.progress({ loaded: step / 10 });
+        }
+        expect(posted.some(m => m.error)).toBe(false);
+        translator.finish();
+        await done;
+
+        expect(posted.some(m => m.error)).toBe(false);
+        expect(JSON.parse(posted.find(m => m.chunk).chunk).translations).toEqual([{ id: 1, translation: '[譯]alpha' }]);
+        expect(posted.at(-1).done).toBe(true);
+      });
+
+      it('下載超過 5 分鐘沒有新進度：才逾時', async () => {
+        jest.useFakeTimers();
+        mockDetector('en', 0.99);
+        const translator = controllableTranslator();
+        const { posted, send } = openStreamPort();
+        const done = send(pageRequest());
+
+        await jest.advanceTimersByTimeAsync(4 * 60 * 1000);
+        expect(posted.some(m => m.error)).toBe(false);
+        await jest.advanceTimersByTimeAsync(60 * 1000 + 1);
+        await done;
+
+        expect(posted.find(m => m.error)?.error).toBe('請求逾時或已取消，請稍後重試');
+        translator.finish(); // 讓背景的 create 收尾，不影響下一個測試
+      });
+
+      it('不是內建翻譯的請求：仍是 30 秒逾時', async () => {
+        jest.useFakeTimers();
+        const originalGet = chrome.storage.local.get.getMockImplementation();
+        const originalFetch = global.fetch;
+        chrome.storage.local.get.mockResolvedValue({ groqApiKey: 'gsk_dummyKeyForTestsOnly' });
+        global.fetch = jest.fn((url, options) => new Promise((resolve, reject) => {
+          options.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+        }));
+        try {
+          const { posted, send } = openStreamPort();
+          const done = send(pageRequest('groq:openai/gpt-oss-120b'));
+          await jest.advanceTimersByTimeAsync(29000);
+          expect(posted.some(m => m.error)).toBe(false);
+          await jest.advanceTimersByTimeAsync(1001);
+          await done;
+          expect(posted.find(m => m.error)?.error).toBe('請求逾時或已取消，請稍後重試');
+        } finally {
+          chrome.storage.local.get.mockImplementation(originalGet);
+          global.fetch = originalFetch;
+        }
+      });
+
+      it('同一組語言同時兩個請求：只建立一次翻譯器，後到的先拿到目前進度', async () => {
+        mockDetector('en', 0.99);
+        const translator = controllableTranslator();
+        const firstProgress = [];
+        const secondProgress = [];
+        const request = (items, onProgress) => handleBuiltinTranslateRequest(batchRequest(items, { onProgress }));
+
+        const first = request([{ id: 1, text: 'alpha' }], p => firstProgress.push(p));
+        await new Promise(r => setTimeout(r, 0));
+        translator.progress({ loaded: 0.4 });
+        const second = request([{ id: 2, text: 'beta' }], p => secondProgress.push(p));
+        await new Promise(r => setTimeout(r, 0));
+        translator.progress({ loaded: 0.6 });
+        translator.finish();
+
+        const [a, b] = await Promise.all([first, second]);
+        expect(translator.createCalls).toBe(1);
+        expect(JSON.parse(a.result).translations).toEqual([{ id: 1, translation: '[譯]alpha' }]);
+        expect(JSON.parse(b.result).translations).toEqual([{ id: 2, translation: '[譯]beta' }]);
+        expect(firstProgress).toEqual([40, 60]);
+        expect(secondProgress).toEqual([40, 60]);
+        expect(translator.destroyed).toBe(1);
+      });
+
+      it('第一個請求被取消：第二個請求照樣拿到譯文，下載不中斷', async () => {
+        mockDetector('en', 0.99);
+        const translator = controllableTranslator();
+        const controller = new AbortController();
+        const first = handleBuiltinTranslateRequest(batchRequest([{ id: 1, text: 'alpha' }], { signal: controller.signal }));
+        await new Promise(r => setTimeout(r, 0));
+        const second = handleBuiltinTranslateRequest(batchRequest([{ id: 2, text: 'beta' }]));
+        await new Promise(r => setTimeout(r, 0));
+
+        controller.abort();
+        await expect(first).rejects.toMatchObject({ name: 'AbortError' });
+        translator.finish();
+
+        expect(JSON.parse((await second).result).translations).toEqual([{ id: 2, translation: '[譯]beta' }]);
+        expect(translator.createCalls).toBe(1);
+      });
+
+      it('translate() 出錯：訊息包成中文，保留原因', async () => {
+        mockDetector('en', 0.99);
+        const translator = controllableTranslator({
+          availability: 'available',
+          translate: async () => { throw new Error('Model not available'); }
+        });
+        const pending = handleBuiltinTranslateRequest(batchRequest([{ id: 1, text: 'alpha' }]));
+        await new Promise(r => setTimeout(r, 0));
+        translator.finish();
+        await expect(pending).rejects.toThrow('瀏覽器內建翻譯失敗（en → zh-Hant）：Model not available');
+      });
     });
 
     it('handles a single non-batch page-translation segment', async () => {
