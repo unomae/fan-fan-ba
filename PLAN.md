@@ -58,7 +58,7 @@
 - [ ] **7. 內建翻譯 provider｜真實網頁端到端人驗**〔待KAKA操作〕（2026-09-21）
 
   - **目的**：讓沒有金鑰的人也能用全文翻譯，有金鑰者這條路徑改走本機；詞典與 optimize 不動。
-  - **現況**：主體已完成（2026-09-21，見 `CHANGELOG.md` 同日兩條）：非串流與串流都已接上、只接頁面翻譯、不進主模型選單，首次下載有進度條。**剩真實網頁端到端人驗**：自動化證據全是 mock 層與 DOM 層，還沒在真的瀏覽器裡跑過一次頁面翻譯。
+  - **現況**：主體已完成（2026-09-21，見 `CHANGELOG.md` 同日兩條）：非串流與串流都已接上、只接頁面翻譯、不進主模型選單，首次下載有進度條。**剩真實網頁端到端人驗**：自動化證據全是 mock 層與 DOM 層，還沒在真的瀏覽器裡跑過一次頁面翻譯。2026-10-22 腳本實測：模型已下載時 4 步都過；第一次下載會逾時失敗，見〈實機測試發現〉。
   - **接續**：KAKA 實機人驗（Chrome 138 以上，不需 API key）：①`npm run package` 後用全新測試 profile 載入 `dist/pkg` ②設定頁「全文翻譯」選「瀏覽器內建翻譯」 ③開一篇英文網頁，點浮球「全文翻譯 Beta」，首次下載時面板要有進度條 ④下載完成後譯文逐段插入、順序正確，再按「繼續翻譯」也正常。都過就勾掉本項並搬 `CHANGELOG.md`。
   - **詳情**：`background.js` 的 `resolveRoute`／`handleOpenAICompatRequest`（引用符號不引行號）；`models.js` 的 `PROVIDERS`；可行性實測見 `CHANGELOG.md` 2026-10-22「PLAN 第 6 項結案」與 memory `reference_chrome_builtin_ai_probe`
 
@@ -117,6 +117,45 @@
   - **現況**：2026-10-19 修正後動作保留、模型退回 `default`，之後存檔就固定寫回 `default`；沒有任何提示。
   - **接續**：KAKA 裁決要不要在設定頁或結果卡提示；要做再定提示位置與文案。
   - **詳情**：`custom-actions.js` 的 `normalizeActionList`
+
+### 實機測試發現（2026-10-22，內建翻譯）
+
+> 來源：腳本驅動真 Chrome 156＋`C:/tmp/ffb-qa/p2`，網頁 developer.chrome.com 的 Translator API 文件與 Wikipedia。以下皆已重現。
+
+- **第一次下載模型時，整輪全文翻譯逾時失敗**
+
+  - **目的**：新使用者第一次用內建翻譯就能拿到譯文。
+  - **現況**：後台每個請求 30 秒逾時，模型下載要好幾分鐘，4 段全顯示「請求逾時或已取消，請稍後重試」；模型其實在背景下完，之後「繼續翻譯」6/6 成功。
+  - **接續**：修正中，計畫待核准。
+  - **詳情**：`background.js` 的 `ai-stream` port 監聽（30 秒 `timeoutId`）、`handleBuiltinTranslateRequest`
+
+- **下載進度條會倒退，失敗後還卡在畫面上**
+
+  - **目的**：進度條如實反映下載，失敗就收起。
+  - **現況**：進度 1%→11% 後跳回 0%；全部段落失敗後面板仍顯示「正在下載翻譯模型 0%」。推測是每段各自 `create()`、各自回報進度互相覆蓋（未驗證）。
+  - **接續**：跟上一條一起處理。
+  - **詳情**：`content/page-translator-panel.js` 的 `renderPageTranslationDownloadProgress`
+
+- **Wikipedia 全文翻譯收集不到任何段落（不分模型）**
+
+  - **目的**：一般文章站不被誤判成對話框。
+  - **現況**：頁面載入後 Wikipedia 在 `<body>` 加 `uls-dialog-sticky-hide`，排除規則 `[class*="dialog" i]` 命中 `<body>`，整頁被跳過，面板顯示「目前沒有新段落」。
+  - **接續**：class 名稱比對不該套到 `html`／`body`；修法待定。
+  - **詳情**：`content/page-translator-collector.js` 的 `isPageTranslatableElement`
+
+- **內建翻譯 `translate()` 的錯誤沒包成中文**
+
+  - **目的**：錯誤訊息讓使用者看得懂。
+  - **現況**：只有 `create()` 失敗會包成「瀏覽器內建翻譯無法啟用…」；`translate()` 失敗直接顯示英文原文（實測「Model not available」）。
+  - **接續**：小修，可跟逾時修正一起做。
+  - **詳情**：`background.js` 的 `handleBuiltinTranslateRequest`
+
+- **先前在 p2 跑的 e2e 沒測到現行 background**
+
+  - **目的**：e2e 結果要對應現行程式。
+  - **現況**：p2 的 service worker 一直是舊版（版本號沒變，Chrome 不換）；2026-10-22 已在 options 頁 `chrome.runtime.reload()` 換成現行版。之前 e2e 裡跟 background 有關的結論要打問號。
+  - **接續**：e2e harness 啟動後先檢查 SW 是否為現行版，不是就停；做法待定。
+  - **詳情**：`e2e/lib/harness.js` 的 `launch`；memory `feedback_extension_stale_sw_profile`
 
 ## 驗證指令速查
 
