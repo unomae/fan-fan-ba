@@ -129,7 +129,7 @@ describe('執行比較', () => {
     pending[0].resolve({ result: 'リードタイムは2週間です。', notice: '已改用備援模型' });
     const outcomes = await run;
     expect(outcomes.map(outcome => outcome.result)).toEqual(['リードタイムは2週間です。', '内蔵の訳']);
-    expect(card(GROQ).querySelector('.compare-meta').textContent).toMatch(/^\d+\.\d 秒 · 已改用備援模型$/);
+    expect(card(GROQ).querySelector('.compare-meta').textContent).toMatch(/^\d+\.\d 秒，已改用備援模型$/);
     expect($('compareStatus').textContent).toBe('完成：2 個模型都有結果。');
     expect($('btnRunCompare').disabled).toBe(false);
   });
@@ -147,7 +147,7 @@ describe('執行比較', () => {
     await options.runModelCompare();
     expect(card(GROQ).classList.contains('is-error')).toBe(true);
     expect(card(GROQ).querySelector('.compare-output').textContent).toBe('Groq 目前忙碌');
-    expect(card(GROQ).querySelector('.compare-meta').textContent).toMatch(/^失敗 · /);
+    expect(card(GROQ).querySelector('.compare-meta').textContent).toMatch(/^失敗，/);
     expect(card(gemini).querySelector('.compare-output').textContent).toBe('Could not establish connection');
     expect(card(BUILTIN).classList.contains('is-error')).toBe(false);
     expect(card(BUILTIN).querySelector('.compare-output').textContent).toBe('譯文');

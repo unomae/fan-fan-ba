@@ -1,0 +1,99 @@
+/* 翻翻吧全頁面（popup／設定頁）共用的設計 token。
+   色票一律取自 Radix Colors v3：lime＝品牌、olive＝中性、amber／red／blue＝警告／錯誤／資訊。
+   用法照 Radix 階層：1–2 頁面底，3–5 元件底（一般／hover／按下），6–8 邊框，9–10 實心色，11–12 文字。
+   深色模式只換這裡的色值，各頁面不需要另寫暗色規則。 */
+
+:root {
+  --lime-1: #fcfdfa; --lime-2: #f8faf3; --lime-3: #eef6d6; --lime-4: #e2f0bd; --lime-5: #d3e7a6; --lime-6: #c2da91;
+  --lime-7: #abc978; --lime-8: #8db654; --lime-9: #bdee63; --lime-10: #b0e64c; --lime-11: #5c7c2f; --lime-12: #37401c;
+
+  --olive-1: #fcfdfc; --olive-2: #f8faf8; --olive-3: #eff1ef; --olive-4: #e7e9e7; --olive-5: #dfe2df; --olive-6: #d7dad7;
+  --olive-7: #cccfcc; --olive-8: #b9bcb8; --olive-9: #898e87; --olive-10: #7f847d; --olive-11: #60655f; --olive-12: #1d211c;
+
+  --amber-3: #fff7c2; --amber-6: #f3d673; --amber-9: #ffc53d; --amber-11: #ab6400; --amber-12: #4f3422;
+  --red-3: #feebec; --red-4: #ffdbdc; --red-6: #fdbdbe; --red-9: #e5484d; --red-11: #ce2c31;
+  --blue-3: #e6f4fe; --blue-6: #acd8fc; --blue-9: #0090ff; --blue-11: #0d74ce;
+
+  /* 頁面與元件 */
+  --page: var(--olive-2);
+  --surface: #ffffff;
+  --field: #ffffff;
+  --hover: var(--olive-3);
+  --pressed: var(--olive-4);
+  --line: var(--olive-6);
+  --line-strong: var(--olive-7);
+  --text: var(--olive-12);
+  --text-muted: var(--olive-11);
+
+  /* 品牌 lime：9 很亮，上面的字要用 12 */
+  --accent-soft: var(--lime-3);
+  --accent-soft-hover: var(--lime-4);
+  --accent-line: var(--lime-7);
+  --accent-solid: var(--lime-9);
+  --accent-solid-hover: var(--lime-10);
+  --accent-on-solid: var(--lime-12);
+  --accent-text: var(--lime-11);
+
+  --warn-soft: var(--amber-3);
+  --warn-line: var(--amber-6);
+  --warn-text: var(--amber-11);
+  --danger-soft: var(--red-3);
+  --danger-line: var(--red-6);
+  --danger-solid: var(--red-9);
+  --danger-text: var(--red-11);
+  --info-soft: var(--blue-3);
+  --info-line: var(--blue-6);
+  --info-solid: var(--blue-9);
+  --info-text: var(--blue-11);
+
+  --focus: var(--lime-8);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--lime-9) 35%, transparent);
+  --hairline: 1px;
+
+  /* 頁面氛圍：淡黃、淡綠兩團光暈＋毛玻璃外框 */
+  --page-bg:
+    radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--amber-9) 12%, transparent), transparent 28%),
+    radial-gradient(circle at 90% 14%, color-mix(in srgb, var(--lime-9) 22%, transparent), transparent 30%),
+    linear-gradient(180deg, var(--olive-2) 0%, var(--olive-3) 100%);
+  --shell-bg: color-mix(in srgb, var(--surface) 82%, transparent);
+  --shadow-shell: 0 18px 44px rgba(24, 32, 51, 0.12);
+  --shadow-hover: 0 6px 18px color-mix(in srgb, var(--lime-11) 14%, transparent);
+  --shadow-brand: 0 8px 22px color-mix(in srgb, var(--lime-9) 40%, transparent);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  /* 字級只有三種 */
+  --fs-title: 20px;
+  --fs-body: 14px;
+  --fs-meta: 12px;
+
+  --ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --lime-1: #11130c; --lime-2: #151a10; --lime-3: #1f2917; --lime-4: #29371d; --lime-5: #334423; --lime-6: #3d522a;
+    --lime-7: #496231; --lime-8: #577538; --lime-9: #bdee63; --lime-10: #d4ff70; --lime-11: #bde56c; --lime-12: #e3f7ba;
+
+    --olive-1: #111210; --olive-2: #181917; --olive-3: #212220; --olive-4: #282a27; --olive-5: #2f312e; --olive-6: #383a36;
+    --olive-7: #454843; --olive-8: #5c625b; --olive-9: #687066; --olive-10: #767d74; --olive-11: #afb5ad; --olive-12: #eceeec;
+
+    --amber-3: #302008; --amber-6: #5c3d05; --amber-9: #ffc53d; --amber-11: #ffca16; --amber-12: #ffe7b3;
+    --red-3: #3b1219; --red-4: #500f1c; --red-6: #72232d; --red-9: #e5484d; --red-11: #ff9592;
+    --blue-3: #0d2847; --blue-6: #104d87; --blue-9: #0090ff; --blue-11: #70b8ff;
+
+    --page: var(--olive-1);
+    --surface: var(--olive-2);
+    --field: var(--olive-3);
+    /* 深色底上 lime 9 仍配深色字 */
+    --accent-on-solid: var(--lime-1);
+    --page-bg:
+      radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--amber-9) 5%, transparent), transparent 28%),
+      radial-gradient(circle at 90% 14%, color-mix(in srgb, var(--lime-9) 7%, transparent), transparent 30%),
+      var(--olive-1);
+    --shadow-shell: 0 18px 44px rgba(0, 0, 0, 0.45);
+    --shadow-hover: none;
+    --shadow-brand: none;
+    --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+}

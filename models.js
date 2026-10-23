@@ -65,17 +65,17 @@
       apiKeyName: 'groqApiKey',
       fallbackModelId: GROQ_FALLBACK_MODEL_ID,
       name: 'GPT-OSS 120B',
-      desc: 'OpenAI 開源 · Groq 極速・免費',
+      desc: 'OpenAI 開源模型，免費',
       badge: 'Groq',
       badgeClass: 'badge-groq'
     },
     {
-      id: 'gemini-3.5-flash',
+      id: 'gemini-3.8-flash',
       provider: 'gemini',
       apiKeyName: 'apiKey',
-      name: 'Gemini 3.5 Flash',
-      desc: '最新穩定版 · 免費額度',
-      badge: '快速',
+      name: 'Gemini 3.8 Flash',
+      desc: '穩定版，有免費額度',
+      badge: 'Gemini',
       badgeClass: 'badge-fast'
     },
     {
@@ -83,8 +83,8 @@
       provider: 'gemini',
       apiKeyName: 'apiKey',
       name: 'Gemini 3.5 Flash-Lite',
-      desc: '輕量極速 · 與 Flash 共用同一把 Key',
-      badge: '極速',
+      desc: '更快更省，與 Flash 共用金鑰',
+      badge: 'Gemini',
       badgeClass: 'badge-fast'
     },
     {
@@ -93,8 +93,8 @@
       apiKeyName: 'openrouterApiKey',
       fallbackModelId: OPENROUTER_FALLBACK_MODEL_ID,
       name: 'Gemma 4 31B',
-      desc: 'OpenRouter 免費 · Google 多語',
-      badge: 'OR',
+      desc: 'Google 多語模型，免費',
+      badge: 'OpenRouter',
       badgeClass: 'badge-or'
     }
   ];
@@ -104,7 +104,7 @@
     provider: 'builtin',
     apiKeyName: '',
     name: '瀏覽器內建翻譯',
-    desc: '免金鑰 · 本機執行 · 僅網頁翻譯',
+    desc: '免金鑰，本機執行，僅限全文翻譯',
     badge: '內建',
     badgeClass: 'badge-builtin',
     pageTranslationOnly: true
@@ -115,7 +115,7 @@
     provider: 'custom',
     apiKeyName: 'customApiKey',
     name: '自訂端點',
-    desc: 'OpenAI 相容 · 自行設定網址與模型',
+    desc: '自行設定 OpenAI 相容端點',
     badge: '自訂',
     badgeClass: 'badge-or'
   });
@@ -148,8 +148,11 @@
   }
 
   const MODEL_MIGRATIONS = {
-    'gemini-3-flash-preview': 'gemini-3.5-flash',
-    'gemini-3.1-flash-lite-preview': 'gemini-3.5-flash',
+    'gemini-3-flash-preview': 'gemini-3.8-flash',
+    'gemini-3.1-flash-lite-preview': 'gemini-3.8-flash',
+    // 2026-10：Google 把 gemini-3.5-flash 端點轉送到 3.6，最新免費穩定版是 3.8；
+    // 已存 storage 的舊值一律遷到 3.8（MIGRATIONS 只走一跳，上面兩行也直接指 3.8）
+    'gemini-3.5-flash': 'gemini-3.8-flash',
     // Groq 於 2026-07-17 下架 Llama 4 Scout（打舊 id 直接 HTTP 404），
     // 官方建議替代即 gpt-oss-120b；已存 storage 的舊值必須在這裡接住
     'groq:meta-llama/llama-4-scout-17b-16e-instruct': DEFAULT_MODEL,

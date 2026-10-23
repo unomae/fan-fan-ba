@@ -4,7 +4,7 @@ const path = require('path');
 const vm = require('vm');
 
 const GROQ = 'groq:openai/gpt-oss-120b';
-const GEMINI = 'gemini-3.5-flash';
+const GEMINI = 'gemini-3.8-flash';
 
 function runContentScript(file, context) {
   const source = fs.readFileSync(path.join(__dirname, '../../', file), 'utf8');

@@ -165,7 +165,7 @@ describe('Cloud Sync helper', () => {
     chrome.storage.local.set.mockResolvedValueOnce();
 
     const payload = await CloudSync.buildCloudSettingsPayload({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-3.8-flash',
       obsidianDefaultFolder: 'Learning'
     }, {
       deviceId: 'device-test',
@@ -178,7 +178,7 @@ describe('Cloud Sync helper', () => {
       appVersion: '1.7.0',
       deviceId: 'device-test',
       settings: {
-        model: 'gemini-3.5-flash',
+        model: 'gemini-3.8-flash',
         obsidianDefaultFolder: 'Learning'
       }
     });
@@ -203,7 +203,7 @@ describe('Cloud Sync helper', () => {
       appVersion: '1.7.4',
       deviceId: 'device-test',
       settings: {
-        model: 'gemini-3.5-flash',
+        model: 'gemini-3.8-flash',
         targetLanguage: 'zh-TW'
       }
     });
@@ -236,7 +236,7 @@ describe('Cloud Sync helper', () => {
           updatedAt: '2026-06-09T14:20:30.000Z',
           appVersion: '1.7.4',
           settings: {
-            model: 'gemini-3.5-flash',
+            model: 'gemini-3.8-flash',
             targetLanguage: 'zh-TW'
           }
         })
@@ -258,7 +258,7 @@ describe('Cloud Sync helper', () => {
   // 術語表跟著雲端同步、放在 settings 底下，但它不是「一般設定」：計數不能把它算成一個
   it('上傳與下載的一般設定數不把術語表算進去', async () => {
     const settings = {
-      model: 'gemini-3.5-flash',
+      model: 'gemini-3.8-flash',
       targetLanguage: 'zh-TW',
       glossary: { terms: [{ source: 'MOQ', target: '最小訂購量' }], sites: [] }
     };

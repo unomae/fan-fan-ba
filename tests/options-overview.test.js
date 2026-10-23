@@ -72,13 +72,20 @@ describe('總覽與詳細頁切換', () => {
     expect(tiles).toHaveLength(9);
   });
 
-  it('點卡片進詳細頁：只顯示該分類、麵包屑寫分類名稱、網址帶 #分類', async () => {
+  it('每個分類的標題跟總覽卡片名稱一致', async () => {
+    await loadOptions();
+    document.querySelectorAll('.settings-tab[data-panel]').forEach(item => {
+      const heading = document.querySelector(`[data-panel-content="${item.dataset.panel}"] h2`);
+      expect(heading.textContent).toBe(options.settingsPanelTitle(item.dataset.panel));
+    });
+  });
+
+  it('點卡片進詳細頁：只顯示該分類、網址帶 #分類', async () => {
     await loadOptions();
     tile('glossary').click();
     expect($('settingsOverview').hidden).toBe(true);
     expect($('settingsDetail').hidden).toBe(false);
     expect(visiblePanels()).toEqual(['glossary']);
-    expect($('crumbCurrent').textContent).toBe('術語表');
     expect(location.hash).toBe('#glossary');
     expect(tile('glossary').getAttribute('aria-current')).toBe('true');
   });
@@ -108,7 +115,6 @@ describe('總覽與詳細頁切換', () => {
   it('網址帶 #分類 直接開到該分類；看不懂的 # 回總覽', async () => {
     await loadOptions({ hash: '#cloud' });
     expect(visiblePanels()).toEqual(['cloud']);
-    expect($('crumbCurrent').textContent).toBe('雲端同步');
 
     await loadOptions({ hash: '#nope' });
     expect(overviewShown()).toBe(true);
@@ -144,7 +150,7 @@ describe('總覽狀態摘要（buildSettingsOverview）', () => {
       { panel: 'model', text: expect.stringContaining('缺 Groq API Key，翻譯會無法使用') }
     ]);
     expect(overview.tiles.model.status).toEqual(['warn', '缺 Groq API Key']);
-    expect(overview.stats.keys).toBe('0 把');
+    expect(overview.keys.filter(key => key.filled)).toHaveLength(0);
   });
 
   it('金鑰都在：沒有提醒，模型卡標「金鑰已設定」，大卡片逐家列出', async () => {
@@ -155,7 +161,7 @@ describe('總覽狀態摘要（buildSettingsOverview）', () => {
     }, NOW);
     expect(overview.attention).toEqual([]);
     expect(overview.tiles.model.status).toEqual(['ok', '金鑰已設定']);
-    expect(overview.stats.keys).toBe('2 把');
+    expect(overview.keys.filter(key => key.filled)).toHaveLength(2);
     expect(overview.keys).toEqual(expect.arrayContaining([
       { label: 'Groq', filled: true },
       { label: 'Gemini', filled: true },
@@ -175,7 +181,7 @@ describe('總覽狀態摘要（buildSettingsOverview）', () => {
   it('字典或全文翻譯選了另一家缺金鑰的模型也要提醒；跟主模型同一家就不重複', async () => {
     await loadOptions();
     const other = options.buildSettingsOverview({
-      settings: { model: 'groq:openai/gpt-oss-120b', dictionaryModel: 'gemini-3.5-flash' },
+      settings: { model: 'groq:openai/gpt-oss-120b', dictionaryModel: 'gemini-3.8-flash' },
       secrets: { groqApiKey: 'gsk_dummy' }
     }, NOW);
     expect(other.attention.map(item => item.text)).toEqual([expect.stringMatching(/^字典選的模型缺 Gemini API Key/)]);
@@ -202,9 +208,8 @@ describe('總覽狀態摘要（buildSettingsOverview）', () => {
       cloud: { configured: true, meta: { signedIn: true } }
     }, NOW);
     expect(ok.tiles.actions.summary).toBe('2 個動作啟用中');
-    expect(ok.tiles.glossary.summary).toBe('3 筆術語・限 1 個網站');
+    expect(ok.tiles.glossary.summary).toBe('3 筆術語，限 1 個網站');
     expect(ok.tiles.cloud.status).toEqual(['ok', '已登入']);
-    expect(ok.stats.cloud).toBe('已登入');
 
     const failed = options.buildSettingsOverview({}, NOW);
     expect(failed.tiles.actions.summary).toBe('動作清單讀取失敗');
@@ -223,7 +228,6 @@ describe('總覽畫面（renderSettingsOverview）', () => {
       local: { lastVocabularyBackupAt: new Date().toISOString() }
     });
     await options.renderSettingsOverview();
-    expect($('overviewStatKeys').textContent).toBe('0 把');
     expect(document.querySelector('[data-summary-for="obsidian"]').textContent).toBe('Vault：My Notes');
     expect(document.querySelector('[data-status-for="backup"]').hidden).toBe(true);
     expect(document.querySelector('[data-status-for="model"]').dataset.kind).toBe('warn');
@@ -241,7 +245,7 @@ describe('總覽畫面（renderSettingsOverview）', () => {
     });
     await options.renderSettingsOverview();
     expect($('overviewAttention').hidden).toBe(true);
-    expect($('overviewStatKeys').textContent).toBe('1 把');
+    expect($('overviewKeys').textContent).toContain('Groq 金鑰已填');
   });
 });
 
@@ -323,12 +327,12 @@ describe('說明精簡後的欄位狀態', () => {
     expect([keyState('gemini').dataset.state, keyState('gemini').textContent]).toEqual(['empty', '未填']);
 
     // 字典改用 Gemini，但還沒填 Gemini 金鑰
-    $('dictionaryModel').value = 'gemini-3.5-flash';
+    $('dictionaryModel').value = 'gemini-3.8-flash';
     change($('dictionaryModel'));
     expect(keyState('gemini').textContent).toBe('缺 Key');
 
     // 主模型換掉後，Groq 沒人用了只剩「已填」
-    $('model').value = 'gemini-3.5-flash';
+    $('model').value = 'gemini-3.8-flash';
     change($('model'));
     expect(keyState('groq').textContent).toBe('已填');
 
@@ -361,7 +365,7 @@ describe('說明精簡後的欄位狀態', () => {
   it('匯入加密備份但沒填密碼：打開密碼欄、說明原因，什麼都不寫入', async () => {
     await loadOptions();
     const file = { text: async () => JSON.stringify({
-      app: 'fan-fan-ba', schemaVersion: 1, settings: { model: 'gemini-3.5-flash' },
+      app: 'fan-fan-ba', schemaVersion: 1, settings: { model: 'gemini-3.8-flash' },
       secretsEncrypted: { version: 1, algorithm: 'AES-GCM', salt: '', iv: '', data: '' }
     }) };
     Object.defineProperty($('settingsImportFile'), 'files', { value: [file], configurable: true });

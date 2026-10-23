@@ -3,6 +3,33 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-10-23 — e2e 啟動時確認 service worker 是現行版
+
+**問題**：同一個測試 profile＋同一個版本號時，Chrome 會一直跑快取的舊 `background.js`；原本 `launch` 只比 manifest 版本號，看不出來。p2 profile 因此長期測到舊 background（PLAN「實機測試發現 2026-10-22」）。
+**修法**：
+- `scripts/build-id.js`（新）：算整包內容的 sha256 前 12 碼；`npm run package` 在 dist/pkg（與 zip）的 `background.js` 尾端加 `self.FFB_BUILD_ID = '…'`。原始碼不帶指紋。
+- `e2e/lib/harness.js` 的 `launch`：叫醒 SW 讀指紋跟磁碟比。一致就放行；不一致自動 `chrome.runtime.reload()` 一次再比；仍不一致或 dist 沒指紋就停並說明原因。每次 relaunch 都會再檢查。
+
+**驗證**：Jest 50 suites／842 tests 全過（新增 `tests/build-id.test.js` 11 條：指紋讀寫、重複蓋不疊行、任一檔變就換指紋、原始碼無指紋、判斷函式六種情境）。e2e 在 p2 實跑：
+- 舊版 SW（無指紋）→ 偵測到、reload、確認現行版 ✓；打包後未 reload（舊指紋）→ 同樣自動修正 ✓；正常情況直接通過 ✓。
+- 「reload 後仍不一致」的停止路徑真實環境造不出來，只有單元測試覆蓋。
+- 全套 41 PASS／0 FAIL／4 PARTIAL（4 個 PARTIAL 同既有，都需 API key 或外部帳號）。
+- **合併前自審補修（同日）**：①任何一步丟錯都先關瀏覽器再丟（原本 options 頁載入失敗會留 Chrome 鎖住 profile）；②讀 SW 指紋每次限 3 秒（原本卡住的 worker 會讓檢查永遠掛著）；③reload 前的 worker 物件不再採信（原本可能讀到還沒終止的舊 SW 而誤判失敗）；測試暫存夾跑完會清掉。新增 `tests/e2e-sw-check.test.js` 7 條（假 context），三項修正各做一次突變都會讓對應測試轉紅。Jest 51 suites／849 tests 全過；e2e 全套 41／0／4，另造一次「dist 內容變了但 SW 沒換」跑 ui-panels，自動 reload 後 13/13。
+- **未重現的疑點**：第一輪全套出現 1 次 T8 FAIL（收藏後 2 秒按鈕仍是「收藏中」，但單字已寫入）。那輪跑到一半時另一個 session 重新打包了 dist/pkg，可能是原因但無法證明；之後 ui-panels 連跑 2 次、全套 1 次，T8 都通過。
+
+## 2026-10-23 — popup 與設定頁改用 Radix Colors，精簡元素與文案
+
+**追加（同日）**：KAKA 看過後，色彩與刪掉的重複文字保留，但視覺要回到上一版。改回：淡黃／淡綠光暈背景、毛玻璃外框與陰影、圓角 16／14、1px 線、卡片 hover 上浮、模型大卡漸層、Groq 卡淡綠底、淡綠次要按鈕、膠囊狀態標籤、標題 24／22、欄位高 42 與聚焦光圈；popup 回到 32px logo 綠黃光暈（減少動態效果時關閉）、實心圓點、膠囊供應商標籤。氛圍與陰影收進 `ui-tokens.css`（`--page-bg`、`--shell-bg`、`--shadow-*`），色值仍是 Radix。
+
+**範圍**：KAKA 給一份 11 條的介面優化準則（不用「·」分隔、去冗餘說明、Radix Colors、光學對齊與同心圓角、0.5px 線、少動畫、字級 ≤ 4 種、少判斷、少裝飾圓角陰影與左側色條、去 eyebrow），套到 popup 與設定頁。浮層（`content.css`）與歡迎頁不在這次範圍。
+- **token**：新增 `ui-tokens.css`（Radix lime／olive／amber／red／blue，含 dark），popup 與設定頁共用，打包清單加入。設定頁原本約 130 行的暗色覆寫規則整段刪除，改由 token 切換。
+- **popup**：拿掉副標、「目前狀態」卡、三格健康狀態、底部 API 狀態燈與「已切換」提示（都在重複模型清單已表達的事）。只在選的模型缺金鑰時顯示紅色提醒，「填寫金鑰」直接開設定頁 `#model`。模型右側標籤改成供應商名稱，五色徽章改成同一種灰字。logo 光暈與狀態燈脈衝動畫移除。新增深色模式（token 免費得到）。
+- **設定頁**：拿掉跟 h1 重複的「設定總覽」與跟卡片重複的三格數字列；麵包屑只留「← 返回總覽」；面板標題統一成卡片名稱；刪掉所有 `panel-badge`、供應商卡的「備用／進階／OpenAI 相容」標籤、三段只是重述標題的說明句；Obsidian 與隱私的綠色說明框改成一般段落；上限改寫在欄位標籤（最多 20 個／500 筆）。金鑰標籤視覺上只顯示「API Key」，供應商名稱留給搜尋與螢幕閱讀器（`visually-hidden`）。儲存成功訊息從黃色改成品牌綠；「新增」標籤從紅色改成資訊藍，紅色只留給錯誤。
+- **文案**：模型說明、總覽摘要、模型比較耗時、診斷摘要、快照標籤裡的「·」「・」改成逗號或頓號；模型比較與隱私卡片的說明式摘要拿掉。
+- **順手修**：設定頁深色區塊結尾有一條缺 `{` 的空選擇器（`#vocabularyBackupStatus, #vocabularyBackupReminder,`），隨整段刪除。
+
+**驗證**：Jest 49 suites／831 tests 全過（新增 4 條：面板標題＝卡片名稱、popup 缺金鑰提醒 3 條；改掉依賴已刪元素的斷言）。本機注入假 `chrome.*` 的預覽伺服器看過設定頁總覽、模型、隱私、備份（淺色、深色）與 popup（缺金鑰）。真擴充（Chromium 載入 dist/pkg）截過設定頁與 popup 淺色、深色，console 錯誤 0；e2e 全套 41 PASS／0 FAIL／4 PARTIAL，與基準相同。
+
 ## 2026-10-23 — e2e T4/T7 在 Win 失敗：125% 縮放的次像素誤差
 
 **根因**：Windows 125% 顯示縮放讓貼齊右緣的主球量到 +0.2px，T4/T7 寫死「溢出 ≤ 0」才判 FAIL；版面本身正常（四鈕 -7.8、拖上下緣 0、桌機半藏 24px）。對照實驗：同一顆球強制 DPR 1 溢出 0、1.25 溢出 0.2，class 與 transform 相同（`468b4de`）。先前記的「四鈕超出 7.8px」實測是 -7.8。
