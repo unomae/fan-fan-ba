@@ -14,6 +14,7 @@
 - 舊版 SW（無指紋）→ 偵測到、reload、確認現行版 ✓；打包後未 reload（舊指紋）→ 同樣自動修正 ✓；正常情況直接通過 ✓。
 - 「reload 後仍不一致」的停止路徑真實環境造不出來，只有單元測試覆蓋。
 - 全套 41 PASS／0 FAIL／4 PARTIAL（4 個 PARTIAL 同既有，都需 API key 或外部帳號）。
+- **合併前自審補修（同日）**：①任何一步丟錯都先關瀏覽器再丟（原本 options 頁載入失敗會留 Chrome 鎖住 profile）；②讀 SW 指紋每次限 3 秒（原本卡住的 worker 會讓檢查永遠掛著）；③reload 前的 worker 物件不再採信（原本可能讀到還沒終止的舊 SW 而誤判失敗）；測試暫存夾跑完會清掉。新增 `tests/e2e-sw-check.test.js` 7 條（假 context），三項修正各做一次突變都會讓對應測試轉紅。Jest 51 suites／849 tests 全過；e2e 全套 41／0／4，另造一次「dist 內容變了但 SW 沒換」跑 ui-panels，自動 reload 後 13/13。
 - **未重現的疑點**：第一輪全套出現 1 次 T8 FAIL（收藏後 2 秒按鈕仍是「收藏中」，但單字已寫入）。那輪跑到一半時另一個 session 重新打包了 dist/pkg，可能是原因但無法證明；之後 ui-panels 連跑 2 次、全套 1 次，T8 都通過。
 
 ## 2026-10-23 — popup 與設定頁改用 Radix Colors，精簡元素與文案

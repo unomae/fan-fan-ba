@@ -11,8 +11,15 @@ const os = require('os');
 const path = require('path');
 const B = require('../scripts/build-id');
 
+// 建過的暫存夾全部記下，跑完統一刪掉，不在系統 temp 留垃圾
+const tempDirs = [];
+afterAll(() => {
+  tempDirs.forEach(dir => fs.rmSync(dir, { recursive: true, force: true }));
+});
+
 function makeStage(files) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ffb-build-id-'));
+  tempDirs.push(dir);
   for (const [rel, content] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
     fs.writeFileSync(path.join(dir, rel), content, 'utf8');

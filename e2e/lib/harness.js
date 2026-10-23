@@ -238,13 +238,22 @@ async function assertCurrentServiceWorker(ctx, extId, extDir) {
     diskId = readBuildId(fs.readFileSync(path.join(extDir, 'background.js'), 'utf8'));
   } catch { /* 沒有 dist/pkg 由下面統一報錯 */ }
 
-  let running = await readRunningBuildId(ctx, extId);
-  let verdict = checkBuildId(diskId, running.id);
-  if (verdict === 'reload') {
-    console.log(`⚠️  service worker 不是現行版（磁碟 ${diskId}、執行中 ${describeRunning(running)}），reload 擴充後再比一次`);
-    await reloadExtension(ctx, extId);
+  let running, verdict;
+  try {
     running = await readRunningBuildId(ctx, extId);
-    verdict = checkBuildId(diskId, running.id, { reloaded: true });
+    verdict = checkBuildId(diskId, running.id);
+    if (verdict === 'reload') {
+      console.log(`⚠️  service worker 不是現行版（磁碟 ${diskId}、執行中 ${describeRunning(running)}），reload 擴充後再比一次`);
+      // reload 前的 worker 物件記下來，reload 後不再採信它們（舊 SW 可能還沒被終止）
+      const staleWorkers = new Set(ctx.serviceWorkers());
+      await reloadExtension(ctx, extId);
+      running = await readRunningBuildId(ctx, extId, staleWorkers);
+      verdict = checkBuildId(diskId, running.id, { reloaded: true });
+    }
+  } catch (error) {
+    // 任何一步丟錯都要先關瀏覽器，否則 Chrome 留著會鎖住 profile，下次 e2e 起不來
+    await ctx.close().catch(() => { });
+    throw error;
   }
   if (verdict === 'fail') {
     await ctx.close();
@@ -265,8 +274,11 @@ function describeRunning(running) {
   return running.id || '無指紋（舊版）';
 }
 
+const SW_EVALUATE_TIMEOUT_MS = 3000;
+
 // 叫醒本擴充的 service worker，讀它記憶體裡的建置指紋。回傳 { found, id }
-async function readRunningBuildId(ctx, extId) {
+// ignore：reload 前就存在的 worker 物件，不採信它們的回答
+async function readRunningBuildId(ctx, extId, ignore = new Set()) {
   const prefix = `chrome-extension://${extId}/`;
   const page = await ctx.newPage();
   try {
@@ -275,9 +287,10 @@ async function readRunningBuildId(ctx, extId) {
     await page.evaluate(() => chrome.runtime.sendMessage({ type: 'FFB_E2E_PING' }).catch(() => null)).catch(() => { });
     const deadline = Date.now() + 15000;
     while (Date.now() < deadline) {
-      for (const sw of ctx.serviceWorkers().filter(worker => worker.url().startsWith(prefix))) {
-        // reload 後舊的 worker 物件已失效，evaluate 會丟錯，略過換下一個
-        const id = await sw.evaluate(() => self.FFB_BUILD_ID ?? null).catch(() => undefined);
+      for (const sw of ctx.serviceWorkers().filter(worker => worker.url().startsWith(prefix) && !ignore.has(worker))) {
+        // 失效或卡住的 worker：evaluate 丟錯或逾時都當沒讀到，換下一個／下一輪，不讓 deadline 失效
+        const id = await withTimeout(sw.evaluate(() => self.FFB_BUILD_ID ?? null), SW_EVALUATE_TIMEOUT_MS)
+          .catch(() => undefined);
         if (id !== undefined) return { found: true, id };
       }
       await new Promise(r => setTimeout(r, 300));
@@ -286,6 +299,12 @@ async function readRunningBuildId(ctx, extId) {
   } finally {
     await page.close().catch(() => { });
   }
+}
+
+function withTimeout(promise, ms) {
+  let timer;
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`逾時 ${ms}ms`)), ms); });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 // 從 options 頁呼叫 chrome.runtime.reload()：SW 換成磁碟上的現行版，擴充頁面會被關掉
@@ -303,4 +322,6 @@ module.exports = {
   send, seed, listWords, snapshots,
   clickStable, waitBallReady, expandBall, clickBallItem, openLibrary, openVocabPanel, openOptionsPanel, openBackupTab, importVocabFile,
   isoHoursAgo, DEFAULT_EXT_ID,
+  // 只給 tests/e2e-sw-check.test.js 用假 context 驗失敗路徑
+  assertCurrentServiceWorker, withTimeout,
 };
