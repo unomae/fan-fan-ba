@@ -9,6 +9,7 @@ const { chromium } = require('playwright-core');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const { readBuildId, checkBuildId } = require('../../scripts/build-id');
 
 const DEFAULT_EXT_ID = 'cegcbfkgfobpoiaobdedldlabbddbghk';
 
@@ -223,7 +224,97 @@ async function launch(cfg) {
       + '  請照 e2e/README.md 用「載入未封裝項目」指向 dist/pkg 裝一次（--load-extension 在 Chrome 151 會被靜默忽略）。');
   }
   cfg.detectedVersion = version;
+  cfg.buildId = await assertCurrentServiceWorker(ctx, cfg.extId, extDir);
   return ctx;
+}
+
+// 同 profile＋同版本號時 Chrome 可能一直跑快取的舊 background.js（memory
+// feedback_extension_stale_sw_profile），版本號比不出來，所以比對打包時蓋的建置指紋：
+// 一致就放行；不一致先 reload 擴充一次（options 頁 chrome.runtime.reload() 會換成磁碟現行版），
+// 還是不一致就停，不讓後面的案例測到舊 background。
+async function assertCurrentServiceWorker(ctx, extId, extDir) {
+  let diskId = null;
+  try {
+    diskId = readBuildId(fs.readFileSync(path.join(extDir, 'background.js'), 'utf8'));
+  } catch { /* 沒有 dist/pkg 由下面統一報錯 */ }
+
+  let running, verdict;
+  try {
+    running = await readRunningBuildId(ctx, extId);
+    verdict = checkBuildId(diskId, running.id);
+    if (verdict === 'reload') {
+      console.log(`⚠️  service worker 不是現行版（磁碟 ${diskId}、執行中 ${describeRunning(running)}），reload 擴充後再比一次`);
+      // reload 前的 worker 物件記下來，reload 後不再採信它們（舊 SW 可能還沒被終止）
+      const staleWorkers = new Set(ctx.serviceWorkers());
+      await reloadExtension(ctx, extId);
+      running = await readRunningBuildId(ctx, extId, staleWorkers);
+      verdict = checkBuildId(diskId, running.id, { reloaded: true });
+    }
+  } catch (error) {
+    // 任何一步丟錯都要先關瀏覽器，否則 Chrome 留著會鎖住 profile，下次 e2e 起不來
+    await ctx.close().catch(() => { });
+    throw error;
+  }
+  if (verdict === 'fail') {
+    await ctx.close();
+    if (!diskId) {
+      throw new Error(`dist/pkg/background.js 沒有建置指紋（${extDir}）。請先跑 npm run package 再跑 e2e。`);
+    }
+    throw new Error(
+      `reload 後 service worker 仍不是現行版（磁碟 ${diskId}、執行中 ${describeRunning(running)}）。\n`
+      + '  多半是：這個 profile 載入的擴充不是 dist/pkg 這個路徑，或擴充在 chrome://extensions 被停用。\n'
+      + '  請到 chrome://extensions 確認該擴充的「來源」是 dist/pkg，必要時移除後重新「載入未封裝項目」。');
+  }
+  console.log(`✅ service worker 是現行版（build ${diskId}）`);
+  return diskId;
+}
+
+function describeRunning(running) {
+  if (!running.found) return '找不到 service worker';
+  return running.id || '無指紋（舊版）';
+}
+
+const SW_EVALUATE_TIMEOUT_MS = 3000;
+
+// 叫醒本擴充的 service worker，讀它記憶體裡的建置指紋。回傳 { found, id }
+// ignore：reload 前就存在的 worker 物件，不採信它們的回答
+async function readRunningBuildId(ctx, extId, ignore = new Set()) {
+  const prefix = `chrome-extension://${extId}/`;
+  const page = await ctx.newPage();
+  try {
+    await page.goto(`${prefix}options.html`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    // 送一則任意訊息把閒置的 SW 叫醒；它回什麼不重要
+    await page.evaluate(() => chrome.runtime.sendMessage({ type: 'FFB_E2E_PING' }).catch(() => null)).catch(() => { });
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline) {
+      for (const sw of ctx.serviceWorkers().filter(worker => worker.url().startsWith(prefix) && !ignore.has(worker))) {
+        // 失效或卡住的 worker：evaluate 丟錯或逾時都當沒讀到，換下一個／下一輪，不讓 deadline 失效
+        const id = await withTimeout(sw.evaluate(() => self.FFB_BUILD_ID ?? null), SW_EVALUATE_TIMEOUT_MS)
+          .catch(() => undefined);
+        if (id !== undefined) return { found: true, id };
+      }
+      await new Promise(r => setTimeout(r, 300));
+    }
+    return { found: false, id: null };
+  } finally {
+    await page.close().catch(() => { });
+  }
+}
+
+function withTimeout(promise, ms) {
+  let timer;
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`逾時 ${ms}ms`)), ms); });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+// 從 options 頁呼叫 chrome.runtime.reload()：SW 換成磁碟上的現行版，擴充頁面會被關掉
+async function reloadExtension(ctx, extId) {
+  const page = await ctx.newPage();
+  await page.goto(`chrome-extension://${extId}/options.html`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  await page.evaluate(() => { setTimeout(() => chrome.runtime.reload(), 0); }).catch(() => { });
+  await page.waitForEvent('close', { timeout: 10000 }).catch(() => { });
+  await page.close().catch(() => { });
+  await new Promise(r => setTimeout(r, 1500));
 }
 
 module.exports = {
@@ -231,4 +322,6 @@ module.exports = {
   send, seed, listWords, snapshots,
   clickStable, waitBallReady, expandBall, clickBallItem, openLibrary, openVocabPanel, openOptionsPanel, openBackupTab, importVocabFile,
   isoHoursAgo, DEFAULT_EXT_ID,
+  // 只給 tests/e2e-sw-check.test.js 用假 context 驗失敗路徑
+  assertCurrentServiceWorker, withTimeout,
 };

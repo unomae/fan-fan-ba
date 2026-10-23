@@ -3,6 +3,20 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-10-23 — e2e 啟動時確認 service worker 是現行版
+
+**問題**：同一個測試 profile＋同一個版本號時，Chrome 會一直跑快取的舊 `background.js`；原本 `launch` 只比 manifest 版本號，看不出來。p2 profile 因此長期測到舊 background（PLAN「實機測試發現 2026-10-22」）。
+**修法**：
+- `scripts/build-id.js`（新）：算整包內容的 sha256 前 12 碼；`npm run package` 在 dist/pkg（與 zip）的 `background.js` 尾端加 `self.FFB_BUILD_ID = '…'`。原始碼不帶指紋。
+- `e2e/lib/harness.js` 的 `launch`：叫醒 SW 讀指紋跟磁碟比。一致就放行；不一致自動 `chrome.runtime.reload()` 一次再比；仍不一致或 dist 沒指紋就停並說明原因。每次 relaunch 都會再檢查。
+
+**驗證**：Jest 50 suites／842 tests 全過（新增 `tests/build-id.test.js` 11 條：指紋讀寫、重複蓋不疊行、任一檔變就換指紋、原始碼無指紋、判斷函式六種情境）。e2e 在 p2 實跑：
+- 舊版 SW（無指紋）→ 偵測到、reload、確認現行版 ✓；打包後未 reload（舊指紋）→ 同樣自動修正 ✓；正常情況直接通過 ✓。
+- 「reload 後仍不一致」的停止路徑真實環境造不出來，只有單元測試覆蓋。
+- 全套 41 PASS／0 FAIL／4 PARTIAL（4 個 PARTIAL 同既有，都需 API key 或外部帳號）。
+- **合併前自審補修（同日）**：①任何一步丟錯都先關瀏覽器再丟（原本 options 頁載入失敗會留 Chrome 鎖住 profile）；②讀 SW 指紋每次限 3 秒（原本卡住的 worker 會讓檢查永遠掛著）；③reload 前的 worker 物件不再採信（原本可能讀到還沒終止的舊 SW 而誤判失敗）；測試暫存夾跑完會清掉。新增 `tests/e2e-sw-check.test.js` 7 條（假 context），三項修正各做一次突變都會讓對應測試轉紅。Jest 51 suites／849 tests 全過；e2e 全套 41／0／4，另造一次「dist 內容變了但 SW 沒換」跑 ui-panels，自動 reload 後 13/13。
+- **未重現的疑點**：第一輪全套出現 1 次 T8 FAIL（收藏後 2 秒按鈕仍是「收藏中」，但單字已寫入）。那輪跑到一半時另一個 session 重新打包了 dist/pkg，可能是原因但無法證明；之後 ui-panels 連跑 2 次、全套 1 次，T8 都通過。
+
 ## 2026-10-23 — popup 與設定頁改用 Radix Colors，精簡元素與文案
 
 **追加（同日）**：KAKA 看過後，色彩與刪掉的重複文字保留，但視覺要回到上一版。改回：淡黃／淡綠光暈背景、毛玻璃外框與陰影、圓角 16／14、1px 線、卡片 hover 上浮、模型大卡漸層、Groq 卡淡綠底、淡綠次要按鈕、膠囊狀態標籤、標題 24／22、欄位高 42 與聚焦光圈；popup 回到 32px logo 綠黃光暈（減少動態效果時關閉）、實心圓點、膠囊供應商標籤。氛圍與陰影收進 `ui-tokens.css`（`--page-bg`、`--shell-bg`、`--shadow-*`），色值仍是 Radix。
