@@ -47,6 +47,13 @@ node e2e/run.js --list
 > **最常見的假結果來源**：改完 code 沒有重新 `npm run package`，於是驗到的還是舊版擴充。
 > 版本號相同不代表內容相同（2026-08-10 踩過一次）。
 
+> **service worker 現行版檢查（自動）**：`npm run package` 會在 `dist/pkg/background.js` 尾端蓋建置指紋
+> （`self.FFB_BUILD_ID`，整包內容 hash 前 12 碼）。harness 啟動時拿它跟執行中 SW 的值比：
+> - 一致 → 印 `✅ service worker 是現行版（build …）` 繼續跑。
+> - 不一致（同 profile＋同版本號時 Chrome 會一直跑快取的舊 background）→ 自動 `chrome.runtime.reload()` 一次再比。
+> - 還是不一致，或 `dist/pkg` 沒有指紋 → 直接停並說明原因，不讓後面的案例測到舊 background。
+>   常見原因：沒跑 `npm run package`；profile 載入的擴充不是 `dist/pkg` 這個路徑；擴充被停用。
+
 ### 環境變數
 
 | 變數 | 預設 | 說明 |

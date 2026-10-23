@@ -9,8 +9,8 @@
 | 項目 | 狀態 |
 |------|------|
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
-| 自動化單元測試 | <!-- ffb:suites -->49<!-- /ffb:suites --> suites / <!-- ffb:tests -->831<!-- /ffb:tests --> tests 全綠（2026-10-23，含設定頁總覽與未儲存提示、模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表、長難句分析、寫作批改、設定頁搜尋與新功能標籤、術語表（含多分頁同步）、模型比較、單字卡四級評分） |
-| e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-08-26；改 code 先 `npm run package`） |
+| 自動化單元測試 | <!-- ffb:suites -->50<!-- /ffb:suites --> suites / <!-- ffb:tests -->842<!-- /ffb:tests --> tests 全綠（2026-10-23，含設定頁總覽與未儲存提示、模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表、長難句分析、寫作批改、設定頁搜尋與新功能標籤、術語表（含多分頁同步）、模型比較、單字卡四級評分） |
+| e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-10-23，首次確認測到現行 service worker；改 code 先 `npm run package`，啟動時自動比對建置指紋） |
 | 手動 QA | 全表 55/78；剩 23 項幾乎全卡「無 API key」或「需外部 App／帳號」（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | **2026-09-20 裁決：暫緩送審，先做功能**，告一段落再回頭走上架流程。Chrome Web Store 仍是 release checkpoint |
 | 2026-08-26 全面審查 | 四路平行審查完成：code（30+ 項）、UI/UX（30 項）、流程（A1-A6＋B1-B5）；總評＝工程底子前段班，上架 blocker 集中在安全 P1×2、a11y、上架材料 |
@@ -124,17 +124,6 @@
   - **現況**：2026-10-19 修正後動作保留、模型退回 `default`，之後存檔就固定寫回 `default`；沒有任何提示。
   - **接續**：KAKA 裁決要不要在設定頁或結果卡提示；要做再定提示位置與文案。
   - **詳情**：`custom-actions.js` 的 `normalizeActionList`
-
-### 實機測試發現（2026-10-22，內建翻譯）
-
-> 來源：腳本驅動真 Chrome 156＋`C:/tmp/ffb-qa/p2`，網頁 developer.chrome.com 的 Translator API 文件與 Wikipedia。以下皆已重現。
-
-- **先前在 p2 跑的 e2e 沒測到現行 background**
-
-  - **目的**：e2e 結果要對應現行程式。
-  - **現況**：p2 的 service worker 一直是舊版（版本號沒變，Chrome 不換）；2026-10-22 已在 options 頁 `chrome.runtime.reload()` 換成現行版。之前 e2e 裡跟 background 有關的結論要打問號。
-  - **接續**：e2e harness 啟動後先檢查 SW 是否為現行版，不是就停；做法待定。
-  - **詳情**：`e2e/lib/harness.js` 的 `launch`；memory `feedback_extension_stale_sw_profile`
 
 ## 驗證指令速查
 

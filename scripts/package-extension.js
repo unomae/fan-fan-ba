@@ -9,6 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { stampBuildId } = require('./build-id');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'dist');
@@ -104,11 +105,13 @@ function main() {
   assertVersionConsistency(version);
   resetStage();
   const copied = copyAllowlisted();
+  // 在壓 zip 前蓋指紋：dist/pkg 與 zip 內容一致，e2e 才比得出 SW 是不是這一版
+  const buildId = stampBuildId(STAGE);
   const zipPath = zipStage(version);
   const sizeKb = (fs.statSync(zipPath).size / 1024).toFixed(1);
 
   console.log('✅ 打包完成');
-  console.log(`   版本：v${version}`);
+  console.log(`   版本：v${version}（build ${buildId}）`);
   console.log(`   收錄：${copied.join(', ')}`);
   console.log(`   產出：${path.relative(ROOT, zipPath)}（${sizeKb} KB）`);
   console.log('   下一步：到 chrome://extensions「載入未封裝」用 dist/pkg/ 先本機驗一次，再上傳該 zip。');
