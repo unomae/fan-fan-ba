@@ -83,31 +83,14 @@
       line-height: 1.2;
     }
 
-    .header-subtitle {
-      margin-top: 3px;
-      color: var(--muted);
-      font-size: 13px;
-    }
+    .settings-search { position: relative; width: min(320px, 100%); }
 
-    .top-status {
-      display: inline-flex;
-      align-items: center;
-      min-height: 32px;
-      padding: 6px 12px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.74);
-      border: 1px solid rgba(90, 154, 46, 0.18);
-      color: var(--green-deep);
-      font-size: 12px;
-      font-weight: 800;
-      white-space: nowrap;
-    }
+    .icon-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
 
     .settings-shell {
-      display: grid;
-      grid-template-columns: 220px minmax(0, 1fr);
-      min-height: 610px;
-      overflow: hidden;
+      min-height: 560px;
+      /* clip 不會變成捲動容器，詳細頁底部的儲存列才能 sticky 在視窗底 */
+      overflow: clip;
       background: rgba(255, 255, 255, 0.82);
       border: 1px solid rgba(24, 32, 51, 0.1);
       border-radius: 16px;
@@ -115,71 +98,252 @@
       backdrop-filter: blur(12px);
     }
 
-    .settings-nav {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      padding: 18px;
-      background: rgba(250, 253, 247, 0.86);
-      border-right: 1px solid rgba(24, 32, 51, 0.08);
+    /* ── 總覽 ── */
+    .settings-overview {
+      display: grid;
+      gap: 16px;
+      padding: 24px;
     }
 
-    .settings-tab {
-      width: 100%;
-      min-height: 46px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    .settings-overview[hidden] { display: none; }
+
+    .overview-head h2 {
+      font-size: 22px;
+      line-height: 1.25;
+      margin-bottom: 4px;
+    }
+
+    .overview-head p {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .overview-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
-      padding: 10px 11px;
-      color: #425064;
-      background: rgba(255, 255, 255, 0.72);
-      border: 1px solid rgba(24, 32, 51, 0.09);
-      border-radius: 8px;
-      cursor: pointer;
-      text-align: left;
-      font-weight: 800;
-      transition: background 0.15s, border-color 0.15s, color 0.15s;
     }
 
-    .settings-tab:hover {
-      border-color: rgba(90, 154, 46, 0.28);
-      color: var(--green-deep);
+    .overview-stats div {
+      min-width: 0;
+      padding: 10px 14px;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 12px;
     }
 
-    .settings-tab.is-active {
-      color: #243716;
-      background: #f2f9e8;
-      border-color: rgba(90, 154, 46, 0.38);
-      box-shadow: inset 0 0 0 1px rgba(163, 209, 121, 0.18);
-    }
-
-    .settings-tab small {
-      color: #7b8794;
-      font-size: 11px;
+    .overview-stats dt {
+      color: var(--muted);
+      font-size: 12px;
       font-weight: 700;
     }
 
-    .nav-footer {
-      margin-top: auto;
-      padding-top: 14px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.55;
+    .overview-stats dd {
+      overflow: hidden;
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 800;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .nav-footer a {
+    .overview-unsaved,
+    .overview-attention li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .overview-unsaved { color: #3154ad; background: #eef4ff; }
+    .overview-unsaved[hidden],
+    .overview-attention[hidden] { display: none; }
+
+    .overview-attention {
+      display: grid;
+      gap: 8px;
+      list-style: none;
+    }
+
+    .overview-attention li { color: #8a5a00; background: #fff5dc; }
+
+    .overview-attention svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .overview-unsaved button,
+    .overview-attention button {
+      margin-left: auto;
+      padding: 0;
+      color: inherit;
+      background: none;
+      border: 0;
+      font-weight: 800;
+      text-decoration: underline;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .settings-tab.tile {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      min-width: 0;
+      min-height: 104px;
+      padding: 14px;
+      color: var(--ink);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+    }
+
+    .settings-tab.tile:hover {
+      border-color: var(--green);
+      box-shadow: 0 6px 18px rgba(90, 154, 46, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .settings-tab.tile.is-large {
+      grid-column: span 2;
+      grid-row: span 2;
+      background: linear-gradient(160deg, #f1f9e7 0%, #fff 70%);
+    }
+
+    .tile-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 8px;
+      /* 窄卡片時讓「新增」標籤換行，不把分類名稱從中間折斷 */
+      word-break: keep-all;
+      font-size: 14.5px;
+      font-weight: 800;
+    }
+
+    .tile-icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      color: var(--green-deep);
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .tile-meta {
+      display: grid;
+      justify-items: start;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .tile-summary {
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+
+    .tile.is-large .tile-summary { font-size: 13.5px; }
+
+    .tile-status {
+      padding: 1px 9px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .tile-status[hidden] { display: none; }
+
+    .tile-keys {
+      display: grid;
+      gap: 4px;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+
+    .tile-keys:empty { display: none; }
+    .tile-key { display: flex; align-items: center; gap: 7px; }
+    .tile-key::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #c4ccd6;
+    }
+    .tile-key.is-filled::before { background: #6fb33f; }
+    .tile-status[data-kind="ok"] { color: #3f7a1c; background: #eef7e3; }
+    .tile-status[data-kind="warn"] { color: #8a5a00; background: #fff3d6; }
+    .tile-status[data-kind="off"] { color: #5f6b7a; background: #eef0f3; }
+
+    .overview-foot {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .overview-foot a {
       color: var(--green-deep);
       text-decoration: none;
       font-weight: 700;
     }
 
+    /* ── 詳細頁 ── */
     .settings-main {
       display: flex;
       flex-direction: column;
       min-width: 0;
       background: rgba(255, 255, 255, 0.82);
     }
+
+    .settings-main[hidden] { display: none; }
+
+    .settings-crumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 14px 24px 0;
+      font-size: 13px;
+    }
+
+    .crumb-back {
+      padding: 4px 8px;
+      margin-left: -8px;
+      /* 比品牌綠深一階：#5a9a2e 在白底只有 3.4:1 */
+      color: #3f7a1c;
+      background: none;
+      border: 0;
+      border-radius: 6px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .crumb-back:hover { background: #f2f9e8; }
+    .crumb-current { color: var(--muted); }
+    .crumb-current::before { content: '/ '; }
 
     .settings-panel {
       display: grid;
@@ -638,15 +802,32 @@
     .badge-optimize { background: #ede9fe; color: #6d28d9; }
 
     .settings-actions {
+      position: sticky;
+      bottom: 0;
+      z-index: 5;
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 14px;
+      flex-wrap: wrap;
       margin-top: auto;
-      padding: 16px 24px;
+      padding: 14px 24px;
       border-top: 1px solid rgba(24, 32, 51, 0.08);
-      background: rgba(250, 253, 247, 0.72);
+      background: rgba(250, 253, 247, 0.94);
+      backdrop-filter: blur(8px);
     }
+
+    .btn-row[hidden] { display: none; }
+    /* 沒有儲存鈕、也沒有狀態訊息時整列收起，不留一條空白 */
+    .settings-actions:has(> .btn-row[hidden]):not(:has(#status.ok, #status.err, #status.info)) { display: none; }
+
+    .save-state {
+      margin-left: auto;
+      color: #3154ad;
+      font-size: 12.5px;
+      font-weight: 700;
+    }
+
+    .save-state:empty { display: none; }
 
     .btn-row {
       display: flex;
@@ -699,38 +880,14 @@
     #status.err { display: flex; color: #c5221f; background: #fce8e6; }
     #status.info { display: flex; color: #3a7a1a; background: #f0f9e6; }
 
-    .action-note {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
     @media (max-width: 860px) {
       body { padding: 18px 12px; }
 
-      .app-header {
-        align-items: flex-start;
-        flex-direction: column;
-      }
-
-      .settings-shell {
-        grid-template-columns: 1fr;
-      }
-
-      .settings-nav {
-        display: grid;
+      .overview-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        overflow: visible;
-        border-right: 0;
-        border-bottom: 1px solid rgba(24, 32, 51, 0.08);
       }
 
-      .settings-tab {
-        min-width: 0;
-      }
-
-      .nav-footer {
-        display: none;
-      }
+      .settings-tab.tile.is-large { grid-row: auto; }
 
       .provider-grid,
       .form-grid {
@@ -757,6 +914,16 @@
       .panel-head {
         flex-direction: column;
       }
+
+      .app-header { flex-wrap: wrap; }
+      .settings-search { width: 100%; }
+      .settings-overview { padding: 18px; }
+      .overview-stats { grid-template-columns: 1fr; gap: 0; padding: 4px 12px; background: var(--soft); border: 1px solid var(--line); border-radius: 12px; }
+      .overview-stats div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 6px 0; background: none; border: 0; border-radius: 0; }
+      .overview-stats div + div { border-top: 1px solid var(--line); }
+      .settings-tab.tile { min-height: 92px; padding: 12px; }
+      .settings-crumb { padding: 12px 18px 0; }
+      .settings-actions { padding: 12px 18px; }
 
       .btn-row {
         width: 100%;
@@ -809,7 +976,6 @@
     }
 
     /* 設定搜尋（⌘K／Ctrl+K） */
-    .settings-search { position: relative; margin-bottom: 4px; }
     .settings-search input {
       width: 100%;
       padding: 9px 52px 9px 11px;
@@ -912,7 +1078,6 @@
     }
     .field-label-row { display: flex; align-items: center; gap: 6px; }
     .feature-list kbd { font-family: inherit; font-weight: 700; }
-    .settings-tab { position: relative; }
     .settings-tab.has-unseen::after {
       content: '';
       position: absolute;
@@ -923,75 +1088,239 @@
       background: #c62f35;
       border-radius: 50%;
     }
-    @media (max-width: 860px) {
-      .settings-search { grid-column: 1 / -1; }
+
+    /* ── 深色模式：跟著系統。色票沿用 design.md 的 --ffb-dark-*，不另寫色碼 ── */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --ffb-dark-surface: rgba(32, 33, 36, 0.98);
+        --ffb-dark-surface-raised: #2b2d31;
+        --ffb-dark-surface-hover: #36393e;
+        --ffb-dark-border: rgba(255, 255, 255, 0.12);
+        --ffb-dark-border-strong: rgba(255, 255, 255, 0.24);
+        --ffb-dark-text: #e8eaed;
+        --ffb-dark-text-strong: #f8f9fa;
+        --ffb-dark-text-muted: #a9afb8;
+        --ffb-dark-accent: #9ec1fa;
+        --ffb-dark-accent-bg: rgba(138, 180, 248, 0.16);
+        --ffb-dark-green: #a8d88a;
+        --ffb-dark-green-bg: rgba(163, 209, 121, 0.16);
+        --ffb-dark-purple: #c3b5f5;
+        --ffb-dark-purple-bg: rgba(160, 140, 230, 0.18);
+        --ffb-dark-orange: #f6b26b;
+        --ffb-dark-orange-bg: rgba(246, 178, 107, 0.16);
+        --ffb-dark-danger: #f6a39c;
+        --ffb-dark-danger-bg: rgba(242, 139, 130, 0.14);
+        --ffb-dark-focus: rgba(138, 180, 248, 0.6);
+        --ffb-dark-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+        /* 頁面原本的 token 換成暗色，用到它們的規則自動跟著變 */
+        --ink: var(--ffb-dark-text);
+        --muted: var(--ffb-dark-text-muted);
+        --soft: var(--ffb-dark-surface-raised);
+        --surface: var(--ffb-dark-surface);
+        --line: var(--ffb-dark-border);
+        --green-deep: var(--ffb-dark-green);
+        --blue-soft: var(--ffb-dark-accent-bg);
+        --violet-soft: var(--ffb-dark-purple-bg);
+        --shadow: var(--ffb-dark-shadow);
+      }
+
+      body {
+        background:
+          radial-gradient(circle at 10% 0%, rgba(249, 212, 35, 0.05), transparent 28%),
+          radial-gradient(circle at 90% 14%, rgba(163, 209, 121, 0.07), transparent 30%),
+          #17181b;
+      }
+
+      h1, h2, h3, .tile-title, .overview-stats dd { color: var(--ffb-dark-text-strong); }
+
+      .settings-shell,
+      .settings-main { background: var(--ffb-dark-surface); border-color: var(--ffb-dark-border); }
+
+      .settings-tab.tile { background: var(--ffb-dark-surface-raised); border-color: var(--ffb-dark-border); }
+      .settings-tab.tile.is-large { background: linear-gradient(160deg, var(--ffb-dark-green-bg) 0%, var(--ffb-dark-surface-raised) 70%); }
+      .settings-tab.tile:hover { border-color: var(--ffb-dark-green); box-shadow: none; }
+      .tile-status[data-kind="ok"] { color: var(--ffb-dark-green); background: var(--ffb-dark-green-bg); }
+      .tile-status[data-kind="warn"] { color: var(--ffb-dark-orange); background: var(--ffb-dark-orange-bg); }
+      .tile-status[data-kind="off"] { color: var(--ffb-dark-text-muted); background: rgba(255, 255, 255, 0.08); }
+      .tile-key::before { background: var(--ffb-dark-border-strong); }
+      .tile-key.is-filled::before { background: var(--ffb-dark-green); }
+
+      .overview-unsaved, .save-state { color: var(--ffb-dark-accent); }
+      .overview-unsaved { background: var(--ffb-dark-accent-bg); }
+      .overview-attention li { color: var(--ffb-dark-orange); background: var(--ffb-dark-orange-bg); }
+      .crumb-back { color: var(--ffb-dark-green); }
+      .crumb-back:hover { background: var(--ffb-dark-green-bg); }
+
+      label, .field-label, .advanced-settings summary,
+      .diagnostics-checklist strong, .cloud-status-list,
+      .diagnostics-overview { color: var(--ffb-dark-text); }
+      label .hint, .toggle-vis, .diagnostics-checklist small,
+      .check-row, .cloud-sync-hint, .feature-list li { color: var(--ffb-dark-text-muted); }
+      .toggle-vis:hover { color: var(--ffb-dark-text); background: var(--ffb-dark-surface-hover); }
+
+      input[type="password"], input[type="text"], input[type="search"], select, textarea,
+      #glossarySites, #compareText, .settings-search input {
+        color: var(--ffb-dark-text);
+        background: var(--ffb-dark-surface-raised);
+        border-color: var(--ffb-dark-border-strong);
+      }
+      input:focus, select:focus, textarea:focus { background: var(--ffb-dark-surface-raised); }
+      .settings-search input:focus { outline-color: var(--ffb-dark-focus); }
+
+      .panel-head { border-bottom-color: var(--ffb-dark-border); }
+      .panel-badge, .mini-badge.green { color: var(--ffb-dark-green); background: var(--ffb-dark-green-bg); }
+      .mini-badge.blue { color: var(--ffb-dark-accent); }
+      .mini-badge.violet { color: var(--ffb-dark-purple); }
+
+      .provider-card, .advanced-settings, .diagnostics-checklist li,
+      .compare-card, .action-editor, .action-list {
+        background: var(--ffb-dark-surface-raised);
+        border-color: var(--ffb-dark-border);
+      }
+      .provider-card.is-primary { background: var(--ffb-dark-green-bg); border-color: rgba(168, 216, 138, 0.4); }
+      .diagnostics-checklist li { color: var(--ffb-dark-text); }
+      .action-row + .action-row { border-top-color: var(--ffb-dark-border); }
+      .action-badge { color: var(--ffb-dark-text-muted); background: rgba(255, 255, 255, 0.08); }
+      .action-row.is-disabled .action-row-name, .action-status { color: var(--ffb-dark-text-muted); }
+      .action-icon-option { border-color: var(--ffb-dark-border-strong); }
+      .action-icon-option:has(input:checked) { background: var(--ffb-dark-green-bg); }
+      .action-error, .action-danger { color: var(--ffb-dark-danger); }
+      .action-danger { background: var(--ffb-dark-danger-bg); border-color: rgba(246, 163, 156, 0.4); }
+      .action-preview-wrap { border-top-color: var(--ffb-dark-border); }
+      #actionListStatus[style*="179, 38, 30"] { color: var(--ffb-dark-danger) !important; }
+
+      .security-note, .cloud-status-list, .diagnostics-overview {
+        background: var(--ffb-dark-green-bg);
+        border-color: rgba(168, 216, 138, 0.3);
+      }
+      .security-note strong, .cloud-status-list strong, .diagnostics-overview strong { color: var(--ffb-dark-green); }
+      .diagnostics-overview.is-warn { background: var(--ffb-dark-orange-bg); border-color: rgba(246, 178, 107, 0.35); }
+      .diagnostics-overview.is-warn strong, .feature-model-hint { color: var(--ffb-dark-orange); }
+      .diagnostics-dot.warn { background: var(--ffb-dark-orange); }
+      .diagnostics-dot.info { background: var(--ffb-dark-accent); }
+
+      code { color: var(--ffb-dark-accent); background: var(--ffb-dark-accent-bg); }
+      .badge-translate { color: var(--ffb-dark-green); background: var(--ffb-dark-green-bg); }
+      .badge-explain { color: var(--ffb-dark-orange); background: var(--ffb-dark-orange-bg); }
+      .badge-optimize { color: var(--ffb-dark-purple); background: var(--ffb-dark-purple-bg); }
+
+      .settings-actions { background: rgba(32, 33, 36, 0.94); border-top-color: var(--ffb-dark-border); }
+      .btn-save { color: #1a3a0a; }
+      .btn-test { color: var(--ffb-dark-green); background: var(--ffb-dark-green-bg); border-color: rgba(168, 216, 138, 0.4); }
+      .btn-test:hover { background: rgba(163, 209, 121, 0.24); }
+      #status.ok { color: var(--ffb-dark-green); background: var(--ffb-dark-green-bg); border-color: rgba(168, 216, 138, 0.4); }
+      #status.err { color: var(--ffb-dark-danger); background: var(--ffb-dark-danger-bg); }
+      #status.info { color: var(--ffb-dark-accent); background: var(--ffb-dark-accent-bg); }
+
+      .settings-search-results { background: var(--ffb-dark-surface-raised); border-color: var(--ffb-dark-border-strong); }
+      .search-result[aria-selected="true"], .search-result:hover { background: var(--ffb-dark-surface-hover); }
+
+      .compare-card.is-error { border-color: rgba(246, 163, 156, 0.4); }
+      .compare-card.is-error .compare-output { color: var(--ffb-dark-danger); }
+      .glossary-table .is-invalid input { border-color: var(--ffb-dark-danger); }
+
+      /* markup 裡少數寫死在 style 屬性的灰字 */
+      #vocabularyBackupStatus, #vocabularyBackupReminder,
+      [data-panel-content="privacy"] p[style] { color: var(--ffb-dark-text-muted) !important; }
     }
   </style>
   <link rel="stylesheet" href="content.css">
 </head>
 <body>
   <main class="settings-page">
+    <!-- 卡片圖示：每張卡片用 <use> 引用，避免重複貼 SVG -->
+    <svg class="icon-sprite" aria-hidden="true" focusable="false">
+      <symbol id="ico-model" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3m-3 3 3 3m-6 0 2 2"/></symbol>
+      <symbol id="ico-language" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+      <symbol id="ico-actions" viewBox="0 0 24 24"><path d="M12 3v4m0 10v4M3 12h4m10 0h4M6 6l2.5 2.5m7 7L18 18M6 18l2.5-2.5m7-7L18 6"/></symbol>
+      <symbol id="ico-glossary" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5m4 2h7"/></symbol>
+      <symbol id="ico-compare" viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="16" rx="2"/><rect x="13" y="4" width="8" height="16" rx="2"/></symbol>
+      <symbol id="ico-obsidian" viewBox="0 0 24 24"><path d="M12 2 4 9l3 11h10l3-11zM4 9h16M12 2v18"/></symbol>
+      <symbol id="ico-backup" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10h14V9M10 13h4"/></symbol>
+      <symbol id="ico-cloud" viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/></symbol>
+      <symbol id="ico-privacy" viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4 3 7.5 7 9 4-1.5 7-5 7-9V6z"/></symbol>
+      <symbol id="ico-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20zM12 10v4m0 3v.5"/></symbol>
+    </svg>
+
     <header class="app-header">
       <div class="brand">
         <img class="header-icon" src="icons/icon128.png" alt="翻翻吧 Logo">
-        <div>
-          <h1>翻翻吧設定</h1>
-          <p class="header-subtitle">把常用設定分組管理，需要調整時切換左側分類即可。</p>
-        </div>
+        <h1>翻翻吧設定</h1>
       </div>
-      <span class="top-status">Extension Settings</span>
+      <div class="settings-search" role="search">
+        <input type="search" id="settingsSearch" placeholder="搜尋設定" aria-label="搜尋設定" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="settingsSearchResults" aria-keyshortcuts="Control+K Meta+K" autocomplete="off" spellcheck="false">
+        <kbd class="search-kbd" id="settingsSearchKbd" aria-hidden="true">Ctrl K</kbd>
+        <ul class="settings-search-results" id="settingsSearchResults" role="listbox" aria-label="搜尋結果" hidden></ul>
+      </div>
     </header>
 
     <section class="settings-shell" aria-label="翻翻吧設定">
-      <nav class="settings-nav" aria-label="設定分類">
-        <div class="settings-search" role="search">
-          <input type="search" id="settingsSearch" placeholder="搜尋設定" aria-label="搜尋設定" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="settingsSearchResults" aria-keyshortcuts="Control+K Meta+K" autocomplete="off" spellcheck="false">
-          <kbd class="search-kbd" id="settingsSearchKbd" aria-hidden="true">Ctrl K</kbd>
-          <ul class="settings-search-results" id="settingsSearchResults" role="listbox" aria-label="搜尋結果" hidden></ul>
+      <!-- 總覽：卡片沿用 .settings-tab[data-panel]，搜尋、新功能標籤與測試都靠這個標記找分類 -->
+      <nav class="settings-overview" id="settingsOverview" aria-labelledby="overviewTitle">
+        <div class="overview-head">
+          <h2 id="overviewTitle">設定總覽</h2>
+          <p>目前狀態一眼看完，點卡片進入詳細設定。</p>
         </div>
-        <button class="settings-tab is-active" type="button" data-panel="model" aria-selected="true">
-          模型與金鑰
-          <small>3</small>
-        </button>
-        <button class="settings-tab" type="button" data-panel="language" aria-selected="false">
-          語言與朗讀
-          <small>5</small>
-        </button>
-        <button class="settings-tab" type="button" data-panel="actions" aria-selected="false" data-feature-item="panel-actions">
-          <span>自訂動作 <span class="feature-badge" data-badge-for="panel-actions" data-kind="new" hidden>新增</span></span>
-          <small>4</small>
-        </button>
-        <button class="settings-tab" type="button" data-panel="glossary" aria-selected="false" data-feature-item="panel-glossary">
-          <span>術語表 <span class="feature-badge" data-badge-for="panel-glossary" data-kind="new" hidden>新增</span></span>
-          <small>2</small>
-        </button>
-        <button class="settings-tab" type="button" data-panel="compare" aria-selected="false" data-feature-item="panel-compare">
-          <span>模型比較 <span class="feature-badge" data-badge-for="panel-compare" data-kind="new" hidden>新增</span></span>
-          <small>2</small>
-        </button>
-        <button class="settings-tab" type="button" data-panel="obsidian" aria-selected="false">
-          Obsidian
-          <small>2</small>
-        </button>
-        <button class="settings-tab" type="button" data-panel="backup" aria-selected="false">
-          備份還原
-          <small>2</small>
-        </button>
-        <button class="settings-tab" type="button" data-panel="cloud" aria-selected="false">
-          雲端同步
-          <small>4</small>
-        </button>
-        <button class="settings-tab" type="button" data-panel="privacy" aria-selected="false">
-          隱私與說明
-          <small>3</small>
-        </button>
-        <div class="nav-footer">
-          <a href="privacy-policy.html" target="_blank">隱私權政策</a><br>
-          API Key 僅儲存在本機，不會同步到 Chrome 帳號。
+
+        <dl class="overview-stats">
+          <div><dt>預設模型</dt><dd id="overviewStatModel">—</dd></div>
+          <div><dt>已填的模型金鑰</dt><dd id="overviewStatKeys">—</dd></div>
+          <div><dt>雲端同步</dt><dd id="overviewStatCloud">—</dd></div>
+        </dl>
+
+        <div class="overview-unsaved" id="overviewUnsaved" role="status" hidden></div>
+        <ul class="overview-attention" id="overviewAttention" aria-label="需要注意" hidden></ul>
+
+        <div class="overview-grid">
+          <button class="settings-tab tile is-large" type="button" data-panel="model">
+            <span class="tile-title"><svg class="tile-icon" aria-hidden="true"><use href="#ico-model"/></svg>模型與金鑰</span>
+            <span class="tile-meta"><span class="tile-summary" data-summary-for="model"></span><span class="tile-status" data-status-for="model" hidden></span><span class="tile-keys" id="overviewKeys"></span></span>
+          </button>
+          <button class="settings-tab tile" type="button" data-panel="language">
+            <span class="tile-title"><svg class="tile-icon" aria-hidden="true"><use href="#ico-language"/></svg>語言與朗讀</span>
+            <span class="tile-meta"><span class="tile-summary" data-summary-for="language"></span><span class="tile-status" data-status-for="language" hidden></span></span>
+          </button>
+          <button class="settings-tab tile" type="button" data-panel="actions" data-feature-item="panel-actions">
+            <span class="tile-title"><svg class="tile-icon" aria-hidden="true"><use href="#ico-actions"/></svg>自訂動作 <span class="feature-badge" data-badge-for="panel-actions" data-kind="new" hidden>新增</span></span>
+            <span class="tile-meta"><span class="tile-summary" data-summary-for="actions"></span><span class="tile-status" data-status-for="actions" hidden></span></span>
+          </button>
+          <button class="settings-tab tile" type="button" data-panel="glossary" data-feature-item="panel-glossary">
+            <span class="tile-title"><svg class="tile-icon" aria-hidden="true"><use href="#ico-glossary"/></svg>術語表 <span class="feature-badge" data-badge-for="panel-glossary" data-kind="new" hidden>新增</span></span>
+            <span class="tile-meta"><span class="tile-summary" data-summary-for="glossary"></span><span class="tile-status" data-status-for="glossary" hidden></span></span>
+          </button>
+          <button class="settings-tab tile" type="button" data-panel="compare" data-feature-item="panel-compare">
+            <span class="tile-title"><svg class="tile-icon" aria-hidden="true"><use href="#ico-compare"/></svg>模型比較 <span class="feature-badge" data-badge-for="panel-compare" data-kind="new" hidden>新增</span></span>
+            <span class="tile-meta"><span class="tile-summary" data-summary-for="compare"></span><span class="tile-status" data-status-for="compare" hidden></span></span>
+          </button>
+          <button class="settings-tab tile" type="button" data-panel="obsidian">
+            <span class="tile-title"><svg class="tile-icon" aria-hidden="true"><use href="#ico-obsidian"/></svg>Obsidian</span>
+            <span class="tile-meta"><span class="tile-summary" data-summary-for="obsidian"></span><span class="tile-status" data-status-for="obsidian" hidden></span></span>
+          </button>
+          <button class="settings-tab tile" type="button" data-panel="backup">
+            <span class="tile-title"><svg class="tile-icon" aria-hidden="true"><use href="#ico-backup"/></svg>備份還原</span>
+            <span class="tile-meta"><span class="tile-summary" data-summary-for="backup"></span><span class="tile-status" data-status-for="backup" hidden></span></span>
+          </button>
+          <button class="settings-tab tile" type="button" data-panel="cloud">
+            <span class="tile-title"><svg class="tile-icon" aria-hidden="true"><use href="#ico-cloud"/></svg>雲端同步</span>
+            <span class="tile-meta"><span class="tile-summary" data-summary-for="cloud"></span><span class="tile-status" data-status-for="cloud" hidden></span></span>
+          </button>
+          <button class="settings-tab tile" type="button" data-panel="privacy">
+            <span class="tile-title"><svg class="tile-icon" aria-hidden="true"><use href="#ico-privacy"/></svg>隱私與說明</span>
+            <span class="tile-meta"><span class="tile-summary" data-summary-for="privacy"></span><span class="tile-status" data-status-for="privacy" hidden></span></span>
+          </button>
         </div>
+
+        <p class="overview-foot">
+          <a href="privacy-policy.html" target="_blank">隱私權政策</a>・API Key 僅儲存在本機，不會同步到 Chrome 帳號。
+        </p>
       </nav>
 
-      <div class="settings-main">
+      <div class="settings-main" id="settingsDetail" hidden>
+        <div class="settings-crumb">
+          <button class="crumb-back" id="btnBackToOverview" type="button">← 總覽</button>
+          <span class="crumb-current" id="crumbCurrent" aria-current="page"></span>
+        </div>
         <section class="settings-panel" data-panel-content="model">
           <div class="panel-head">
             <div>
@@ -1558,13 +1887,14 @@
           </div>
         </section>
 
-        <div class="settings-actions">
-          <div class="btn-row">
+        <!-- 儲存列固定在詳細頁底部；不經「儲存設定」的分頁（動作、比較、備份、雲端、隱私）只留狀態列 -->
+        <div class="settings-actions" id="settingsActions">
+          <div class="btn-row" id="saveButtons">
             <button class="btn-save" id="btnSave" type="button">儲存設定</button>
             <button class="btn-test" id="btnTest" type="button">測試連線</button>
           </div>
           <div id="status" role="status" aria-live="polite"></div>
-          <span class="action-note">修改任一分頁後，請按儲存設定。</span>
+          <span class="save-state" id="saveState" aria-live="polite"></span>
         </div>
       </div>
     </section>

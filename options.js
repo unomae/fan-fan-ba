@@ -55,6 +55,13 @@ const SEARCH_HIT_MS = 2000;
 // null＝還沒讀到已看過清單，標籤先全部藏著，避免載入時閃一下
 let seenFeatureBadges = null;
 let settingsSearchState = { results: [], active: 0 };
+// 這幾個分類的欄位由「儲存設定」一起寫入；其他分類各有自己的按鈕，詳細頁只留狀態列
+const SAVE_BUTTON_PANELS = new Set(['model', 'language', 'glossary', 'obsidian']);
+// 改了還沒按「儲存設定」的分類（只收 SAVE_BUTTON_PANELS 裡的）
+const settingsDirtyPanels = new Set();
+const OVERVIEW_RENDER_DELAY_MS = 80;
+let overviewRenderSeq = 0;
+let overviewRenderTimer = null;
 // provider 顯示名／key 欄位名／前綴統一取自 ModelRegistry.PROVIDERS（WS-E M3''）
 
 renderModelSelect();
@@ -64,6 +71,7 @@ renderLanguageSelects();
 initSettingsTabs();
 initSettingsSearch();
 initFeatureModelHints();
+initSettingsDirtyTracking();
 
 loadSettings();
 initDiagnosticsPanel();
@@ -72,6 +80,7 @@ initActionEditor();
 initGlossaryEditor();
 initModelCompare();
 initFeatureBadges();
+initSettingsOverview();
 
 // ── 單字本備份 / 還原（Phase B）──────────────────────
 function initVocabularyBackup() {
@@ -465,6 +474,8 @@ async function loadSettings() {
   if (ttsApiKey)              $('ttsApiKey').value              = ttsApiKey;
   if (obsidianDefaultFolder)  $('obsidianDefaultFolder').value  = obsidianDefaultFolder;
   updateFeatureModelHints();
+  // 表單已換成 storage 裡的值；術語表編輯器另外載入，由 markGlossaryEditorSynced 清
+  clearSettingsDirty(['model', 'language', 'obsidian']);
 }
 
 function renderModelSelect() {
@@ -637,16 +648,69 @@ function renderLanguageSelects() {
   }
 }
 
-function activateSettingsPanel(panelName) {
+// ── 總覽與分類切換 ─────────────────────────────────────
+// 打開設定先看總覽；點卡片進詳細頁。網址 #分類名 直接開到該分類，瀏覽器上一頁回總覽。
+
+// 用函式宣告：初始化在檔案開頭就會呼叫到（const 會踩 TDZ）
+function settingsPanelTitle(panelName) {
+  return searchableText(document.querySelector(`.settings-tab[data-panel="${panelName}"]`));
+}
+
+function getSettingsPanelNames() {
+  return [...document.querySelectorAll('.settings-panel[data-panel-content]')].map(panel => panel.dataset.panelContent);
+}
+
+// pushState 不會觸發 hashchange，切換時不會自己再跑一次路由
+function setSettingsHash(panelName) {
+  const target = panelName ? `#${panelName}` : '';
+  if ((location.hash || '') === target) return;
+  try {
+    history.pushState(null, '', target || `${location.pathname}${location.search}`);
+  } catch (error) {
+    console.warn('[翻翻吧] 設定頁網址更新失敗', error);
+  }
+}
+
+function activateSettingsPanel(panelName, { updateHistory = true } = {}) {
   document.querySelectorAll('.settings-tab[data-panel]').forEach(tab => {
     const isActive = tab.dataset.panel === panelName;
     tab.classList.toggle('is-active', isActive);
-    tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    if (isActive) tab.setAttribute('aria-current', 'true');
+    else tab.removeAttribute('aria-current');
   });
 
   document.querySelectorAll('.settings-panel[data-panel-content]').forEach(panel => {
     panel.hidden = panel.dataset.panelContent !== panelName;
   });
+
+  if ($('settingsOverview')) $('settingsOverview').hidden = true;
+  if ($('settingsDetail')) $('settingsDetail').hidden = false;
+  if ($('crumbCurrent')) $('crumbCurrent').textContent = settingsPanelTitle(panelName);
+  if ($('saveButtons')) $('saveButtons').hidden = !SAVE_BUTTON_PANELS.has(panelName);
+  // 從總覽下方的卡片點進來時，詳細頁開頭可能在視窗外
+  const detail = $('settingsDetail');
+  if (detail && detail.getBoundingClientRect().top < 0) detail.scrollIntoView?.({ block: 'start' });
+  if (updateHistory) setSettingsHash(panelName);
+}
+
+function showSettingsOverview({ updateHistory = true } = {}) {
+  const from = document.querySelector('.settings-tab.is-active[data-panel]');
+  document.querySelectorAll('.settings-tab[data-panel]').forEach(tab => {
+    tab.classList.remove('is-active');
+    tab.removeAttribute('aria-current');
+  });
+  if ($('settingsOverview')) $('settingsOverview').hidden = false;
+  if ($('settingsDetail')) $('settingsDetail').hidden = true;
+  if (updateHistory) setSettingsHash('');
+  // 鍵盤使用者回到剛才那張卡片
+  from?.focus({ preventScroll: true });
+}
+
+function routeSettingsFromHash() {
+  let name = '';
+  try { name = decodeURIComponent((location.hash || '').slice(1)); } catch { name = ''; }
+  if (getSettingsPanelNames().includes(name)) activateSettingsPanel(name, { updateHistory: false });
+  else showSettingsOverview({ updateHistory: false });
 }
 
 function initSettingsTabs() {
@@ -657,17 +721,251 @@ function initSettingsTabs() {
   tabs.forEach(tab => {
     tab.addEventListener('click', () => activateSettingsPanel(tab.dataset.panel));
   });
+  $('btnBackToOverview')?.addEventListener('click', () => showSettingsOverview());
+  // 總覽上「需要注意」與「未儲存」提示裡的按鈕
+  $('settingsOverview')?.addEventListener('click', event => {
+    const go = event.target.closest?.('[data-go-panel]');
+    if (go) activateSettingsPanel(go.dataset.goPanel);
+  });
+  window.addEventListener('popstate', routeSettingsFromHash);
+  window.addEventListener('hashchange', routeSettingsFromHash);
+  routeSettingsFromHash();
+}
+
+// ── 總覽狀態摘要 ─────────────────────────────────────
+// 卡片顯示的是已儲存的值，不是表單上還沒存的內容；storage 一有變動就重畫。
+
+// 這個模型要能用還缺什麼；不缺回空字串
+function getSavedModelKeyGap(modelId, settings = {}, secrets = {}) {
+  const provider = ModelRegistry.PROVIDERS[ModelRegistry.getProvider(modelId)];
+  if (!provider || provider.keyless) return '';
+  const has = value => !!String(value || '').trim();
+  if (provider.userConfigured) {
+    return has(settings.customApiBase) && has(settings.customModelName) && has(secrets[provider.apiKeyName])
+      ? ''
+      : '自訂端點的網址、模型名稱或金鑰還沒填';
+  }
+  return has(secrets[provider.apiKeyName]) ? '' : `缺 ${provider.label} API Key`;
+}
+
+function formatBackupAge(lastIso, now) {
+  const last = Date.parse(lastIso || '');
+  if (!last) return null;
+  return Math.max(0, Math.floor((now - last) / (24 * 60 * 60 * 1000)));
+}
+
+// 純函式：把讀到的資料整理成總覽要顯示的文字，方便測試
+function buildSettingsOverview(data = {}, now = Date.now()) {
+  const { settings = {}, secrets = {}, lastBackupAt = '', actions = null, glossary = null, cloud = null } = data;
+  const model = ModelRegistry.normalizeModel(settings.model);
+  const modelName = ModelRegistry.getModelDisplayName(model);
+  const provider = ModelRegistry.PROVIDERS[ModelRegistry.getProvider(model)];
+  const mainGap = getSavedModelKeyGap(model, settings, secrets);
+  const keyNames = [...new Set(Object.values(ModelRegistry.PROVIDERS).map(item => item.apiKeyName).filter(Boolean))];
+  const keyCount = keyNames.filter(name => String(secrets[name] || '').trim()).length;
+  // 大卡片上逐家列出金鑰有沒有填；自訂端點沒設網址時不列
+  const keys = Object.values(ModelRegistry.PROVIDERS)
+    .filter(item => item.apiKeyName && (!item.userConfigured || String(settings.customApiBase || '').trim()))
+    .map(item => ({ label: item.label, filled: !!String(secrets[item.apiKeyName] || '').trim() }));
+
+  // 只放「功能會壞掉」的事；選填功能沒設定不算
+  const attention = [];
+  if (mainGap) attention.push({ panel: 'model', text: `預設模型「${modelName}」${mainGap}，翻譯會無法使用` });
+  for (const [key, label] of [['dictionaryModel', '字典'], ['pageTranslationModel', '全文翻譯']]) {
+    const value = settings[key];
+    if (!value || value === 'default') continue;
+    const gap = getSavedModelKeyGap(value, settings, secrets);
+    if (gap && gap !== mainGap) attention.push({ panel: 'model', text: `${label}選的模型${gap}，這個功能會無法使用` });
+  }
+
+  const language = ModelRegistry.getLanguageOption(ModelRegistry.normalizeLanguage(settings.targetLanguage, 'zh-TW'));
+  const enabledActions = Array.isArray(actions) ? actions.filter(action => action.enabled).length : null;
+  const terms = glossary ? glossary.terms.length : null;
+  const sites = glossary ? glossary.sites.length : 0;
+  const backupDays = formatBackupAge(lastBackupAt, now);
+
+  let cloudStat = '—';
+  let cloudTile = { summary: '同步狀態讀取失敗' };
+  if (cloud && !cloud.configured) {
+    cloudStat = '未設定';
+    cloudTile = { summary: '尚未完成 Google OAuth 設定', status: ['off', '未設定'] };
+  } else if (cloud) {
+    cloudStat = cloud.meta?.signedIn ? '已登入' : '未登入';
+    cloudTile = { summary: formatCloudSyncSummary(cloud.meta || {}), status: cloud.meta?.signedIn ? ['ok', '已登入'] : ['off', '未登入'] };
+  }
+
+  return {
+    stats: { model: modelName, keys: `${keyCount} 把`, cloud: cloudStat },
+    keys,
+    attention,
+    tiles: {
+      model: {
+        summary: `預設：${modelName}`,
+        status: mainGap ? ['warn', mainGap] : provider?.keyless ? ['ok', '不需金鑰'] : ['ok', '金鑰已設定']
+      },
+      language: {
+        summary: `翻譯成 ${language?.name || '繁體中文'}・單字高亮${settings.vocabularyHighlightMode === 'auto' ? '開啟' : '關閉'}`
+      },
+      actions: { summary: enabledActions === null ? '動作清單讀取失敗' : `${enabledActions} 個動作啟用中` },
+      glossary: {
+        summary: terms === null ? '術語表讀取失敗' : terms ? `${terms} 筆術語${sites ? `・限 ${sites} 個網站` : ''}` : '還沒有術語'
+      },
+      compare: { summary: '同一段文字並排比較多個模型的譯文' },
+      obsidian: { summary: settings.obsidianVault ? `Vault：${settings.obsidianVault}` : '存到目前開啟的 Vault' },
+      backup: backupDays === null
+        ? { summary: '單字本還沒匯出過備份', status: ['off', '未備份'] }
+        : {
+          summary: `單字本上次備份：${backupDays === 0 ? '今天' : `${backupDays} 天前`}`,
+          ...(backupDays >= VOCAB_BACKUP_STALE_DAYS ? { status: ['warn', `超過 ${VOCAB_BACKUP_STALE_DAYS} 天`] } : {})
+        },
+      cloud: cloudTile,
+      privacy: { summary: 'API Key 只存在本機；診斷資料可隨時清除' }
+    }
+  };
+}
+
+async function loadSettingsOverviewData() {
+  const safe = async (read, fallback) => {
+    try {
+      return await read();
+    } catch (error) {
+      console.warn('[翻翻吧] 總覽資料讀取失敗', error);
+      return fallback;
+    }
+  };
+  const keyDefaults = Object.fromEntries(Object.values(ModelRegistry.PROVIDERS)
+    .map(item => item.apiKeyName).filter(Boolean).map(name => [name, '']));
+  const [settings, secrets, local, actions, glossary, cloud] = await Promise.all([
+    safe(() => chrome.storage.sync.get(SYNC_SETTING_KEYS), {}),
+    safe(() => Storage.getSecrets(keyDefaults), {}),
+    safe(() => chrome.storage.local.get(LAST_VOCAB_BACKUP_KEY), {}),
+    safe(() => CustomActions.loadActionList(), null),
+    safe(() => loadStoredGlossary(), null),
+    safe(async () => {
+      await CloudSync.loadWebAuthClientId?.();
+      const configured = CloudSync.isOAuthConfigured(CloudSync.getOAuthConfig());
+      return { configured, meta: configured ? await CloudSync.getCloudSyncMeta() : {} };
+    }, null)
+  ]);
+  return { settings: settings || {}, secrets: secrets || {}, lastBackupAt: local?.[LAST_VOCAB_BACKUP_KEY] || '', actions, glossary, cloud };
+}
+
+async function renderSettingsOverview() {
+  const seq = ++overviewRenderSeq;
+  const overview = buildSettingsOverview(await loadSettingsOverviewData());
+  // 連續觸發時只畫最後一次讀到的資料
+  if (seq !== overviewRenderSeq) return overview;
+
+  if ($('overviewStatModel')) $('overviewStatModel').textContent = overview.stats.model;
+  if ($('overviewStatKeys')) $('overviewStatKeys').textContent = overview.stats.keys;
+  if ($('overviewStatCloud')) $('overviewStatCloud').textContent = overview.stats.cloud;
+
+  Object.entries(overview.tiles).forEach(([panelName, tile]) => {
+    const summary = document.querySelector(`[data-summary-for="${panelName}"]`);
+    const status = document.querySelector(`[data-status-for="${panelName}"]`);
+    if (summary) summary.textContent = tile.summary;
+    if (status) {
+      status.hidden = !tile.status;
+      status.dataset.kind = tile.status?.[0] || '';
+      status.textContent = tile.status?.[1] || '';
+    }
+  });
+
+  const keyList = $('overviewKeys');
+  if (keyList) {
+    Dom.ffbClear(keyList).append(...overview.keys.map(key => Dom.ffbEl('span', {
+      class: `tile-key${key.filled ? ' is-filled' : ''}`
+    }, `${key.label} 金鑰${key.filled ? '已填' : '未填'}`)));
+  }
+
+  const list = $('overviewAttention');
+  if (list) {
+    Dom.ffbClear(list);
+    overview.attention.forEach(item => {
+      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      icon.setAttribute('aria-hidden', 'true');
+      const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      use.setAttribute('href', '#ico-alert');
+      icon.append(use);
+      list.append(Dom.ffbEl('li', null, [
+        icon,
+        Dom.ffbEl('span', null, item.text),
+        Dom.ffbEl('button', { type: 'button', dataset: { goPanel: item.panel } }, '去設定')
+      ]));
+    });
+    list.hidden = !overview.attention.length;
+  }
+  return overview;
+}
+
+function scheduleSettingsOverviewRender() {
+  clearTimeout(overviewRenderTimer);
+  overviewRenderTimer = setTimeout(() => { renderSettingsOverview(); }, OVERVIEW_RENDER_DELAY_MS);
+}
+
+function initSettingsOverview() {
+  // 存檔、匯入、雲端下載、備份、動作與術語表變動都會寫 storage，一律從這裡重畫
+  chrome.storage.onChanged?.addListener(scheduleSettingsOverviewRender);
+  return renderSettingsOverview();
+}
+
+// ── 未儲存提示 ───────────────────────────────────────
+// 改了要按「儲存設定」的欄位就記下來：儲存列顯示提示、總覽列出分類、關頁時瀏覽器跳確認。
+
+function renderSettingsSaveState() {
+  const dirty = [...settingsDirtyPanels];
+  if ($('saveState')) $('saveState').textContent = dirty.length ? '有未儲存的變更' : '';
+  const notice = $('overviewUnsaved');
+  if (!notice) return;
+  notice.hidden = !dirty.length;
+  Dom.ffbClear(notice);
+  if (!dirty.length) return;
+  notice.append(
+    Dom.ffbEl('span', null, `「${dirty.map(settingsPanelTitle).join('、')}」有未儲存的變更`),
+    Dom.ffbEl('button', { type: 'button', dataset: { goPanel: dirty[0] } }, '回去儲存')
+  );
+}
+
+function markSettingsDirty(panelName) {
+  if (!SAVE_BUTTON_PANELS.has(panelName) || settingsDirtyPanels.has(panelName)) return;
+  settingsDirtyPanels.add(panelName);
+  renderSettingsSaveState();
+}
+
+function clearSettingsDirty(panelNames = [...settingsDirtyPanels]) {
+  panelNames.forEach(name => settingsDirtyPanels.delete(name));
+  renderSettingsSaveState();
+}
+
+function initSettingsDirtyTracking() {
+  const onEdit = event => {
+    const target = event.target;
+    if (!target?.matches?.('input, select, textarea') || target.type === 'file') return;
+    const panel = target.closest('.settings-panel[data-panel-content]');
+    if (panel) markSettingsDirty(panel.dataset.panelContent);
+  };
+  document.addEventListener('input', onEdit);
+  document.addEventListener('change', onEdit);
+  // 術語表的刪除列不會觸發 input
+  $('glossaryRows')?.addEventListener('click', event => {
+    if (event.target.closest('button')) markSettingsDirty('glossary');
+  });
+  window.addEventListener('beforeunload', event => {
+    if (!settingsDirtyPanels.size) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
 }
 
 // ── 設定搜尋（⌘K／Ctrl+K）────────────────────────────
 // 比對各分頁的標題、小標、欄位標籤與功能說明；選中後切到該分頁、捲過去並短暫高亮。
 // 索引每次搜尋時現場從 DOM 收集，動作清單這類動態列也找得到。
 
-// 取元素的可搜尋文字：去掉新功能標籤、「必填／選填」提示與分頁上的數字
+// 取元素的可搜尋文字：去掉新功能標籤、「必填／選填」提示與總覽卡片上的狀態摘要
 function searchableText(el) {
   if (!el) return '';
   const clone = el.cloneNode(true);
-  clone.querySelectorAll('.feature-badge, .hint, small').forEach(node => node.remove());
+  clone.querySelectorAll('.feature-badge, .hint, small, .tile-meta').forEach(node => node.remove());
   return clone.textContent.replace(/\s+/g, ' ').trim();
 }
 
@@ -962,6 +1260,7 @@ $('btnSave').addEventListener('click', async () => {
     }
   }
   const savedText = removedProviderLabel ? `✓ 設定已儲存（${removedProviderLabel} API Key 已移除）` : '✓ 設定已儲存';
+  clearSettingsDirty(glossaryConflict || glossaryLoadFailed ? ['model', 'language', 'obsidian'] : undefined);
   if (glossaryConflict) {
     showStatus('err', `${savedText}；但術語表已在其他分頁修改，這頁的術語表沒有存。請先複製需要的內容，重新整理頁面後再改`);
   } else if (glossaryLoadFailed) {
@@ -1840,6 +2139,7 @@ function markGlossaryEditorSynced(glossary) {
   glossaryEditorLoaded = true;
   glossaryLoadFailed = false;
   glossaryEditorDirty = false;
+  clearSettingsDirty(['glossary']);
 }
 
 function isGlossaryDraftChanged(glossary) {
@@ -1919,7 +2219,10 @@ async function importGlossaryCsvFile(file) {
     added++;
   }
   if (!rows.children.length) rows.append(buildGlossaryRow());
-  if (added) glossaryEditorDirty = true;
+  if (added) {
+    glossaryEditorDirty = true;
+    markSettingsDirty('glossary');
+  }
   const parts = [`已加入 ${added} 筆`];
   if (duplicated) parts.push(`${duplicated} 筆原文重複略過`);
   if (skipped) parts.push(`${skipped} 列缺原文或譯文略過`);
@@ -2548,6 +2851,12 @@ if (typeof module !== 'undefined' && module.exports) {
     renderLanguageSelects,
     initSettingsTabs,
     activateSettingsPanel,
+    showSettingsOverview,
+    routeSettingsFromHash,
+    buildSettingsOverview,
+    renderSettingsOverview,
+    markSettingsDirty,
+    clearSettingsDirty,
     readGlossaryEditor,
     renderCompareModels,
     runModelCompare,

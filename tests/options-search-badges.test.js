@@ -95,7 +95,7 @@ describe('設定頁搜尋', () => {
 
     expect(panel('obsidian').hidden).toBe(false);
     expect(panel('model').hidden).toBe(true);
-    expect(tab('obsidian').getAttribute('aria-selected')).toBe('true');
+    expect(tab('obsidian').getAttribute('aria-current')).toBe('true');
     expect(tab('model').classList.contains('is-active')).toBe(false);
     expect($('obsidianVault').closest('.field').classList.contains('search-hit')).toBe(true);
     expect(document.activeElement).toBe($('obsidianVault'));

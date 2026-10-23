@@ -9,7 +9,7 @@
 | 項目 | 狀態 |
 |------|------|
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
-| 自動化單元測試 | <!-- ffb:suites -->48<!-- /ffb:suites --> suites / <!-- ffb:tests -->801<!-- /ffb:tests --> tests 全綠（2026-10-22，含模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表、長難句分析、寫作批改、設定頁搜尋與新功能標籤、術語表（含多分頁同步）、模型比較、單字卡四級評分） |
+| 自動化單元測試 | <!-- ffb:suites -->49<!-- /ffb:suites --> suites / <!-- ffb:tests -->821<!-- /ffb:tests --> tests 全綠（2026-10-23，含設定頁總覽與未儲存提示、模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表、長難句分析、寫作批改、設定頁搜尋與新功能標籤、術語表（含多分頁同步）、模型比較、單字卡四級評分） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-08-26；改 code 先 `npm run package`） |
 | 手動 QA | 全表 55/78；剩 23 項幾乎全卡「無 API key」或「需外部 App／帳號」（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | **2026-09-20 裁決：暫緩送審，先做功能**，告一段落再回頭走上架流程。Chrome Web Store 仍是 release checkpoint |
@@ -108,6 +108,13 @@
   - **現況**：2026-09-30 content script 的 HTML 字串寫入點已全數改用 DOM builder（見 `CHANGELOG.md` 同日「頁面 UI 改用 DOM builder」），jsdom 內模擬 Trusted Types 的 32 個情境都不再觸發寫入點；未用 `createPolicy` 過渡包裝。
   - **接續**：在 Google 搜尋結果頁實機操作一次（`MANUAL-QA.md`「頁面 UI 改用 DOM builder」），確認後結案。
   - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
+
+- **設定頁總覽改版：KAKA 實機看觀感**
+
+  - **目的**：設定頁改成「總覽首頁＋卡片」後，確認實際用起來順手、深色模式好讀。
+  - **現況**：2026-10-23 完成總覽卡片、網址直達、未儲存提示、設定頁深色模式（見 `CHANGELOG.md` 同日條目）；Jest 與 e2e 已過，畫面只有自動截圖看過。
+  - **接續**：KAKA 用日常 Chrome 載入 `dist/pkg`，看總覽、進出 3～4 個分類、改欄位後回總覽看提示，再切系統深色看一遍；有要調的直接記在這項，沒有就搬 `CHANGELOG.md`。
+  - **詳情**：`options.html`；`options.js` 的 `buildSettingsOverview`／`activateSettingsPanel`（**引用符號不引行號**）；`tests/options-overview.test.js`
 
 ### 整版 review 遺留（2026-10-19）
 

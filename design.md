@@ -1,7 +1,7 @@
 # 翻翻吧 — Design Language
 
 > 本文件記錄翻翻吧的設計語言，所有新頁面與 UI 元件均應遵循此規範。
-> 最後更新：2026-04-24
+> 最後更新：2026-10-23
 
 ---
 
@@ -69,7 +69,7 @@
 
 ### 浮層 UI 深色模式（第一階段）
 
-系統設定為深色時（`@media (prefers-color-scheme: dark)`），工具列、結果卡（含單字本面板）、浮球與選單、單字高亮提示、全文翻譯控制面板換成下表的暗色。亮色規則不動；token 定義在這五個元件的根節點（`#gemini-ai-toolbar`、`#gemini-result-card`、`#fanfanba-floating`、`.g-vocab-highlight-tip`、`.ffb-page-translation-panel`），不寫在頁面 `:root`。插進網頁的譯文段落與單字高亮標記不在本階段，它們依頁面底色自己調對比。設定頁、popup、welcome 也還沒做。
+系統設定為深色時（`@media (prefers-color-scheme: dark)`），工具列、結果卡（含單字本面板）、浮球與選單、單字高亮提示、全文翻譯控制面板換成下表的暗色。亮色規則不動；token 定義在這五個元件的根節點（`#gemini-ai-toolbar`、`#gemini-result-card`、`#fanfanba-floating`、`.g-vocab-highlight-tip`、`.ffb-page-translation-panel`），不寫在頁面 `:root`。插進網頁的譯文段落與單字高亮標記不在本階段，它們依頁面底色自己調對比。設定頁（`options.html`）2026-10-23 跟上：同一組 token 寫在 `options.html` 的深色 media query 裡，因為設定頁是獨立頁面，可以放 `:root`；popup、welcome 還沒做。
 
 | Token | 值 | 用途 |
 |------|----|------|
@@ -419,7 +419,27 @@ width: 6px; height: 6px; border-radius: 50%;
 
 ## 8. 頁面結構模板
 
-### 全頁面（options / welcome 等）
+### 設定頁（options）
+
+```
+body（微綠漸層背景）
+├── .app-header（icon + 標題 ＋ 搜尋框 Ctrl/⌘K）
+└── .settings-shell（白底、圓角 16px、陰影）
+    ├── nav.settings-overview（總覽，預設顯示）
+    │   ├── .overview-stats（預設模型／已填金鑰數／雲端同步）
+    │   ├── .overview-unsaved（有未儲存的變更時出現）
+    │   ├── .overview-attention（只放「功能會壞掉」的提醒，例如預設模型缺金鑰）
+    │   └── .overview-grid（9 張 .settings-tab.tile；模型卡 .is-large 佔 2×2）
+    └── .settings-main（詳細頁，點卡片或網址 #分類 進入）
+        ├── .settings-crumb（← 總覽 / 分類名稱）
+        ├── .settings-panel（一次只顯示一個）
+        └── .settings-actions（sticky 底部儲存列；不經儲存鈕的分類只留狀態訊息）
+```
+
+- 卡片的摘要與狀態一律讀**已儲存**的值，不讀表單；狀態色：綠＝已設定、黃＝要處理、灰＝未設定或未啟用。
+- 卡片沿用 `.settings-tab[data-panel]`：搜尋、新功能標籤、測試與 e2e 都靠這個標記找分類，改名要一起改。
+
+### 其他全頁面（welcome 等）
 
 ```
 body（#f5f7f2 背景）
