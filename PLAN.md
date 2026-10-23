@@ -109,12 +109,19 @@
   - **接續**：在 Google 搜尋結果頁實機操作一次（`MANUAL-QA.md`「頁面 UI 改用 DOM builder」），確認後結案。
   - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
 
-- **設定頁總覽改版與文案精簡：KAKA 實機看觀感**
+- **設定頁與 popup 改版：KAKA 日常 Chrome 實機看觀感**
 
-  - **目的**：設定頁改成「總覽首頁＋卡片」並精簡說明文字後，確認實際用起來順手、深色模式好讀。
-  - **現況**：2026-10-23 完成總覽卡片、網址直達、未儲存提示、設定頁深色模式，以及說明文字精簡三個階段（見 `CHANGELOG.md` 同日條目）；Jest 與 e2e 已過，畫面只有自動截圖看過。
-  - **接續**：KAKA 用日常 Chrome 載入 `dist/pkg`，看總覽、進出 3～4 個分類、改欄位後回總覽看提示，再切系統深色看一遍；另看金鑰欄位旁的「使用中／缺 Key／已填／未填」、幾個 ⓘ 點開的說明、備份勾選加密才出現密碼欄、總覽頁尾的快捷鍵是否等於 chrome://extensions/shortcuts 實際綁的鍵、「使用說明」打開的歡迎頁小技巧、自訂動作內建列的鎖頭滑過說明；有要調的直接記在這項，沒有就搬 `CHANGELOG.md`。
-  - **詳情**：`options.html`；`options.js` 的 `buildSettingsOverview`／`activateSettingsPanel`（**引用符號不引行號**）；`tests/options-overview.test.js`
+  - **目的**：設定頁「總覽首頁＋卡片」、說明文字精簡，以及 popup／設定頁改用 Radix 色票並刪掉重複元素後，確認日常用起來順手、深色模式好讀。
+  - **現況**：2026-10-23 完成總覽卡片、網址直達、未儲存提示、深色模式與說明文字精簡三階段；同晚 popup 與設定頁改用 `ui-tokens.css`（Radix Colors），刪掉重複的狀態卡、數字列、裝飾標籤與「·」分隔，視覺依 KAKA 選擇保留上一版（光暈背景、毛玻璃外框、圓角、hover 上浮），PR #2 已合進 master（見 `CHANGELOG.md` 同日兩條）。KAKA 看過預覽截圖認可；Jest、e2e 41/0/4 已過，真擴充只有自動截圖。
+  - **接續**：KAKA 用日常 Chrome 載入 `dist/pkg`，看 popup（缺金鑰提醒、「填寫金鑰」直達模型分類、logo 光暈）、設定頁總覽、進出 3～4 個分類、改欄位後回總覽看提示，再切系統深色看一遍；另看金鑰狀態標籤、ⓘ 說明、備份勾選加密才出現密碼欄、總覽頁尾快捷鍵是否等於 chrome://extensions/shortcuts 實際綁的鍵；有要調的直接記在這項，沒有就搬 `CHANGELOG.md`。
+  - **詳情**：`ui-tokens.css`；`design.md` 1.5 節；`options.html`；`popup.html`；`options.js` 的 `buildSettingsOverview`／`activateSettingsPanel`、`popup.js` 的 `renderKeyAlert`（**引用符號不引行號**）
+
+- **網頁浮層與歡迎頁套用同一套 Radix token**〔待裁決〕
+
+  - **目的**：讓工具列、結果卡、浮球、全文翻譯面板與歡迎頁跟 popup／設定頁用同一套色彩與文案規則。
+  - **現況**：2026-10-23 只改了 popup 與設定頁；`content.css`（約 3,500 行，仍用 `--ffb-dark-*` 與舊色碼）和 `welcome.html` 沒動。全文翻譯面板仍有「已完成 0/4 · 失敗 4」這類「·」分隔（`content/page-translator-panel.js`）。
+  - **接續**：KAKA 裁決要不要做；要做先定浮層是否保留毛玻璃與 `!important` 隔離，再分元件改，每個元件都要跑 e2e ui-panels 與 legacy-regression。
+  - **詳情**：`design.md` 1.5 節（全頁面規範）與第 2 節（浮層色票）；`content.css`；`welcome.html`
 
 ### 整版 review 遺留（2026-10-19）
 
