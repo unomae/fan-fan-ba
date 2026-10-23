@@ -113,11 +113,6 @@
       margin-bottom: 4px;
     }
 
-    .overview-head p {
-      color: var(--muted);
-      font-size: 13px;
-    }
-
     .overview-stats {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -620,13 +615,6 @@
       display: block;
       margin-top: 2px;
       color: #7b8794;
-    }
-
-    .cloud-sync-hint {
-      margin: 0;
-      color: #4b586a;
-      font-size: 12px;
-      line-height: 1.55;
     }
 
     .advanced-settings {
@@ -1156,7 +1144,7 @@
       .diagnostics-checklist strong, .cloud-status-list,
       .diagnostics-overview { color: var(--ffb-dark-text); }
       label .hint, .toggle-vis, .diagnostics-checklist small,
-      .check-row, .cloud-sync-hint, .feature-list li { color: var(--ffb-dark-text-muted); }
+      .check-row, .feature-list li { color: var(--ffb-dark-text-muted); }
       .toggle-vis:hover { color: var(--ffb-dark-text); background: var(--ffb-dark-surface-hover); }
 
       input[type="password"], input[type="text"], input[type="search"], select, textarea,
@@ -1260,7 +1248,6 @@
       <nav class="settings-overview" id="settingsOverview" aria-labelledby="overviewTitle">
         <div class="overview-head">
           <h2 id="overviewTitle">設定總覽</h2>
-          <p>目前狀態一眼看完，點卡片進入詳細設定。</p>
         </div>
 
         <dl class="overview-stats">
@@ -1312,7 +1299,7 @@
         </div>
 
         <p class="overview-foot">
-          <a href="privacy-policy.html" target="_blank">隱私權政策</a>・API Key 僅儲存在本機，不會同步到 Chrome 帳號。
+          <a href="privacy-policy.html" target="_blank">隱私權政策</a>
         </p>
       </nav>
 
@@ -1325,7 +1312,6 @@
           <div class="panel-head">
             <div>
               <h2>模型與 API Key</h2>
-              <p>選擇預設模型後，只需要確認對應供應商的 API Key 已設定；其他 Key 可保留作為備援。</p>
             </div>
             <span class="panel-badge">建議優先設定 Groq</span>
           </div>
@@ -1355,7 +1341,7 @@
                 </tr>
               </tbody>
             </table>
-            <p class="field-note">預設「跟隨主模型」；結果卡底部「僅本次」選的模型優先於這裡。全文翻譯由右側懸浮球啟動，建議選擇速度快、額度充足的模型，也可以用瀏覽器內建翻譯（不需金鑰）。</p>
+            <p class="field-note">全文翻譯建議選速度快的模型，或用瀏覽器內建翻譯（免金鑰）。</p>
           </div>
 
           <div class="provider-grid">
@@ -1377,9 +1363,7 @@
                     </svg>
                   </button>
                 </div>
-                <p class="field-note">
-                  至 <a href="https://console.groq.com/keys" target="_blank">Groq Console</a> 免費取得，格式為 <code>gsk_</code> 開頭。
-                </p>
+                <p class="field-note"><a href="https://console.groq.com/keys" target="_blank">免費取得 Key ↗</a></p>
               </div>
             </div>
 
@@ -1401,9 +1385,7 @@
                     </svg>
                   </button>
                 </div>
-                <p class="field-note">
-                  至 <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> 取得，格式為 <code>AIza</code> 開頭。
-                </p>
+                <p class="field-note"><a href="https://aistudio.google.com/app/apikey" target="_blank">取得 Key ↗</a></p>
               </div>
             </div>
 
@@ -1425,9 +1407,7 @@
                     </svg>
                   </button>
                 </div>
-                <p class="field-note">
-                  至 <a href="https://openrouter.ai/keys" target="_blank">OpenRouter</a> 取得，格式為 <code>sk-or-</code> 開頭。
-                </p>
+                <p class="field-note"><a href="https://openrouter.ai/keys" target="_blank">取得 Key ↗</a></p>
               </div>
             </div>
 
@@ -1458,7 +1438,7 @@
                   </button>
                 </div>
                 <p class="field-note">
-                  只接受 <code>https://</code>。儲存時瀏覽器會詢問是否允許連線到這個網域；選取文字會送到你填的端點處理。
+                  只接受 <code>https://</code>；選取的文字會送到這個端點。
                 </p>
               </div>
               <button class="btn-test" id="btnTestCustom" type="button">測試自訂端點</button>
@@ -1470,7 +1450,6 @@
           <div class="panel-head">
             <div>
               <h2>語言與朗讀</h2>
-              <p>集中管理翻譯輸出、解釋文字與單字卡朗讀偏好。</p>
             </div>
             <span class="panel-badge">影響翻譯與單字卡</span>
           </div>
@@ -1479,19 +1458,16 @@
             <div class="field">
               <label for="targetLanguage">翻譯目標語言</label>
               <select id="targetLanguage"></select>
-              <p class="field-note">影響翻譯、單字卡釋義與例句翻譯；預設為繁體中文。</p>
             </div>
 
             <div class="field">
               <label for="explanationLanguage">解釋語言</label>
               <select id="explanationLanguage"></select>
-              <p class="field-note">解釋模式與優化改動說明使用此語言；建議跟隨翻譯語言。</p>
             </div>
 
             <div class="field">
               <label for="ttsLanguageMode">朗讀語音</label>
               <select id="ttsLanguageMode"></select>
-              <p class="field-note">單字卡預設依 AI 偵測的原文語言朗讀，也可改為跟隨翻譯語言。</p>
             </div>
 
             <div class="field">
@@ -1500,7 +1476,7 @@
                 <option value="off">關閉</option>
                 <option value="auto">自動高亮已收藏單字</option>
               </select>
-              <p class="field-note">開啟後會在文章可見文字中淡標已收藏單字；不標示按鈕、表單、程式碼與翻翻吧介面。</p>
+              <p class="field-note">在網頁上淡標你收藏過的單字。</p>
             </div>
 
 
@@ -1517,9 +1493,7 @@
                   </svg>
                 </button>
               </div>
-              <p class="field-note">
-                至 <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a> 建立並啟用 Cloud Text-to-Speech API。留空則使用瀏覽器內建語音。
-              </p>
+              <p class="field-note">留空就用瀏覽器內建語音。<a href="https://console.cloud.google.com/apis/credentials" target="_blank">取得 Key ↗</a></p>
             </div>
           </div>
         </section>
@@ -1528,7 +1502,7 @@
           <div class="panel-head">
             <div>
               <h2>自訂動作</h2>
-              <p>除了翻譯、解釋、優化，可以自己寫 prompt 做新的動作，指定模型回傳哪些欄位、用哪種版面顯示。</p>
+              <p>用自己的 prompt 建立新動作。</p>
             </div>
             <span class="panel-badge">最多 20 個</span>
           </div>
@@ -1542,7 +1516,7 @@
                 <button class="btn-test" id="btnCopyAiGuide" type="button">用 AI 協助設定</button>
               </div>
               <div class="action-status" id="actionListStatus" aria-live="polite"></div>
-              <p class="field-note">內建動作可以停用、調整順序，不能刪除或改 prompt；按「以此為範本」會建立一份可編輯的自訂動作。「用 AI 協助設定」只會把說明文字複製到剪貼簿，貼給任何 AI 請它幫你寫，不會呼叫任何 API。</p>
+              <p class="field-note">內建動作只能停用或調整順序。「用 AI 協助設定」只複製說明文字，不呼叫 API。</p>
             </div>
 
             <form class="field full action-editor" id="actionEditor" hidden novalidate>
@@ -1567,10 +1541,10 @@
                   <label for="actionUserPrompt">使用者提示</label>
                   <div class="action-var-buttons" id="actionVarButtons" role="group" aria-label="插入變數"></div>
                   <textarea id="actionUserPrompt" rows="5" maxlength="4000" spellcheck="false"></textarea>
-                  <p class="field-note">網頁來源的變數會自動包在「不是指令」的防注入框線內。<code>{{pageUrl}}</code> 目前不會送出網址，會替換成空白。</p>
+                  <p class="field-note">網頁內容會自動標成「非指令」；<code>{{pageUrl}}</code> 目前替換成空白。</p>
                 </div>
                 <div class="field full">
-                  <label id="actionFieldsLabel">輸出欄位 <span class="hint">最多 8 個；模型會回傳以欄位代號為鍵的 JSON</span></label>
+                  <label id="actionFieldsLabel">輸出欄位 <span class="hint">最多 8 個</span></label>
                   <div class="action-fields" id="actionFields" role="group" aria-labelledby="actionFieldsLabel"></div>
                   <button class="btn-test" id="btnAddActionField" type="button">新增欄位</button>
                 </div>
@@ -1600,7 +1574,7 @@
 
               <div class="action-preview-wrap">
                 <div class="action-preview-head">
-                  <span id="actionPreviewLabel">預覽 <span class="hint">範例資料，不會呼叫模型</span></span>
+                  <span id="actionPreviewLabel">預覽 <span class="hint">範例資料</span></span>
                   <div class="action-preview-widths" role="group" aria-label="預覽寬度">
                     <button class="btn-test" type="button" data-preview-width="320" aria-pressed="true">320</button>
                     <button class="btn-test" type="button" data-preview-width="500" aria-pressed="false">500</button>
@@ -1616,7 +1590,7 @@
           <div class="panel-head">
             <div>
               <h2>術語表</h2>
-              <p>指定固定譯法，例如 lead time 一律翻成「前置時間」。翻譯時只把這段文字裡實際出現的術語附給模型。</p>
+              <p>固定譯法，例如 lead time →「前置時間」。</p>
             </div>
             <span class="panel-badge">最多 500 筆</span>
           </div>
@@ -1637,17 +1611,16 @@
                 <input type="file" id="glossaryCsvFile" accept=".csv,text/csv" hidden>
               </div>
               <div class="action-status" id="glossaryStatus" aria-live="polite"></div>
-              <p class="field-note">比對不分大小寫，英文只認完整的詞（art 不會比到 start）。CSV 欄位依序是 source、target、note；匯入會接在現有清單後面，原文重複時保留先前那筆。</p>
+              <p class="field-note">不分大小寫、只比對完整單字。CSV 欄位：source、target、note；匯入會接在清單後面。</p>
             </div>
 
             <div class="field full">
               <label for="glossarySites">只在這些網站生效 <span class="hint">選填，一行一個</span></label>
-              <textarea id="glossarySites" rows="3" placeholder="例如 example.com（留空＝所有網站）" spellcheck="false"></textarea>
-              <p class="field-note">填 example.com 也包含它的子網域。網址只在本機比對，不會送給模型。</p>
+              <textarea id="glossarySites" rows="3" placeholder="例如 example.com（含子網域；留空＝所有網站）" spellcheck="false"></textarea>
             </div>
 
             <div class="field full">
-              <p class="field-note">只套用在「翻譯」與全文翻譯；解釋、優化、長難句分析與自訂動作不套用。<strong>瀏覽器內建翻譯不套用術語表</strong>（它不接受額外指示）。修改後請按「儲存設定」。</p>
+              <p class="field-note">只用在翻譯與全文翻譯；瀏覽器內建翻譯不套用。</p>
             </div>
           </div>
         </section>
@@ -1656,7 +1629,7 @@
           <div class="panel-head">
             <div>
               <h2>模型比較</h2>
-              <p>同一段文字同時交給幾個模型翻譯，並排比較譯文與花費時間，再決定預設用哪一個。</p>
+              <p>同一段文字交給多個模型，並排比譯文與速度。</p>
             </div>
             <span class="panel-badge">不存進查詢紀錄</span>
           </div>
@@ -1671,7 +1644,7 @@
               <legend class="field-label">比較哪些模型</legend>
               <div id="compareModelList"></div>
               <p class="field-note" id="compareModelEmpty" hidden>還沒有可以比較的模型：先到「模型與金鑰」填 API Key 並按「儲存設定」。</p>
-              <p class="field-note">只列出已儲存金鑰的模型與瀏覽器內建翻譯。每個模型都會實際送一次請求，會用到各家的額度；譯成「語言與朗讀」裡設定的翻譯目標語言，術語表沒有限定網站時照常套用（內建翻譯除外）。</p>
+              <p class="field-note">每個模型會實際送出一次請求，用到各家額度。</p>
             </fieldset>
 
             <div class="field full">
@@ -1689,7 +1662,6 @@
           <div class="panel-head">
             <div>
               <h2>Obsidian 存入</h2>
-              <p>設定 Vault 與預設資料夾後，結果卡可直接把查詢結果整理進筆記。</p>
             </div>
             <span class="panel-badge">Advanced URI</span>
           </div>
@@ -1697,14 +1669,12 @@
           <div class="form-grid">
             <div class="field">
               <label for="obsidianVault">Obsidian Vault 名稱 <span class="hint">選填</span></label>
-              <input type="text" id="obsidianVault" placeholder="例如：My Notes" autocomplete="off" spellcheck="false">
-              <p class="field-note">留空則使用目前開啟的 Vault。</p>
+              <input type="text" id="obsidianVault" placeholder="留空＝目前開啟的 Vault" autocomplete="off" spellcheck="false">
             </div>
 
             <div class="field">
               <label for="obsidianDefaultFolder">Obsidian 預設存入資料夾 <span class="hint">選填</span></label>
               <input type="text" id="obsidianDefaultFolder" placeholder="例如：30_Knowledge/my-notes/languages/vocabulary" autocomplete="off" spellcheck="false">
-              <p class="field-note">設定後會依照此資料夾階層寫入，不會自動追加子資料夾。</p>
             </div>
 
             <div class="security-note field full">
@@ -1714,9 +1684,8 @@
               <div>
                 <strong>Obsidian 寫入方式</strong>
                 <ul>
-                  <li>存入功能使用 <a href="https://github.com/Vinzent03/obsidian-advanced-uri" target="_blank">Advanced URI 插件</a>。</li>
-                  <li>每週結果存入 <code>資料夾/YYYY-W##.md</code>，按週自動建檔。</li>
-                  <li>若資料夾留空，第一次手動存入後會自動記住。</li>
+                  <li>需要 <a href="https://github.com/Vinzent03/obsidian-advanced-uri" target="_blank">Advanced URI 插件</a>。</li>
+                  <li>每週存成 <code>資料夾/YYYY-W##.md</code>。</li>
                 </ul>
               </div>
             </div>
@@ -1727,7 +1696,7 @@
           <div class="panel-head">
             <div>
               <h2>備份與還原</h2>
-              <p>匯出目前設定成 JSON 檔，重新安裝或換裝置後可直接匯入還原。</p>
+              <p>換裝置或重裝時用。</p>
             </div>
             <span class="panel-badge">JSON 設定檔</span>
           </div>
@@ -1746,7 +1715,7 @@
                 <label for="backupPassword">API Key 備份密碼 <span class="hint">加密匯出 / 匯入時使用</span></label>
                 <input type="password" id="backupPassword" placeholder="至少 8 個字元，請自行保存" autocomplete="off" spellcheck="false">
               </div>
-              <p class="field-note">預設只匯出模型、語言、Obsidian 等一般設定與術語表；勾選 API Keys 時會用此密碼加密，忘記密碼就無法還原 API Key。</p>
+              <p class="field-note">忘記密碼就無法還原 API Key。</p>
             </div>
 
             <div class="field full">
@@ -1755,7 +1724,7 @@
                 <button class="btn-test" id="btnImportSettings" type="button">選擇設定檔</button>
                 <input class="file-input" id="settingsImportFile" type="file" accept="application/json,.json">
               </div>
-              <p class="field-note">只接受翻翻吧設定檔，匯入時會依白名單更新支援的設定與 API Keys。設定檔也會帶上「自訂動作」的清單，匯入時整份取代目前的清單（雲端同步不含自訂動作）。</p>
+              <p class="field-note">匯入會取代目前的自訂動作清單。</p>
             </div>
 
             <div class="field full">
@@ -1769,22 +1738,8 @@
               <div class="backup-actions" id="vocabularySnapshotActions" style="margin-top:8px;" hidden></div>
               <div id="vocabularyBackupStatus" aria-live="polite" style="margin-top:8px;font-size:12px;color:#666;"></div>
               <div id="vocabularyBackupReminder" aria-live="polite" style="margin-top:4px;font-size:12px;color:#999;"></div>
-              <p class="field-note" id="vocabularySnapshotNote" hidden>本機自動快照：每天最多留一份、共兩份（約可回到 24–48 小時前），逾 30 天自動清除。還原採<strong>合併</strong>，只補回缺少的單字，不會蓋掉快照之後的新增與複習進度。快照只存在這台裝置的瀏覽器，不上傳雲端，<strong>不能取代 JSON 匯出</strong>。</p>
-              <p class="field-note">完整備份請用 JSON（含遇到次數、來源、熟悉度），換裝置 / 重新安裝後可匯入。CSV 適合用 Excel / Google Sheets 檢視與整理，不作為還原格式。匯入採<strong>合併</strong>：同一單字保留較高的遇到次數，不會覆蓋既有資料。單字本存在本機瀏覽器，建議定期匯出 JSON 備份。</p>
-            </div>
-
-            <div class="security-note field full">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-              <div>
-                <strong>API Key 備份提醒</strong>
-                <ul>
-                  <li>不勾選時，匯出檔不包含任何 API Key。</li>
-                  <li>勾選後 API Key 會以密碼加密後寫入 JSON；密碼不會被儲存，也無法找回。</li>
-                  <li>舊版明文 API Key 備份仍可匯入，但建議重新匯出成加密備份。</li>
-                </ul>
-              </div>
+              <p class="field-note" id="vocabularySnapshotNote" hidden>自動保留最近 2 天的快照；還原是合併，不會蓋掉之後的新增與複習進度。</p>
+              <p class="field-note">JSON 可完整還原，CSV 給試算表看。匯入是合併，不會覆蓋既有單字。</p>
             </div>
           </div>
         </section>
@@ -1793,7 +1748,7 @@
           <div class="panel-head">
             <div>
               <h2>雲端同步</h2>
-              <p>同步模型、語言、朗讀與 Obsidian 等一般設定，以及術語表。API Key 不會同步。</p>
+              <p>同步一般設定與術語表；API Key、單字本、查詢歷史不同步。</p>
             </div>
             <span class="panel-badge">Google Drive appData</span>
           </div>
@@ -1808,13 +1763,12 @@
                 <button class="btn-test" id="btnCloudDownload" type="button">下載雲端設定</button>
                 <button class="btn-test" id="btnCloudSignOut" type="button">登出</button>
               </div>
-              <p class="cloud-sync-hint">上傳會用這台設定覆蓋雲端；下載會用雲端設定覆蓋這台。API Key、單字本與查詢歷史不會同步。</p>
               <details class="advanced-settings">
                 <summary>進階設定</summary>
                 <div class="advanced-settings-body">
                   <label for="cloudWebAuthClientId">Edge / Chromium Web Auth Client ID</label>
                   <input id="cloudWebAuthClientId" type="text" placeholder="1234567890-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false">
-                  <p class="field-note">只有開發或手動載入 extension 時需要設定；一般使用者不需要處理 Google Cloud。</p>
+                  <p class="field-note">一般使用者不需要設定。</p>
                   <div class="backup-actions">
                     <button class="btn-test" id="btnCloudSaveWebAuthClientId" type="button">儲存 Web Auth Client ID</button>
                   </div>
@@ -1828,7 +1782,6 @@
           <div class="panel-head">
             <div>
               <h2>隱私與功能說明</h2>
-              <p>API Key 與設定保存在本機；這裡保留安全說明與主要使用情境。</p>
             </div>
             <span class="panel-badge">本機儲存</span>
           </div>
@@ -1840,9 +1793,7 @@
             <div>
               <strong>API Key 安全儲存</strong>
               <ul>
-                <li>API Key 僅儲存於本機 storage，不會同步到 Chrome 帳號，也不會上傳至任何伺服器。</li>
-                <li>只有本擴充功能可讀取，不對外暴露。</li>
-                <li>可隨時在此頁修改或清空刪除。</li>
+                <li>API Key 只存在這台電腦，只有翻翻吧讀得到，不會上傳。</li>
               </ul>
             </div>
           </div>
@@ -1880,7 +1831,7 @@
             </svg>
             <div>
               <strong>本機診斷摘要</strong>
-              <p style="margin:4px 0 8px;color:#666;font-size:12px;">只在本機累計使用次數，<strong>不含任何選取文字、網址或內容</strong>，不會上傳，也沒有 telemetry。可隨時清除。</p>
+              <p style="margin:4px 0 8px;color:#666;font-size:12px;">只在本機計次，<strong>不含任何內容</strong>，不會上傳。</p>
               <div class="diagnostics-self-check" id="diagnosticsSummary" aria-live="polite">尚無使用紀錄。</div>
               <button class="btn-test" id="btnClearDiagnostics" type="button" style="margin-top:10px;">清除診斷資料</button>
             </div>
