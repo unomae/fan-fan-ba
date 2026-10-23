@@ -90,7 +90,7 @@ describe('設定頁搜尋', () => {
     await loadOptions();
     expect(panel('obsidian').hidden).toBe(true);
     typeQuery('vault');
-    expect(resultTexts()).toEqual(['Obsidian Vault 名稱']);
+    expect(resultTexts()).toEqual(['Vault 名稱']);
     pressKey(search(), 'Enter');
 
     expect(panel('obsidian').hidden).toBe(false);

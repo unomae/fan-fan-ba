@@ -25,6 +25,7 @@ const INCLUDE_FILES = [
   'vocabulary-backup.js',
   'custom-actions.js',
   'content.css',
+  'ui-tokens.css',
   'popup.html', 'popup.js',
   'options.html', 'options.js',
   'welcome.html', 'welcome.js'
