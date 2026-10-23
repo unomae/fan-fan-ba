@@ -175,7 +175,7 @@ describe('總覽狀態摘要（buildSettingsOverview）', () => {
   it('字典或全文翻譯選了另一家缺金鑰的模型也要提醒；跟主模型同一家就不重複', async () => {
     await loadOptions();
     const other = options.buildSettingsOverview({
-      settings: { model: 'groq:openai/gpt-oss-120b', dictionaryModel: 'gemini-3.5-flash' },
+      settings: { model: 'groq:openai/gpt-oss-120b', dictionaryModel: 'gemini-3.8-flash' },
       secrets: { groqApiKey: 'gsk_dummy' }
     }, NOW);
     expect(other.attention.map(item => item.text)).toEqual([expect.stringMatching(/^字典選的模型缺 Gemini API Key/)]);
@@ -323,12 +323,12 @@ describe('說明精簡後的欄位狀態', () => {
     expect([keyState('gemini').dataset.state, keyState('gemini').textContent]).toEqual(['empty', '未填']);
 
     // 字典改用 Gemini，但還沒填 Gemini 金鑰
-    $('dictionaryModel').value = 'gemini-3.5-flash';
+    $('dictionaryModel').value = 'gemini-3.8-flash';
     change($('dictionaryModel'));
     expect(keyState('gemini').textContent).toBe('缺 Key');
 
     // 主模型換掉後，Groq 沒人用了只剩「已填」
-    $('model').value = 'gemini-3.5-flash';
+    $('model').value = 'gemini-3.8-flash';
     change($('model'));
     expect(keyState('groq').textContent).toBe('已填');
 
@@ -361,7 +361,7 @@ describe('說明精簡後的欄位狀態', () => {
   it('匯入加密備份但沒填密碼：打開密碼欄、說明原因，什麼都不寫入', async () => {
     await loadOptions();
     const file = { text: async () => JSON.stringify({
-      app: 'fan-fan-ba', schemaVersion: 1, settings: { model: 'gemini-3.5-flash' },
+      app: 'fan-fan-ba', schemaVersion: 1, settings: { model: 'gemini-3.8-flash' },
       secretsEncrypted: { version: 1, algorithm: 'AES-GCM', salt: '', iv: '', data: '' }
     }) };
     Object.defineProperty($('settingsImportFile'), 'files', { value: [file], configurable: true });

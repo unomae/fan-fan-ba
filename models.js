@@ -70,10 +70,10 @@
       badgeClass: 'badge-groq'
     },
     {
-      id: 'gemini-3.5-flash',
+      id: 'gemini-3.8-flash',
       provider: 'gemini',
       apiKeyName: 'apiKey',
-      name: 'Gemini 3.5 Flash',
+      name: 'Gemini 3.8 Flash',
       desc: '最新穩定版 · 免費額度',
       badge: '快速',
       badgeClass: 'badge-fast'
@@ -148,8 +148,11 @@
   }
 
   const MODEL_MIGRATIONS = {
-    'gemini-3-flash-preview': 'gemini-3.5-flash',
-    'gemini-3.1-flash-lite-preview': 'gemini-3.5-flash',
+    'gemini-3-flash-preview': 'gemini-3.8-flash',
+    'gemini-3.1-flash-lite-preview': 'gemini-3.8-flash',
+    // 2026-10：Google 把 gemini-3.5-flash 端點轉送到 3.6，最新免費穩定版是 3.8；
+    // 已存 storage 的舊值一律遷到 3.8（MIGRATIONS 只走一跳，上面兩行也直接指 3.8）
+    'gemini-3.5-flash': 'gemini-3.8-flash',
     // Groq 於 2026-07-17 下架 Llama 4 Scout（打舊 id 直接 HTTP 404），
     // 官方建議替代即 gpt-oss-120b；已存 storage 的舊值必須在這裡接住
     'groq:meta-llama/llama-4-scout-17b-16e-instruct': DEFAULT_MODEL,

@@ -12,7 +12,7 @@ const bodyHtml = html.slice(html.indexOf('<body'), html.lastIndexOf('</body>'))
   .replace(/<script[\s\S]*?<\/script>/g, '');
 
 const GROQ = 'groq:openai/gpt-oss-120b';
-const GEMINI = 'gemini-3.5-flash';
+const GEMINI = 'gemini-3.8-flash';
 const OPENROUTER = 'openrouter:google/gemma-4-31b-it:free';
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));

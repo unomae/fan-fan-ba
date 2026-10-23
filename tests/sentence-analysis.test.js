@@ -104,7 +104,7 @@ describe('長難句分析：完整請求路徑（mock 模型）', () => {
   });
 
   it('串流：Gemini 帶 systemInstruction 與 2048 額度', async () => {
-    chrome.storage.sync.get.mockResolvedValue({ model: 'gemini-3.5-flash' });
+    chrome.storage.sync.get.mockResolvedValue({ model: 'gemini-3.8-flash' });
     chrome.storage.local.get.mockResolvedValue({ apiKey: 'AIza_test' });
     const body = new ReadableStream({
       start(c) {

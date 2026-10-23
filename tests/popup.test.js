@@ -43,7 +43,7 @@ describe('Popup module', () => {
       expect(global.popupModule.MODELS).toBeDefined();
       expect(global.popupModule.MODELS.map(entry => entry.id)).toEqual([
         'groq:openai/gpt-oss-120b',
-        'gemini-3.5-flash',
+        'gemini-3.8-flash',
         'gemini-3.5-flash-lite',
         'openrouter:google/gemma-4-31b-it:free',
         'builtin:translator',

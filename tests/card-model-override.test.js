@@ -7,7 +7,7 @@ const {
 } = require('../background');
 
 const GROQ = 'groq:openai/gpt-oss-120b';
-const GEMINI = 'gemini-3.5-flash';
+const GEMINI = 'gemini-3.8-flash';
 
 beforeEach(() => jest.clearAllMocks());
 
