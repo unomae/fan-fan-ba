@@ -373,3 +373,45 @@ describe('說明精簡後的欄位狀態', () => {
     expect(chrome.storage.sync.set).not.toHaveBeenCalled();
   });
 });
+
+describe('報告補做：選項、變數、快捷鍵、內建動作', () => {
+  it('解釋語言選單第一項就標出建議值', async () => {
+    await loadOptions();
+    expect($('explanationLanguage').options[0].textContent).toBe('跟隨翻譯語言（建議）');
+  });
+
+  it('動作編輯器的變數按鈕與 AI 說明都不列 {{pageUrl}}', async () => {
+    await loadOptions();
+    const vars = [...$('actionVarButtons').querySelectorAll('button')].map(button => button.textContent);
+    expect(vars).toEqual(['{{selection}}', '{{context}}', '{{pageTitle}}', '{{targetLanguage}}']);
+    expect(options.buildActionAiGuideText()).not.toContain('pageUrl');
+  });
+
+  it('內建動作列有鎖頭標籤，滑過說明能改什麼', async () => {
+    await loadOptions();
+    tile('actions').click();
+    for (let i = 0; i < 3; i++) await flush();
+    const badge = document.querySelector('#actionList .action-row[data-id="translate"] .action-badge');
+    expect(badge.classList.contains('is-locked')).toBe(true);
+    expect(badge.title).toMatch(/只能停用或調整順序/);
+    expect($('btnCopyAiGuide').textContent).toBe('複製給 AI 的說明');
+  });
+
+  it('總覽頁尾顯示瀏覽器實際綁定的快捷鍵；沒綁的寫未設定，讀不到就整列收起', async () => {
+    chrome.commands.getAll.mockResolvedValueOnce([
+      { name: 'translate-selection', description: '翻譯選取文字', shortcut: 'Alt+S' },
+      { name: 'toggle-page-translation', description: '切換全文翻譯', shortcut: '' },
+      { name: '_execute_action', description: '', shortcut: 'Alt+F' }
+    ]);
+    await loadOptions();
+    expect($('overviewShortcuts').hidden).toBe(false);
+    expect($('overviewShortcutList').textContent).toBe('翻譯選取文字 Alt+S切換全文翻譯 未設定');
+    expect($('overviewShortcutList').querySelector('kbd.is-unset').textContent).toBe('未設定');
+
+    $('btnOpenShortcuts').click();
+    expect(chrome.tabs.create).toHaveBeenCalledWith({ url: 'chrome://extensions/shortcuts' });
+
+    options.renderOverviewShortcuts([]);
+    expect($('overviewShortcuts').hidden).toBe(true);
+  });
+});

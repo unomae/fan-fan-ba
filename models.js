@@ -183,7 +183,7 @@
   ];
 
   const EXPLANATION_LANGUAGE_OPTIONS = [
-    { id: 'target', name: '跟隨翻譯語言' },
+    { id: 'target', name: '跟隨翻譯語言（建議）' },
     { id: 'zh-TW', name: '繁體中文' },
     { id: 'en', name: '英文' }
   ];

@@ -81,6 +81,7 @@ initGlossaryEditor();
 initModelCompare();
 initFeatureBadges();
 initSettingsOverview();
+initOverviewShortcuts();
 
 // ── 單字本備份 / 還原（Phase B）──────────────────────
 function initVocabularyBackup() {
@@ -927,6 +928,36 @@ async function renderSettingsOverview() {
 function scheduleSettingsOverviewRender() {
   clearTimeout(overviewRenderTimer);
   overviewRenderTimer = setTimeout(() => { renderSettingsOverview(); }, OVERVIEW_RENDER_DELAY_MS);
+}
+
+// ── 總覽頁尾快捷鍵 ─────────────────────────────────
+// 顯示瀏覽器實際綁定的鍵（預設鍵可能沒綁上或被使用者改過）；讀不到就整列不顯示
+const OVERVIEW_SHORTCUT_COMMANDS = ['translate-selection', 'toggle-page-translation'];
+
+function renderOverviewShortcuts(commands = []) {
+  const row = $('overviewShortcuts');
+  const list = $('overviewShortcutList');
+  if (!row || !list) return;
+  const byName = new Map(commands.map(command => [command.name, command]));
+  const items = OVERVIEW_SHORTCUT_COMMANDS.map(name => byName.get(name)).filter(Boolean).map(command =>
+    Dom.ffbEl('span', null, [
+      `${command.description || command.name} `,
+      Dom.ffbEl('kbd', command.shortcut ? null : { class: 'is-unset' }, command.shortcut || '未設定')
+    ]));
+  Dom.ffbClear(list).append(...items);
+  row.hidden = !items.length;
+}
+
+async function initOverviewShortcuts() {
+  // chrome:// 頁面不能用一般連結開，要走 tabs.create
+  $('btnOpenShortcuts')?.addEventListener('click', () => chrome.tabs?.create({ url: 'chrome://extensions/shortcuts' }));
+  let commands = [];
+  try {
+    commands = (await chrome.commands?.getAll?.()) || [];
+  } catch {
+    commands = [];
+  }
+  renderOverviewShortcuts(commands);
 }
 
 function initSettingsOverview() {
@@ -2571,7 +2602,10 @@ function renderActionList() {
       Dom.ffbEl('span', { class: 'action-row-name' }, [
         ActionRender.buildCustomActionIcon(action.builtin ? builtinIconName(action.id) : action.icon, 16),
         Dom.ffbEl('span', null, action.name),
-        action.builtin && Dom.ffbEl('span', { class: 'action-badge' }, '內建'),
+        action.builtin && Dom.ffbEl('span', {
+          class: 'action-badge is-locked',
+          title: '內建動作只能停用或調整順序；要改內容請按「以此為範本」'
+        }, '內建'),
         badgeKind && buildFeatureBadge(badgeId, badgeKind)
       ]),
       up, down, ...buttons
@@ -2673,8 +2707,14 @@ function renderActionIconPicker() {
   }));
 }
 
+// 設定頁列出的變數：{{pageUrl}} 目前一律換成空白（content 刻意不送網址），不列出來免得誤用；
+// 已存在的動作照樣能用，驗證仍走 CustomActions.VARIABLES
+function getEditorActionVariables() {
+  return CustomActions.VARIABLES.filter(name => name !== 'pageUrl');
+}
+
 function renderActionVarButtons() {
-  Dom.ffbClear($('actionVarButtons')).append(...CustomActions.VARIABLES.map(name => {
+  Dom.ffbClear($('actionVarButtons')).append(...getEditorActionVariables().map(name => {
     const button = Dom.ffbEl('button', { class: 'btn-test', type: 'button', 'aria-label': `插入變數 ${name}` }, `{{${name}}}`);
     button.addEventListener('click', () => insertActionVariable(name));
     return button;
@@ -2860,8 +2900,8 @@ function buildActionAiGuideText() {
     '請依下面格式回覆，讓我逐欄貼進設定頁：',
     '- 名稱：最多 40 字',
     '- 系統提示（選填）：最多 4000 字，只能用變數 {{targetLanguage}}',
-    `- 使用者提示：最多 4000 字，可用變數 ${CustomActions.VARIABLES.map(name => `{{${name}}}`).join('、')}`,
-    '  （{{selection}} 是選取文字、{{context}} 是鄰近段落、{{pageTitle}} 是頁面標題、{{targetLanguage}} 是目標語言；{{pageUrl}} 目前一律是空白）',
+    `- 使用者提示：最多 4000 字，可用變數 ${getEditorActionVariables().map(name => `{{${name}}}`).join('、')}`,
+    '  （{{selection}} 是選取文字、{{context}} 是鄰近段落、{{pageTitle}} 是頁面標題、{{targetLanguage}} 是目標語言）',
     `- 輸出欄位：最多 ${CustomActions.MAX_FIELDS} 個，每個有「代號」（英文字母開頭，只能用英數與底線）、「名稱」、「說明」`,
     '- 版面三選一：',
     '  - 欄位卡：每個欄位一段',
@@ -2892,6 +2932,7 @@ if (typeof module !== 'undefined' && module.exports) {
     renderDictionaryModelSelect,
     renderFeatureActionModelRows,
     updateFeatureModelHints,
+    renderOverviewShortcuts,
     getFeatureModelGap,
     renderLanguageSelects,
     initSettingsTabs,

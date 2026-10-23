@@ -296,9 +296,49 @@
     .tile-status[data-kind="off"] { color: #5f6b7a; background: #eef0f3; }
 
     .overview-foot {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px 16px;
       color: var(--muted);
       font-size: 12px;
     }
+
+    .overview-shortcuts {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 10px;
+    }
+
+    .overview-shortcuts[hidden] { display: none; }
+    .overview-shortcuts-label { font-weight: 700; }
+    #overviewShortcutList { display: inline-flex; flex-wrap: wrap; gap: 6px 12px; }
+
+    .overview-shortcuts kbd {
+      font-family: inherit;
+      font-weight: 700;
+      padding: 0 5px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .overview-shortcuts kbd.is-unset { font-weight: 400; color: var(--muted); }
+
+    .link-button {
+      padding: 0;
+      color: var(--green-deep);
+      background: none;
+      border: 0;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .link-button:hover { text-decoration: underline; }
 
     .overview-foot a {
       color: var(--green-deep);
@@ -946,6 +986,16 @@
     .action-row-name { flex: 1; display: flex; align-items: center; gap: 6px; font-weight: 700; min-width: 0; }
     .action-row-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .action-badge { font-size: 11px; font-weight: 700; color: #666; background: #f0f0f0; border-radius: 999px; padding: 1px 8px; }
+    /* 內建動作的鎖頭：只能停用或調順序，內容要改請用「以此為範本」 */
+    .action-badge.is-locked { display: inline-flex; align-items: center; gap: 3px; cursor: help; }
+    .action-badge.is-locked::before {
+      content: "";
+      width: 9px;
+      height: 10px;
+      background: currentColor;
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 18 20%27%3E%3Cpath d=%27M4 8V6a5 5 0 0 1 10 0v2h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2zm2 0h6V6a3 3 0 0 0-6 0z%27/%3E%3C/svg%3E") center / contain no-repeat;
+      mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 18 20%27%3E%3Cpath d=%27M4 8V6a5 5 0 0 1 10 0v2h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2zm2 0h6V6a3 3 0 0 0-6 0z%27/%3E%3C/svg%3E") center / contain no-repeat;
+    }
     .action-row .btn-test { min-height: 30px; padding: 4px 10px; font-size: 12.5px; }
     .action-row.is-disabled .action-row-name { color: #999; }
     .action-status { font-size: 12px; color: #666; min-height: 16px; }
@@ -1312,9 +1362,14 @@
           </button>
         </div>
 
-        <p class="overview-foot">
-          <a href="welcome.html" target="_blank">使用說明與快捷鍵</a>・<a href="privacy-policy.html" target="_blank">隱私權政策</a>
-        </p>
+        <div class="overview-foot">
+          <div class="overview-shortcuts" id="overviewShortcuts" hidden>
+            <span class="overview-shortcuts-label">快捷鍵</span>
+            <span id="overviewShortcutList"></span>
+            <button class="link-button" id="btnOpenShortcuts" type="button">更改</button>
+          </div>
+          <p><a href="welcome.html" target="_blank">使用說明</a>・<a href="privacy-policy.html" target="_blank">隱私權政策</a></p>
+        </div>
       </nav>
 
       <div class="settings-main" id="settingsDetail" hidden>
@@ -1529,10 +1584,9 @@
               <ul class="action-list" id="actionList" aria-labelledby="actionListLabel"></ul>
               <div class="backup-actions">
                 <button class="btn-test" id="btnNewAction" type="button">新增自訂動作</button>
-                <button class="btn-test" id="btnCopyAiGuide" type="button" title="只把說明文字複製到剪貼簿，不呼叫 API">用 AI 協助設定</button>
+                <button class="btn-test" id="btnCopyAiGuide" type="button" title="複製一段說明，貼給任何 AI 請它幫你寫動作；不呼叫 API">複製給 AI 的說明</button>
               </div>
               <div class="action-status" id="actionListStatus" aria-live="polite"></div>
-              <details class="more-info"><summary>內建動作能改什麼？</summary><p>內建動作只能停用或調整順序，不能刪除或改 prompt；按「以此為範本」會建立一份可編輯的自訂動作。「用 AI 協助設定」只把說明文字複製到剪貼簿，貼給任何 AI 請它幫你寫，不呼叫 API。</p></details>
             </div>
 
             <form class="field full action-editor" id="actionEditor" hidden novalidate>
@@ -1557,7 +1611,7 @@
                   <label for="actionUserPrompt">使用者提示</label>
                   <div class="action-var-buttons" id="actionVarButtons" role="group" aria-label="插入變數"></div>
                   <textarea id="actionUserPrompt" rows="5" maxlength="4000" spellcheck="false"></textarea>
-                  <p class="field-note">網頁內容會自動標成「非指令」；<code>{{pageUrl}}</code> 目前替換成空白。</p>
+                  <p class="field-note">網頁內容會自動標成「非指令」。</p>
                 </div>
                 <div class="field full">
                   <label id="actionFieldsLabel">輸出欄位 <span class="hint">最多 8 個</span></label>
