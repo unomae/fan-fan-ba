@@ -94,6 +94,9 @@ module.exports = {
     // ── T4／T7：375 版面與拖曳 ──
     const CONTROLS = ['[data-action="library"]', '[data-action="vocab-highlight"]',
       '[data-action="page-translate"]', '[data-action="settings"]'];
+    // Windows 125% 縮放會讓貼齊右緣的元素量到 +0.2px（不到 1 個實體像素、看不到裁切），
+    // 所以「在畫面內」容許 0.5px；真的被裁或半藏是 +7.8／+24px 起跳，照樣會紅（2026-10-23 Win 查到）
+    const SUBPIXEL = 0.5;
     const overflow = (page, sel) => page.$eval(sel, el => {
       const r = el.getBoundingClientRect();
       return Math.round((r.right - window.innerWidth) * 10) / 10;
@@ -142,9 +145,9 @@ module.exports = {
       await web.close();
       // 收尾也清一次：別把拖過的位置留給下一輪或下一個 suite
       await opt.evaluate(() => chrome.storage.local.remove('fanFanBaFloatingPosition'));
-      const allIn = Object.values(four).every(v => typeof v === 'number' && v <= 0);
+      const allIn = Object.values(four).every(v => typeof v === 'number' && v <= SUBPIXEL);
       rec.pass('T4/T7 375 四鈕在畫面內、拖到上下緣不裁、桌機仍半藏',
-        idle <= 0 && allIn && top.top >= 0 && reachedBottom && bottom.bottom <= 0 && deskIdle > 0,
+        idle <= SUBPIXEL && allIn && top.top >= 0 && reachedBottom && bottom.bottom <= 0 && deskIdle > 0,
         `375 靜置主球溢出 ${idle}px／展開四鈕 ${JSON.stringify(four)}／拖上緣 top=${top.top}、拖下緣 bottom=${bottom.bottom}${reachedBottom ? '' : '（沒拖到底）'}／桌機 1280 靜置主球超出 ${deskIdle}px（＝半藏保留）`);
     } catch (e) { rec.fail('T4/T7 375 四鈕在畫面內、拖到上下緣不裁、桌機仍半藏', 'EXCEPTION ' + e.message); }
 

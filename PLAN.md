@@ -129,13 +129,6 @@
 
 > 來源：腳本驅動真 Chrome 156＋`C:/tmp/ffb-qa/p2`，網頁 developer.chrome.com 的 Translator API 文件與 Wikipedia。以下皆已重現。
 
-- **e2e T4/T7 浮球版面在 375 寬失敗（修改前的程式也一樣）**
-
-  - **目的**：窄螢幕的浮球與四個按鈕都在畫面內。
-  - **現況**：**根因已查到（2026-10-23 Win）：Windows 125% 顯示縮放造成的 0.2px 次像素誤差，不是版面錯。** Win 現況（Chrome for Testing 全新 profile 與品牌版 p2 結果相同）只剩「375 靜置主球溢出 0.2px」不過；四鈕 -7.8（在畫面內）、拖上下緣 top=0／bottom=0、桌機半藏 24px 都正常。強制 DPR 1 時溢出 0、1.25 時 0.2（對照實驗見該 commit）；Mac 不縮放所以 13/13。
-  - **接續**：〔待裁決〕修法二選一：A 測試的溢出判準容許 0.5px 次像素誤差（半藏是 +24px，突變仍會轉紅）；B harness 啟動時加 `--force-device-scale-factor=1`，讓各機 DPR 一致。修完在 Win 重跑 T4/T7 要 13/13。
-  - **詳情**：`e2e/suites/ui-panels.js` 的 T4/T7；`content/floating-ball.js` 的 `clampFloatingBallTop`
-
 - **先前在 p2 跑的 e2e 沒測到現行 background**
 
   - **目的**：e2e 結果要對應現行程式。
