@@ -102,7 +102,7 @@ function initVocabularyBackup() {
 function formatSnapshotLabel({ slot, savedAt, count }) {
   const when = Date.parse(savedAt || '') ? new Date(savedAt).toLocaleString() : '時間未知';
   const which = slot === 'prev' ? '較舊' : '最近';
-  return `還原${which}快照（${when}・${count} 個單字）`;
+  return `還原${which}快照（${when}，${count} 個單字）`;
 }
 
 async function renderVocabularySnapshots() {
@@ -349,7 +349,7 @@ function formatDiagnosticsSummary(d = Storage.emptyDiagnostics(), note = '') {
     `全文翻譯 ${d.pageTranslations}`,
     `失敗 ${d.errors}`
   ];
-  return `${note ? note + ' ' : ''}自 ${sinceText} 起：${parts.join(' · ')}`;
+  return `${note ? note + ' ' : ''}自 ${sinceText} 起：${parts.join('、')}`;
 }
 
 function formatDiagnosticsDate(value = '') {
@@ -712,7 +712,6 @@ function activateSettingsPanel(panelName, { updateHistory = true } = {}) {
 
   if ($('settingsOverview')) $('settingsOverview').hidden = true;
   if ($('settingsDetail')) $('settingsDetail').hidden = false;
-  if ($('crumbCurrent')) $('crumbCurrent').textContent = settingsPanelTitle(panelName);
   if ($('saveButtons')) $('saveButtons').hidden = !SAVE_BUTTON_PANELS.has(panelName);
   // 從總覽下方的卡片點進來時，詳細頁開頭可能在視窗外
   const detail = $('settingsDetail');
@@ -788,8 +787,6 @@ function buildSettingsOverview(data = {}, now = Date.now()) {
   const modelName = ModelRegistry.getModelDisplayName(model);
   const provider = ModelRegistry.PROVIDERS[ModelRegistry.getProvider(model)];
   const mainGap = getSavedModelKeyGap(model, settings, secrets);
-  const keyNames = [...new Set(Object.values(ModelRegistry.PROVIDERS).map(item => item.apiKeyName).filter(Boolean))];
-  const keyCount = keyNames.filter(name => String(secrets[name] || '').trim()).length;
   // 大卡片上逐家列出金鑰有沒有填；自訂端點沒設網址時不列
   const keys = Object.values(ModelRegistry.PROVIDERS)
     .filter(item => item.apiKeyName && (!item.userConfigured || String(settings.customApiBase || '').trim()))
@@ -811,18 +808,14 @@ function buildSettingsOverview(data = {}, now = Date.now()) {
   const sites = glossary ? glossary.sites.length : 0;
   const backupDays = formatBackupAge(lastBackupAt, now);
 
-  let cloudStat = '—';
   let cloudTile = { summary: '同步狀態讀取失敗' };
   if (cloud && !cloud.configured) {
-    cloudStat = '未設定';
     cloudTile = { summary: '尚未完成 Google OAuth 設定', status: ['off', '未設定'] };
   } else if (cloud) {
-    cloudStat = cloud.meta?.signedIn ? '已登入' : '未登入';
     cloudTile = { summary: formatCloudSyncSummary(cloud.meta || {}), status: cloud.meta?.signedIn ? ['ok', '已登入'] : ['off', '未登入'] };
   }
 
   return {
-    stats: { model: modelName, keys: `${keyCount} 把`, cloud: cloudStat },
     keys,
     attention,
     tiles: {
@@ -831,13 +824,13 @@ function buildSettingsOverview(data = {}, now = Date.now()) {
         status: mainGap ? ['warn', mainGap] : provider?.keyless ? ['ok', '不需金鑰'] : ['ok', '金鑰已設定']
       },
       language: {
-        summary: `翻譯成 ${language?.name || '繁體中文'}・單字高亮${settings.vocabularyHighlightMode === 'auto' ? '開啟' : '關閉'}`
+        summary: `翻譯成 ${language?.name || '繁體中文'}，單字高亮${settings.vocabularyHighlightMode === 'auto' ? '開啟' : '關閉'}`
       },
       actions: { summary: enabledActions === null ? '動作清單讀取失敗' : `${enabledActions} 個動作啟用中` },
       glossary: {
-        summary: terms === null ? '術語表讀取失敗' : terms ? `${terms} 筆術語${sites ? `・限 ${sites} 個網站` : ''}` : '還沒有術語'
+        summary: terms === null ? '術語表讀取失敗' : terms ? `${terms} 筆術語${sites ? `，限 ${sites} 個網站` : ''}` : '還沒有術語'
       },
-      compare: { summary: '同一段文字並排比較多個模型的譯文' },
+      compare: { summary: '' },
       obsidian: { summary: settings.obsidianVault ? `Vault：${settings.obsidianVault}` : '存到目前開啟的 Vault' },
       backup: backupDays === null
         ? { summary: '單字本還沒匯出過備份', status: ['off', '未備份'] }
@@ -846,7 +839,7 @@ function buildSettingsOverview(data = {}, now = Date.now()) {
           ...(backupDays >= VOCAB_BACKUP_STALE_DAYS ? { status: ['warn', `超過 ${VOCAB_BACKUP_STALE_DAYS} 天`] } : {})
         },
       cloud: cloudTile,
-      privacy: { summary: 'API Key 只存在本機；診斷資料可隨時清除' }
+      privacy: { summary: '' }
     }
   };
 }
@@ -882,10 +875,6 @@ async function renderSettingsOverview() {
   const overview = buildSettingsOverview(await loadSettingsOverviewData());
   // 連續觸發時只畫最後一次讀到的資料
   if (seq !== overviewRenderSeq) return overview;
-
-  if ($('overviewStatModel')) $('overviewStatModel').textContent = overview.stats.model;
-  if ($('overviewStatKeys')) $('overviewStatKeys').textContent = overview.stats.keys;
-  if ($('overviewStatCloud')) $('overviewStatCloud').textContent = overview.stats.cloud;
 
   Object.entries(overview.tiles).forEach(([panelName, tile]) => {
     const summary = document.querySelector(`[data-summary-for="${panelName}"]`);
@@ -1113,7 +1102,7 @@ function renderSettingsSearchResults() {
 function jumpToSettingsSearchResult(entry) {
   if (!entry) return false;
   activateSettingsPanel(entry.panel);
-  const block = entry.target.closest('tr, .provider-card, .field, .security-note, .panel-head') || entry.target;
+  const block = entry.target.closest('tr, .provider-card, .field, .info-block, .panel-head') || entry.target;
   block.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
   // 欄位標籤直接把焦點交給對應的輸入框，跳過去就能改
   const control = entry.target.htmlFor ? $(entry.target.htmlFor) : null;
@@ -2445,11 +2434,11 @@ function buildCompareCard(modelId) {
 function fillCompareCard(card, outcome) {
   card.el.classList.toggle('is-error', !!outcome.error);
   if (outcome.error) {
-    card.meta.textContent = `失敗 · ${formatCompareSeconds(outcome.ms)}`;
+    card.meta.textContent = `失敗，${formatCompareSeconds(outcome.ms)}`;
     card.output.textContent = outcome.error;
     return;
   }
-  card.meta.textContent = [formatCompareSeconds(outcome.ms), outcome.notice].filter(Boolean).join(' · ');
+  card.meta.textContent = [formatCompareSeconds(outcome.ms), outcome.notice].filter(Boolean).join('，');
   card.output.textContent = outcome.result;
 }
 
@@ -2558,7 +2547,7 @@ function setActionListStatus(message, isError = false) {
   const el = $('actionListStatus');
   if (!el) return;
   el.textContent = message;
-  el.style.color = isError ? '#b3261e' : '';
+  el.classList.toggle('is-error', isError);
 }
 
 function renderActionList() {
@@ -2937,6 +2926,7 @@ if (typeof module !== 'undefined' && module.exports) {
     renderLanguageSelects,
     initSettingsTabs,
     activateSettingsPanel,
+    settingsPanelTitle,
     showSettingsOverview,
     routeSettingsFromHash,
     buildSettingsOverview,

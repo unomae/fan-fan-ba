@@ -11,16 +11,19 @@ initPopup();
 
 async function initPopup() {
   const [sync, secrets] = await Promise.all([
-    chrome.storage.sync.get(['model', 'obsidianVault', 'obsidianDefaultFolder']),
-    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', ttsApiKey: '' })
+    chrome.storage.sync.get(['model']),
+    Storage.getSecrets(getKeyDefaults())
   ]);
-  const settings = { ...sync, ...secrets };
   const current = ModelRegistry.normalizeModel(sync.model);
   if (sync.model && current !== sync.model) chrome.storage.sync.set({ model: current });
   renderModels(current);
-  renderApiStatus(current, settings);
-  renderPopupOverview(current, settings);
+  renderKeyAlert(current, secrets);
   renderShortcuts(await loadShortcuts());
+}
+
+function getKeyDefaults() {
+  return Object.fromEntries(Object.values(ModelRegistry.PROVIDERS)
+    .map(info => info.apiKeyName).filter(Boolean).map(name => [name, '']));
 }
 
 // ── 渲染模型列表 ──────────────────────────────────────
@@ -38,14 +41,14 @@ function renderModels(currentId) {
     item.setAttribute('aria-checked', m.id === currentId ? 'true' : 'false');
 
     item.innerHTML = `
-      <div class="model-dot"></div>
-      <div class="model-info">
-        <div style="display:flex;align-items:center;justify-content:space-between;">
+      <span class="model-dot"></span>
+      <span class="model-info">
+        <span class="model-title">
           <span class="model-name">${m.name}</span>
-          <span class="model-badge ${m.badgeClass}">${m.badge}</span>
-        </div>
-        <div class="model-desc">${m.desc}</div>
-      </div>
+          <span class="model-badge">${m.badge}</span>
+        </span>
+        <span class="model-desc">${m.desc}</span>
+      </span>
     `;
 
     item.addEventListener('click', () => selectModel(m.id, item));
@@ -64,6 +67,7 @@ function renderModels(currentId) {
 }
 
 // ── 切換模型 ──────────────────────────────────────────
+// 選中狀態本身就是回饋，不另外跳「已切換」
 function selectModel(id, clickedItem) {
   chrome.storage.sync.set({ model: id }, async () => {
     document.querySelectorAll('.model-item').forEach(el => {
@@ -72,73 +76,27 @@ function selectModel(id, clickedItem) {
     });
     clickedItem.classList.add('active');
     clickedItem.setAttribute('aria-checked', 'true');
-
-    const msg = document.getElementById('save-msg');
-    msg.classList.add('show');
-    setTimeout(() => msg.classList.remove('show'), 1500);
-
-    const [sync, secrets] = await Promise.all([
-      chrome.storage.sync.get(['obsidianVault', 'obsidianDefaultFolder']),
-      Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', ttsApiKey: '' })
-    ]);
-    const settings = { ...sync, ...secrets };
-    renderApiStatus(id, settings);
-    renderPopupOverview(id, settings);
+    renderKeyAlert(id, await Storage.getSecrets(getKeyDefaults()));
   });
 }
 
-function getApiKeyStatus(model, sync) {
+function getApiKeyStatus(model, secrets) {
   const provider = ModelRegistry.getProvider(model);
   // key 欄位名單一來源：ModelRegistry.PROVIDERS（WS-E M3''）
   // keyless provider（瀏覽器內建）沒有 key 可言，一律視為就緒，否則會顯示假的「缺 key」
   const info = ModelRegistry.PROVIDERS[provider] || ModelRegistry.PROVIDERS.gemini;
-  const hasKey = info.keyless ? true : !!sync[info.apiKeyName];
+  const hasKey = info.keyless ? true : !!secrets[info.apiKeyName];
   return { provider, hasKey };
 }
 
-// ── API Key 狀態指示燈 ────────────────────────────────
-function renderApiStatus(model, sync) {
-  const dot   = document.getElementById('apiDot');
-  const label = document.getElementById('apiLabel');
-  const { hasKey } = getApiKeyStatus(model, sync);
-  dot.className = 'api-dot ' + (hasKey ? 'ok' : 'err');
-  label.textContent = hasKey ? 'API Key 已設定' : '尚未設定 API Key';
-}
-
-function setStatusElement(dotId, textId, state, text) {
-  const dot = document.getElementById(dotId);
-  const label = document.getElementById(textId);
-  if (dot) dot.className = `health-dot ${state}`;
-  if (label) {
-    label.className = `health-value ${state}`;
-    label.textContent = text;
-  }
-}
-
-function renderPopupOverview(model, sync = {}) {
-  const selected = ModelRegistry.getModel(model);
-  const { provider, hasKey } = getApiKeyStatus(model, sync);
-  const providerLabel = ModelRegistry.PROVIDERS[provider]?.label || 'Model';
-  const hasTts = !!sync.ttsApiKey;
-  const hasObsidian = !!(sync.obsidianVault || sync.obsidianDefaultFolder);
-
-  const name = document.getElementById('currentModelName');
-  const meta = document.getElementById('currentModelMeta');
-  const providerEl = document.getElementById('currentProvider');
-  if (name) name.textContent = selected.name;
-  if (meta) meta.textContent = selected.desc;
-  if (providerEl) providerEl.textContent = providerLabel;
-
-  const state = document.getElementById('popupState');
-  const stateText = document.getElementById('popupStateText');
-  if (state && stateText) {
-    state.className = `state-pill ${hasKey ? '' : 'err'}`.trim();
-    stateText.textContent = hasKey ? '可正常使用' : `缺少 ${providerLabel} Key`;
-  }
-
-  setStatusElement('healthApiDot', 'healthApiText', hasKey ? 'ok' : 'err', hasKey ? 'OK' : '未設定');
-  setStatusElement('healthTtsDot', 'healthTtsText', hasTts ? 'ok' : 'warn', hasTts ? 'Cloud' : '內建');
-  setStatusElement('healthObsidianDot', 'healthObsidianText', hasObsidian ? 'ok' : 'warn', hasObsidian ? '已設定' : '未設定');
+// ── 缺金鑰提醒：只有選的模型用不了時才出現 ──────────────
+function renderKeyAlert(model, secrets = {}) {
+  const alert = document.getElementById('keyAlert');
+  const text = document.getElementById('keyAlertText');
+  if (!alert || !text) return;
+  const { provider, hasKey } = getApiKeyStatus(model, secrets);
+  alert.hidden = hasKey;
+  text.textContent = hasKey ? '' : `缺少 ${ModelRegistry.PROVIDERS[provider]?.label || ''} API Key`;
 }
 
 // ── 快捷鍵 ────────────────────────────────────────────
@@ -179,9 +137,14 @@ document.getElementById('openShortcuts')?.addEventListener('click', () => {
   chrome.tabs.create({ url: SHORTCUTS_PAGE_URL });
 });
 
-// ── 開啟完整設定頁 ────────────────────────────────────
+// ── 開啟設定頁 ────────────────────────────────────────
 document.getElementById('openOptions').addEventListener('click', () => {
   chrome.runtime.openOptionsPage();
 });
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { initPopup, renderModels, selectModel, renderApiStatus, renderPopupOverview, getApiKeyStatus, renderShortcuts, loadShortcuts, SHORTCUTS_PAGE_URL, MODELS }; }
+// 直接開到「模型與金鑰」分類（設定頁認網址 #分類）
+document.getElementById('keyAlertAction')?.addEventListener('click', () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL('options.html#model') });
+});
+
+if (typeof module !== 'undefined' && module.exports) { module.exports = { initPopup, renderModels, selectModel, renderKeyAlert, getApiKeyStatus, renderShortcuts, loadShortcuts, SHORTCUTS_PAGE_URL, MODELS }; }

@@ -11,8 +11,28 @@
 |------|------|
 | **輕量不打擾** | UI 只在需要時出現，不佔用主視覺空間 |
 | **即時回饋** | 所有互動（hover / click / 載入）必須有視覺回應 |
-| **品牌一致** | 綠黃漸層貫穿全 UI，讓使用者一眼認出翻翻吧 |
+| **品牌一致** | 品牌綠只用在主要動作、選中狀態與連結，不做大面積漸層 |
 | **白底頁面，毛玻璃浮層** | 全頁面（popup / options / welcome）用白底；content script 浮層（工具列 / 結果卡）用 Glassmorphism |
+
+---
+
+## 1.5 全頁面 UI 規範（popup、設定頁，2026-10-23 起）
+
+popup 與設定頁改用 `ui-tokens.css`（兩頁共用，`npm run package` 會一起打包）。這一節優先於下面第 2～7 節裡跟全頁面有關的舊色碼與尺寸；**浮層（content.css）與歡迎頁還沒跟上**，仍照舊節。
+
+| 項目 | 規則 |
+|------|------|
+| 色彩 | 只用 Radix Colors v3：`lime` 品牌、`olive` 中性、`amber` 警告、`red` 錯誤、`blue` 資訊與「新增」標籤。照 Radix 階層用：1–2 頁面底、3–5 元件底（一般／hover／按下）、6–8 邊框、9–10 實心、11–12 文字。頁面不寫色碼，用 token（`--text`、`--text-muted`、`--accent-text`、`--warn-soft`…） |
+| 主按鈕 | `--accent-solid`（lime 9）底配 `--accent-on-solid`（lime 12）字；lime 9 很亮，不能配白字 |
+| 深色模式 | 只在 `ui-tokens.css` 換成 Radix dark 色值，頁面不另寫暗色規則 |
+| 線條 | `var(--hairline)`，1px（KAKA 2026-10-23 選回上一版的視覺，不用 0.5px） |
+| 視覺氛圍 | 保留上一版：頁面淡黃／淡綠光暈背景（`--page-bg`）、毛玻璃外框加陰影（`--shell-bg`、`--shadow-shell`）、模型大卡淡綠漸層、推薦供應商卡淡綠底、次要按鈕淡綠、狀態標籤膠囊形。色值全部換成 Radix token |
+| 字級 | 設定頁四種：頁首 24、分類標題 22、內文 14、輔助 12；popup 三種：14、13、12。最小 12px |
+| 圓角 | 外框 16、總覽卡片 14、提醒列 10、欄位／按鈕／一般卡片 8、膠囊標籤 999 |
+| 陰影 | 外框、logo、卡片 hover 用 token 陰影；深色模式只留外框陰影。不加左側色條 |
+| 動畫 | 卡片 hover 上浮 1px（250ms ease-out）、按鈕按下縮放、popup logo 綠黃光暈（`prefers-reduced-motion` 時關閉）、搜尋跳轉高亮。狀態燈脈衝已拿掉 |
+| 文案 | 不用「·」「・」當分隔，改用逗號、頓號或排版。不放重複標題的說明句、裝飾性標籤（eyebrow、panel-badge）；限制條件（最多 20 個）寫在欄位標籤的 `.hint` |
+| 提醒 | 只在功能會壞掉時出現（例：選的模型缺金鑰），放在使用者要處理的位置，附一個直達按鈕 |
 
 ---
 
@@ -69,7 +89,7 @@
 
 ### 浮層 UI 深色模式（第一階段）
 
-系統設定為深色時（`@media (prefers-color-scheme: dark)`），工具列、結果卡（含單字本面板）、浮球與選單、單字高亮提示、全文翻譯控制面板換成下表的暗色。亮色規則不動；token 定義在這五個元件的根節點（`#gemini-ai-toolbar`、`#gemini-result-card`、`#fanfanba-floating`、`.g-vocab-highlight-tip`、`.ffb-page-translation-panel`），不寫在頁面 `:root`。插進網頁的譯文段落與單字高亮標記不在本階段，它們依頁面底色自己調對比。設定頁（`options.html`）2026-10-23 跟上：同一組 token 寫在 `options.html` 的深色 media query 裡，因為設定頁是獨立頁面，可以放 `:root`；popup、welcome 還沒做。
+系統設定為深色時（`@media (prefers-color-scheme: dark)`），工具列、結果卡（含單字本面板）、浮球與選單、單字高亮提示、全文翻譯控制面板換成下表的暗色。亮色規則不動；token 定義在這五個元件的根節點（`#gemini-ai-toolbar`、`#gemini-result-card`、`#fanfanba-floating`、`.g-vocab-highlight-tip`、`.ffb-page-translation-panel`），不寫在頁面 `:root`。插進網頁的譯文段落與單字高亮標記不在本階段，它們依頁面底色自己調對比。設定頁與 popup 的深色模式改由 `ui-tokens.css` 的 Radix dark 色值負責（見 1.5 節），不用下表；welcome 還沒做。
 
 | Token | 值 | 用途 |
 |------|----|------|
@@ -422,17 +442,16 @@ width: 6px; height: 6px; border-radius: 50%;
 ### 設定頁（options）
 
 ```
-body（微綠漸層背景）
+body（--page 底色）
 ├── .app-header（icon + 標題 ＋ 搜尋框 Ctrl/⌘K）
-└── .settings-shell（白底、圓角 16px、陰影）
+└── .settings-shell（--surface 底、圓角 12px、細線外框）
     ├── nav.settings-overview（總覽，預設顯示）
-    │   ├── .overview-stats（預設模型／已填金鑰數／雲端同步）
     │   ├── .overview-unsaved（有未儲存的變更時出現）
     │   ├── .overview-attention（只放「功能會壞掉」的提醒，例如預設模型缺金鑰）
     │   └── .overview-grid（9 張 .settings-tab.tile；模型卡 .is-large 佔 2×2）
     └── .settings-main（詳細頁，點卡片或網址 #分類 進入）
-        ├── .settings-crumb（← 總覽 / 分類名稱）
-        ├── .settings-panel（一次只顯示一個；欄位說明最多一行 .field-note，細節收進 details.more-info）
+        ├── .settings-crumb（只有「← 返回總覽」；分類名稱由面板標題表達）
+        ├── .settings-panel（一次只顯示一個；h2 與總覽卡片名稱相同；欄位說明最多一行 .field-note，細節收進 details.more-info）
         └── .settings-actions（sticky 底部儲存列；不經儲存鈕的分類只留狀態訊息）
 ```
 
@@ -455,11 +474,11 @@ body（#f5f7f2 背景）
 ### Popup
 
 ```
-body（#fff，width: 260px）
-├── .header（icon 光暈 + 標題）
-├── .section（模型清單）
-├── #save-msg（切換提示）
-└── .footer（API 狀態燈 + 設定連結）
+body（--page 底色，width: 304px）
+├── .header（icon + 標題 + 「設定」）
+├── .alert#keyAlert（只在選的模型缺金鑰時出現，「填寫金鑰」直達設定頁 #model）
+├── .section（「模型」單選清單；右側標籤是供應商名稱）
+└── .shortcuts（「快捷鍵」＋「變更」）
 ```
 
 ---

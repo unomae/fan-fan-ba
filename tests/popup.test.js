@@ -2,32 +2,12 @@ describe('Popup module', () => {
   beforeAll(() => {
     document.body.innerHTML = `
       <div id="modelList"></div>
-      <div id="apiDot"></div>
-      <div id="apiLabel"></div>
-      <div id="popupState"></div>
-      <div id="popupStateText"></div>
-      <div id="currentModelName"></div>
-      <div id="currentModelMeta"></div>
-      <div id="currentProvider"></div>
-      <div id="healthApiDot"></div>
-      <div id="healthApiText"></div>
-      <div id="healthTtsDot"></div>
-      <div id="healthTtsText"></div>
-      <div id="healthObsidianDot"></div>
-      <div id="healthObsidianText"></div>
-      <div id="save-msg"></div>
+      <div id="keyAlert" hidden><span id="keyAlertText"></span><button id="keyAlertAction"></button></div>
       <button id="openOptions"></button>
       <div id="shortcutList"></div>
       <button id="openShortcuts"></button>
     `;
     global.popupModule = require('../popup');
-  });
-
-  describe('renderApiStatus', () => {
-    it('should show ok if key is set', () => {
-      global.popupModule.renderApiStatus('gemini-3', { apiKey: '123' });
-      expect(document.getElementById('apiDot').className).toContain('ok');
-    });
   });
 
   describe('keyless provider', () => {
@@ -43,7 +23,7 @@ describe('Popup module', () => {
       expect(global.popupModule.MODELS).toBeDefined();
       expect(global.popupModule.MODELS.map(entry => entry.id)).toEqual([
         'groq:openai/gpt-oss-120b',
-        'gemini-3.5-flash',
+        'gemini-3.8-flash',
         'gemini-3.5-flash-lite',
         'openrouter:google/gemma-4-31b-it:free',
         'builtin:translator',
@@ -65,27 +45,22 @@ describe('Popup module', () => {
     });
   });
 
-  describe('renderPopupOverview', () => {
-    it('should summarize usable state and optional integrations', () => {
-      const model = global.popupModule.MODELS[0].id;
-      global.popupModule.renderPopupOverview(model, {
-        groqApiKey: 'gsk_test',
-        ttsApiKey: 'AIza-test',
-        obsidianDefaultFolder: 'Reading'
-      });
-
-      expect(document.getElementById('popupStateText').textContent).toBe('可正常使用');
-      expect(document.getElementById('healthApiText').textContent).toBe('OK');
-      expect(document.getElementById('healthTtsText').textContent).toBe('Cloud');
-      expect(document.getElementById('healthObsidianText').textContent).toBe('已設定');
+  describe('renderKeyAlert', () => {
+    it('選的模型有金鑰時不顯示提醒', () => {
+      global.popupModule.renderKeyAlert(global.popupModule.MODELS[0].id, { groqApiKey: 'gsk_test' });
+      expect(document.getElementById('keyAlert').hidden).toBe(true);
     });
 
-    it('should show missing key for the selected provider', () => {
-      const model = global.popupModule.MODELS[0].id;
-      global.popupModule.renderPopupOverview(model, {});
+    it('缺金鑰時點名缺哪一家', () => {
+      global.popupModule.renderKeyAlert(global.popupModule.MODELS[0].id, {});
+      expect(document.getElementById('keyAlert').hidden).toBe(false);
+      expect(document.getElementById('keyAlertText').textContent).toBe('缺少 Groq API Key');
+    });
 
-      expect(document.getElementById('popupStateText').textContent).toBe('缺少 Groq Key');
-      expect(document.getElementById('healthApiText').className).toContain('err');
+    it('「填寫金鑰」直接開到設定頁的模型分類', () => {
+      chrome.runtime.getURL = jest.fn(path => `chrome-extension://id/${path}`);
+      document.getElementById('keyAlertAction').click();
+      expect(chrome.tabs.create).toHaveBeenCalledWith({ url: 'chrome-extension://id/options.html#model' });
     });
   });
 

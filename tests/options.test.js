@@ -145,14 +145,14 @@ describe('Options module', () => {
 
     // 全文翻譯「跟隨主模型」存成空字串；匯入時若被正規化成預設模型，主模型不是 Groq 的人會被改成固定 Groq
     it('匯入時全文翻譯「跟隨主模型」（空字串）保留，指定的舊 id 照常遷移', () => {
-      const follow = global.optionsModule.normalizeImportedSettings({ model: 'gemini-3.5-flash', pageTranslationModel: '' });
+      const follow = global.optionsModule.normalizeImportedSettings({ model: 'gemini-3.8-flash', pageTranslationModel: '' });
       expect(follow.pageTranslationModel).toBe('');
       const legacy = global.optionsModule.normalizeImportedSettings({ pageTranslationModel: 'openrouter/free' });
       expect(legacy.pageTranslationModel).toBe('openrouter:google/gemma-4-31b-it:free');
     });
 
     it('exports API keys as encrypted secrets when a backup password is provided', async () => {
-      chrome.storage.sync.get.mockResolvedValueOnce({ model: 'gemini-3.5-flash' });
+      chrome.storage.sync.get.mockResolvedValueOnce({ model: 'gemini-3.8-flash' });
       chrome.storage.local.get.mockResolvedValueOnce({
         groqApiKey: 'gsk-test',
         openrouterApiKey: ''
@@ -196,7 +196,7 @@ describe('Options module', () => {
           app: 'fan-fan-ba',
           schemaVersion: 1,
           settings: {
-            model: 'gemini-3.5-flash'
+            model: 'gemini-3.8-flash'
           },
           secretsEncrypted: encrypted
         }))
@@ -206,7 +206,7 @@ describe('Options module', () => {
         password: 'safe-passphrase'
       });
 
-      expect(chrome.storage.sync.set).toHaveBeenCalledWith({ model: 'gemini-3.5-flash' });
+      expect(chrome.storage.sync.set).toHaveBeenCalledWith({ model: 'gemini-3.8-flash' });
       expect(chrome.storage.local.set).toHaveBeenCalledWith({ groqApiKey: 'gsk-test' });
       expect(result).toEqual({ settingsCount: 1, secretsCount: 1 });
     });
@@ -238,7 +238,7 @@ describe('Options module', () => {
           app: 'fan-fan-ba',
           schemaVersion: 1,
           settings: {
-            model: 'gemini-3.5-flash',
+            model: 'gemini-3.8-flash',
             obsidianDefaultFolder: '30_Knowledge/my-notes/languages/vocabulary'
           },
           secrets: {
@@ -251,7 +251,7 @@ describe('Options module', () => {
       const result = await global.optionsModule.importSettingsBackupFile(file);
 
       expect(chrome.storage.sync.set).toHaveBeenCalledWith({
-        model: 'gemini-3.5-flash',
+        model: 'gemini-3.8-flash',
         obsidianDefaultFolder: '30_Knowledge/my-notes/languages/vocabulary'
       });
       expect(chrome.storage.local.set).toHaveBeenCalledWith({ groqApiKey: 'gsk-test' });
@@ -360,7 +360,7 @@ describe('Options module', () => {
       try {
         global.optionsModule.renderModelSelect();
         global.optionsModule.renderPageTranslationModelSelect();
-        document.getElementById('model').value = 'gemini-3.5-flash';
+        document.getElementById('model').value = 'gemini-3.8-flash';
         document.getElementById('apiKey').value = 'AIzaTestKeyValue';
         document.getElementById('pageTranslationModel').value = 'builtin:translator';
         document.getElementById('btnSave').click();
@@ -589,7 +589,7 @@ describe('Options module', () => {
         modifiedTime: '2026-06-08T12:00:00.000Z'
       });
       const downloadSpy = jest.spyOn(CloudSync, 'downloadCloudSettings').mockResolvedValue({
-        settings: { model: 'gemini-3.5-flash' }
+        settings: { model: 'gemini-3.8-flash' }
       });
       chrome.runtime.getManifest.mockReturnValue({
         version: '1.8.6',
@@ -608,7 +608,7 @@ describe('Options module', () => {
         expect(findSpy).toHaveBeenCalledWith('token-test');
         expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('覆寫這台裝置目前的一般設定'));
         expect(downloadSpy).not.toHaveBeenCalled();
-        expect(chrome.storage.sync.set).not.toHaveBeenCalledWith({ model: 'gemini-3.5-flash' });
+        expect(chrome.storage.sync.set).not.toHaveBeenCalledWith({ model: 'gemini-3.8-flash' });
         expect(document.getElementById('cloudSyncStatus').textContent).toContain('已取消下載');
       } finally {
         window.confirm = originalConfirm;

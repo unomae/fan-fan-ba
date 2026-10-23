@@ -34,8 +34,8 @@ describe('provider endpoint URL 斷言', () => {
 
   test('gemini 模型 → generativelanguage generateContent，key 走 header 不進 URL', async () => {
     global.fetch.mockResolvedValue(okGemini);
-    await handleAIRequest({ action: 'translate', selectedText: 'hi', model: 'gemini-3.5-flash' });
-    expect(global.fetch.mock.calls[0][0]).toBe(`${M.PROVIDERS.gemini.apiBase}/gemini-3.5-flash:generateContent`);
+    await handleAIRequest({ action: 'translate', selectedText: 'hi', model: 'gemini-3.8-flash' });
+    expect(global.fetch.mock.calls[0][0]).toBe(`${M.PROVIDERS.gemini.apiBase}/gemini-3.8-flash:generateContent`);
     expect(global.fetch.mock.calls[0][1].headers['x-goog-api-key']).toBe('AIza-dummy');
   });
 
@@ -90,9 +90,9 @@ describe('串流軌 provider endpoint URL 斷言', () => {
   });
 
   test('gemini 模型 → streamGenerateContent?alt=sse，key 走 header 不進 URL', async () => {
-    await stream('gemini-3.5-flash');
+    await stream('gemini-3.8-flash');
     expect(global.fetch.mock.calls[0][0])
-      .toBe(`${M.PROVIDERS.gemini.apiBase}/gemini-3.5-flash:streamGenerateContent?alt=sse`);
+      .toBe(`${M.PROVIDERS.gemini.apiBase}/gemini-3.8-flash:streamGenerateContent?alt=sse`);
     expect(global.fetch.mock.calls[0][1].headers['x-goog-api-key']).toBe('AIza-dummy');
     expect(global.fetch.mock.calls[0][0]).not.toContain('AIza-dummy');
   });

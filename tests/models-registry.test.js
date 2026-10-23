@@ -24,6 +24,16 @@ describe('model registry 閉合性', () => {
     });
   });
 
+  // 2026-10：3.5 Flash 升 3.8；已存設定與更早的 preview id 都要一跳直達 3.8
+  test('舊 Gemini Flash id 遷移到 gemini-3.8-flash', () => {
+    ['gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-3.1-flash-lite-preview'].forEach(legacy => {
+      expect(M.normalizeModel(legacy)).toBe('gemini-3.8-flash');
+      expect(M.toApiModelId(legacy)).toBe('gemini-3.8-flash');
+    });
+    // Flash-Lite 仍是最新的 Lite，不得被誤遷
+    expect(M.normalizeModel('gemini-3.5-flash-lite')).toBe('gemini-3.5-flash-lite');
+  });
+
   test('遺留 no-prefix id（gemini-2.5-flash）：顯示與路由同向', () => {
     const legacy = 'gemini-2.5-flash';
     expect(M.getProvider(legacy)).toBe('gemini');
@@ -62,8 +72,8 @@ describe('模型備援觸發條件（Groq／OpenRouter 共用）', () => {
   });
 
   test('Gemini 沒有登記備援模型：任何錯誤都不備援', () => {
-    expect(M.getFallbackModelId('gemini-3.5-flash')).toBe('');
-    expect(M.shouldFallbackModel('gemini-3.5-flash', 404, '')).toBe(false);
+    expect(M.getFallbackModelId('gemini-3.8-flash')).toBe('');
+    expect(M.shouldFallbackModel('gemini-3.8-flash', 404, '')).toBe(false);
   });
 
   test('備援模型自己掛掉不再往下備援（目前靠備援 id 不在 MODELS 冊上擋掉）', () => {
@@ -86,7 +96,7 @@ describe('模型清冊完整性（增刪改都必須是刻意的）', () => {
   // 期望清冊：[id, 顯示名, provider, 是否登記備援]
   const EXPECTED = [
     ['groq:openai/gpt-oss-120b', 'GPT-OSS 120B', 'groq', true],
-    ['gemini-3.5-flash', 'Gemini 3.5 Flash', 'gemini', false],
+    ['gemini-3.8-flash', 'Gemini 3.8 Flash', 'gemini', false],
     ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite', 'gemini', false],
     ['openrouter:google/gemma-4-31b-it:free', 'Gemma 4 31B', 'openrouter', true],
     // 瀏覽器內建 Translator API：無 endpoint、無 key、無備援模型（掛掉就回報，讓使用者改選雲端）

@@ -93,7 +93,7 @@ describe('內建動作的 request body 不帶系統提示', () => {
   });
 
   it('Gemini：body 沒有 systemInstruction', async () => {
-    chrome.storage.sync.get.mockResolvedValue({ model: 'gemini-3.5-flash' });
+    chrome.storage.sync.get.mockResolvedValue({ model: 'gemini-3.8-flash' });
     chrome.storage.local.get.mockResolvedValue({ apiKey: 'AIza_test' });
     global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: '譯文' }] } }] }) });
     await handleAIRequest({ action: 'explain', selectedText: 'hello', context: 'ctx', pageTitle: 't' });
@@ -345,7 +345,7 @@ describe('自訂動作走完整請求路徑', () => {
   });
 
   it('Gemini：系統提示放 systemInstruction', async () => {
-    chrome.storage.sync.get.mockResolvedValue({ model: 'gemini-3.5-flash' });
+    chrome.storage.sync.get.mockResolvedValue({ model: 'gemini-3.8-flash' });
     chrome.storage.local.get.mockResolvedValue({ apiKey: 'AIza_test' });
     global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: '{"meaning":"m"}' }] } }] }) });
     const res = await handleAIRequest(customRequest());
@@ -375,7 +375,7 @@ describe('自訂動作走完整請求路徑', () => {
 
 describe('resolveFeatureModel：各功能用哪個模型', () => {
   const GROQ = 'groq:openai/gpt-oss-120b';
-  const GEMINI = 'gemini-3.5-flash';
+  const GEMINI = 'gemini-3.8-flash';
   const list = CustomActions.normalizeActionList([
     { id: 'translate', builtin: true, model: GROQ },
     { id: 'explain', builtin: true, model: 'default' }

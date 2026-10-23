@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>翻翻吧</title>
+  <link rel="stylesheet" href="ui-tokens.css">
   <style>
     @font-face {
       font-family: 'jf-openhuninn';
@@ -14,515 +15,235 @@
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* 只封鎖水平捲動列（原意）。垂直不再封死：模型清單有自己的捲動區，
+    /* 只封鎖水平捲動列。垂直不封死：模型清單有自己的捲動區，
        但萬一其他區塊撐高（字體放大、頁面縮放），仍要讓 popup 捲得到底部 */
     html { overflow-x: hidden; }
 
+    /* 三種字級：14 標題、13 內文、12 輔助（popup 空間小，內文比全頁面小一級） */
     body {
-      font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
       width: 304px;
-      background: #fbfcf8;
-      color: #1a1a1a;
-      font-size: 13px;
       overflow-x: hidden;
+      color: var(--text);
+      background: var(--page);
+      font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+      font-size: 13px;
+      line-height: 1.4;
     }
 
-    /* ── 標題列 ─────────────────────────── */
+    button { font: inherit; color: inherit; }
+
     .header {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 14px 14px 10px;
-      background: #fff;
-      border-bottom: 1px solid #eef1ec;
-    }
-
-    /* Logo 容器（光暈動畫在此）*/
-    .logo-wrap {
-      position: relative;
-      width: 32px;
-      height: 32px;
-      flex-shrink: 0;
-      border-radius: 9px;
-      overflow: visible;
+      padding: 12px 12px 12px 14px;
+      background: var(--surface);
+      border-bottom: var(--hairline) solid var(--line);
     }
 
     .header-icon {
+      display: block;
       width: 32px;
       height: 32px;
       border-radius: 9px;
       object-fit: contain;
-      display: block;
-      position: relative;
-      z-index: 1;
-    }
-
-    /* drop-shadow 沿圖示輪廓發光：綠 → 黃 緩慢流動，視覺最清晰 */
-    @keyframes logo-glow {
-      0%, 100% { filter: drop-shadow(0 0 5px rgba(163, 209, 121, 1)) drop-shadow(0 0 10px rgba(163, 209, 121, 0.5)); }
-      50%       { filter: drop-shadow(0 0 5px rgba(249, 212, 35,  1)) drop-shadow(0 0 12px rgba(249, 212, 35,  0.5)); }
-    }
-
-    .logo-wrap .header-icon {
       animation: logo-glow 2.5s ease-in-out infinite;
     }
 
+    /* drop-shadow 沿圖示輪廓發光：綠 → 黃 緩慢流動 */
+    @keyframes logo-glow {
+      0%, 100% { filter: drop-shadow(0 0 5px var(--lime-9)) drop-shadow(0 0 10px color-mix(in srgb, var(--lime-9) 50%, transparent)); }
+      50%      { filter: drop-shadow(0 0 5px var(--amber-9)) drop-shadow(0 0 12px color-mix(in srgb, var(--amber-9) 50%, transparent)); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .header-icon { animation: none; }
+    }
+
     .header h1 {
+      flex: 1;
+      font-family: 'jf-openhuninn', 'Microsoft JhengHei', sans-serif;
       font-size: 14px;
       font-weight: 700;
-      color: #1a1a1a;
-      font-family: 'jf-openhuninn', 'Microsoft JhengHei', sans-serif;
     }
 
-    .header p {
-      font-size: 11px;
-      color: #999;
-      margin-top: 1px;
-    }
-
-    /* ── 迷你總覽 ───────────────────────── */
-    .overview {
-      margin: 10px 12px 0;
-      padding: 10px;
-      background: #fff;
-      border: 1px solid #e7eddf;
-      border-radius: 10px;
-      box-shadow: 0 6px 18px rgba(36, 55, 22, 0.06);
-    }
-
-    .overview-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-
-    .state-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      min-height: 24px;
-      padding: 3px 8px;
-      border-radius: 99px;
-      background: #f0f9e6;
-      color: #4a8a1e;
-      font-size: 11px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
-    .state-pill.err {
-      background: #fce8e6;
-      color: #c5221f;
-    }
-
-    .state-pill.warn {
-      background: #fffbdd;
-      color: #8a6500;
-    }
-
-    .state-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: currentColor;
-    }
-
-    .overview-label {
-      font-size: 10.5px;
-      font-weight: 700;
-      color: #89919c;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-    }
-
-    .current-model {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .current-model strong {
-      display: block;
-      color: #1f2937;
-      font-size: 13px;
-      line-height: 1.35;
-    }
-
-    .current-model span {
-      display: block;
-      color: #808a96;
-      font-size: 11px;
-      margin-top: 1px;
-    }
-
-    .provider-chip {
-      flex-shrink: 0;
-      padding: 2px 7px;
-      border-radius: 99px;
-      background: #f5fbee;
-      color: #5a9a2e;
-      font-size: 10px;
-      font-weight: 700;
-    }
-
-    /* ── 模型選擇區 ──────────────────────── */
-    .section {
-      padding: 11px 12px 8px;
-    }
-
-    .section-label {
-      font-size: 11px;
+    .text-button {
+      padding: 4px 6px;
+      color: var(--accent-text);
+      background: none;
+      border: 0;
+      border-radius: 6px;
+      font-size: 12px;
       font-weight: 600;
-      color: #888;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 8px;
+      cursor: pointer;
     }
 
-    /* 模型清單自己捲，header／footer 保持常駐（「完整設定」不會被捲走）。
-       max-height 抓 5 項多一點，故意露出下一項的一角當作「還有更多」的提示；
-       模型少於 5 個時 max-height 不生效，不會留白。 */
+    .text-button:hover { background: var(--accent-soft); }
+    .text-button:focus-visible, .model-item:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+    /* 只有功能會壞掉時才出現 */
+    .alert {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 10px 12px 0;
+      padding: 6px 6px 6px 10px;
+      color: var(--danger-text);
+      background: var(--danger-soft);
+      border: var(--hairline) solid var(--danger-line);
+      border-radius: 8px;
+      font-size: 12px;
+    }
+
+    .alert[hidden] { display: none; }
+    .alert span { flex: 1; }
+    .alert .text-button { color: inherit; border-radius: 4px; }
+    .alert .text-button:hover { background: var(--red-4); }
+
+    .section { padding: 12px 12px 4px; }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 24px;
+      margin-bottom: 4px;
+      padding-left: 2px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* 模型清單自己捲，header 保持常駐。max-height 抓 5 項多一點，
+       露出下一項的一角當作「還有更多」的提示；模型少於 5 個時不生效 */
     .model-list {
       display: flex;
       flex-direction: column;
-      gap: 3px;
-      max-height: 268px;
+      gap: 2px;
+      max-height: 300px;
       overflow-y: auto;
       overscroll-behavior: contain;
       scrollbar-width: thin;
-      scrollbar-color: #cdd8c2 transparent;
-    }
-
-    /* Windows 原生捲動列有 17px 寬，在 304px 的 popup 裡會很搶戲 */
-    .model-list::-webkit-scrollbar       { width: 6px; }
-    .model-list::-webkit-scrollbar-track { background: transparent; }
-    .model-list::-webkit-scrollbar-thumb {
-      background: #cdd8c2;
-      border-radius: 99px;
+      scrollbar-color: var(--olive-7) transparent;
     }
 
     .model-item {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 7px 10px;
-      border-radius: 8px;
-      cursor: pointer;
-      border: 1.5px solid transparent;
-      transition: background 0.15s, border-color 0.15s;
-      /* button 化 a11y 重置：吃掉瀏覽器預設外觀，維持原本 div 版面 */
       width: 100%;
-      font: inherit;
-      color: inherit;
+      padding: 7px 10px;
       text-align: left;
       background: transparent;
+      border: 1.5px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
     }
 
-    .model-item:hover { background: #f5fbee; }
+    .model-item:hover { background: var(--lime-2); }
 
     .model-item.active {
-      background: #f0f9e6;
-      border-color: #A3D179;
+      background: var(--accent-soft);
+      border-color: var(--accent-line);
     }
 
     .model-dot {
+      flex-shrink: 0;
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: #ddd;
-      flex-shrink: 0;
+      background: var(--olive-6);
       transition: background 0.15s;
     }
 
-    .model-item.active .model-dot { background: #A3D179; }
+    .model-item.active .model-dot { background: var(--lime-9); }
 
-    .model-info { flex: 1; }
+    .model-info { flex: 1; min-width: 0; }
 
-    .model-name {
-      font-size: 12.5px;
-      font-weight: 500;
-      color: #222;
+    .model-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
     }
 
+    .model-name { font-weight: 600; }
+
     .model-desc {
-      font-size: 11px;
-      color: #999;
-      margin-top: 1px;
+      margin-top: 2px;
+      color: var(--text-muted);
+      font-size: 12px;
     }
 
     .model-badge {
-      font-size: 10px;
-      font-weight: 600;
-      padding: 2px 6px;
+      flex-shrink: 0;
+      padding: 0 7px;
+      color: var(--text-muted);
+      background: var(--olive-3);
       border-radius: 99px;
-      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 18px;
     }
 
-    .badge-free  { background: #f0f9e6; color: #5a9a2e; }
-    .badge-fast  { background: #fffbea; color: #9a6e00; }
-    .badge-lite  { background: #fce8e6; color: #c5221f; }
-    .badge-groq  { background: #f3e8ff; color: #7c3aed; }
-    .badge-or    { background: #fff4e6; color: #c05a00; }
+    .model-item.active .model-badge { color: var(--accent-text); background: var(--surface); }
 
-    /* ── 儲存提示 ────────────────────────── */
-    #save-msg {
-      font-size: 11.5px;
-      color: #5a9a2e;
-      text-align: center;
-      padding: 0 14px 5px;
-      min-height: 20px;
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
+    .shortcuts { padding: 8px 12px 12px; }
 
-    .health {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-      padding: 0 12px 10px;
-    }
-
-    .health-item {
-      display: grid;
-      gap: 4px;
-      min-width: 0;
-      padding: 8px 7px;
-      border: 1px solid #edf1e8;
-      border-radius: 8px;
-      background: #fff;
-    }
-
-    .health-head {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      color: #596575;
-      font-size: 10.5px;
-      font-weight: 700;
-    }
-
-    .health-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #cbd5e1;
-      flex-shrink: 0;
-    }
-
-    .health-dot.ok { background: #A3D179; }
-    .health-dot.warn { background: #F9D423; }
-    .health-dot.err { background: #ea4335; }
-
-    .health-value {
-      color: #88919e;
-      font-size: 10.5px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .health-value.ok { color: #5a9a2e; }
-    .health-value.warn { color: #8a6500; }
-    .health-value.err { color: #c5221f; }
-
-    #save-msg.show { opacity: 1; }
-
-    /* ── 底部 ────────────────────────────── */
-    /* ── 快捷鍵 ──────────────────────────── */
-    .shortcuts {
-      padding: 0 12px 10px;
-    }
     .shortcut-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      padding: 3px 0;
-      font-size: 12px;
-      color: #444;
+      padding: 4px 2px;
     }
+
     .shortcut-key {
+      padding: 0 6px;
+      color: var(--text);
+      background: var(--surface);
+      border: var(--hairline) solid var(--line-strong);
+      border-radius: 4px;
       font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
-      font-size: 11px;
-      padding: 1px 6px;
-      border: 1px solid #e3e7de;
-      border-radius: 5px;
-      background: #fff;
-      color: #333;
+      font-size: 12px;
+      line-height: 20px;
       white-space: nowrap;
     }
+
     .shortcut-key.unset {
-      font-family: inherit;
-      color: #999;
-    }
-    .shortcuts .settings-link {
-      margin-top: 4px;
-    }
-
-    .footer {
-      border-top: 1px solid #f0f0f0;
-      padding: 8px 12px;
-      background: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    /* ── API Key 狀態燈 ──────────────────── */
-    .api-status {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 11.5px;
-      color: #888;
-    }
-
-    .api-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #ccc;
-    }
-
-    @keyframes pulse-ok {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(163, 209, 121, 0.6); }
-      60%       { box-shadow: 0 0 0 5px rgba(163, 209, 121, 0); }
-    }
-
-    @keyframes pulse-err {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0.5); }
-      60%       { box-shadow: 0 0 0 5px rgba(234, 67, 53, 0); }
-    }
-
-    .api-dot.ok  { background: #A3D179; animation: pulse-ok  2s ease infinite; }
-    .api-dot.err { background: #ea4335; animation: pulse-err 2s ease infinite; }
-
-    .settings-link {
-      font-size: 11.5px;
-      color: #5a9a2e;
-      text-decoration: none;
-      cursor: pointer;
-      background: none;
-      border: none;
-      padding: 0;
+      color: var(--text-muted);
       font-family: inherit;
     }
-
-    .settings-link:hover { text-decoration: underline; }
-
-    /* ── RPD 進度條 ──────────────────────── */
-    .model-rpd {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      margin-top: 5px;
-    }
-
-    .rpd-bar-wrap {
-      flex: 1;
-      height: 4px;
-      background: #e8e8e8;
-      border-radius: 99px;
-      overflow: hidden;
-    }
-
-    .rpd-bar {
-      height: 100%;
-      border-radius: 99px;
-      background: linear-gradient(90deg, #A3D179, #F9D423);
-      transition: width 0.4s ease;
-    }
-
-    .rpd-bar.warn { background: linear-gradient(90deg, #f9ab00, #ef4444); }
-    .rpd-bar.full { background: linear-gradient(90deg, #ea4335, #c62828); }
-
-    .rpd-text {
-      font-size:   10.5px;
-      color:       #999;
-      white-space: nowrap;
-      min-width:   52px;
-      text-align:  right;
-    }
-
-    .rpd-text.warn { color: #f9ab00; }
-    .rpd-text.full { color: #ea4335; font-weight: 600; }
   </style>
 </head>
 <body>
 
-  <!-- 標題 -->
   <div class="header">
-    <div class="logo-wrap">
-      <img class="header-icon" src="icons/icon128.png" alt="翻翻吧">
-    </div>
-    <div>
-      <h1>翻翻吧</h1>
-      <p>選取文字後使用 AI 翻譯、解釋、優化改寫</p>
-    </div>
+    <img class="header-icon" src="icons/icon128.png" alt="">
+    <h1>翻翻吧</h1>
+    <button class="text-button" id="openOptions" type="button">設定</button>
   </div>
 
-  <!-- 迷你總覽 -->
-  <div class="overview">
-    <div class="overview-top">
-      <div class="overview-label">目前狀態</div>
-      <div class="state-pill" id="popupState">
-        <span class="state-dot"></span>
-        <span id="popupStateText">檢查中...</span>
-      </div>
-    </div>
-    <div class="current-model">
-      <div>
-        <strong id="currentModelName">載入中...</strong>
-        <span id="currentModelMeta">正在讀取模型設定</span>
-      </div>
-      <span class="provider-chip" id="currentProvider">Model</span>
-    </div>
+  <div class="alert" id="keyAlert" role="alert" hidden>
+    <span id="keyAlertText"></span>
+    <button class="text-button" id="keyAlertAction" type="button">填寫金鑰</button>
   </div>
 
-  <!-- 模型選擇 -->
   <div class="section">
-    <div class="section-label">選擇模型</div>
-    <div class="model-list" id="modelList" role="radiogroup" aria-label="AI 模型">
+    <div class="section-head" id="modelListLabel">模型</div>
+    <div class="model-list" id="modelList" role="radiogroup" aria-labelledby="modelListLabel">
       <!-- 由 popup.js 動態渲染 -->
     </div>
   </div>
 
-  <!-- 儲存提示 -->
-  <div id="save-msg">✓ 已切換</div>
-
-  <!-- 狀態摘要 -->
-  <div class="health" aria-label="設定狀態摘要">
-    <div class="health-item">
-      <div class="health-head"><span class="health-dot" id="healthApiDot"></span>API Key</div>
-      <div class="health-value" id="healthApiText">檢查中</div>
+  <!-- 實際綁定以 chrome.commands.getAll() 為準，使用者可在瀏覽器改 -->
+  <div class="shortcuts">
+    <div class="section-head">
+      <span id="shortcutLabel">快捷鍵</span>
+      <button class="text-button" id="openShortcuts" type="button">變更</button>
     </div>
-    <div class="health-item">
-      <div class="health-head"><span class="health-dot" id="healthTtsDot"></span>TTS</div>
-      <div class="health-value" id="healthTtsText">檢查中</div>
-    </div>
-    <div class="health-item">
-      <div class="health-head"><span class="health-dot" id="healthObsidianDot"></span>Obsidian</div>
-      <div class="health-value" id="healthObsidianText">檢查中</div>
-    </div>
-  </div>
-
-  <!-- 快捷鍵（實際綁定以 chrome.commands.getAll() 為準，使用者可在瀏覽器改）-->
-  <div class="shortcuts" aria-label="快捷鍵">
-    <div class="section-label">快捷鍵</div>
     <div id="shortcutList"></div>
-    <button class="settings-link" id="openShortcuts" type="button">變更快捷鍵 →</button>
-  </div>
-
-  <!-- 底部 -->
-  <div class="footer">
-    <div class="api-status">
-      <div class="api-dot" id="apiDot"></div>
-      <span id="apiLabel">檢查中...</span>
-    </div>
-    <button class="settings-link" id="openOptions">完整設定 →</button>
   </div>
 
   <script src="models.js"></script>
