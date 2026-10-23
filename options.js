@@ -1102,7 +1102,7 @@ function renderSettingsSearchResults() {
 function jumpToSettingsSearchResult(entry) {
   if (!entry) return false;
   activateSettingsPanel(entry.panel);
-  const block = entry.target.closest('tr, .provider-card, .field, .security-note, .panel-head') || entry.target;
+  const block = entry.target.closest('tr, .provider-card, .field, .info-block, .panel-head') || entry.target;
   block.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
   // 欄位標籤直接把焦點交給對應的輸入框，跳過去就能改
   const control = entry.target.htmlFor ? $(entry.target.htmlFor) : null;
