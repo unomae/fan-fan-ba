@@ -312,3 +312,64 @@ describe('未儲存提示', () => {
     confirmSpy.mockRestore();
   });
 });
+
+describe('說明精簡後的欄位狀態', () => {
+  const keyState = name => document.querySelector(`[data-key-state-for="${name}"]`);
+  const change = el => el.dispatchEvent(new Event('change', { bubbles: true }));
+
+  it('金鑰標籤依目前選的模型顯示：用到的標使用中／缺 Key，沒用到的標已填／未填', async () => {
+    await loadOptions({ sync: { model: 'groq:openai/gpt-oss-120b' }, local: { groqApiKey: 'gsk_dummy' } });
+    expect([keyState('groq').dataset.state, keyState('groq').textContent]).toEqual(['in-use', '使用中']);
+    expect([keyState('gemini').dataset.state, keyState('gemini').textContent]).toEqual(['empty', '未填']);
+
+    // 字典改用 Gemini，但還沒填 Gemini 金鑰
+    $('dictionaryModel').value = 'gemini-3.5-flash';
+    change($('dictionaryModel'));
+    expect(keyState('gemini').textContent).toBe('缺 Key');
+
+    // 主模型換掉後，Groq 沒人用了只剩「已填」
+    $('model').value = 'gemini-3.5-flash';
+    change($('model'));
+    expect(keyState('groq').textContent).toBe('已填');
+
+    $('apiKey').value = 'AIza_dummy';
+    $('apiKey').dispatchEvent(new Event('input', { bubbles: true }));
+    expect(keyState('gemini').textContent).toBe('使用中');
+  });
+
+  it('自訂端點要網址、模型名稱、金鑰都填才算已填', async () => {
+    await loadOptions();
+    expect(keyState('custom').textContent).toBe('未填');
+    $('customApiBase').value = 'https://example.com/v1';
+    $('customModelName').value = 'm';
+    $('customApiKey').value = 'k';
+    $('customApiKey').dispatchEvent(new Event('input', { bubbles: true }));
+    expect(keyState('custom').textContent).toBe('已填');
+  });
+
+  it('備份密碼欄只在勾選加密匯出時出現', async () => {
+    await loadOptions();
+    expect($('backupPasswordField').hidden).toBe(true);
+    $('includeSecretsExport').checked = true;
+    change($('includeSecretsExport'));
+    expect($('backupPasswordField').hidden).toBe(false);
+    $('includeSecretsExport').checked = false;
+    change($('includeSecretsExport'));
+    expect($('backupPasswordField').hidden).toBe(true);
+  });
+
+  it('匯入加密備份但沒填密碼：打開密碼欄、說明原因，什麼都不寫入', async () => {
+    await loadOptions();
+    const file = { text: async () => JSON.stringify({
+      app: 'fan-fan-ba', schemaVersion: 1, settings: { model: 'gemini-3.5-flash' },
+      secretsEncrypted: { version: 1, algorithm: 'AES-GCM', salt: '', iv: '', data: '' }
+    }) };
+    Object.defineProperty($('settingsImportFile'), 'files', { value: [file], configurable: true });
+    change($('settingsImportFile'));
+    for (let i = 0; i < 5; i++) await flush();
+    expect($('backupPasswordField').hidden).toBe(false);
+    expect(document.activeElement).toBe($('backupPassword'));
+    expect($('status').textContent).toMatch(/有加密，請輸入備份密碼/);
+    expect(chrome.storage.sync.set).not.toHaveBeenCalled();
+  });
+});

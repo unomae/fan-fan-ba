@@ -432,10 +432,12 @@ body（微綠漸層背景）
     │   └── .overview-grid（9 張 .settings-tab.tile；模型卡 .is-large 佔 2×2）
     └── .settings-main（詳細頁，點卡片或網址 #分類 進入）
         ├── .settings-crumb（← 總覽 / 分類名稱）
-        ├── .settings-panel（一次只顯示一個）
+        ├── .settings-panel（一次只顯示一個；欄位說明最多一行 .field-note，細節收進 details.more-info）
         └── .settings-actions（sticky 底部儲存列；不經儲存鈕的分類只留狀態訊息）
 ```
 
+- 金鑰欄位標籤旁的 `.key-state` 依目前選的模型顯示「使用中／缺 Key／已填／未填」，不再寫死「必填／選填」。
+- 功能與快捷鍵介紹放歡迎頁（`welcome.html` 的「小技巧」），設定頁只放要做選擇的東西。
 - 卡片的摘要與狀態一律讀**已儲存**的值，不讀表單；狀態色：綠＝已設定、黃＝要處理、灰＝未設定或未啟用。
 - 卡片沿用 `.settings-tab[data-panel]`：搜尋、新功能標籤、測試與 e2e 都靠這個標記找分類，改名要一起改。
 

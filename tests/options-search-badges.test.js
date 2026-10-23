@@ -62,8 +62,8 @@ const badge = id => document.querySelector(`.feature-badge[data-badge-for="${id}
 const actionRow = id => document.querySelector(`#actionList .action-row[data-id="${id}"]`);
 
 const ALL_BADGES = [
-  'action-analyze', 'action-optimize', 'card-model', 'custom-endpoint',
-  'dict-examples', 'feature-models', 'panel-actions', 'panel-compare', 'panel-glossary', 'shortcuts'
+  'action-analyze', 'action-optimize', 'custom-endpoint',
+  'feature-models', 'panel-actions', 'panel-compare', 'panel-glossary'
 ];
 
 // 第一次 require options.js 要轉譯＋插樁（單跑約 2 秒），全套平行時可能超過 5 秒預設逾時；
@@ -103,14 +103,14 @@ describe('設定頁搜尋', () => {
     expect($('settingsSearchResults').hidden).toBe(true);
   });
 
-  it('找得到功能說明與分頁名稱；點結果一樣會跳過去', async () => {
+  it('找得到分頁名稱與卡片小標；點結果一樣會跳過去', async () => {
     await loadOptions();
-    typeQuery('快捷鍵');
-    const hit = resultItems().find(item => item.textContent.includes('Alt+S'));
+    typeQuery('單字本');
+    const hit = resultItems().find(item => item.querySelector('span').textContent === '單字本');
     expect(hit).toBeTruthy();
     hit.click();
-    expect(panel('privacy').hidden).toBe(false);
-    expect(document.querySelector('[data-feature-item="shortcuts"]').classList.contains('search-hit')).toBe(true);
+    expect(panel('backup').hidden).toBe(false);
+    expect(document.querySelectorAll('#settingsDetail .search-hit')).toHaveLength(1);
 
     typeQuery('備份還原');
     expect(resultTexts()).toContain('備份還原');
@@ -204,7 +204,8 @@ describe('新功能標籤', () => {
   it('分頁裡有沒看過的標籤就顯示圓點；分頁自己有標籤時不加圓點', async () => {
     await loadOptions();
     expect(tab('model').classList.contains('has-unseen')).toBe(true);
-    expect(tab('privacy').classList.contains('has-unseen')).toBe(true);
+    // 隱私分頁的功能介紹搬到歡迎頁後，裡面沒有新功能標籤
+    expect(tab('privacy').classList.contains('has-unseen')).toBe(false);
     expect(tab('actions').classList.contains('has-unseen')).toBe(false);
     expect(tab('language').classList.contains('has-unseen')).toBe(false);
   });
@@ -230,14 +231,12 @@ describe('新功能標籤', () => {
 
   it('點說明文字或卡片內的欄位也算點開；只開分頁不算', async () => {
     await loadOptions();
-    tab('privacy').click();
-    expect(badge('dict-examples').hidden).toBe(false);
-    document.querySelector('[data-feature-item="dict-examples"]').click();
+    tab('model').click();
+    expect(badge('custom-endpoint').hidden).toBe(false);
     $('customApiBase').click();
     await flush();
-    expect(badge('dict-examples').hidden).toBe(true);
     expect(badge('custom-endpoint').hidden).toBe(true);
-    expect(badge('shortcuts').hidden).toBe(false);
+    expect(badge('feature-models').hidden).toBe(false);
   });
 
   it('用搜尋跳過去不算點開', async () => {
@@ -250,8 +249,8 @@ describe('新功能標籤', () => {
   });
 
   it('重新開啟設定頁後，看過的維持隱藏（動作清單重畫後也一樣）', async () => {
-    await loadOptions({ seenFeatureBadges: ['action-analyze', 'panel-actions', 'shortcuts'] });
-    expect(visibleBadgeIds()).toEqual(ALL_BADGES.filter(id => !['action-analyze', 'panel-actions', 'shortcuts'].includes(id)));
+    await loadOptions({ seenFeatureBadges: ['action-analyze', 'panel-actions', 'feature-models'] });
+    expect(visibleBadgeIds()).toEqual(ALL_BADGES.filter(id => !['action-analyze', 'panel-actions', 'feature-models'].includes(id)));
     // 改排序會重畫清單，標籤狀態要跟著套
     actionRow('translate').querySelectorAll('button')[1].click();
     await flush();

@@ -407,7 +407,7 @@
     }
 
     label .hint {
-      color: #98a2b3;
+      color: var(--muted);
       font-weight: 600;
       margin-left: 4px;
     }
@@ -474,6 +474,43 @@
     }
 
     .field-note a:hover { text-decoration: underline; }
+
+    /* 一行說明之外的細節收在這裡，點開才看 */
+    .more-info {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .more-info summary {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--green-deep);
+      font-weight: 700;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .more-info summary::-webkit-details-marker { display: none; }
+    .more-info summary::before { content: "ⓘ"; font-weight: 400; }
+    .more-info p { margin-top: 4px; }
+
+    /* 金鑰欄位旁的狀態：依目前選的模型判斷這把金鑰有沒有在用 */
+    .key-state {
+      display: inline-block;
+      padding: 0 7px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.6;
+    }
+
+    .key-state:empty { display: none; }
+    label .key-state[data-state="in-use"], .key-state[data-state="in-use"] { color: #3f7a1c; background: #eef7e3; }
+    label .key-state[data-state="missing"], .key-state[data-state="missing"] { color: #8a5a00; background: #fff3d6; }
+    label .key-state[data-state="filled"], .key-state[data-state="filled"] { color: #5f6b7a; background: #eef0f3; }
+    label .key-state[data-state="empty"], .key-state[data-state="empty"] { padding: 0; }
 
     .cloud-status-list {
       display: grid;
@@ -686,6 +723,14 @@
       gap: 12px;
     }
 
+    .provider-grid.backup-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
+    }
+
+    /* 備份卡片裡還沒有內容的狀態列不佔間距 */
+    .backup-grid .provider-card > div:empty { display: none; }
+
     .provider-card {
       display: grid;
       gap: 10px;
@@ -758,36 +803,6 @@
       line-height: 1.7;
     }
 
-    .feature-list {
-      list-style: none;
-      display: grid;
-      gap: 9px;
-    }
-
-    .feature-list li {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      color: #4b586a;
-      font-size: 13px;
-      line-height: 1.55;
-    }
-
-    .feature-list .badge {
-      display: inline-flex;
-      align-items: center;
-      min-height: 24px;
-      padding: 3px 9px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 800;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-
-    .badge-translate { background: #eaf4de; color: #4a8a1e; }
-    .badge-explain { background: #fffbdd; color: #9a6e00; }
-    .badge-optimize { background: #ede9fe; color: #6d28d9; }
 
     .settings-actions {
       position: sticky;
@@ -878,6 +893,7 @@
       .settings-tab.tile.is-large { grid-row: auto; }
 
       .provider-grid,
+      .provider-grid.backup-grid,
       .form-grid {
         grid-template-columns: 1fr;
       }
@@ -1065,7 +1081,6 @@
       .glossary-table td:nth-child(3) { grid-column: 1 / 3; grid-row: 2; }
     }
     .field-label-row { display: flex; align-items: center; gap: 6px; }
-    .feature-list kbd { font-family: inherit; font-weight: 700; }
     .settings-tab.has-unseen::after {
       content: '';
       position: absolute;
@@ -1144,7 +1159,10 @@
       .diagnostics-checklist strong, .cloud-status-list,
       .diagnostics-overview { color: var(--ffb-dark-text); }
       label .hint, .toggle-vis, .diagnostics-checklist small,
-      .check-row, .feature-list li { color: var(--ffb-dark-text-muted); }
+      .check-row { color: var(--ffb-dark-text-muted); }
+      .key-state[data-state="in-use"], label .key-state[data-state="in-use"] { color: var(--ffb-dark-green); background: var(--ffb-dark-green-bg); }
+      .key-state[data-state="missing"], label .key-state[data-state="missing"] { color: var(--ffb-dark-orange); background: var(--ffb-dark-orange-bg); }
+      .key-state[data-state="filled"], label .key-state[data-state="filled"] { color: var(--ffb-dark-text-muted); background: rgba(255, 255, 255, 0.08); }
       .toggle-vis:hover { color: var(--ffb-dark-text); background: var(--ffb-dark-surface-hover); }
 
       input[type="password"], input[type="text"], input[type="search"], select, textarea,
@@ -1189,9 +1207,6 @@
       .diagnostics-dot.info { background: var(--ffb-dark-accent); }
 
       code { color: var(--ffb-dark-accent); background: var(--ffb-dark-accent-bg); }
-      .badge-translate { color: var(--ffb-dark-green); background: var(--ffb-dark-green-bg); }
-      .badge-explain { color: var(--ffb-dark-orange); background: var(--ffb-dark-orange-bg); }
-      .badge-optimize { color: var(--ffb-dark-purple); background: var(--ffb-dark-purple-bg); }
 
       .settings-actions { background: rgba(32, 33, 36, 0.94); border-top-color: var(--ffb-dark-border); }
       .btn-save { color: #1a3a0a; }
@@ -1210,7 +1225,6 @@
 
       /* markup 裡少數寫死在 style 屬性的灰字 */
       #vocabularyBackupStatus, #vocabularyBackupReminder,
-      [data-panel-content="privacy"] p[style] { color: var(--ffb-dark-text-muted) !important; }
     }
   </style>
   <link rel="stylesheet" href="content.css">
@@ -1293,13 +1307,13 @@
             <span class="tile-meta"><span class="tile-summary" data-summary-for="cloud"></span><span class="tile-status" data-status-for="cloud" hidden></span></span>
           </button>
           <button class="settings-tab tile" type="button" data-panel="privacy">
-            <span class="tile-title"><svg class="tile-icon" aria-hidden="true"><use href="#ico-privacy"/></svg>隱私與說明</span>
+            <span class="tile-title"><svg class="tile-icon" aria-hidden="true"><use href="#ico-privacy"/></svg>隱私</span>
             <span class="tile-meta"><span class="tile-summary" data-summary-for="privacy"></span><span class="tile-status" data-status-for="privacy" hidden></span></span>
           </button>
         </div>
 
         <p class="overview-foot">
-          <a href="privacy-policy.html" target="_blank">隱私權政策</a>
+          <a href="welcome.html" target="_blank">使用說明與快捷鍵</a>・<a href="privacy-policy.html" target="_blank">隱私權政策</a>
         </p>
       </nav>
 
@@ -1342,6 +1356,7 @@
               </tbody>
             </table>
             <p class="field-note">全文翻譯建議選速度快的模型，或用瀏覽器內建翻譯（免金鑰）。</p>
+            <details class="more-info"><summary>結果卡也能換模型</summary><p>結果卡底部選「僅本次」時，那一次以它為準，不會改到這裡的設定。</p></details>
           </div>
 
           <div class="provider-grid">
@@ -1351,7 +1366,7 @@
                 <span class="mini-badge green">推薦</span>
               </div>
               <div class="field">
-                <label for="groqApiKey">Groq API Key <span class="hint">必填</span></label>
+                <label for="groqApiKey">Groq API Key <span class="hint key-state" data-key-state-for="groq"></span></label>
                 <div class="input-wrap">
                   <input type="password" id="groqApiKey" placeholder="gsk_..." autocomplete="off" spellcheck="false">
                   <button class="toggle-vis" id="toggleGroqVis" type="button" title="顯示 / 隱藏">
@@ -1373,7 +1388,7 @@
                 <span class="mini-badge blue">備用</span>
               </div>
               <div class="field">
-                <label for="apiKey">Gemini API Key <span class="hint">選填</span></label>
+                <label for="apiKey">Gemini API Key <span class="hint key-state" data-key-state-for="gemini"></span></label>
                 <div class="input-wrap">
                   <input type="password" id="apiKey" placeholder="AIza..." autocomplete="off" spellcheck="false">
                   <button class="toggle-vis" id="toggleVis" type="button" title="顯示 / 隱藏">
@@ -1395,7 +1410,7 @@
                 <span class="mini-badge violet">進階</span>
               </div>
               <div class="field">
-                <label for="openrouterApiKey">OpenRouter API Key <span class="hint">選填</span></label>
+                <label for="openrouterApiKey">OpenRouter API Key <span class="hint key-state" data-key-state-for="openrouter"></span></label>
                 <div class="input-wrap">
                   <input type="password" id="openrouterApiKey" placeholder="sk-or-..." autocomplete="off" spellcheck="false">
                   <button class="toggle-vis" id="toggleOrVis" type="button" title="顯示 / 隱藏">
@@ -1413,11 +1428,11 @@
 
             <div class="provider-card" id="customEndpointCard" data-feature-item="custom-endpoint">
               <div class="provider-head">
-                <h3>自訂端點 <span class="feature-badge" data-badge-for="custom-endpoint" data-kind="new" hidden>新增</span></h3>
+                <h3>自訂端點 <span class="feature-badge" data-badge-for="custom-endpoint" data-kind="new" hidden>新增</span> <span class="hint key-state" data-key-state-for="custom"></span></h3>
                 <span class="mini-badge violet">OpenAI 相容</span>
               </div>
               <div class="field">
-                <label for="customApiBase">API 網址 <span class="hint">選填</span></label>
+                <label for="customApiBase">API 網址</label>
                 <input type="text" inputmode="url" id="customApiBase" placeholder="https://example.com/v1" autocomplete="off" spellcheck="false">
               </div>
               <div class="field">
@@ -1440,6 +1455,7 @@
                 <p class="field-note">
                   只接受 <code>https://</code>；選取的文字會送到這個端點。
                 </p>
+                <details class="more-info"><summary>連線權限</summary><p>按「儲存設定」時，瀏覽器會詢問是否允許連線到這個網域。</p></details>
               </div>
               <button class="btn-test" id="btnTestCustom" type="button">測試自訂端點</button>
             </div>
@@ -1513,10 +1529,10 @@
               <ul class="action-list" id="actionList" aria-labelledby="actionListLabel"></ul>
               <div class="backup-actions">
                 <button class="btn-test" id="btnNewAction" type="button">新增自訂動作</button>
-                <button class="btn-test" id="btnCopyAiGuide" type="button">用 AI 協助設定</button>
+                <button class="btn-test" id="btnCopyAiGuide" type="button" title="只把說明文字複製到剪貼簿，不呼叫 API">用 AI 協助設定</button>
               </div>
               <div class="action-status" id="actionListStatus" aria-live="polite"></div>
-              <p class="field-note">內建動作只能停用或調整順序。「用 AI 協助設定」只複製說明文字，不呼叫 API。</p>
+              <details class="more-info"><summary>內建動作能改什麼？</summary><p>內建動作只能停用或調整順序，不能刪除或改 prompt；按「以此為範本」會建立一份可編輯的自訂動作。「用 AI 協助設定」只把說明文字複製到剪貼簿，貼給任何 AI 請它幫你寫，不呼叫 API。</p></details>
             </div>
 
             <form class="field full action-editor" id="actionEditor" hidden novalidate>
@@ -1611,7 +1627,7 @@
                 <input type="file" id="glossaryCsvFile" accept=".csv,text/csv" hidden>
               </div>
               <div class="action-status" id="glossaryStatus" aria-live="polite"></div>
-              <p class="field-note">不分大小寫、只比對完整單字。CSV 欄位：source、target、note；匯入會接在清單後面。</p>
+              <details class="more-info"><summary>比對規則與 CSV 格式</summary><p>比對不分大小寫，英文只認完整的詞（art 不會比到 start）。CSV 欄位依序是 source、target、note；匯入會接在現有清單後面，原文重複時保留先前那筆。</p></details>
             </div>
 
             <div class="field full">
@@ -1645,6 +1661,7 @@
               <div id="compareModelList"></div>
               <p class="field-note" id="compareModelEmpty" hidden>還沒有可以比較的模型：先到「模型與金鑰」填 API Key 並按「儲存設定」。</p>
               <p class="field-note">每個模型會實際送出一次請求，用到各家額度。</p>
+              <details class="more-info"><summary>比較時用哪些設定</summary><p>只列出已儲存金鑰的模型與瀏覽器內建翻譯；譯成「語言與朗讀」裡的翻譯目標語言；術語表沒有限定網站時照常套用（內建翻譯除外）。</p></details>
             </fieldset>
 
             <div class="field full">
@@ -1696,14 +1713,13 @@
           <div class="panel-head">
             <div>
               <h2>備份與還原</h2>
-              <p>換裝置或重裝時用。</p>
             </div>
-            <span class="panel-badge">JSON 設定檔</span>
           </div>
 
-          <div class="form-grid">
-            <div class="field full">
-              <label>匯出設定</label>
+          <div class="provider-grid backup-grid">
+            <div class="provider-card">
+              <div class="provider-head"><h3>設定檔</h3></div>
+              <p class="field-note">模型、語言、術語表與自訂動作；換裝置或重裝時用。</p>
               <div class="backup-actions">
                 <button class="btn-test" id="btnExportSettings" type="button">匯出設定檔</button>
                 <label class="check-row" for="includeSecretsExport">
@@ -1711,35 +1727,31 @@
                   加密包含 API Keys
                 </label>
               </div>
-              <div class="field" style="margin-top:10px;">
-                <label for="backupPassword">API Key 備份密碼 <span class="hint">加密匯出 / 匯入時使用</span></label>
+              <div class="field" id="backupPasswordField" hidden>
+                <label for="backupPassword">API Key 備份密碼</label>
                 <input type="password" id="backupPassword" placeholder="至少 8 個字元，請自行保存" autocomplete="off" spellcheck="false">
+                <p class="field-note">匯出與匯入加密備份都要用；忘記密碼就無法還原 API Key。</p>
               </div>
-              <p class="field-note">忘記密碼就無法還原 API Key。</p>
-            </div>
-
-            <div class="field full">
-              <label>匯入設定</label>
               <div class="backup-actions">
-                <button class="btn-test" id="btnImportSettings" type="button">選擇設定檔</button>
+                <button class="btn-test" id="btnImportSettings" type="button">匯入設定檔</button>
                 <input class="file-input" id="settingsImportFile" type="file" accept="application/json,.json">
               </div>
               <p class="field-note">匯入會取代目前的自訂動作清單。</p>
             </div>
 
-            <div class="field full">
-              <label>單字本備份 / 還原</label>
+            <div class="provider-card">
+              <div class="provider-head"><h3>單字本</h3></div>
+              <p class="field-note">JSON 可完整還原，CSV 給試算表看。匯入是合併，不會覆蓋既有單字。</p>
               <div class="backup-actions">
                 <button class="btn-test" id="btnExportVocabulary" type="button">匯出單字本</button>
                 <button class="btn-test" id="btnExportVocabularyCsv" type="button">匯出 CSV</button>
                 <button class="btn-test" id="btnImportVocabulary" type="button">匯入單字本</button>
                 <input class="file-input" id="vocabularyImportFile" type="file" accept="application/json,.json">
               </div>
-              <div class="backup-actions" id="vocabularySnapshotActions" style="margin-top:8px;" hidden></div>
-              <div id="vocabularyBackupStatus" aria-live="polite" style="margin-top:8px;font-size:12px;color:#666;"></div>
-              <div id="vocabularyBackupReminder" aria-live="polite" style="margin-top:4px;font-size:12px;color:#999;"></div>
-              <p class="field-note" id="vocabularySnapshotNote" hidden>自動保留最近 2 天的快照；還原是合併，不會蓋掉之後的新增與複習進度。</p>
-              <p class="field-note">JSON 可完整還原，CSV 給試算表看。匯入是合併，不會覆蓋既有單字。</p>
+              <div class="backup-actions" id="vocabularySnapshotActions" hidden></div>
+              <div class="field-note" id="vocabularyBackupStatus" aria-live="polite"></div>
+              <div class="field-note" id="vocabularyBackupReminder" aria-live="polite"></div>
+              <details class="more-info" id="vocabularySnapshotNote" hidden><summary>自動快照：保留最近 2 天</summary><p>每天最多留一份、共兩份（約可回到 24–48 小時前），逾 30 天自動清除。還原採<strong>合併</strong>，只補回缺少的單字，不會蓋掉快照之後的新增與複習進度。快照只存在這台裝置的瀏覽器，不上傳雲端，不能取代 JSON 匯出。</p></details>
             </div>
           </div>
         </section>
@@ -1781,7 +1793,7 @@
         <section class="settings-panel" data-panel-content="privacy" hidden>
           <div class="panel-head">
             <div>
-              <h2>隱私與功能說明</h2>
+              <h2>隱私</h2>
             </div>
             <span class="panel-badge">本機儲存</span>
           </div>
@@ -1792,38 +1804,9 @@
             </svg>
             <div>
               <strong>API Key 安全儲存</strong>
-              <ul>
-                <li>API Key 只存在這台電腦，只有翻翻吧讀得到，不會上傳。</li>
-              </ul>
+              <p class="field-note">API Key 只存在這台電腦，只有翻翻吧讀得到，不會上傳。</p>
             </div>
           </div>
-
-          <ul class="feature-list">
-            <li>
-              <span class="badge badge-translate">翻譯</span>
-              選取單字時顯示詞性、釋義與例句；選取段落時直接翻成目標語言。
-            </li>
-            <li>
-              <span class="badge badge-explain">解釋</span>
-              根據網頁上下文解釋選取的詞彙或段落含義。
-            </li>
-            <li>
-              <span class="badge badge-optimize">優化</span>
-              重寫選取內容，使表達更清晰流暢。
-            </li>
-            <li data-feature-item="dict-examples">
-              <span class="badge badge-translate">字典卡</span>
-              <span>例句裡的查詢詞會加粗；英文單字旁標出 CEFR 難度（A1–C2）。 <span class="feature-badge" data-badge-for="dict-examples" data-kind="new" hidden>新增</span></span>
-            </li>
-            <li data-feature-item="shortcuts">
-              <span class="badge badge-explain">快捷鍵</span>
-              <span>翻譯選取文字（Windows <kbd>Alt+S</kbd>、Mac <kbd>⌃⇧S</kbd>）、切換全文翻譯（Windows <kbd>Alt+A</kbd>、Mac <kbd>⌃⇧A</kbd>）；右鍵選單也能翻譯選取文字或整頁。按鍵可在擴充功能的快捷鍵頁面更改。 <span class="feature-badge" data-badge-for="shortcuts" data-kind="new" hidden>新增</span></span>
-            </li>
-            <li data-feature-item="card-model">
-              <span class="badge badge-optimize">結果卡</span>
-              <span>底部可以「僅本次」換一個模型重查，也可以修改原文後重新查詢（⌘／Ctrl+Enter 送出）。 <span class="feature-badge" data-badge-for="card-model" data-kind="new" hidden>新增</span></span>
-            </li>
-          </ul>
 
           <div class="security-note">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1831,7 +1814,7 @@
             </svg>
             <div>
               <strong>本機診斷摘要</strong>
-              <p style="margin:4px 0 8px;color:#666;font-size:12px;">只在本機計次，<strong>不含任何內容</strong>，不會上傳。</p>
+              <p class="field-note" style="margin-bottom:8px;">只在本機計次，不含任何內容，不會上傳。</p>
               <div class="diagnostics-self-check" id="diagnosticsSummary" aria-live="polite">尚無使用紀錄。</div>
               <button class="btn-test" id="btnClearDiagnostics" type="button" style="margin-top:10px;">清除診斷資料</button>
             </div>

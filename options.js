@@ -585,11 +585,37 @@ function updateFeatureModelHints() {
     );
     select.setAttribute('aria-describedby', hintId);
   });
+  renderProviderKeyStates();
+}
+
+// 金鑰欄位旁的狀態：表單上（含各功能）選到的模型用到這家 → 使用中／缺 Key；沒用到 → 已填／未填
+// 初始化在檔案開頭就會呼叫到，文字表放函式裡（頂層 const 會踩 TDZ）
+function getProvidersInUse() {
+  const mainModel = $('model')?.value || '';
+  const ids = [mainModel, ...[...document.querySelectorAll('select[data-feature-model]')]
+    .map(select => (!select.value || select.value === 'default' ? mainModel : select.value))];
+  return new Set(ids.map(id => ModelRegistry.MODELS.find(model => model.id === id)?.provider).filter(Boolean));
+}
+
+function renderProviderKeyStates() {
+  const KEY_STATE_TEXT = { 'in-use': '使用中', missing: '缺 Key', filled: '已填', empty: '未填' };
+  const inUse = getProvidersInUse();
+  const valueOf = id => String($(id)?.value || '').trim();
+  document.querySelectorAll('[data-key-state-for]').forEach(el => {
+    const name = el.dataset.keyStateFor;
+    const provider = ModelRegistry.PROVIDERS[name];
+    if (!provider) return;
+    const fieldIds = provider.userConfigured ? ['customApiBase', 'customModelName', provider.apiKeyName] : [provider.apiKeyName];
+    const filled = fieldIds.every(id => valueOf(id));
+    const state = inUse.has(name) ? (filled ? 'in-use' : 'missing') : (filled ? 'filled' : 'empty');
+    el.dataset.state = state;
+    el.textContent = KEY_STATE_TEXT[state];
+  });
 }
 
 function initFeatureModelHints() {
   document.addEventListener('change', event => {
-    if (event.target?.matches?.('select[data-feature-model]')) updateFeatureModelHints();
+    if (event.target?.matches?.('#model, select[data-feature-model]')) updateFeatureModelHints();
   });
   ['apiKey', 'groqApiKey', 'openrouterApiKey', 'customApiKey', 'customApiBase', 'customModelName'].forEach(id => {
     $(id)?.addEventListener('input', updateFeatureModelHints);
@@ -958,7 +984,7 @@ function initSettingsDirtyTracking() {
 }
 
 // ── 設定搜尋（⌘K／Ctrl+K）────────────────────────────
-// 比對各分頁的標題、小標、欄位標籤與功能說明；選中後切到該分頁、捲過去並短暫高亮。
+// 比對各分頁的標題、小標與欄位標籤；選中後切到該分頁、捲過去並短暫高亮。
 // 索引每次搜尋時現場從 DOM 收集，動作清單這類動態列也找得到。
 
 // 取元素的可搜尋文字：去掉新功能標籤、「必填／選填」提示與總覽卡片上的狀態摘要
@@ -992,7 +1018,7 @@ function collectSettingsSearchEntries() {
     const panelTitle = searchableText(tab) || searchableText(panel.querySelector('h2'));
     // 左側分頁名稱和面板大標可能不同（「模型與金鑰」／「模型與 API Key」），兩個都收
     add(panelName, panelTitle, panelTitle, panel.querySelector('.panel-head') || panel);
-    panel.querySelectorAll('h2, h3, label, .field-label, .feature-list li').forEach(el => {
+    panel.querySelectorAll('h2, h3, label, .field-label').forEach(el => {
       if (!isHiddenInPanel(el, panel)) add(panelName, panelTitle, searchableText(el), el);
     });
   });
@@ -1056,7 +1082,7 @@ function renderSettingsSearchResults() {
 function jumpToSettingsSearchResult(entry) {
   if (!entry) return false;
   activateSettingsPanel(entry.panel);
-  const block = entry.target.closest('tr, .provider-card, .field, .feature-list li, .security-note, .panel-head') || entry.target;
+  const block = entry.target.closest('tr, .provider-card, .field, .security-note, .panel-head') || entry.target;
   block.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
   // 欄位標籤直接把焦點交給對應的輸入框，跳過去就能改
   const control = entry.target.htmlFor ? $(entry.target.htmlFor) : null;
@@ -1445,6 +1471,12 @@ function bindBackupControls() {
   const importButton = $('btnImportSettings');
   const fileInput = $('settingsImportFile');
   const passwordInput = $('backupPassword');
+  const passwordField = $('backupPasswordField');
+
+  // 密碼欄只在要加密匯出時出現；匯入加密備份缺密碼時也會打開它
+  includeSecretsCheckbox?.addEventListener('change', () => {
+    if (passwordField) passwordField.hidden = !includeSecretsCheckbox.checked;
+  });
 
   if (exportButton) {
     exportButton.addEventListener('click', async () => {
@@ -1476,6 +1508,10 @@ function bindBackupControls() {
         const result = await importSettingsBackupFile(file, { password: passwordInput?.value || '' });
         showStatus('ok', formatImportSettingsStatus(result));
       } catch (e) {
+        if (e.needsPassword && passwordField) {
+          passwordField.hidden = false;
+          passwordInput?.focus();
+        }
         showStatus('err', `匯入失敗：${e.message}`);
       } finally {
         importButton.disabled = false;
@@ -1881,6 +1917,8 @@ async function importSettingsBackupFile(file, options = {}) {
   await Promise.all(writes);
   await loadSettings();
   const result = { settingsCount: Object.keys(settings).length, secretsCount: Object.keys(secrets).length };
+  // 舊版備份把 API Key 明文寫在檔案裡：照常匯入，但提醒重新匯出成加密版
+  if (!payload.secretsEncrypted && result.secretsCount) result.legacyPlainSecrets = true;
   if (actions) {
     result.actionsCount = actions.filter(action => !action.builtin).length;
     actionListState = actions;
@@ -1891,6 +1929,12 @@ async function importSettingsBackupFile(file, options = {}) {
 }
 
 async function resolveImportedBackupSecrets(payload = {}, password = '') {
+  if (payload.secretsEncrypted && !password) {
+    // 密碼欄平常收起來，缺密碼時讓呼叫端把它打開
+    const error = new Error('這份設定檔的 API Key 有加密，請輸入備份密碼後再匯入一次');
+    error.needsPassword = true;
+    throw error;
+  }
   if (payload.secretsEncrypted) {
     return decryptBackupSecrets(payload.secretsEncrypted, password);
   }
@@ -1962,13 +2006,14 @@ async function readTextFile(file) {
   });
 }
 
-function formatImportSettingsStatus({ settingsCount = 0, secretsCount = 0, actionsCount = null, glossaryCount = null } = {}) {
+function formatImportSettingsStatus({ settingsCount = 0, secretsCount = 0, actionsCount = null, glossaryCount = null, legacyPlainSecrets = false } = {}) {
   const parts = [];
   if (settingsCount) parts.push(`${settingsCount} 個設定`);
   if (secretsCount) parts.push(`${secretsCount} 個 API Key`);
   if (actionsCount !== null) parts.push(`動作清單（${actionsCount} 個自訂動作）`);
   if (glossaryCount !== null) parts.push(`術語表（${glossaryCount} 筆）`);
-  return `✓ 設定檔已匯入${parts.length ? `：${parts.join('、')}` : ''}`;
+  const legacyNote = legacyPlainSecrets ? '。這是舊版未加密的備份，建議重新匯出成加密備份' : '';
+  return `✓ 設定檔已匯入${parts.length ? `：${parts.join('、')}` : ''}${legacyNote}`;
 }
 
 function confirmSecretsExport() {

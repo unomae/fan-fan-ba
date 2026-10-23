@@ -255,8 +255,8 @@ describe('Options module', () => {
         obsidianDefaultFolder: '30_Knowledge/my-notes/languages/vocabulary'
       });
       expect(chrome.storage.local.set).toHaveBeenCalledWith({ groqApiKey: 'gsk-test' });
-      expect(result).toEqual({ settingsCount: 2, secretsCount: 1 });
-      expect(global.optionsModule.formatImportSettingsStatus(result)).toBe('✓ 設定檔已匯入：2 個設定、1 個 API Key');
+      expect(result).toEqual({ settingsCount: 2, secretsCount: 1, legacyPlainSecrets: true });
+      expect(global.optionsModule.formatImportSettingsStatus(result)).toBe('✓ 設定檔已匯入：2 個設定、1 個 API Key。這是舊版未加密的備份，建議重新匯出成加密備份');
     });
 
     it('asks for confirmation before exporting API keys', () => {
