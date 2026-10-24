@@ -18,7 +18,7 @@
 
 ## 1.5 全頁面 UI 規範（popup、設定頁，2026-10-23 起）
 
-popup 與設定頁改用 `ui-tokens.css`（兩頁共用，`npm run package` 會一起打包）。這一節優先於下面第 2～7 節裡跟全頁面有關的舊色碼與尺寸；**浮層（content.css）與歡迎頁還沒跟上**，仍照舊節。
+popup 與設定頁改用 `ui-tokens.css`（兩頁共用，`npm run package` 會一起打包）。這一節優先於下面第 2～7 節裡跟全頁面有關的舊色碼與尺寸；浮層（content.css）2026-10-24 起也改用 Radix，規則見第 2 節「浮層 UI」；**歡迎頁還沒跟上**，仍照舊節。
 
 | 項目 | 規則 |
 |------|------|
@@ -79,51 +79,34 @@ popup 與設定頁改用 `ui-tokens.css`（兩頁共用，`npm run package` 會�
 | Note Border | `#d4edbc` / `#c8e6a0` | 提示區塊邊框 |
 | Error Border | `rgba(248, 113, 113, 0.35)` | 錯誤狀態 |
 
-### 浮層 UI（Content Script — Glassmorphism）
+### 浮層 UI（Content Script，2026-10-24 起）
 
-| 名稱 | 值 | 用途 |
-|------|----|------|
-| 卡片背景 | `rgba(255,255,255,0.92)` + `backdrop-filter: blur(16px)` | 工具列、結果卡 |
-| CSS 變數範圍 | `#gemini-ai-toolbar, #gemini-result-card` | 避免污染宿主頁 `:root` |
-| 所有樣式 | 加 `!important` | 防止宿主頁覆蓋 |
+工具列、結果卡（含單字本面板）、浮球與選單、單字高亮提示、全文翻譯控制面板用 Radix Colors v3，保留毛玻璃。插進網頁的譯文段落與單字高亮標記不在範圍內，仍依頁面底色自己調對比。
 
-### 浮層 UI 深色模式（第一階段）
+| 項目 | 規則 |
+|------|------|
+| 色票 | `olive` 中性、`lime` 品牌、`blue` 資訊、`red` 錯誤、`amber` 警示、`violet` Obsidian，各 12 階，名稱 `--ffb-<色系>-<階>`。階層用法同 1.5 節 |
+| 定義位置 | 只定義在 5 個根節點（`#gemini-ai-toolbar`、`#gemini-result-card`、`#fanfanba-floating`、`.g-vocab-highlight-tip`、`.ffb-page-translation-panel`），不寫在網頁 `:root`。不能直接引入 Radix 官方 CSS：它把變數寫在 `:root`，會污染網頁，也可能跟網頁自己的 Radix 變數互蓋 |
+| 根節點外 | 不准引用這些 token（那裡取不到值）；`tests/content/css-tokens.test.js` 會擋 |
+| 元件規則 | 不寫色碼，一律用 token。例外：陰影、深底白字 tooltip（亮暗一樣）、句子分析的分類螢光標記（`.g-ca-mark`，要彼此分得開） |
+| 毛玻璃 | 白色半透明底寫成 `color-mix(in srgb, var(--ffb-surface) N%, transparent)`，透明度沿用原值；玻璃邊線用 `--ffb-edge`。`backdrop-filter` 與 `!important` 隔離不變 |
+| 文字 | 白色或毛玻璃上的彩色字用 11 階；淡色底（3–5 階）上的彩色字用 12 階，因為 11 配 3 只有約 4.3:1 |
+| 實心按鈕 | lime 用 9 階配深字；其他色系用 11 階（hover 12 階）配 `--ffb-on-solid`（亮色白、深色 olive 1） |
+| 焦點 | 外框一律 `--ffb-focus`（lime 8），光圈一律 `--ffb-focus-ring`；錯誤欄位、執行中狀態的光圈保留各自色系 |
+| 深色模式 | 只在第 18 節重新定義同一組 token（Radix dark 色值，`--ffb-surface` 換成 olive 2），元件規則不另寫暗色覆寫。深色下工具列提高到 82%、浮球 86% 不透明，避免疊在白色網頁上看不清；陰影加深 |
 
-系統設定為深色時（`@media (prefers-color-scheme: dark)`），工具列、結果卡（含單字本面板）、浮球與選單、單字高亮提示、全文翻譯控制面板換成下表的暗色。亮色規則不動；token 定義在這五個元件的根節點（`#gemini-ai-toolbar`、`#gemini-result-card`、`#fanfanba-floating`、`.g-vocab-highlight-tip`、`.ffb-page-translation-panel`），不寫在頁面 `:root`。插進網頁的譯文段落與單字高亮標記不在本階段，它們依頁面底色自己調對比。設定頁與 popup 的深色模式改由 `ui-tokens.css` 的 Radix dark 色值負責（見 1.5 節），不用下表；welcome 還沒做。
+**對比**（2026-10-24 量，網頁底色以純白、純黑兩種最壞情況計算）：
 
-| Token | 值 | 用途 |
-|------|----|------|
-| `--ffb-dark-surface` | `rgba(32, 33, 36, 0.98)` | 結果卡、工具列、全文翻譯面板底色 |
-| `--ffb-dark-surface-raised` | `#2b2d31` | 按鈕、輸入框、浮球、單字提示 |
-| `--ffb-dark-surface-hover` | `#36393e` | 中性按鈕 hover |
-| `--ffb-dark-border` | `rgba(255, 255, 255, 0.12)` | 分隔線、一般邊框 |
-| `--ffb-dark-border-strong` | `rgba(255, 255, 255, 0.24)` | 輸入框與需要看得出邊界的元件 |
-| `--ffb-dark-text` | `#e8eaed` | 主要文字 |
-| `--ffb-dark-text-strong` | `#f8f9fa` | 單字、標題、粗體 |
-| `--ffb-dark-text-muted` | `#a9afb8` | 次要文字、時間、提示 |
-| `--ffb-dark-accent`／`-bg` | `#9ec1fa`／`rgba(138, 180, 248, 0.16)` | 動作標籤、連結色、「記得」與語境徽章 |
-| `--ffb-dark-green`／`-bg` | `#a8d88a`／`rgba(163, 209, 121, 0.16)` | 品牌綠：收藏、選中分頁、成功與提示列 |
-| `--ffb-dark-purple`／`-bg` | `#c3b5f5`／`rgba(160, 140, 230, 0.18)` | Obsidian 相關 |
-| `--ffb-dark-orange`／`-bg` | `#f6b26b`／`rgba(246, 178, 107, 0.16)` | 「還不熟」、解釋標籤、內嵌內容提示 |
-| `--ffb-dark-danger`／`-bg` | `#f6a39c`／`rgba(242, 139, 130, 0.14)` | 錯誤、刪除、重試 |
-| `--ffb-dark-focus` | `rgba(138, 180, 248, 0.6)` | 所有 `:focus-visible` 外框 |
-| `--ffb-dark-shadow` | `0 10px 28px rgba(0, 0, 0, 0.45)` | 浮層陰影 |
+- 深色：所有文字 ≥ 4.5:1，最低是工具列圖示疊在白色網頁上的 4.81:1。
+- 亮色＋白色網頁：全部 ≥ 4.5:1，最低是 88% 卡片上的 blue 11 資訊字 4.77:1。
+- 亮色＋黑色網頁：卡片上直接寫的彩色字（lime／blue 11）只剩約 3.6–4.2:1，工具列（45% 透明）圖示約 1.3:1。這是保留毛玻璃的代價，改版前也一樣不過（例：舊藍 `#1a73e8` 3.41:1）；淡色底上的 12 階字不受影響（≥ 9.8:1）。
 
-**對比**：所有有文字的元素（含 hover 與 focus-visible 狀態）文字對比 ≥ 4.5:1，網頁底色分別以純白與純黑兩種最壞情況計算（2026-09-30 實測最低 4.82:1，量法見 `CHANGELOG.md`）。新增暗色樣式時沿用上表 token，不要另寫色碼。
-
-**收斂**：暗色下錯誤色只有 `--ffb-dark-danger` 一個、焦點外框只有 `--ffb-dark-focus` 一個。亮色目前仍有兩處不一致，因為這階段要求亮色外觀不變，所以先記錄、未修改：
-
-- 錯誤文字：`.g-error` 在 `content.css` 定義兩次（`#d93025` 與 `#f87171`，後者生效）。`#f87171` 在白底上對比約 2.8:1，未達 4.5:1。
-- 焦點外框：藍（`rgba(26, 115, 232, …)`）、綠（`rgba(90, 158, 58, …)`）、紫（`rgba(107, 93, 170, …)`）三套並存。
-
-**術語**：
+**收斂**：錯誤色只有 red（原本 `.g-error` 定義兩次、`#f87171` 白底 2.8:1 的問題一併解掉），焦點外框只有一種（原本藍、綠、紫三套並存）。
 
 | 名詞 | 意思 |
 |------|------|
-| surface | 元件本身的底色；`raised` 是浮在 surface 上的一層（按鈕、輸入框） |
-| muted | 次要文字，仍需達到 4.5:1 對比 |
-| accent／green／purple／orange／danger | 語意色；`-bg` 是同色系的半透明底，文字用不帶 `-bg` 的那個 |
-| 元件根節點 | 翻翻吧插進網頁的最外層節點；所有 token 與暗色覆寫都從這裡開始，避免影響網頁本身 |
+| 元件根節點 | 翻翻吧插進網頁的最外層節點；所有 token 從這裡開始，避免影響網頁本身 |
+| surface／edge | 毛玻璃本體／玻璃邊線的底色；亮色是白，深色是 olive 2／olive 7 |
 
 ---
 

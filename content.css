@@ -19,7 +19,35 @@
   font-family: 'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
 }
 
-/* ── 品牌 CSS 變數（作用域限於本元件）──────────── */
+/* ── 浮層色票：Radix Colors v3（olive 中性、lime 品牌、blue 資訊、red 錯誤、amber 警示、violet Obsidian）──
+   只定義在 5 個浮層根節點，不碰網頁 :root；名稱一律加 --ffb- 前綴，避免跟網頁自己的 Radix 變數互相覆蓋。
+   用法照 Radix 階層：1–2 底、3–5 元件底（一般／hover／按下）、6–8 邊框、9–10 實心、11–12 文字。
+   淡色底（3–5 階）上的彩色字用 12 階，白色或毛玻璃上用 11 階；深色模式只換這裡的值（見第 18 節）。 */
+#gemini-ai-toolbar,
+#gemini-result-card,
+#fanfanba-floating,
+.g-vocab-highlight-tip,
+.ffb-page-translation-panel {
+  --ffb-olive-1: #fcfdfc; --ffb-olive-2: #f8faf8; --ffb-olive-3: #eff1ef; --ffb-olive-4: #e7e9e7; --ffb-olive-5: #dfe2df; --ffb-olive-6: #d7dad7;
+  --ffb-olive-7: #cccfcc; --ffb-olive-8: #b9bcb8; --ffb-olive-9: #898e87; --ffb-olive-10: #7f847d; --ffb-olive-11: #60655f; --ffb-olive-12: #1d211c;
+  --ffb-lime-1: #fcfdfa; --ffb-lime-2: #f8faf3; --ffb-lime-3: #eef6d6; --ffb-lime-4: #e2f0bd; --ffb-lime-5: #d3e7a6; --ffb-lime-6: #c2da91;
+  --ffb-lime-7: #abc978; --ffb-lime-8: #8db654; --ffb-lime-9: #bdee63; --ffb-lime-10: #b0e64c; --ffb-lime-11: #5c7c2f; --ffb-lime-12: #37401c;
+  --ffb-blue-1: #fbfdff; --ffb-blue-2: #f4faff; --ffb-blue-3: #e6f4fe; --ffb-blue-4: #d5efff; --ffb-blue-5: #c2e5ff; --ffb-blue-6: #acd8fc;
+  --ffb-blue-7: #8ec8f6; --ffb-blue-8: #5eb1ef; --ffb-blue-9: #0090ff; --ffb-blue-10: #0588f0; --ffb-blue-11: #0d74ce; --ffb-blue-12: #113264;
+  --ffb-red-1: #fffcfc; --ffb-red-2: #fff7f7; --ffb-red-3: #feebec; --ffb-red-4: #ffdbdc; --ffb-red-5: #ffcdce; --ffb-red-6: #fdbdbe;
+  --ffb-red-7: #f4a9aa; --ffb-red-8: #eb8e90; --ffb-red-9: #e5484d; --ffb-red-10: #dc3e42; --ffb-red-11: #ce2c31; --ffb-red-12: #641723;
+  --ffb-amber-1: #fefdfb; --ffb-amber-2: #fefbe9; --ffb-amber-3: #fff7c2; --ffb-amber-4: #ffee9c; --ffb-amber-5: #fbe577; --ffb-amber-6: #f3d673;
+  --ffb-amber-7: #e9c162; --ffb-amber-8: #e2a336; --ffb-amber-9: #ffc53d; --ffb-amber-10: #ffba18; --ffb-amber-11: #ab6400; --ffb-amber-12: #4f3422;
+  --ffb-violet-1: #fdfcfe; --ffb-violet-2: #faf8ff; --ffb-violet-3: #f4f0fe; --ffb-violet-4: #ebe4ff; --ffb-violet-5: #e1d9ff; --ffb-violet-6: #d4cafe;
+  --ffb-violet-7: #c2b5f5; --ffb-violet-8: #aa99ec; --ffb-violet-9: #6e56cf; --ffb-violet-10: #654dc4; --ffb-violet-11: #6550b9; --ffb-violet-12: #2f265f;
+  --ffb-surface: #ffffff;
+  --ffb-edge: #ffffff;
+  --ffb-on-solid: #ffffff;
+  --ffb-focus: var(--ffb-lime-8);
+  --ffb-focus-ring: color-mix(in srgb, var(--ffb-lime-9) 35%, transparent);
+}
+
+/* ── 單字本面板 ──────────────────────────────── */
 #gemini-result-card,
 .g-vocab-panel {
   display: flex !important;
@@ -38,18 +66,18 @@
   width: 100% !important;
   min-height: 32px !important;
   padding: 6px 10px !important;
-  border: 1px solid rgba(31, 41, 55, 0.12) !important;
+  border: 1px solid var(--ffb-olive-7) !important;
   border-radius: 8px !important;
-  background: rgba(255, 255, 255, 0.84) !important;
-  color: #1f2937 !important;
+  background: color-mix(in srgb, var(--ffb-surface) 84%, transparent) !important;
+  color: var(--ffb-olive-12) !important;
   font: inherit !important;
   font-size: 12.5px !important;
   outline: none !important;
 }
 
 .g-vocab-search:focus {
-  border-color: rgba(90, 158, 58, 0.36) !important;
-  box-shadow: 0 0 0 3px rgba(90, 158, 58, 0.10) !important;
+  border-color: var(--ffb-lime-7) !important;
+  box-shadow: 0 0 0 3px var(--ffb-focus-ring) !important;
 }
 
 .g-vocab-tabs,
@@ -65,10 +93,10 @@
 .g-vocab-delete {
   min-height: 30px !important;
   padding: 5px 9px !important;
-  border: 1px solid rgba(31, 41, 55, 0.12) !important;
+  border: 1px solid var(--ffb-olive-7) !important;
   border-radius: 8px !important;
-  background: rgba(255, 255, 255, 0.76) !important;
-  color: #374151 !important;
+  background: color-mix(in srgb, var(--ffb-surface) 76%, transparent) !important;
+  color: var(--ffb-olive-12) !important;
   cursor: pointer !important;
   font: inherit !important;
   font-size: 12px !important;
@@ -80,15 +108,15 @@
 .g-vocab-export:hover,
 .g-vocab-status:hover,
 .g-vocab-copy:hover {
-  background: rgba(163, 209, 121, 0.14) !important;
-  border-color: rgba(90, 158, 58, 0.28) !important;
-  color: #3f7528 !important;
+  background: var(--ffb-lime-4) !important;
+  border-color: var(--ffb-lime-7) !important;
+  color: var(--ffb-lime-12) !important;
 }
 
 .g-vocab-tab.g-active {
-  background: #edf7e8 !important;
-  border-color: rgba(90, 158, 58, 0.34) !important;
-  color: #3f7528 !important;
+  background: var(--ffb-lime-3) !important;
+  border-color: var(--ffb-lime-7) !important;
+  color: var(--ffb-lime-12) !important;
 }
 
 .g-vocab-tabs {
@@ -110,9 +138,9 @@
   gap: 10px !important;
   align-items: start !important;
   padding: 10px !important;
-  border: 1px solid rgba(90, 158, 58, 0.12) !important;
+  border: 1px solid var(--ffb-lime-6) !important;
   border-radius: 8px !important;
-  background: rgba(252, 254, 251, 0.88) !important;
+  background: color-mix(in srgb, var(--ffb-surface) 88%, transparent) !important;
 }
 
 .g-vocab-panel-item-actions {
@@ -130,7 +158,7 @@
 }
 
 .g-vocab-panel-word {
-  color: #1f2937 !important;
+  color: var(--ffb-olive-12) !important;
   font-size: 15px !important;
   font-weight: 800 !important;
   line-height: 1.35 !important;
@@ -147,37 +175,37 @@
 .g-vocab-panel-meta span {
   padding: 1px 6px !important;
   border-radius: 999px !important;
-  background: rgba(237, 247, 232, 0.86) !important;
-  color: #4f7f35 !important;
+  background: var(--ffb-lime-3) !important;
+  color: var(--ffb-lime-12) !important;
   font-size: 10.5px !important;
   font-weight: 750 !important;
 }
 
 .g-vocab-panel-meta .g-vocab-known {
-  background: rgba(219, 234, 254, 0.88) !important;
-  color: #1d4ed8 !important;
+  background: var(--ffb-blue-4) !important;
+  color: var(--ffb-blue-12) !important;
 }
 
 .g-vocab-panel-meta .g-vocab-learning {
-  background: rgba(255, 247, 237, 0.92) !important;
-  color: #9a3412 !important;
+  background: var(--ffb-amber-2) !important;
+  color: var(--ffb-amber-12) !important;
 }
 
 .g-vocab-status {
-  color: #1d4ed8 !important;
-  background: rgba(219, 234, 254, 0.78) !important;
-  border-color: rgba(29, 78, 216, 0.16) !important;
+  color: var(--ffb-blue-12) !important;
+  background: var(--ffb-blue-4) !important;
+  border-color: var(--ffb-blue-6) !important;
 }
 
 .g-vocab-status:hover {
-  color: #1e40af !important;
-  background: rgba(191, 219, 254, 0.9) !important;
-  border-color: rgba(29, 78, 216, 0.28) !important;
+  color: var(--ffb-blue-12) !important;
+  background: var(--ffb-blue-5) !important;
+  border-color: var(--ffb-blue-7) !important;
 }
 
 .g-vocab-panel-meaning {
   margin-top: 6px !important;
-  color: #1f2937 !important;
+  color: var(--ffb-olive-12) !important;
   font-size: 13px !important;
   font-weight: 700 !important;
   line-height: 1.45 !important;
@@ -185,20 +213,20 @@
 
 .g-vocab-panel-def {
   margin-top: 3px !important;
-  color: #6b7280 !important;
+  color: var(--ffb-olive-11) !important;
   font-size: 12px !important;
   line-height: 1.55 !important;
 }
 
 .g-vocab-delete {
-  color: #b91c1c !important;
-  background: rgba(254, 242, 242, 0.78) !important;
-  border-color: rgba(185, 28, 28, 0.16) !important;
+  color: var(--ffb-red-12) !important;
+  background: var(--ffb-red-2) !important;
+  border-color: var(--ffb-red-6) !important;
 }
 
 .g-vocab-delete:hover {
-  background: rgba(254, 226, 226, 0.92) !important;
-  border-color: rgba(185, 28, 28, 0.28) !important;
+  background: var(--ffb-red-4) !important;
+  border-color: var(--ffb-red-7) !important;
 }
 
 .g-vocab-highlight {
@@ -217,10 +245,10 @@
   width: max-content !important;
   max-width: 220px !important;
   padding: 8px 10px !important;
-  border: 1px solid rgba(90, 158, 58, 0.22) !important;
+  border: 1px solid var(--ffb-lime-6) !important;
   border-radius: 8px !important;
-  background: rgba(255, 255, 255, 0.96) !important;
-  color: #1f2937 !important;
+  background: color-mix(in srgb, var(--ffb-surface) 96%, transparent) !important;
+  color: var(--ffb-olive-12) !important;
   box-shadow: 0 10px 26px rgba(35, 53, 28, 0.16) !important;
   font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
   font-size: 12px !important;
@@ -234,26 +262,21 @@
 }
 
 .g-vocab-highlight-tip strong {
-  color: #111827 !important;
+  color: var(--ffb-olive-12) !important;
   font-size: 13px !important;
 }
 
 .g-vocab-highlight-tip span {
-  color: #3f7528 !important;
+  color: var(--ffb-lime-11) !important;
   font-weight: 700 !important;
 }
 
 .g-vocab-highlight-tip em {
-  color: #6b7280 !important;
+  color: var(--ffb-olive-11) !important;
   font-style: normal !important;
 }
 
 #fanfanba-floating {
-  --ffb-glass-bg:     rgba(255, 255, 255, 0.45);
-  --ffb-glass-border: rgba(255, 255, 255, 0.5);
-  --ffb-brand-green:  #A3D179;
-  --ffb-brand-yellow: #F9D423;
-  --ffb-icon-default: #4B5563;
   --ffb-glass-blur:   blur(8px);
   --ffb-soft-shadow:  0 4px 12px rgba(0, 0, 0, 0.08);
   --ffb-ease-fast:    all 0.2s ease-out;
@@ -279,12 +302,12 @@
   padding:               2px 6px !important;
 
   /* 輕量毛玻璃背景 */
-  background:            var(--ffb-glass-bg, rgba(255, 255, 255, 0.45)) !important;
+  background:            color-mix(in srgb, var(--ffb-surface) 45%, transparent) !important;
   backdrop-filter:       var(--ffb-glass-blur, blur(8px)) !important;
   -webkit-backdrop-filter: var(--ffb-glass-blur, blur(8px)) !important;
 
   /* 微圓角邊框與柔和陰影 */
-  border:                1px solid var(--ffb-glass-border, rgba(255, 255, 255, 0.5)) !important;
+  border:                1px solid color-mix(in srgb, var(--ffb-edge) 50%, transparent) !important;
   border-radius:         10px !important;
   box-shadow:            var(--ffb-soft-shadow, 0 4px 12px rgba(0, 0, 0, 0.08)) !important;
 
@@ -301,7 +324,7 @@
 
 /* hover：輕微加深玻璃感 */
 #gemini-ai-toolbar.g-show:hover {
-  background:  rgba(255, 255, 255, 0.62) !important;
+  background:  color-mix(in srgb, var(--ffb-surface) 62%, transparent) !important;
   box-shadow:  0 6px 16px rgba(0, 0, 0, 0.12) !important;
   transition:  var(--ffb-ease-fast, all 0.2s ease-out) !important;
 }
@@ -320,7 +343,7 @@
   border-radius:   7px !important;
   cursor:          pointer !important;
   /* 預設：深灰色圖示 */
-  color:           var(--ffb-icon-default, #4B5563) !important;
+  color:           var(--ffb-olive-11) !important;
   transition:      var(--ffb-ease-fast, all 0.2s ease-out) !important;
   outline:         none !important;
   padding:         5px !important;
@@ -329,18 +352,18 @@
   position:        relative !important;
 }
 
-/* hover：淡綠背景 + 深品牌綠圖示（#6AAB45，比主色深約 20%）*/
+/* hover：淡綠背景 + 深品牌綠圖示 */
 .g-btn:hover {
-  background: rgba(163, 209, 121, 0.12) !important;
-  color:      #6AAB45 !important;
+  background: var(--ffb-lime-3) !important;
+  color:      var(--ffb-lime-12) !important;
 }
 
 .g-btn:active { transform: scale(0.9) !important; }
 
 /* 已選中狀態 */
 .g-btn.g-active {
-  color:      var(--ffb-brand-green, #A3D179) !important;
-  background: rgba(163, 209, 121, 0.15) !important;
+  color:      var(--ffb-lime-12) !important;
+  background: var(--ffb-lime-4) !important;
 }
 
 .g-btn svg {
@@ -398,9 +421,9 @@
 }
 
 .g-btn:focus-visible {
-  outline: 2px solid rgba(26, 115, 232, 0.38) !important;
+  outline: 2px solid var(--ffb-focus) !important;
   outline-offset: 3px !important;
-  background: rgba(26, 115, 232, 0.08) !important;
+  background: var(--ffb-blue-3) !important;
 }
 
 /* 分隔線（淺色主題用淡灰色）*/
@@ -408,7 +431,7 @@
   display:     block !important;
   width:       1px !important;
   height:      13px !important;
-  background:  rgba(0, 0, 0, 0.10) !important;
+  background:  color-mix(in srgb, var(--ffb-olive-12) 10%, transparent) !important;
   flex-shrink: 0 !important;
   margin:      0 1px !important;
 }
@@ -420,10 +443,10 @@
   position:              fixed !important;
   z-index:               2147483646 !important;
   width:                 min(500px, calc(100vw - 16px)) !important;
-  background:            rgba(255, 255, 255, 0.88) !important;
+  background:            color-mix(in srgb, var(--ffb-surface) 88%, transparent) !important;
   backdrop-filter:       blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
-  border:                1px solid rgba(255, 255, 255, 0.5) !important;
+  border:                1px solid color-mix(in srgb, var(--ffb-edge) 50%, transparent) !important;
   border-radius:         16px !important;
   box-shadow:            0 4px 6px -1px rgba(0, 0, 0, 0.1),
                          0 2px 4px -1px rgba(0, 0, 0, 0.06),
@@ -431,7 +454,7 @@
                          0 0 0 0.5px rgba(0, 0, 0, 0.05) !important;
   overflow:              hidden !important;
   font-size:             13px !important;
-  color:                 #1a1a1a !important;
+  color:                 var(--ffb-olive-12) !important;
   text-align:            left !important;
 
   /* 進場動畫 */
@@ -456,8 +479,8 @@
   justify-content: space-between !important;
   gap:             8px !important;
   padding:         7px 10px 6px !important;
-  border-bottom:   1px solid rgba(0, 0, 0, 0.06) !important;
-  background:      rgba(250, 250, 250, 0.6) !important;
+  border-bottom:   1px solid var(--ffb-olive-6) !important;
+  background:      color-mix(in srgb, var(--ffb-surface) 60%, transparent) !important;
 }
 
 .g-rc-header::after {
@@ -467,7 +490,7 @@
   right: 0 !important;
   bottom: 0 !important;
   height: 0 !important;
-  background: #A3D179 !important;
+  background: var(--ffb-lime-9) !important;
   pointer-events: none !important;
 }
 
@@ -482,7 +505,7 @@
   font-size:      10.5px !important;
   font-weight:    700 !important;
   font-family:    'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
-  color:          #1a73e8 !important;
+  color:          var(--ffb-blue-11) !important;
   text-transform: uppercase !important;
   letter-spacing: 0.6px !important;
   min-width:      0 !important;
@@ -490,7 +513,7 @@
 }
 .g-rc-tag svg {
   flex-shrink: 0 !important;
-  stroke:      #1a73e8 !important;
+  stroke:      var(--ffb-blue-11) !important;
 }
 
 .g-rc-actions {
@@ -506,8 +529,8 @@
   justify-content: space-between !important;
   gap:             8px !important;
   padding:         6px 10px 7px !important;
-  border-top:      1px solid rgba(0, 0, 0, 0.06) !important;
-  background:      rgba(250, 250, 250, 0.6) !important;
+  border-top:      1px solid var(--ffb-olive-6) !important;
+  background:      color-mix(in srgb, var(--ffb-surface) 60%, transparent) !important;
 }
 
 .g-rc-edit-source,
@@ -515,10 +538,10 @@
 .g-rc-source-submit {
   min-height:    26px !important;
   padding:       3px 10px !important;
-  border:        1px solid rgba(0, 0, 0, 0.1) !important;
+  border:        1px solid var(--ffb-olive-6) !important;
   border-radius: 8px !important;
-  background:    rgba(255, 255, 255, 0.72) !important;
-  color:         #374151 !important;
+  background:    color-mix(in srgb, var(--ffb-surface) 72%, transparent) !important;
+  color:         var(--ffb-olive-12) !important;
   font-size:     11px !important;
   font-weight:   700 !important;
   line-height:   1.2 !important;
@@ -527,19 +550,19 @@
 }
 
 .g-rc-edit-source:hover,
-.g-rc-source-cancel:hover { background: rgba(255, 255, 255, 0.95) !important; }
+.g-rc-source-cancel:hover { background: color-mix(in srgb, var(--ffb-surface) 95%, transparent) !important; }
 
 .g-rc-source-submit {
-  border-color: rgba(26, 115, 232, 0.3) !important;
-  background:   #1a73e8 !important;
-  color:        #fff !important;
+  border-color: var(--ffb-blue-7) !important;
+  background:   var(--ffb-blue-11) !important;
+  color:        var(--ffb-on-solid) !important;
 }
 
 .g-rc-edit-source:focus-visible,
 .g-rc-source-cancel:focus-visible,
 .g-rc-source-submit:focus-visible,
 .g-rc-source-input:focus-visible {
-  outline: 2px solid rgba(26, 115, 232, 0.34) !important;
+  outline: 2px solid var(--ffb-focus) !important;
   outline-offset: 2px !important;
 }
 
@@ -553,18 +576,18 @@
 .g-rc-model-once {
   flex-shrink: 0 !important;
   font-size:   10.5px !important;
-  color:       #999 !important;
+  color:       var(--ffb-olive-11) !important;
 }
 
 .g-rc-model-once.g-rc-model-once-active {
-  color:       #1a73e8 !important;
+  color:       var(--ffb-blue-11) !important;
   font-weight: 700 !important;
 }
 
 .g-rc-source {
   display: none !important;
   padding: 8px 10px 4px !important;
-  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+  border-top: 1px solid var(--ffb-olive-6) !important;
 }
 
 #gemini-result-card.g-rc-query-mode .g-rc-footer {
@@ -582,10 +605,10 @@
   min-height:    64px !important;
   max-height:    180px !important;
   padding:       6px 8px !important;
-  border:        1px solid rgba(0, 0, 0, 0.14) !important;
+  border:        1px solid var(--ffb-olive-7) !important;
   border-radius: 8px !important;
-  background:    #fff !important;
-  color:         #1f2937 !important;
+  background:    var(--ffb-surface) !important;
+  color:         var(--ffb-olive-12) !important;
   font-size:     12.5px !important;
   line-height:   1.5 !important;
   resize:        vertical !important;
@@ -602,7 +625,7 @@
 .g-rc-source-hint {
   margin-right: auto !important;
   font-size:    10.5px !important;
-  color:        #999 !important;
+  color:        var(--ffb-olive-11) !important;
 }
 
 .g-rc-model-select {
@@ -611,10 +634,10 @@
   min-width: 92px !important;
   height: 26px !important;
   padding: 3px 24px 3px 8px !important;
-  border: 1px solid rgba(26, 115, 232, 0.14) !important;
+  border: 1px solid var(--ffb-blue-6) !important;
   border-radius: 8px !important;
-  background: rgba(255, 255, 255, 0.72) !important;
-  color: #374151 !important;
+  background: color-mix(in srgb, var(--ffb-surface) 72%, transparent) !important;
+  color: var(--ffb-olive-12) !important;
   font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
   font-size: 11px !important;
   font-weight: 700 !important;
@@ -624,12 +647,12 @@
 }
 
 .g-rc-model-select:hover {
-  border-color: rgba(26, 115, 232, 0.28) !important;
-  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: var(--ffb-blue-7) !important;
+  background: color-mix(in srgb, var(--ffb-surface) 92%, transparent) !important;
 }
 
 .g-rc-model-select:focus-visible {
-  outline: 2px solid rgba(26, 115, 232, 0.34) !important;
+  outline: 2px solid var(--ffb-focus) !important;
   outline-offset: 2px !important;
 }
 
@@ -644,20 +667,20 @@
   background:      transparent !important;
   border-radius:   6px !important;
   cursor:          pointer !important;
-  color:           #777 !important;
+  color:           var(--ffb-olive-11) !important;
   transition:      background 0.12s, color 0.12s, transform 0.15s !important;
   outline:         none !important;
 }
 
-.g-icon-btn:hover  { background: rgba(0, 0, 0, 0.06) !important; color: #333 !important; }
+.g-icon-btn:hover  { background: color-mix(in srgb, var(--ffb-olive-12) 6%, transparent) !important; color: var(--ffb-olive-12) !important; }
 .g-icon-btn:focus-visible {
-  background: rgba(26, 115, 232, 0.08) !important;
-  color: #1a73e8 !important;
-  outline: 2px solid rgba(26, 115, 232, 0.34) !important;
+  background: var(--ffb-blue-3) !important;
+  color: var(--ffb-blue-12) !important;
+  outline: 2px solid var(--ffb-focus) !important;
   outline-offset: 2px !important;
 }
 .g-icon-btn:active { transform: scale(0.88) !important; }
-.g-copy.g-copied   { color: #34a853 !important; }
+.g-copy.g-copied   { color: var(--ffb-lime-11) !important; }
 
 /* 卡片內容區（高度隨內容自動撐開，不設捲動） */
 .g-rc-body {
@@ -673,7 +696,7 @@
 .g-shimmer-line {
   height:          13px !important;
   border-radius:   6px !important;
-  background:      linear-gradient(90deg, #f0f0f0 25%, #e4e4e4 50%, #f0f0f0 75%) !important;
+  background:      linear-gradient(90deg, var(--ffb-olive-3) 25%, var(--ffb-olive-5) 50%, var(--ffb-olive-3) 75%) !important;
   background-size: 400px 100% !important;
   animation:       g-shimmer 1.4s ease infinite !important;
   margin-bottom:   10px !important;
@@ -704,8 +727,8 @@
   max-width:      100% !important;
   padding:        5px 10px !important;
   border-radius:  999px !important;
-  background:     rgba(26, 115, 232, 0.08) !important;
-  color:          #1f2937 !important;
+  background:     var(--ffb-blue-3) !important;
+  color:          var(--ffb-olive-12) !important;
   font-size:      15px !important;
   font-weight:    700 !important;
   line-height:    1.35 !important;
@@ -725,7 +748,7 @@
   flex:        1 1 auto !important;
   font-size:   18px !important;
   font-weight: 700 !important;
-  color:       #1f2937 !important;
+  color:       var(--ffb-olive-12) !important;
   line-height: 1.35 !important;
   word-break:  break-word !important;
 }
@@ -741,20 +764,20 @@
   background:      transparent !important;
   border-radius:   99px !important;
   cursor:          pointer !important;
-  color:           #1a73e8 !important;
+  color:           var(--ffb-blue-11) !important;
   transition:      background 0.12s, transform 0.15s !important;
   padding:         0 !important;
   outline:         none !important;
   flex-shrink:     0 !important;
 }
 
-.g-speak-btn:hover    { background: #e8f0fe !important; transform: scale(1.1) !important; }
+.g-speak-btn:hover    { background: var(--ffb-blue-3) !important; transform: scale(1.1) !important; }
 .g-speak-btn:focus-visible {
-  background: #e8f0fe !important;
-  outline: 2px solid rgba(26, 115, 232, 0.34) !important;
+  background: var(--ffb-blue-3) !important;
+  outline: 2px solid var(--ffb-focus) !important;
   outline-offset: 2px !important;
 }
-.g-speak-btn.g-speaking { color: #0d47a1 !important; }
+.g-speak-btn.g-speaking { color: var(--ffb-blue-11) !important; }
 
 .g-vocab-save-btn {
   display: inline-flex !important;
@@ -763,10 +786,10 @@
   max-width: 150px !important;
   min-height: 28px !important;
   padding: 4px 8px !important;
-  border: 1px solid rgba(90, 158, 58, 0.18) !important;
+  border: 1px solid var(--ffb-lime-6) !important;
   border-radius: 999px !important;
-  background: rgba(237, 247, 232, 0.72) !important;
-  color: #3f7528 !important;
+  background: var(--ffb-lime-3) !important;
+  color: var(--ffb-lime-12) !important;
   cursor: pointer !important;
   font-size: 11.5px !important;
   font-weight: 750 !important;
@@ -788,14 +811,14 @@
 }
 
 .g-vocab-save-btn:hover {
-  background: rgba(220, 241, 209, 0.9) !important;
-  border-color: rgba(90, 158, 58, 0.34) !important;
-  color: #2f6d20 !important;
+  background: var(--ffb-lime-4) !important;
+  border-color: var(--ffb-lime-7) !important;
+  color: var(--ffb-lime-12) !important;
   transform: translateY(-1px) !important;
 }
 
 .g-vocab-save-btn:focus-visible {
-  outline: 2px solid rgba(90, 158, 58, 0.34) !important;
+  outline: 2px solid var(--ffb-focus) !important;
   outline-offset: 2px !important;
 }
 
@@ -805,30 +828,30 @@
 }
 
 .g-vocab-save-btn.g-vocab-saving {
-  color: #6b7280 !important;
-  background: rgba(243, 244, 246, 0.82) !important;
-  border-color: rgba(107, 114, 128, 0.16) !important;
+  color: var(--ffb-olive-11) !important;
+  background: var(--ffb-olive-3) !important;
+  border-color: var(--ffb-olive-7) !important;
 }
 
 .g-vocab-save-btn.g-vocab-saved {
-  color: #2f6d20 !important;
-  background: rgba(220, 241, 209, 0.86) !important;
-  border-color: rgba(90, 158, 58, 0.30) !important;
+  color: var(--ffb-lime-12) !important;
+  background: var(--ffb-lime-4) !important;
+  border-color: var(--ffb-lime-7) !important;
 }
 
 .g-vocab-save-btn.g-vocab-saved svg {
-  fill: rgba(90, 158, 58, 0.18) !important;
+  fill: var(--ffb-lime-11) !important;
 }
 
 .g-vocab-save-btn.g-vocab-error {
-  color: #b91c1c !important;
-  background: rgba(254, 242, 242, 0.88) !important;
-  border-color: rgba(185, 28, 28, 0.22) !important;
+  color: var(--ffb-red-12) !important;
+  background: var(--ffb-red-2) !important;
+  border-color: var(--ffb-red-6) !important;
 }
 
 .g-dict-phonetic {
   font-size:      12.5px !important;
-  color:          rgba(0, 0, 0, 0.38) !important;
+  color:          var(--ffb-olive-11) !important;
   margin-bottom:  10px !important;
   font-family:    'Courier New', monospace !important;
   letter-spacing: 0.3px !important;
@@ -836,13 +859,13 @@
 
 .g-dict-divider {
   height:     1px !important;
-  background: rgba(0, 0, 0, 0.07) !important;
+  background: color-mix(in srgb, var(--ffb-olive-12) 7%, transparent) !important;
   margin:     10px 0 !important;
 }
 
 .g-dict-pos-def {
   font-size:     13px !important;
-  color:         #333 !important;
+  color:         var(--ffb-olive-12) !important;
   margin-bottom: 8px !important;
   line-height:   1.6 !important;
   text-align:    left !important;
@@ -861,16 +884,16 @@
   letter-spacing: 0.2px !important;
 }
 
-.g-pos-n       { background: #e6f4ea !important; color: #137333 !important; } /* 名詞 — 綠 */
-.g-pos-v       { background: #e8f0fe !important; color: #1a73e8 !important; } /* 動詞 — 藍 */
-.g-pos-adj     { background: #fce8e6 !important; color: #c5221f !important; } /* 形容詞 — 紅 */
-.g-pos-adv     { background: #fef3c7 !important; color: #92400e !important; } /* 副詞 — 黃 */
-.g-pos-prep    { background: #ede9fe !important; color: #6d28d9 !important; } /* 介詞 — 紫 */
-.g-pos-default { background: #f3f4f6 !important; color: #6b7280 !important; } /* 其他 — 灰 */
+.g-pos-n       { background: var(--ffb-lime-3) !important; color: var(--ffb-lime-12) !important; } /* 名詞 — 綠 */
+.g-pos-v       { background: var(--ffb-blue-3) !important; color: var(--ffb-blue-12) !important; } /* 動詞 — 藍 */
+.g-pos-adj     { background: var(--ffb-red-3) !important; color: var(--ffb-red-12) !important; } /* 形容詞 — 紅 */
+.g-pos-adv     { background: var(--ffb-amber-3) !important; color: var(--ffb-amber-12) !important; } /* 副詞 — 黃 */
+.g-pos-prep    { background: var(--ffb-violet-4) !important; color: var(--ffb-violet-12) !important; } /* 介詞 — 紫 */
+.g-pos-default { background: var(--ffb-olive-3) !important; color: var(--ffb-olive-11) !important; } /* 其他 — 灰 */
 
 .g-dict-usage {
   font-size:     12.5px !important;
-  color:         #555 !important;
+  color:         var(--ffb-olive-11) !important;
   line-height:   1.7 !important;
   margin-bottom: 10px !important;
   text-align:    left !important;
@@ -880,7 +903,7 @@
   font-size:      11px !important;
   font-weight:    700 !important;
   font-family:    'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
-  color:          #999 !important;
+  color:          var(--ffb-olive-11) !important;
   text-transform: uppercase !important;
   letter-spacing: 0.5px !important;
   margin-bottom:  8px !important;
@@ -890,14 +913,14 @@
 .g-example {
   margin-bottom: 8px !important;
   padding-left:  10px !important;
-  border-left:   2px solid #c7d7fd !important;
+  border-left:   2px solid var(--ffb-blue-6) !important;
   text-align:    left !important;
 }
 
 .g-ex-en {
   display:     block !important;
   font-size:   12.5px !important;
-  color:       #333 !important;
+  color:       var(--ffb-olive-12) !important;
   font-style:  normal !important;
   line-height: 1.6 !important;
   word-break:  break-word !important;
@@ -906,7 +929,7 @@
 .g-ex-zh {
   display:    block !important;
   font-size:  12px !important;
-  color:      rgba(0, 0, 0, 0.45) !important;
+  color:      var(--ffb-olive-11) !important;
   margin-top: 2px !important;
   line-height: 1.6 !important;
   word-break: break-word !important;
@@ -915,30 +938,30 @@
 /* ── 一般文字（解釋 / 優化 / 長文翻譯）────────── */
 .g-text-body {
   font-size:   13px !important;
-  color:       #333 !important;
+  color:       var(--ffb-olive-12) !important;
   line-height: 1.7 !important;
   word-break:  break-word !important;
 }
 
 .g-text-body strong {
   font-weight: 600 !important;
-  color:       #111 !important;
+  color:       var(--ffb-olive-12) !important;
 }
 
 .g-num {
   font-weight: 600 !important;
-  color:       #1a73e8 !important;
+  color:       var(--ffb-blue-11) !important;
 }
 
 .g-error {
-  color:     #d93025 !important;
+  color:     var(--ffb-red-11) !important;
   font-size: 12.5px !important;
 }
 
 /* 捲軸 */
 .g-rc-body::-webkit-scrollbar       { width: 4px !important; }
 .g-rc-body::-webkit-scrollbar-track { background: transparent !important; }
-.g-rc-body::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15) !important; border-radius: 2px !important; }
+.g-rc-body::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--ffb-olive-12) 15%, transparent) !important; border-radius: 2px !important; }
 
 /* ════════════════════════════════════════════════
    3. 拖曳（結果卡 header 可拖曳移動）
@@ -972,7 +995,7 @@
 .g-text-body .g-p {
   margin:      0 0 5px !important;
   font-size:   13px !important;
-  color:       #333 !important;
+  color:       var(--ffb-olive-12) !important;
   line-height: 1.7 !important;
 }
 
@@ -988,7 +1011,7 @@
 
 .g-text-body .g-list li {
   font-size:     13px !important;
-  color:         #333 !important;
+  color:         var(--ffb-olive-12) !important;
   line-height:   1.7 !important;
   margin-bottom: 3px !important;
 }
@@ -1000,7 +1023,7 @@
    ════════════════════════════════════════════════ */
 
 .g-save-obs.g-saved {
-  color:     #6b5daa !important;
+  color:     var(--ffb-violet-11) !important;
   animation: g-saved-pulse 0.4s ease !important;
 }
 
@@ -1019,7 +1042,7 @@
 
 .g-obs-panel.g-obs-open {
   max-height: 380px !important;
-  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+  border-top: 1px solid var(--ffb-olive-6) !important;
 }
 
 .g-obs-panel-title {
@@ -1030,7 +1053,7 @@
   font-size:      12px !important;
   font-weight:    700 !important;
   font-family:    'jf-openhuninn', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
-  color:          #6b5daa !important;
+  color:          var(--ffb-violet-11) !important;
   letter-spacing: 0.3px !important;
 }
 
@@ -1041,35 +1064,35 @@
 .g-obs-input {
   width:         100% !important;
   padding:       8px 10px !important;
-  border:        1px solid #dde1e8 !important;
+  border:        1px solid var(--ffb-olive-5) !important;
   border-radius: 8px !important;
   font-size:     13px !important;
   font-family:   -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif !important;
-  color:         #1a1a1a !important;
-  background:    rgba(250, 250, 250, 0.8) !important;
+  color:         var(--ffb-olive-12) !important;
+  background:    color-mix(in srgb, var(--ffb-surface) 80%, transparent) !important;
   outline:       none !important;
   transition:    border-color 0.15s, box-shadow 0.15s !important;
   box-sizing:    border-box !important;
 }
 
 .g-obs-input:focus {
-  border-color: #9b8ed4 !important;
-  box-shadow:   0 0 0 3px rgba(155, 142, 212, 0.2) !important;
-  background:   rgba(255, 255, 255, 0.95) !important;
+  border-color: var(--ffb-violet-8) !important;
+  box-shadow:   0 0 0 3px var(--ffb-focus-ring) !important;
+  background:   color-mix(in srgb, var(--ffb-surface) 95%, transparent) !important;
 }
 
 .g-obs-input.g-obs-input-err {
-  border-color: #ef4444 !important;
-  box-shadow:   0 0 0 3px rgba(239, 68, 68, 0.12) !important;
+  border-color: var(--ffb-red-8) !important;
+  box-shadow:   0 0 0 3px color-mix(in srgb, var(--ffb-red-9) 25%, transparent) !important;
 }
 
 .g-obs-dropdown {
   display:       none !important;
   margin:        0 12px 8px !important;
-  border:        1px solid #d0caee !important;
+  border:        1px solid var(--ffb-violet-6) !important;
   border-radius: 8px !important;
   overflow:      hidden !important;
-  background:    rgba(255, 255, 255, 0.95) !important;
+  background:    color-mix(in srgb, var(--ffb-surface) 95%, transparent) !important;
 }
 
 .g-obs-dropdown.g-obs-dd-open {
@@ -1082,10 +1105,10 @@
   padding:       9px 12px !important;
   background:    transparent !important;
   border:        none !important;
-  border-bottom: 1px solid #e8e4f7 !important;
+  border-bottom: 1px solid var(--ffb-violet-6) !important;
   font-size:     12.5px !important;
   font-family:   -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif !important;
-  color:         #333 !important;
+  color:         var(--ffb-olive-12) !important;
   text-align:    left !important;
   cursor:        pointer !important;
   outline:       none !important;
@@ -1093,18 +1116,18 @@
 }
 
 .g-obs-dd-item:last-child { border-bottom: none !important; }
-.g-obs-dd-item:hover      { background: #edeaf8 !important; color: #6b5daa !important; }
+.g-obs-dd-item:hover      { background: var(--ffb-violet-4) !important; color: var(--ffb-violet-12) !important; }
 .g-obs-dd-item:focus-visible {
-  outline: 2px solid rgba(107, 93, 170, 0.34) !important;
+  outline: 2px solid var(--ffb-focus) !important;
   outline-offset: -2px !important;
-  background: #edeaf8 !important;
-  color: #6b5daa !important;
+  background: var(--ffb-violet-4) !important;
+  color: var(--ffb-violet-12) !important;
 }
 
 .g-obs-dd-empty {
   padding:    10px 12px !important;
   font-size:  12px !important;
-  color:      #bbb !important;
+  color:      var(--ffb-olive-9) !important;
   text-align: center !important;
 }
 
@@ -1112,20 +1135,20 @@
   display:       none !important;
   margin:        0 12px 8px !important;
   padding:       7px 10px !important;
-  background:    #f2f0fb !important;
-  border:        1px solid #d0caee !important;
+  background:    var(--ffb-violet-3) !important;
+  border:        1px solid var(--ffb-violet-6) !important;
   border-radius: 7px !important;
   font-size:     12px !important;
-  color:         #6b5daa !important;
+  color:         var(--ffb-violet-12) !important;
   line-height:   1.5 !important;
 }
 
 .g-obs-status.g-obs-status-show { display: block !important; }
 
 .g-obs-status.g-obs-status-ok {
-  background: #f0fdf4 !important;
-  border:     1px solid #bbf7d0 !important;
-  color:      #15803d !important;
+  background: var(--ffb-lime-2) !important;
+  border:     1px solid var(--ffb-lime-6) !important;
+  color:      var(--ffb-lime-12) !important;
 }
 
 .g-obs-split-wrap {
@@ -1137,8 +1160,8 @@
 .g-obs-confirm-btn {
   flex:          1 !important;
   padding:       10px 16px !important;
-  background:    #8875c7 !important;
-  color:         #fff !important;
+  background:    var(--ffb-violet-11) !important;
+  color:         var(--ffb-on-solid) !important;
   border:        none !important;
   border-radius: 8px 0 0 8px !important;
   font-size:     13px !important;
@@ -1150,9 +1173,9 @@
   text-align:    center !important;
 }
 
-.g-obs-confirm-btn:hover  { background: #7664b5 !important; }
+.g-obs-confirm-btn:hover  { background: var(--ffb-violet-12) !important; }
 .g-obs-confirm-btn:focus-visible {
-  outline: 2px solid rgba(107, 93, 170, 0.38) !important;
+  outline: 2px solid var(--ffb-focus) !important;
   outline-offset: 2px !important;
 }
 .g-obs-confirm-btn:active { transform: scale(0.97) !important; }
@@ -1162,10 +1185,10 @@
   align-items:     center !important;
   justify-content: center !important;
   width:           40px !important;
-  background:      #7664b5 !important;
-  color:           #fff !important;
+  background:      var(--ffb-violet-11) !important;
+  color:           var(--ffb-on-solid) !important;
   border:          none !important;
-  border-left:     1px solid rgba(255, 255, 255, 0.25) !important;
+  border-left:     1px solid color-mix(in srgb, var(--ffb-edge) 25%, transparent) !important;
   border-radius:   0 8px 8px 0 !important;
   cursor:          pointer !important;
   transition:      background 0.12s !important;
@@ -1173,9 +1196,9 @@
   flex-shrink:     0 !important;
 }
 
-.g-obs-chevron-btn:hover { background: #6655a3 !important; }
+.g-obs-chevron-btn:hover { background: var(--ffb-violet-12) !important; }
 .g-obs-chevron-btn:focus-visible {
-  outline: 2px solid rgba(107, 93, 170, 0.38) !important;
+  outline: 2px solid var(--ffb-focus) !important;
   outline-offset: 2px !important;
 }
 
@@ -1183,8 +1206,8 @@
    7. Pin 按鈕 + 釘住狀態
    ════════════════════════════════════════════════ */
 .g-pin.g-pin-active {
-  color:      #1a73e8 !important;
-  background: rgba(26, 115, 232, 0.09) !important;
+  color:      var(--ffb-blue-12) !important;
+  background: var(--ffb-blue-3) !important;
 }
 
 /* 釘住狀態線由 header 內嵌線顯示，不推擠版面 */
@@ -1200,11 +1223,11 @@
   align-items:     center !important;
   justify-content: space-between !important;
   padding:         0 12px !important;
-  background:      #f0fdf4 !important;
+  background:      var(--ffb-lime-2) !important;
   /* 收合時 border 寬度 0，避免 max-height:0 仍漏出一條綠線；展開時才補回分隔線 */
-  border-bottom:   0 solid #bbf7d0 !important;
+  border-bottom:   0 solid var(--ffb-lime-6) !important;
   font-size:       11.5px !important;
-  color:           #15803d !important;
+  color:           var(--ffb-lime-12) !important;
   max-height:      0 !important;
   overflow:        hidden !important;
   line-height:     22px !important;
@@ -1229,7 +1252,7 @@
   border:          none !important;
   font-size:       11px !important;
   font-family:     inherit !important;
-  color:           #5a9a2e !important;
+  color:           var(--ffb-lime-11) !important;
   cursor:          pointer !important;
   padding:         0 0 0 10px !important;
   text-decoration: underline !important;
@@ -1237,9 +1260,9 @@
   white-space:     nowrap !important;
 }
 
-.g-autosave-change:hover { color: #3a7a1e !important; }
+.g-autosave-change:hover { color: var(--ffb-lime-11) !important; }
 .g-autosave-change:focus-visible {
-  outline: 2px solid rgba(90, 154, 46, 0.34) !important;
+  outline: 2px solid var(--ffb-focus) !important;
   outline-offset: 2px !important;
 }
 
@@ -1249,7 +1272,7 @@
 #gemini-result-card .g-streaming::after {
   content:    '▋' !important;
   animation:  g-cursor-blink 0.65s ease infinite !important;
-  color:      #1a73e8 !important;
+  color:      var(--ffb-blue-11) !important;
   font-style: normal !important;
 }
 
@@ -1264,13 +1287,13 @@
 .g-chevron {
   transition:  transform 0.2s ease !important;
   margin-left: auto !important;
-  color:       #bbb !important;
+  color:       var(--ffb-olive-9) !important;
   flex-shrink: 0 !important;
 }
 
 hr.g-deep-divider {
   border:        none !important;
-  border-top:    1px dashed rgba(0, 0, 0, 0.12) !important;
+  border-top:    1px dashed var(--ffb-olive-7) !important;
   margin:        8px 0 !important;
 }
 
@@ -1285,16 +1308,16 @@ hr.g-deep-divider {
 }
 
 ins.g-diff-ins {
-  background:      rgba(52, 168, 83, 0.14) !important;
-  color:           #1a7a3a !important;
+  background:      var(--ffb-lime-4) !important;
+  color:           var(--ffb-lime-12) !important;
   text-decoration: none !important;
   border-radius:   3px !important;
   padding:         0 2px !important;
 }
 
 del.g-diff-del {
-  background:      rgba(234, 67, 53, 0.10) !important;
-  color:           #c62828 !important;
+  background:      var(--ffb-red-3) !important;
+  color:           var(--ffb-red-12) !important;
   text-decoration: line-through !important;
   border-radius:   3px !important;
   padding:         0 2px !important;
@@ -1308,16 +1331,16 @@ del.g-diff-del {
 }
 
 .g-diff-label-del {
-  background:    rgba(234, 67, 53, 0.10) !important;
-  color:         #c62828 !important;
+  background:    var(--ffb-red-3) !important;
+  color:         var(--ffb-red-12) !important;
   padding:       1px 9px !important;
   border-radius: 10px !important;
   font-weight:   600 !important;
 }
 
 .g-diff-label-ins {
-  background:    rgba(52, 168, 83, 0.12) !important;
-  color:         #1a7a3a !important;
+  background:    var(--ffb-lime-3) !important;
+  color:         var(--ffb-lime-12) !important;
   padding:       1px 9px !important;
   border-radius: 10px !important;
   font-weight:   600 !important;
@@ -1330,9 +1353,9 @@ del.g-diff-del {
   display:         inline-block !important;
   padding:         2px 10px !important;
   margin:          2px 3px 2px 0 !important;
-  background:      rgba(26, 115, 232, 0.08) !important;
-  color:           #1a73e8 !important;
-  border:          1px solid rgba(26, 115, 232, 0.22) !important;
+  background:      var(--ffb-blue-3) !important;
+  color:           var(--ffb-blue-12) !important;
+  border:          1px solid var(--ffb-blue-6) !important;
   border-radius:   12px !important;
   font-size:       11.5px !important;
   cursor:          pointer !important;
@@ -1341,8 +1364,8 @@ del.g-diff-del {
 }
 
 .g-tag:hover {
-  background:   rgba(26, 115, 232, 0.16) !important;
-  border-color: rgba(26, 115, 232, 0.4) !important;
+  background:   var(--ffb-blue-4) !important;
+  border-color: var(--ffb-blue-7) !important;
 }
 
 /* ════════════════════════════════════════════════
@@ -1360,13 +1383,13 @@ del.g-diff-del {
 }
 
 .g-ex-general {
-  background: rgba(0, 0, 0, 0.06) !important;
-  color:      #777 !important;
+  background: color-mix(in srgb, var(--ffb-olive-12) 6%, transparent) !important;
+  color:      var(--ffb-olive-11) !important;
 }
 
 .g-ex-context {
-  background: rgba(26, 115, 232, 0.1) !important;
-  color:      #1a73e8 !important;
+  background: var(--ffb-blue-3) !important;
+  color:      var(--ffb-blue-12) !important;
 }
 
 /* 例句中的查詢詞（只加粗、不換色，避免跟語境徽章的藍色混淆） */
@@ -1382,13 +1405,13 @@ del.g-diff-del {
   flex-shrink:   0 !important;
   min-height:    20px !important;
   padding:       1px 7px !important;
-  border:        1px solid rgba(0, 0, 0, 0.12) !important;
+  border:        1px solid var(--ffb-olive-7) !important;
   border-radius: 6px !important;
   font-size:     11px !important;
   font-weight:   700 !important;
   letter-spacing: 0.02em !important;
-  color:         #555 !important;
-  background:    rgba(0, 0, 0, 0.04) !important;
+  color:         var(--ffb-olive-11) !important;
+  background:    color-mix(in srgb, var(--ffb-olive-12) 4%, transparent) !important;
   line-height:   1.4 !important;
 }
 
@@ -1418,7 +1441,7 @@ del.g-diff-del {
 .g-synonym-label {
   font-size:      10px !important;
   font-weight:    700 !important;
-  color:          #999 !important;
+  color:          var(--ffb-olive-11) !important;
   text-transform: uppercase !important;
   letter-spacing: 0.5px !important;
   flex-shrink:    0 !important;
@@ -1426,13 +1449,13 @@ del.g-diff-del {
 
 .g-synonym-word {
   font-weight: 600 !important;
-  color:       #1a1a1a !important;
+  color:       var(--ffb-olive-12) !important;
   font-size:   13px !important;
 }
 
 .g-synonym-diff {
   font-size: 12px !important;
-  color:     #666 !important;
+  color:     var(--ffb-olive-11) !important;
 }
 
 /* ════════════════════════════════════════════════
@@ -1445,32 +1468,32 @@ del.g-diff-del {
 .g-optimize-label {
   font-size:      10.5px !important;
   font-weight:    700 !important;
-  color:          #999 !important;
+  color:          var(--ffb-olive-11) !important;
   text-transform: uppercase !important;
   letter-spacing: 0.4px !important;
   margin-bottom:  4px !important;
 }
 
 .g-optimize-original {
-  background:    #f5f5f5 !important;
-  border:        1px solid rgba(0, 0, 0, 0.08) !important;
+  background:    var(--ffb-olive-2) !important;
+  border:        1px solid var(--ffb-olive-6) !important;
   border-radius: 8px !important;
   padding:       10px 12px !important;
   font-size:     13.5px !important;
   line-height:   1.65 !important;
-  color:         #444 !important;
+  color:         var(--ffb-olive-12) !important;
   white-space:   pre-wrap !important;
   word-break:    break-word !important;
 }
 
 .g-optimize-result {
-  background:    #e6f4ea !important;
-  border:        1px solid #a8d5b5 !important;
+  background:    var(--ffb-lime-3) !important;
+  border:        1px solid var(--ffb-lime-6) !important;
   border-radius: 8px !important;
   padding:       10px 12px !important;
   font-size:     13.5px !important;
   line-height:   1.65 !important;
-  color:         #1a4f2e !important;
+  color:         var(--ffb-lime-12) !important;
   white-space:   pre-wrap !important;
   word-break:    break-word !important;
 }
@@ -1494,35 +1517,35 @@ del.g-diff-del {
   justify-content: center !important;
   padding:       2px 4px !important;
   background:    none !important;
-  border:        1px solid rgba(0, 0, 0, 0.15) !important;
+  border:        1px solid var(--ffb-olive-7) !important;
   border-radius: 4px !important;
   cursor:        pointer !important;
-  color:         #888 !important;
+  color:         var(--ffb-olive-11) !important;
   transition:    color 0.15s, background 0.15s, border-color 0.15s !important;
   line-height:   1 !important;
 }
 
 .g-opt-copy-btn:hover {
-  background:   rgba(163, 209, 121, 0.15) !important;
-  border-color: #a3d179 !important;
-  color:        #3a7a1e !important;
+  background:   var(--ffb-lime-4) !important;
+  border-color: var(--ffb-lime-6) !important;
+  color:        var(--ffb-lime-12) !important;
 }
 
 .g-opt-copy-btn:focus-visible {
-  outline: 2px solid rgba(90, 158, 58, 0.34) !important;
+  outline: 2px solid var(--ffb-focus) !important;
   outline-offset: 2px !important;
-  background: rgba(163, 209, 121, 0.15) !important;
+  background: var(--ffb-lime-4) !important;
 }
 
 /* 複製成功狀態：變綠打勾 */
 .g-opt-copy-btn.g-opt-copied {
-  background:   rgba(163, 209, 121, 0.25) !important;
-  border-color: #a3d179 !important;
-  color:        #2f7a1f !important;
+  background:   var(--ffb-lime-4) !important;
+  border-color: var(--ffb-lime-6) !important;
+  color:        var(--ffb-lime-12) !important;
 }
 
 .g-optimize-reasons {
-  border-top:  1px solid rgba(0, 0, 0, 0.07) !important;
+  border-top:  1px solid var(--ffb-olive-6) !important;
   padding-top: 8px !important;
   margin-top:  4px !important;
 }
@@ -1535,14 +1558,14 @@ del.g-diff-del {
   margin-bottom: 10px !important;
   font-size:     12.5px !important;
   line-height:   1.5 !important;
-  color:         #555 !important;
+  color:         var(--ffb-olive-11) !important;
 }
 .g-opt-setting .g-optimize-label { margin-bottom: 0 !important; flex: none !important; }
-.g-opt-counts { font-size: 11px !important; color: #777 !important; }
+.g-opt-counts { font-size: 11px !important; color: var(--ffb-olive-11) !important; }
 .g-opt-count { border-radius: 3px !important; padding: 0 4px !important; }
 .g-opt-marks { margin-top: 6px !important; }
 .g-opt-summary {
-  border-top:  1px solid rgba(0, 0, 0, 0.07) !important;
+  border-top:  1px solid var(--ffb-olive-6) !important;
   padding-top: 8px !important;
   margin-top:  8px !important;
 }
@@ -1562,7 +1585,7 @@ del.g-diff-del {
 
 .g-history-panel.g-hist-open {
   max-height:    220px !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.07) !important;
+  border-bottom: 1px solid var(--ffb-olive-6) !important;
   overflow-y:    auto !important;
 }
 
@@ -1570,7 +1593,7 @@ del.g-diff-del {
 .g-hist-empty {
   padding:    12px 14px !important;
   font-size:  12px !important;
-  color:      #999 !important;
+  color:      var(--ffb-olive-11) !important;
   text-align: center !important;
 }
 
@@ -1583,7 +1606,7 @@ del.g-diff-del {
   padding:         7px 14px !important;
   background:      none !important;
   border:          none !important;
-  border-bottom:   1px solid rgba(0, 0, 0, 0.05) !important;
+  border-bottom:   1px solid var(--ffb-olive-6) !important;
   cursor:          pointer !important;
   text-align:      left !important;
   font-family:     inherit !important;
@@ -1595,13 +1618,13 @@ del.g-diff-del {
 }
 
 .g-hist-item:hover {
-  background: rgba(163, 209, 121, 0.12) !important;
+  background: var(--ffb-lime-3) !important;
 }
 
 .g-hist-item:focus-visible {
-  outline: 2px solid rgba(26, 115, 232, 0.34) !important;
+  outline: 2px solid var(--ffb-focus) !important;
   outline-offset: -2px !important;
-  background: rgba(26, 115, 232, 0.08) !important;
+  background: var(--ffb-blue-3) !important;
 }
 
 /* 動作 badge */
@@ -1615,25 +1638,25 @@ del.g-diff-del {
 }
 
 .g-hist-tag-translate {
-  background: rgba(99, 179, 237, 0.18) !important;
-  color:      #2b6cb0 !important;
+  background: var(--ffb-blue-4) !important;
+  color:      var(--ffb-blue-12) !important;
 }
 
 .g-hist-tag-explain {
-  background: rgba(246, 173, 85, 0.18) !important;
-  color:      #c05621 !important;
+  background: var(--ffb-amber-4) !important;
+  color:      var(--ffb-amber-12) !important;
 }
 
 .g-hist-tag-optimize {
-  background: rgba(163, 209, 121, 0.22) !important;
-  color:      #2f7a1f !important;
+  background: var(--ffb-lime-4) !important;
+  color:      var(--ffb-lime-12) !important;
 }
 
 /* 查詢文字（截斷） */
 .g-hist-text {
   flex:          1 !important;
   font-size:     12.5px !important;
-  color:         #333 !important;
+  color:         var(--ffb-olive-12) !important;
   white-space:   nowrap !important;
   overflow:      hidden !important;
   text-overflow: ellipsis !important;
@@ -1644,7 +1667,7 @@ del.g-diff-del {
 .g-hist-time {
   flex-shrink: 0 !important;
   font-size:   11px !important;
-  color:       #aaa !important;
+  color:       var(--ffb-olive-9) !important;
   font-variant-numeric: tabular-nums !important;
 }
 
@@ -1659,16 +1682,16 @@ del.g-diff-del {
 
 .g-error {
   font-size:  13px !important;
-  color:      #f87171 !important;
+  color:      var(--ffb-red-11) !important;
   line-height: 1.6 !important;
 }
 
 .g-retry-btn {
   padding:          5px 14px !important;
   border-radius:    6px !important;
-  border:           1px solid rgba(248, 113, 113, 0.35) !important;
-  background:       rgba(248, 113, 113, 0.08) !important;
-  color:            #f87171 !important;
+  border:           1px solid var(--ffb-red-7) !important;
+  background:       var(--ffb-red-3) !important;
+  color:            var(--ffb-red-12) !important;
   font-size:        12px !important;
   font-weight:      600 !important;
   cursor:           pointer !important;
@@ -1676,21 +1699,21 @@ del.g-diff-del {
 }
 
 .g-retry-btn:hover {
-  background: rgba(248, 113, 113, 0.18) !important;
+  background: var(--ffb-red-4) !important;
 }
 
 .g-retry-btn:focus-visible {
-  outline: 2px solid rgba(248, 113, 113, 0.35) !important;
+  outline: 2px solid var(--ffb-focus) !important;
   outline-offset: 2px !important;
 }
 
 .g-provider-notice {
   margin: 0 0 10px !important;
   padding: 7px 10px !important;
-  border: 1px solid rgba(90, 158, 58, 0.24) !important;
+  border: 1px solid var(--ffb-lime-6) !important;
   border-radius: 8px !important;
-  background: rgba(237, 247, 232, 0.9) !important;
-  color: #3f7528 !important;
+  background: var(--ffb-lime-3) !important;
+  color: var(--ffb-lime-12) !important;
   font-size: 12px !important;
   font-weight: 650 !important;
 }
@@ -1709,9 +1732,9 @@ del.g-diff-del {
   overflow-y:    auto !important;
   margin:        0 !important;
   padding:       4px !important;
-  background:    #fff !important;
-  color:         #1f2933 !important;
-  border:        1px solid rgba(0, 0, 0, 0.1) !important;
+  background:    var(--ffb-surface) !important;
+  color:         var(--ffb-olive-12) !important;
+  border:        1px solid var(--ffb-olive-6) !important;
   border-radius: 10px !important;
   box-shadow:    0 8px 24px rgba(0, 0, 0, 0.14) !important;
   font-size:     13px !important;
@@ -1723,8 +1746,8 @@ del.g-diff-del {
   display: flex !important; align-items: center !important; gap: 2px !important;
   margin: 0 !important; padding: 2px !important; border-radius: 7px !important;
 }
-#gemini-ai-toolbar .g-am-row:hover { background: rgba(0, 0, 0, 0.04) !important; }
-#gemini-ai-toolbar .g-am-handle { color: #aab0b8 !important; cursor: grab !important; font-size: 11px !important; padding: 0 3px !important; letter-spacing: -2px !important; user-select: none !important; }
+#gemini-ai-toolbar .g-am-row:hover { background: color-mix(in srgb, var(--ffb-olive-12) 4%, transparent) !important; }
+#gemini-ai-toolbar .g-am-handle { color: var(--ffb-olive-9) !important; cursor: grab !important; font-size: 11px !important; padding: 0 3px !important; letter-spacing: -2px !important; user-select: none !important; }
 #gemini-ai-toolbar .g-action-menu button {
   all: unset;
   box-sizing: border-box !important;
@@ -1733,13 +1756,13 @@ del.g-diff-del {
   color: inherit !important; font: inherit !important;
 }
 #gemini-ai-toolbar .g-action-menu button:disabled { opacity: 0.3 !important; cursor: default !important; }
-#gemini-ai-toolbar .g-action-menu button:focus-visible { outline: 2px solid #5a9e3a !important; outline-offset: -1px !important; }
+#gemini-ai-toolbar .g-action-menu button:focus-visible { outline: 2px solid var(--ffb-focus) !important; outline-offset: -1px !important; }
 #gemini-ai-toolbar .g-action-menu .g-am-run { flex: 1 !important; justify-content: flex-start !important; gap: 8px !important; padding: 0 8px !important; min-width: 0 !important; }
 #gemini-ai-toolbar .g-action-menu .g-am-run span { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
-#gemini-ai-toolbar .g-action-menu .g-am-icon { width: 26px !important; color: #7b838c !important; }
-#gemini-ai-toolbar .g-action-menu button:not(:disabled):hover { background: rgba(0, 0, 0, 0.06) !important; }
-#gemini-ai-toolbar .g-action-menu .g-am-pin.g-am-pinned { color: #5a9e3a !important; }
-#gemini-ai-toolbar .g-am-notice { font-size: 12px !important; color: #b3261e !important; padding: 0 8px !important; }
+#gemini-ai-toolbar .g-action-menu .g-am-icon { width: 26px !important; color: var(--ffb-olive-11) !important; }
+#gemini-ai-toolbar .g-action-menu button:not(:disabled):hover { background: color-mix(in srgb, var(--ffb-olive-12) 6%, transparent) !important; }
+#gemini-ai-toolbar .g-action-menu .g-am-pin.g-am-pinned { color: var(--ffb-lime-11) !important; }
+#gemini-ai-toolbar .g-am-notice { font-size: 12px !important; color: var(--ffb-red-11) !important; padding: 0 8px !important; }
 #gemini-ai-toolbar .g-am-notice:empty { display: none !important; }
 
 /* ── 自訂動作版面（欄位卡／原文標註／前後對照）── */
@@ -1752,7 +1775,7 @@ del.g-diff-del {
 .g-ca-label {
   font-size:      10.5px !important;
   font-weight:    700 !important;
-  color:          #888 !important;
+  color:          var(--ffb-olive-11) !important;
   letter-spacing: 0.4px !important;
   margin-bottom:  4px !important;
 }
@@ -1783,12 +1806,12 @@ del.g-diff-del {
 .g-ca-unmatched .g-ca-note-text { background: transparent !important; }
 .g-ca-notes { margin-top: 8px !important; font-size: 12.5px !important; }
 .g-ca-before .g-ca-value {
-  background: #f6f6f6 !important; border-radius: 8px !important; padding: 8px 10px !important; color: #555 !important;
+  background: var(--ffb-olive-2) !important; border-radius: 8px !important; padding: 8px 10px !important; color: var(--ffb-olive-11) !important;
 }
 .g-ca-after .g-ca-value {
-  background: #e6f4ea !important; border: 1px solid #a8d5b5 !important; border-radius: 8px !important; padding: 8px 10px !important;
+  background: var(--ffb-lime-3) !important; border: 1px solid var(--ffb-lime-6) !important; border-radius: 8px !important; padding: 8px 10px !important;
 }
-.g-ca-error-label { font-size: 12px !important; color: #b3261e !important; margin-bottom: 6px !important; }
+.g-ca-error-label { font-size: 12px !important; color: var(--ffb-red-11) !important; margin-bottom: 6px !important; }
 
 /* ── 長難句分析：句子成分顏色、只看主幹、斷句 ── */
 .g-ca-mark.g-ca-type-subject,   .g-ca-type-label.g-ca-type-subject,   .g-ca-note-text.g-ca-type-subject   { background: rgba(66, 133, 244, 0.22) !important; }
@@ -1813,17 +1836,17 @@ del.g-diff-del {
   line-height:   1.4 !important;
   padding:       2px 8px !important;
   background:    none !important;
-  border:        1px solid rgba(0, 0, 0, 0.15) !important;
+  border:        1px solid var(--ffb-olive-7) !important;
   border-radius: 999px !important;
-  color:         #666 !important;
+  color:         var(--ffb-olive-11) !important;
   cursor:        pointer !important;
 }
-.g-ca-toggle:hover { border-color: #a3d179 !important; color: #3a7a1e !important; }
-.g-ca-toggle:focus-visible { outline: 2px solid rgba(90, 158, 58, 0.34) !important; outline-offset: 2px !important; }
+.g-ca-toggle:hover { border-color: var(--ffb-lime-6) !important; color: var(--ffb-lime-11) !important; }
+.g-ca-toggle:focus-visible { outline: 2px solid var(--ffb-focus) !important; outline-offset: 2px !important; }
 .g-ca-toggle[aria-pressed="true"] {
-  background:   rgba(163, 209, 121, 0.25) !important;
-  border-color: #a3d179 !important;
-  color:        #2f7a1f !important;
+  background:   var(--ffb-lime-4) !important;
+  border-color: var(--ffb-lime-6) !important;
+  color:        var(--ffb-lime-12) !important;
 }
 /* 只看主幹：主詞／動詞／受詞以外的標記退回純文字，說明列表也只留主幹 */
 .g-ca-core-only .g-ca-annotated .g-ca-mark:not(.g-ca-core) { background: transparent !important; padding: 0 !important; }
@@ -1881,9 +1904,9 @@ del.g-diff-del {
   width: 46px !important;
   height: 46px !important;
   padding: 0 !important;
-  border: 1px solid rgba(255, 255, 255, 0.75) !important;
+  border: 1px solid color-mix(in srgb, var(--ffb-edge) 75%, transparent) !important;
   border-radius: 999px !important;
-  background: rgba(255, 255, 255, 0.78) !important;
+  background: color-mix(in srgb, var(--ffb-surface) 78%, transparent) !important;
   backdrop-filter: blur(10px) !important;
   -webkit-backdrop-filter: blur(10px) !important;
   box-shadow: 0 8px 24px rgba(35, 53, 28, 0.18) !important;
@@ -1895,7 +1918,7 @@ del.g-diff-del {
 }
 
 .ffb-ball-main:hover {
-  background: rgba(255, 255, 255, 0.94) !important;
+  background: color-mix(in srgb, var(--ffb-surface) 94%, transparent) !important;
 }
 
 #fanfanba-floating.ffb-side-right .ffb-ball-main:hover {
@@ -1931,10 +1954,10 @@ del.g-diff-del {
   width: max-content !important;
   max-width: 180px !important;
   padding: 6px 9px !important;
-  border: 1px solid rgba(90, 158, 58, 0.28) !important;
+  border: 1px solid var(--ffb-lime-7) !important;
   border-radius: 999px !important;
-  background: rgba(237, 247, 232, 0.96) !important;
-  color: #3f7528 !important;
+  background: var(--ffb-lime-3) !important;
+  color: var(--ffb-lime-12) !important;
   box-shadow: 0 8px 18px rgba(35, 53, 28, 0.14) !important;
   font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
   font-size: 12px !important;
@@ -1949,8 +1972,8 @@ del.g-diff-del {
 
 #fanfanba-floating .ffb-continue-tip:hover,
 #fanfanba-floating .ffb-continue-tip:focus-visible {
-  border-color: rgba(90, 158, 58, 0.46) !important;
-  background: rgba(229, 244, 220, 0.98) !important;
+  border-color: var(--ffb-lime-7) !important;
+  background: var(--ffb-lime-3) !important;
   box-shadow: 0 10px 22px rgba(35, 53, 28, 0.18) !important;
 }
 
@@ -1967,25 +1990,25 @@ del.g-diff-del {
 }
 
 #fanfanba-floating.ffb-can-continue .ffb-ball-main {
-  border-color: rgba(90, 158, 58, 0.62) !important;
-  background: rgba(237, 247, 232, 0.95) !important;
+  border-color: var(--ffb-lime-7) !important;
+  background: var(--ffb-lime-3) !important;
   box-shadow: 0 0 0 0 rgba(90, 158, 58, 0.34), 0 8px 24px rgba(35, 53, 28, 0.18) !important;
   animation: ffb-continue-pulse 1.8s ease-out infinite !important;
 }
 
 #fanfanba-floating.ffb-page-running .ffb-ball-main {
   opacity: 0.78 !important;
-  box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.12), 0 8px 24px rgba(35, 53, 28, 0.18) !important;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ffb-blue-9) 25%, transparent), 0 8px 24px rgba(35, 53, 28, 0.18) !important;
 }
 
 #fanfanba-floating.ffb-can-continue [data-action="page-translate"] {
-  background: rgba(163, 209, 121, 0.18) !important;
-  color: #2f6d20 !important;
+  background: var(--ffb-lime-4) !important;
+  color: var(--ffb-lime-12) !important;
 }
 
 #fanfanba-floating.ffb-vocab-highlight-on [data-action="vocab-highlight"] {
-  background: rgba(255, 230, 128, 0.26) !important;
-  color: #6f5100 !important;
+  background: var(--ffb-amber-5) !important;
+  color: var(--ffb-amber-12) !important;
 }
 
 @keyframes ffb-continue-pulse {
@@ -2067,7 +2090,7 @@ del.g-diff-del {
   border: 0 !important;
   border-radius: 999px !important;
   background: transparent !important;
-  color: rgba(55, 65, 81, 0.48) !important;
+  color: var(--ffb-olive-11) !important;
   cursor: pointer !important;
   font-size: 10px !important;
   font-weight: 850 !important;
@@ -2090,7 +2113,7 @@ del.g-diff-del {
 
 .ffb-pause-x:hover,
 .ffb-pause-x:focus-visible {
-  color: rgba(185, 28, 28, 0.82) !important;
+  color: var(--ffb-red-11) !important;
   transform: scale(1.08) !important;
 }
 
@@ -2159,10 +2182,10 @@ del.g-diff-del {
   width: 228px !important;
   padding: 8px !important;
   box-sizing: border-box !important;
-  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid color-mix(in srgb, var(--ffb-edge) 72%, transparent) !important;
   border-radius: 8px !important;
-  background: rgba(255, 255, 255, 0.92) !important;
-  color: #1f2937 !important;
+  background: color-mix(in srgb, var(--ffb-surface) 92%, transparent) !important;
+  color: var(--ffb-olive-12) !important;
   box-shadow: 0 10px 28px rgba(35, 53, 28, 0.16) !important;
   font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif !important;
   text-align: left !important;
@@ -2184,14 +2207,14 @@ del.g-diff-del {
 
 .ffb-page-panel-title {
   margin: 0 !important;
-  color: #111827 !important;
+  color: var(--ffb-olive-12) !important;
   font-size: 13px !important;
   font-weight: 800 !important;
   line-height: 1.35 !important;
 }
 
 .ffb-page-panel-title span {
-  color: #3f7528 !important;
+  color: var(--ffb-lime-11) !important;
   font-size: 10px !important;
   font-weight: 850 !important;
 }
@@ -2200,8 +2223,8 @@ del.g-diff-del {
   min-width: 34px !important;
   padding: 2px 6px !important;
   border-radius: 999px !important;
-  background: rgba(237, 247, 232, 0.9) !important;
-  color: #3f7528 !important;
+  background: var(--ffb-lime-3) !important;
+  color: var(--ffb-lime-12) !important;
   font-size: 11px !important;
   font-weight: 850 !important;
   line-height: 1.25 !important;
@@ -2218,7 +2241,7 @@ del.g-diff-del {
   margin: 0 0 6px !important;
   padding: 5px 7px !important;
   border-radius: 6px !important;
-  background: rgba(239, 246, 255, 0.92) !important;
+  background: var(--ffb-blue-3) !important;
 }
 
 .ffb-page-panel-progress[hidden] {
@@ -2227,7 +2250,7 @@ del.g-diff-del {
 
 .ffb-page-panel-progress-label {
   margin: 0 0 4px !important;
-  color: #1e3a8a !important;
+  color: var(--ffb-blue-12) !important;
   font-size: 11px !important;
   font-weight: 750 !important;
   line-height: 1.35 !important;
@@ -2238,14 +2261,14 @@ del.g-diff-del {
   overflow: hidden !important;
   height: 4px !important;
   border-radius: 999px !important;
-  background: rgba(30, 58, 138, 0.16) !important;
+  background: var(--ffb-blue-4) !important;
 }
 
 .ffb-page-panel-progress-bar {
   width: 0% !important;
   height: 100% !important;
   border-radius: 999px !important;
-  background: #2563eb !important;
+  background: var(--ffb-blue-11) !important;
   transition: width 0.2s ease !important;
 }
 
@@ -2259,8 +2282,8 @@ del.g-diff-del {
   margin: 0 0 6px !important;
   padding: 5px 7px !important;
   border-radius: 6px !important;
-  background: rgba(255, 247, 237, 0.92) !important;
-  color: #7c2d12 !important;
+  background: var(--ffb-amber-2) !important;
+  color: var(--ffb-amber-12) !important;
   font-size: 11px !important;
   font-weight: 750 !important;
   line-height: 1.35 !important;
@@ -2272,7 +2295,7 @@ del.g-diff-del {
 
 .ffb-page-usage-summary {
   margin: 0 0 6px !important;
-  color: #4b5563 !important;
+  color: var(--ffb-olive-11) !important;
   font-size: 10.5px !important;
   font-weight: 750 !important;
   line-height: 1.35 !important;
@@ -2287,8 +2310,8 @@ del.g-diff-del {
   margin: 0 0 6px !important;
   padding: 6px 8px !important;
   border-radius: 6px !important;
-  background: rgba(240, 249, 235, 0.94) !important;
-  color: #2f4a25 !important;
+  background: var(--ffb-lime-2) !important;
+  color: var(--ffb-lime-12) !important;
   font-size: 11px !important;
   line-height: 1.45 !important;
   max-height: 132px !important;
@@ -2301,7 +2324,7 @@ del.g-diff-del {
 
 .ffb-page-learning-title {
   margin: 0 0 3px !important;
-  color: #3f7528 !important;
+  color: var(--ffb-lime-11) !important;
   font-size: 11px !important;
   font-weight: 800 !important;
 }
@@ -2318,7 +2341,7 @@ del.g-diff-del {
 }
 
 .ffb-page-learning-vocab {
-  color: #4b5563 !important;
+  color: var(--ffb-olive-11) !important;
   font-size: 10.5px !important;
   font-weight: 750 !important;
   word-break: break-word !important;
@@ -2339,7 +2362,18 @@ del.g-diff-del {
 }
 
 .ffb-page-panel-modes button,
-.ffb-page-panel-actions button,
+.ffb-page-panel-actions button {
+  border: 1px solid var(--ffb-olive-7) !important;
+  border-radius: 6px !important;
+  background: color-mix(in srgb, var(--ffb-surface) 76%, transparent) !important;
+  color: var(--ffb-olive-12) !important;
+  cursor: pointer !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+}
+
 .ffb-page-retry {
   border: 1px solid rgba(31, 41, 55, 0.12) !important;
   border-radius: 6px !important;
@@ -2364,14 +2398,24 @@ del.g-diff-del {
 }
 
 .ffb-page-panel-modes button:hover,
-.ffb-page-panel-actions button:hover,
+.ffb-page-panel-actions button:hover {
+  background: var(--ffb-lime-4) !important;
+  border-color: var(--ffb-lime-7) !important;
+}
+
 .ffb-page-retry:hover {
   background: rgba(163, 209, 121, 0.14) !important;
   border-color: rgba(90, 158, 58, 0.28) !important;
 }
 
 .ffb-page-panel-modes button:focus-visible,
-.ffb-page-panel-actions button:focus-visible,
+.ffb-page-panel-actions button:focus-visible {
+  outline: 2px solid var(--ffb-focus) !important;
+  outline-offset: 2px !important;
+  background: var(--ffb-lime-4) !important;
+  border-color: var(--ffb-lime-7) !important;
+}
+
 .ffb-page-retry:focus-visible,
 .ffb-page-translation-actions button:focus-visible {
   outline: 2px solid rgba(90, 158, 58, 0.34) !important;
@@ -2382,9 +2426,9 @@ del.g-diff-del {
 
 .ffb-page-panel-modes button.ffb-page-active,
 .ffb-page-panel-actions button.ffb-page-active {
-  background: #edf7e8 !important;
-  border-color: rgba(90, 158, 58, 0.34) !important;
-  color: #3f7528 !important;
+  background: var(--ffb-lime-3) !important;
+  border-color: var(--ffb-lime-7) !important;
+  color: var(--ffb-lime-12) !important;
 }
 
 .ffb-page-panel-actions button:disabled {
@@ -2674,13 +2718,13 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
   min-width: 30px !important;
   min-height: 30px !important;
   padding: 0 !important;
-  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid color-mix(in srgb, var(--ffb-edge) 72%, transparent) !important;
   border-radius: 999px !important;
-  background: rgba(255, 255, 255, 0.78) !important;
+  background: color-mix(in srgb, var(--ffb-surface) 78%, transparent) !important;
   backdrop-filter: blur(10px) !important;
   -webkit-backdrop-filter: blur(10px) !important;
   box-shadow: 0 7px 18px rgba(35, 53, 28, 0.16) !important;
-  color: #31442b !important;
+  color: var(--ffb-olive-12) !important;
   font-size: 12.5px !important;
   font-weight: 650 !important;
   text-align: center !important;
@@ -2691,10 +2735,10 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
 
 .ffb-ball-item:hover,
 .ffb-ball-item:focus-visible {
-  background: rgba(255, 255, 255, 0.94) !important;
-  border-color: rgba(163, 209, 121, 0.58) !important;
+  background: color-mix(in srgb, var(--ffb-surface) 94%, transparent) !important;
+  border-color: var(--ffb-lime-7) !important;
   box-shadow: 0 9px 22px rgba(35, 53, 28, 0.20) !important;
-  color: #2f6d20 !important;
+  color: var(--ffb-lime-11) !important;
   transform: translateX(-2px) !important;
 }
 
@@ -2758,7 +2802,7 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
 }
 
 .ffb-ball-item:disabled {
-  color: #9aa59a !important;
+  color: var(--ffb-olive-11) !important;
   cursor: default !important;
 }
 
@@ -2774,7 +2818,7 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
   height: 15px !important;
   border-radius: 999px !important;
   background: transparent !important;
-  color: #5a9e3a !important;
+  color: var(--ffb-lime-11) !important;
   font-size: 11px !important;
   font-weight: 800 !important;
   flex-shrink: 0 !important;
@@ -2825,17 +2869,17 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
   width: 100% !important;
   min-height: 58px !important;
   padding: 9px 10px !important;
-  border: 1px solid rgba(90, 158, 58, 0.14) !important;
+  border: 1px solid var(--ffb-lime-6) !important;
   border-radius: 8px !important;
-  background: rgba(250, 253, 248, 0.88) !important;
-  color: #31442b !important;
+  background: color-mix(in srgb, var(--ffb-surface) 88%, transparent) !important;
+  color: var(--ffb-olive-12) !important;
   cursor: pointer !important;
   text-align: left !important;
 }
 
 .g-floating-library-item:hover {
-  background: rgba(237, 247, 232, 0.9) !important;
-  border-color: rgba(90, 158, 58, 0.30) !important;
+  background: var(--ffb-lime-3) !important;
+  border-color: var(--ffb-lime-7) !important;
 }
 
 .g-floating-library-item span {
@@ -2845,7 +2889,7 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
   justify-content: center !important;
   width: 24px !important;
   height: 24px !important;
-  color: #5a9e3a !important;
+  color: var(--ffb-lime-11) !important;
 }
 
 .g-floating-library-item svg {
@@ -2860,7 +2904,7 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
 
 .g-floating-library-item strong {
   min-width: 0 !important;
-  color: #1f2937 !important;
+  color: var(--ffb-olive-12) !important;
   font-size: 12.5px !important;
   font-weight: 800 !important;
   line-height: 1.2 !important;
@@ -2868,7 +2912,7 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
 
 .g-floating-library-item em {
   min-width: 0 !important;
-  color: #6b7280 !important;
+  color: var(--ffb-olive-11) !important;
   font-size: 11px !important;
   font-style: normal !important;
   font-weight: 650 !important;
@@ -2882,29 +2926,29 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
   gap: 8px !important;
   width: 100% !important;
   padding: 8px 10px !important;
-  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid var(--ffb-olive-6) !important;
   border-radius: 8px !important;
-  background: rgba(250, 250, 250, 0.82) !important;
-  color: #333 !important;
+  background: color-mix(in srgb, var(--ffb-surface) 82%, transparent) !important;
+  color: var(--ffb-olive-12) !important;
   cursor: pointer !important;
   text-align: left !important;
 }
 
 .g-floating-history-item:hover {
-  background: rgba(163, 209, 121, 0.14) !important;
+  background: var(--ffb-lime-4) !important;
 }
 
 .g-floating-history-item:focus-visible {
-  outline: 2px solid rgba(26, 115, 232, 0.34) !important;
+  outline: 2px solid var(--ffb-focus) !important;
   outline-offset: 2px !important;
-  background: rgba(26, 115, 232, 0.08) !important;
+  background: var(--ffb-blue-3) !important;
 }
 
 .g-floating-history-item span {
   padding: 2px 6px !important;
   border-radius: 5px !important;
-  background: rgba(26, 115, 232, 0.1) !important;
-  color: #1a73e8 !important;
+  background: var(--ffb-blue-3) !important;
+  color: var(--ffb-blue-12) !important;
   font-size: 11px !important;
   font-weight: 700 !important;
 }
@@ -2936,12 +2980,10 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
 }
 
 /* ════════════════════════════════════════════════
-   18. 深色模式（第一階段：浮層 UI）
-   系統切暗色時，工具列／結果卡（含單字本面板）／浮球／單字提示／全文翻譯控制面板換暗色。
-   亮色規則一律不動；本段只在 prefers-color-scheme: dark 生效。
-   token 定義在各元件根節點（不碰頁面 :root），覆寫 selector 都帶元件根前綴，
-   specificity 才一定高於上方的亮色 class 規則。
-   插進網頁的譯文段落與單字高亮標記不在本階段（它們依頁面底色自己調對比）。
+   18. 深色模式（浮層 UI）
+   系統切暗色時，5 個浮層根節點改用 Radix dark 色值；元件規則全部引用 token，不必逐條覆寫。
+   毛玻璃保留：工具列與浮球在深色下提高不透明度，避免疊在白色網頁上看不清。
+   陰影不是色票，深色下另外加深。插進網頁的譯文段落與單字高亮標記不在本段。
    ════════════════════════════════════════════════ */
 @media (prefers-color-scheme: dark) {
   #gemini-ai-toolbar,
@@ -2950,530 +2992,38 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
   .g-vocab-highlight-tip,
   .ffb-page-translation-panel {
     color-scheme: dark !important;
-    --ffb-dark-surface:        rgba(32, 33, 36, 0.98);
-    --ffb-dark-surface-raised: #2b2d31;
-    --ffb-dark-surface-hover:  #36393e;
-    --ffb-dark-border:         rgba(255, 255, 255, 0.12);
-    --ffb-dark-border-strong:  rgba(255, 255, 255, 0.24);
-    --ffb-dark-text:           #e8eaed;
-    --ffb-dark-text-strong:    #f8f9fa;
-    --ffb-dark-text-muted:     #a9afb8;
-    --ffb-dark-accent:         #9ec1fa;
-    --ffb-dark-accent-bg:      rgba(138, 180, 248, 0.16);
-    --ffb-dark-green:          #a8d88a;
-    --ffb-dark-green-bg:       rgba(163, 209, 121, 0.16);
-    --ffb-dark-purple:         #c3b5f5;
-    --ffb-dark-purple-bg:      rgba(160, 140, 230, 0.18);
-    --ffb-dark-orange:         #f6b26b;
-    --ffb-dark-orange-bg:      rgba(246, 178, 107, 0.16);
-    --ffb-dark-danger:         #f6a39c;
-    --ffb-dark-danger-bg:      rgba(242, 139, 130, 0.14);
-    --ffb-dark-focus:          rgba(138, 180, 248, 0.6);
-    --ffb-dark-shadow:         0 10px 28px rgba(0, 0, 0, 0.45);
+    --ffb-olive-1: #111210; --ffb-olive-2: #181917; --ffb-olive-3: #212220; --ffb-olive-4: #282a27; --ffb-olive-5: #2f312e; --ffb-olive-6: #383a36;
+    --ffb-olive-7: #454843; --ffb-olive-8: #5c625b; --ffb-olive-9: #687066; --ffb-olive-10: #767d74; --ffb-olive-11: #afb5ad; --ffb-olive-12: #eceeec;
+    --ffb-lime-1: #11130c; --ffb-lime-2: #151a10; --ffb-lime-3: #1f2917; --ffb-lime-4: #29371d; --ffb-lime-5: #334423; --ffb-lime-6: #3d522a;
+    --ffb-lime-7: #496231; --ffb-lime-8: #577538; --ffb-lime-9: #bdee63; --ffb-lime-10: #d4ff70; --ffb-lime-11: #bde56c; --ffb-lime-12: #e3f7ba;
+    --ffb-blue-1: #0d1520; --ffb-blue-2: #111927; --ffb-blue-3: #0d2847; --ffb-blue-4: #003362; --ffb-blue-5: #004074; --ffb-blue-6: #104d87;
+    --ffb-blue-7: #205d9e; --ffb-blue-8: #2870bd; --ffb-blue-9: #0090ff; --ffb-blue-10: #3b9eff; --ffb-blue-11: #70b8ff; --ffb-blue-12: #c2e6ff;
+    --ffb-red-1: #191111; --ffb-red-2: #201314; --ffb-red-3: #3b1219; --ffb-red-4: #500f1c; --ffb-red-5: #611623; --ffb-red-6: #72232d;
+    --ffb-red-7: #8c333a; --ffb-red-8: #b54548; --ffb-red-9: #e5484d; --ffb-red-10: #ec5d5e; --ffb-red-11: #ff9592; --ffb-red-12: #ffd1d9;
+    --ffb-amber-1: #16120c; --ffb-amber-2: #1d180f; --ffb-amber-3: #302008; --ffb-amber-4: #3f2700; --ffb-amber-5: #4d3000; --ffb-amber-6: #5c3d05;
+    --ffb-amber-7: #714f19; --ffb-amber-8: #8f6424; --ffb-amber-9: #ffc53d; --ffb-amber-10: #ffd60a; --ffb-amber-11: #ffca16; --ffb-amber-12: #ffe7b3;
+    --ffb-violet-1: #14121f; --ffb-violet-2: #1b1525; --ffb-violet-3: #291f43; --ffb-violet-4: #33255b; --ffb-violet-5: #3c2e69; --ffb-violet-6: #473876;
+    --ffb-violet-7: #56468b; --ffb-violet-8: #6958ad; --ffb-violet-9: #6e56cf; --ffb-violet-10: #7d66d9; --ffb-violet-11: #baa7ff; --ffb-violet-12: #e2ddfe;
+    --ffb-surface: var(--ffb-olive-2);
+    --ffb-edge: var(--ffb-olive-7);
+    --ffb-on-solid: var(--ffb-olive-1);
   }
 
-  /* ── 焦點外框：暗色下統一一個顏色 ─────────────── */
-  #gemini-ai-toolbar .g-btn:focus-visible,
-  #gemini-result-card button:focus-visible,
-  #gemini-result-card select:focus-visible,
-  #gemini-result-card textarea:focus-visible,
-  #fanfanba-floating button:focus-visible,
-  .ffb-page-translation-panel button:focus-visible {
-    outline-color: var(--ffb-dark-focus) !important;
-  }
-
-  /* ── 工具列 ───────────────────────────────────── */
-  #gemini-ai-toolbar {
-    background: var(--ffb-dark-surface) !important;
-    border-color: var(--ffb-dark-border) !important;
-    box-shadow: var(--ffb-dark-shadow) !important;
-  }
-  #gemini-ai-toolbar.g-show:hover { background: var(--ffb-dark-surface-raised) !important; }
-  #gemini-ai-toolbar .g-btn { color: var(--ffb-dark-text-muted) !important; }
-  #gemini-ai-toolbar .g-btn:hover,
-  #gemini-ai-toolbar .g-btn.g-active {
-    background: var(--ffb-dark-green-bg) !important;
-    color: var(--ffb-dark-green) !important;
-  }
-  #gemini-ai-toolbar .g-btn:focus-visible { background: var(--ffb-dark-accent-bg) !important; }
-  #gemini-ai-toolbar .g-sep { background: var(--ffb-dark-border) !important; }
-  #gemini-ai-toolbar .g-action-menu {
-    background: var(--ffb-dark-surface-raised) !important;
-    color: var(--ffb-dark-text) !important;
-    border-color: var(--ffb-dark-border-strong) !important;
-  }
-  #gemini-ai-toolbar .g-am-row:hover,
-  #gemini-ai-toolbar .g-action-menu button:not(:disabled):hover { background: var(--ffb-dark-surface-hover) !important; }
-  #gemini-ai-toolbar .g-action-menu .g-am-icon,
-  #gemini-ai-toolbar .g-am-handle { color: var(--ffb-dark-text-muted) !important; }
-  #gemini-ai-toolbar .g-action-menu .g-am-pin.g-am-pinned { color: var(--ffb-dark-green) !important; }
-  #gemini-ai-toolbar .g-action-menu button:focus-visible { outline-color: var(--ffb-dark-focus) !important; }
-  #gemini-ai-toolbar .g-am-notice { color: var(--ffb-dark-danger) !important; }
-
-  /* ── 結果卡外框、標題列、底部列 ───────────────── */
-  #gemini-result-card {
-    background: var(--ffb-dark-surface) !important;
-    border-color: var(--ffb-dark-border) !important;
-    box-shadow: var(--ffb-dark-shadow), 0 0 0 0.5px rgba(255, 255, 255, 0.06) !important;
-    color: var(--ffb-dark-text) !important;
-  }
-  #gemini-result-card .g-rc-header,
-  #gemini-result-card .g-rc-footer {
-    background: rgba(255, 255, 255, 0.03) !important;
-    border-color: var(--ffb-dark-border) !important;
-  }
-  #gemini-result-card .g-rc-tag { color: var(--ffb-dark-accent) !important; }
-  #gemini-result-card .g-rc-tag svg { stroke: var(--ffb-dark-accent) !important; }
-  #gemini-result-card .g-icon-btn { color: var(--ffb-dark-text-muted) !important; }
-  #gemini-result-card .g-icon-btn:hover { background: var(--ffb-dark-surface-hover) !important; }
-  #gemini-result-card .g-icon-btn:focus-visible,
-  #gemini-result-card .g-pin.g-pin-active {
-    background: var(--ffb-dark-accent-bg) !important;
-    color: var(--ffb-dark-accent) !important;
-  }
-  #gemini-result-card .g-copy.g-copied { color: var(--ffb-dark-green) !important; }
-  #gemini-result-card .g-save-obs.g-saved { color: var(--ffb-dark-purple) !important; }
-  #gemini-result-card .g-rc-edit-source,
-  #gemini-result-card .g-rc-source-cancel,
-  #gemini-result-card .g-rc-model-select {
-    background: var(--ffb-dark-surface-raised) !important;
-    border-color: var(--ffb-dark-border) !important;
-    color: var(--ffb-dark-text) !important;
-  }
-  #gemini-result-card .g-rc-edit-source:hover,
-  #gemini-result-card .g-rc-source-cancel:hover,
-  #gemini-result-card .g-rc-model-select:hover {
-    background: var(--ffb-dark-surface-hover) !important;
-    border-color: var(--ffb-dark-border-strong) !important;
-  }
-  #gemini-result-card .g-rc-source-submit {
-    background: var(--ffb-dark-accent) !important;
-    border-color: var(--ffb-dark-accent) !important;
-    color: #202124 !important;
-  }
-  #gemini-result-card .g-rc-model-once,
-  #gemini-result-card .g-rc-source-hint { color: var(--ffb-dark-text-muted) !important; }
-  #gemini-result-card .g-rc-model-once.g-rc-model-once-active { color: var(--ffb-dark-accent) !important; }
-  #gemini-result-card .g-rc-source { border-color: var(--ffb-dark-border) !important; }
-  #gemini-result-card .g-rc-source-input {
-    background: var(--ffb-dark-surface-raised) !important;
-    border-color: var(--ffb-dark-border-strong) !important;
-    color: var(--ffb-dark-text) !important;
-  }
-  #gemini-result-card .g-rc-body::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.22) !important; }
-  #gemini-result-card .g-shimmer-line {
-    background-image: linear-gradient(90deg, #2b2d31 25%, #3a3d42 50%, #2b2d31 75%) !important;
-  }
-
-  /* ── 內文：解釋／翻譯段落、串流、分隔線 ─────────── */
-  #gemini-result-card .g-text-body,
-  #gemini-result-card .g-text-body .g-p,
-  #gemini-result-card .g-text-body .g-list li,
-  #gemini-result-card .g-dict-pos-def,
-  #gemini-result-card .g-ex-en { color: var(--ffb-dark-text) !important; }
-  #gemini-result-card .g-text-body strong { color: var(--ffb-dark-text-strong) !important; }
-  #gemini-result-card .g-num,
-  #gemini-result-card .g-streaming::after { color: var(--ffb-dark-accent) !important; }
-  #gemini-result-card hr.g-deep-divider { border-top-color: var(--ffb-dark-border-strong) !important; }
-  #gemini-result-card .g-chevron { color: var(--ffb-dark-text-muted) !important; }
-  #gemini-result-card .g-tag {
-    background: var(--ffb-dark-accent-bg) !important;
-    border-color: rgba(138, 180, 248, 0.32) !important;
-    color: var(--ffb-dark-accent) !important;
-  }
-  #gemini-result-card .g-tag:hover {
-    background: rgba(138, 180, 248, 0.26) !important;
-    border-color: rgba(138, 180, 248, 0.5) !important;
-  }
-
-  /* ── 字典卡 ───────────────────────────────────── */
-  #gemini-result-card .g-dict-word,
-  #gemini-result-card .g-synonym-word { color: var(--ffb-dark-text-strong) !important; }
-  #gemini-result-card .g-dict-phonetic,
-  #gemini-result-card .g-ex-zh,
-  #gemini-result-card .g-dict-usage,
-  #gemini-result-card .g-dict-examples-title,
-  #gemini-result-card .g-synonym-label,
-  #gemini-result-card .g-synonym-diff { color: var(--ffb-dark-text-muted) !important; }
-  #gemini-result-card .g-dict-divider { background: var(--ffb-dark-border) !important; }
-  #gemini-result-card .g-dict-translations span {
-    background: var(--ffb-dark-accent-bg) !important;
-    color: var(--ffb-dark-text) !important;
-  }
-  #gemini-result-card .g-dict-cefr {
-    background: rgba(255, 255, 255, 0.06) !important;
-    border-color: var(--ffb-dark-border-strong) !important;
-    color: var(--ffb-dark-text) !important;
-  }
-  #gemini-result-card .g-pos { color: var(--ffb-dark-text) !important; }
-  #gemini-result-card .g-pos-n { background: rgba(129, 201, 149, 0.2) !important; }
-  #gemini-result-card .g-pos-v { background: rgba(138, 180, 248, 0.2) !important; }
-  #gemini-result-card .g-pos-adj { background: rgba(242, 139, 130, 0.2) !important; }
-  #gemini-result-card .g-pos-adv { background: rgba(253, 214, 99, 0.2) !important; }
-  #gemini-result-card .g-pos-prep { background: rgba(197, 166, 250, 0.2) !important; }
-  #gemini-result-card .g-pos-default { background: rgba(255, 255, 255, 0.1) !important; }
-  #gemini-result-card .g-example { border-left-color: rgba(138, 180, 248, 0.45) !important; }
-  #gemini-result-card .g-ex-general {
-    background: rgba(255, 255, 255, 0.08) !important;
-    color: var(--ffb-dark-text-muted) !important;
-  }
-  #gemini-result-card .g-ex-context {
-    background: var(--ffb-dark-accent-bg) !important;
-    color: var(--ffb-dark-accent) !important;
-  }
-  #gemini-result-card .g-speak-btn { color: var(--ffb-dark-accent) !important; }
-  #gemini-result-card .g-speak-btn:hover,
-  #gemini-result-card .g-speak-btn:focus-visible { background: var(--ffb-dark-accent-bg) !important; }
-  #gemini-result-card .g-speak-btn.g-speaking { color: #aecbfa !important; }
-  #gemini-result-card .g-vocab-save-btn {
-    background: var(--ffb-dark-green-bg) !important;
-    border-color: rgba(163, 209, 121, 0.3) !important;
-    color: var(--ffb-dark-green) !important;
-  }
-  #gemini-result-card .g-vocab-save-btn:hover,
-  #gemini-result-card .g-vocab-save-btn.g-vocab-saved {
-    background: rgba(163, 209, 121, 0.26) !important;
-    border-color: rgba(163, 209, 121, 0.45) !important;
-    color: #c5e8ad !important;
-  }
-  #gemini-result-card .g-vocab-save-btn.g-vocab-saving {
-    background: rgba(255, 255, 255, 0.06) !important;
-    border-color: var(--ffb-dark-border) !important;
-    color: var(--ffb-dark-text-muted) !important;
-  }
-  #gemini-result-card .g-vocab-save-btn.g-vocab-error {
-    background: var(--ffb-dark-danger-bg) !important;
-    border-color: rgba(242, 139, 130, 0.35) !important;
-    color: var(--ffb-dark-danger) !important;
-  }
-
-  /* ── 優化：原文／優化後／改動說明／diff ─────────── */
-  #gemini-result-card .g-optimize-label { color: var(--ffb-dark-text-muted) !important; }
-  #gemini-result-card .g-optimize-original {
-    background: rgba(255, 255, 255, 0.05) !important;
-    border-color: var(--ffb-dark-border) !important;
-    color: var(--ffb-dark-text) !important;
-  }
-  #gemini-result-card .g-optimize-result {
-    background: var(--ffb-dark-green-bg) !important;
-    border-color: rgba(163, 209, 121, 0.35) !important;
-    color: #d3ecc2 !important;
-  }
-  #gemini-result-card .g-optimize-reasons { border-top-color: var(--ffb-dark-border) !important; }
-  #gemini-result-card .g-opt-setting,
-  #gemini-result-card .g-opt-counts { color: var(--ffb-dark-text-muted) !important; }
-  #gemini-result-card .g-opt-summary { border-top-color: var(--ffb-dark-border) !important; }
-  #gemini-result-card .g-ca-label { color: var(--ffb-dark-text-muted) !important; }
-  #gemini-result-card .g-ca-before .g-ca-value {
-    background: rgba(255, 255, 255, 0.05) !important;
-    color: var(--ffb-dark-text) !important;
-  }
-  #gemini-result-card .g-ca-after .g-ca-value {
-    background: var(--ffb-dark-green-bg) !important;
-    border-color: rgba(163, 209, 121, 0.35) !important;
-    color: #d3ecc2 !important;
-  }
-  #gemini-result-card .g-ca-error-label { color: #f2b8b5 !important; }
-  #gemini-result-card .g-ca-toggle {
-    border-color: var(--ffb-dark-border-strong) !important;
-    color: var(--ffb-dark-text-muted) !important;
-  }
-  #gemini-result-card .g-ca-toggle:hover,
-  #gemini-result-card .g-ca-toggle[aria-pressed="true"] {
-    background: var(--ffb-dark-green-bg) !important;
-    border-color: rgba(163, 209, 121, 0.45) !important;
-    color: var(--ffb-dark-green) !important;
-  }
-  #gemini-result-card .g-opt-copy-btn {
-    border-color: var(--ffb-dark-border-strong) !important;
-    color: var(--ffb-dark-text-muted) !important;
-  }
-  #gemini-result-card .g-opt-copy-btn:hover,
-  #gemini-result-card .g-opt-copy-btn:focus-visible,
-  #gemini-result-card .g-opt-copy-btn.g-opt-copied {
-    background: var(--ffb-dark-green-bg) !important;
-    border-color: rgba(163, 209, 121, 0.45) !important;
-    color: var(--ffb-dark-green) !important;
-  }
-  #gemini-result-card ins.g-diff-ins,
-  #gemini-result-card .g-diff-label-ins {
-    background: rgba(129, 201, 149, 0.18) !important;
-    color: #9fdcae !important;
-  }
-  #gemini-result-card del.g-diff-del,
-  #gemini-result-card .g-diff-label-del {
-    background: var(--ffb-dark-danger-bg) !important;
-    color: var(--ffb-dark-danger) !important;
-  }
-
-  /* ── 錯誤、提示、自動存入提示列 ───────────────── */
-  #gemini-result-card .g-error { color: var(--ffb-dark-danger) !important; }
-  #gemini-result-card .g-retry-btn {
-    background: var(--ffb-dark-danger-bg) !important;
-    border-color: rgba(242, 139, 130, 0.35) !important;
-    color: var(--ffb-dark-danger) !important;
-  }
-  #gemini-result-card .g-retry-btn:hover { background: rgba(242, 139, 130, 0.24) !important; }
-  #gemini-result-card .g-provider-notice,
-  #gemini-result-card .g-autosave-bar {
-    background: var(--ffb-dark-green-bg) !important;
-    border-color: rgba(163, 209, 121, 0.3) !important;
-    color: var(--ffb-dark-green) !important;
-  }
-  #gemini-result-card .g-autosave-change { color: var(--ffb-dark-green) !important; }
-  #gemini-result-card .g-autosave-change:hover { color: #c5e8ad !important; }
-
-  /* ── 最近查詢 ─────────────────────────────────── */
-  #gemini-result-card .g-history-panel.g-hist-open,
-  #gemini-result-card .g-hist-item { border-bottom-color: var(--ffb-dark-border) !important; }
-  #gemini-result-card .g-hist-item:hover { background: var(--ffb-dark-green-bg) !important; }
-  #gemini-result-card .g-hist-item:focus-visible { background: var(--ffb-dark-accent-bg) !important; }
-  #gemini-result-card .g-hist-text { color: var(--ffb-dark-text) !important; }
-  #gemini-result-card .g-hist-time,
-  #gemini-result-card .g-hist-empty { color: var(--ffb-dark-text-muted) !important; }
-  #gemini-result-card .g-hist-tag-translate {
-    background: var(--ffb-dark-accent-bg) !important;
-    color: var(--ffb-dark-accent) !important;
-  }
-  #gemini-result-card .g-hist-tag-explain {
-    background: var(--ffb-dark-orange-bg) !important;
-    color: var(--ffb-dark-orange) !important;
-  }
-  #gemini-result-card .g-hist-tag-optimize {
-    background: var(--ffb-dark-green-bg) !important;
-    color: var(--ffb-dark-green) !important;
-  }
-
-  /* ── Obsidian 面板 ────────────────────────────── */
-  #gemini-result-card .g-obs-panel.g-obs-open { border-top-color: var(--ffb-dark-border) !important; }
-  #gemini-result-card .g-obs-panel-title { color: var(--ffb-dark-purple) !important; }
-  #gemini-result-card .g-obs-input {
-    background: var(--ffb-dark-surface-raised) !important;
-    border-color: var(--ffb-dark-border-strong) !important;
-    color: var(--ffb-dark-text) !important;
-  }
-  #gemini-result-card .g-obs-input:focus {
-    background: var(--ffb-dark-surface-raised) !important;
-    border-color: var(--ffb-dark-purple) !important;
-    box-shadow: 0 0 0 3px var(--ffb-dark-purple-bg) !important;
-  }
-  #gemini-result-card .g-obs-input.g-obs-input-err {
-    border-color: var(--ffb-dark-danger) !important;
-    box-shadow: 0 0 0 3px var(--ffb-dark-danger-bg) !important;
-  }
-  #gemini-result-card .g-obs-dropdown {
-    background: var(--ffb-dark-surface-raised) !important;
-    border-color: rgba(195, 181, 245, 0.3) !important;
-  }
-  #gemini-result-card .g-obs-dd-item {
-    border-bottom-color: var(--ffb-dark-border) !important;
-    color: var(--ffb-dark-text) !important;
-  }
-  #gemini-result-card .g-obs-dd-item:hover,
-  #gemini-result-card .g-obs-dd-item:focus-visible {
-    background: var(--ffb-dark-purple-bg) !important;
-    color: var(--ffb-dark-purple) !important;
-  }
-  #gemini-result-card .g-obs-dd-empty { color: var(--ffb-dark-text-muted) !important; }
-  #gemini-result-card .g-obs-status {
-    background: var(--ffb-dark-purple-bg) !important;
-    border-color: rgba(195, 181, 245, 0.3) !important;
-    color: var(--ffb-dark-purple) !important;
-  }
-  #gemini-result-card .g-obs-status.g-obs-status-ok {
-    background: var(--ffb-dark-green-bg) !important;
-    border-color: rgba(163, 209, 121, 0.3) !important;
-    color: var(--ffb-dark-green) !important;
-  }
-  #gemini-result-card .g-obs-confirm-btn { background: #6a57b3 !important; color: #fff !important; }
-  #gemini-result-card .g-obs-confirm-btn:hover { background: #5d4ba3 !important; }
-  #gemini-result-card .g-obs-chevron-btn { background: #5d4ba3 !important; color: #fff !important; }
-  #gemini-result-card .g-obs-chevron-btn:hover { background: #503f92 !important; }
-
-  /* ── 單字本面板（在結果卡內） ─────────────────── */
-  #gemini-result-card .g-vocab-search {
-    background: var(--ffb-dark-surface-raised) !important;
-    border-color: var(--ffb-dark-border-strong) !important;
-    color: var(--ffb-dark-text) !important;
-  }
-  #gemini-result-card .g-vocab-search:focus {
-    border-color: rgba(163, 209, 121, 0.5) !important;
-    box-shadow: 0 0 0 3px var(--ffb-dark-green-bg) !important;
-  }
-  #gemini-result-card .g-vocab-tab,
-  #gemini-result-card .g-vocab-export,
-  #gemini-result-card .g-vocab-copy {
-    background: var(--ffb-dark-surface-raised) !important;
-    border-color: var(--ffb-dark-border) !important;
-    color: var(--ffb-dark-text) !important;
-  }
-  #gemini-result-card .g-vocab-tab:hover,
-  #gemini-result-card .g-vocab-export:hover,
-  #gemini-result-card .g-vocab-copy:hover,
-  #gemini-result-card .g-vocab-tab.g-active {
-    background: var(--ffb-dark-green-bg) !important;
-    border-color: rgba(163, 209, 121, 0.4) !important;
-    color: var(--ffb-dark-green) !important;
-  }
-  #gemini-result-card .g-vocab-panel-item {
-    background: rgba(255, 255, 255, 0.04) !important;
-    border-color: var(--ffb-dark-border) !important;
-  }
-  #gemini-result-card .g-vocab-panel-word,
-  #gemini-result-card .g-vocab-panel-meaning { color: var(--ffb-dark-text) !important; }
-  #gemini-result-card .g-vocab-panel-def { color: var(--ffb-dark-text-muted) !important; }
-  #gemini-result-card .g-vocab-panel-meta span {
-    background: var(--ffb-dark-green-bg) !important;
-    color: var(--ffb-dark-green) !important;
-  }
-  #gemini-result-card .g-vocab-panel-meta .g-vocab-known {
-    background: var(--ffb-dark-accent-bg) !important;
-    color: var(--ffb-dark-accent) !important;
-  }
-  #gemini-result-card .g-vocab-panel-meta .g-vocab-learning {
-    background: var(--ffb-dark-orange-bg) !important;
-    color: var(--ffb-dark-orange) !important;
-  }
-  #gemini-result-card .g-vocab-status {
-    background: var(--ffb-dark-accent-bg) !important;
-    border-color: rgba(138, 180, 248, 0.3) !important;
-    color: var(--ffb-dark-accent) !important;
-  }
-  #gemini-result-card .g-vocab-status:hover {
-    background: rgba(138, 180, 248, 0.26) !important;
-    border-color: rgba(138, 180, 248, 0.45) !important;
-    color: #aecbfa !important;
-  }
-  #gemini-result-card .g-vocab-delete {
-    background: var(--ffb-dark-danger-bg) !important;
-    border-color: rgba(242, 139, 130, 0.3) !important;
-    color: var(--ffb-dark-danger) !important;
-  }
-  #gemini-result-card .g-vocab-delete:hover {
-    background: rgba(242, 139, 130, 0.2) !important;
-    border-color: rgba(242, 139, 130, 0.45) !important;
-  }
-
-  /* ── 浮球開的收藏／最近查詢入口（在結果卡內） ─── */
-  #gemini-result-card .g-floating-library-item,
-  #gemini-result-card .g-floating-history-item {
-    background: rgba(255, 255, 255, 0.04) !important;
-    border-color: var(--ffb-dark-border) !important;
-    color: var(--ffb-dark-text) !important;
-  }
-  #gemini-result-card .g-floating-library-item:hover,
-  #gemini-result-card .g-floating-history-item:hover { background: var(--ffb-dark-green-bg) !important; }
-  #gemini-result-card .g-floating-history-item:focus-visible { background: var(--ffb-dark-accent-bg) !important; }
-  #gemini-result-card .g-floating-library-item span { color: var(--ffb-dark-green) !important; }
-  #gemini-result-card .g-floating-library-item strong { color: var(--ffb-dark-text-strong) !important; }
-  #gemini-result-card .g-floating-library-item em { color: var(--ffb-dark-text-muted) !important; }
-  #gemini-result-card .g-floating-history-item span {
-    background: var(--ffb-dark-accent-bg) !important;
-    color: var(--ffb-dark-accent) !important;
-  }
-
-  /* ── 單字高亮提示（掛在 body） ─────────────────── */
-  .g-vocab-highlight-tip {
-    background: var(--ffb-dark-surface-raised) !important;
-    border-color: rgba(163, 209, 121, 0.3) !important;
-    color: var(--ffb-dark-text) !important;
-    box-shadow: var(--ffb-dark-shadow) !important;
-  }
-  .g-vocab-highlight-tip strong { color: var(--ffb-dark-text-strong) !important; }
-  .g-vocab-highlight-tip span { color: var(--ffb-dark-green) !important; }
-  .g-vocab-highlight-tip em { color: var(--ffb-dark-text-muted) !important; }
-
-  /* ── 浮球與選單 ───────────────────────────────── */
+  /* ── 毛玻璃不透明度 ─────────────────────────── */
+  #gemini-ai-toolbar { background: color-mix(in srgb, var(--ffb-surface) 82%, transparent) !important; }
+  #gemini-ai-toolbar.g-show:hover { background: color-mix(in srgb, var(--ffb-surface) 90%, transparent) !important; }
   #fanfanba-floating .ffb-ball-main,
-  #fanfanba-floating .ffb-ball-item {
-    background: var(--ffb-dark-surface-raised) !important;
-    border-color: var(--ffb-dark-border-strong) !important;
-    box-shadow: var(--ffb-dark-shadow) !important;
-  }
+  #fanfanba-floating .ffb-ball-item { background: color-mix(in srgb, var(--ffb-surface) 86%, transparent) !important; }
   #fanfanba-floating .ffb-ball-main:hover,
-  #fanfanba-floating .ffb-ball-item:hover,
-  #fanfanba-floating .ffb-ball-item:focus-visible { background: var(--ffb-dark-surface-hover) !important; }
-  #fanfanba-floating .ffb-ball-item { color: var(--ffb-dark-text) !important; }
-  #fanfanba-floating .ffb-ball-item:hover,
-  #fanfanba-floating .ffb-ball-item:focus-visible {
-    border-color: rgba(163, 209, 121, 0.5) !important;
-    color: var(--ffb-dark-green) !important;
-  }
-  #fanfanba-floating .ffb-ball-item:disabled { color: #7d857d !important; }
-  #fanfanba-floating .ffb-ball-icon { color: var(--ffb-dark-green) !important; }
-  /* × 疊在網頁上、原本沒有底色：暗色下給圓底，才不受網頁底色影響 */
-  #fanfanba-floating .ffb-pause-x {
-    background: var(--ffb-dark-surface-raised) !important;
-    color: var(--ffb-dark-text-muted) !important;
-  }
-  #fanfanba-floating .ffb-pause-x:hover,
-  #fanfanba-floating .ffb-pause-x:focus-visible { color: var(--ffb-dark-danger) !important; }
-  #fanfanba-floating .ffb-continue-tip {
-    background: #2e3a28 !important;
-    border-color: rgba(163, 209, 121, 0.4) !important;
-    color: var(--ffb-dark-green) !important;
-    box-shadow: var(--ffb-dark-shadow) !important;
-  }
-  #fanfanba-floating .ffb-continue-tip:hover,
-  #fanfanba-floating .ffb-continue-tip:focus-visible {
-    background: #354430 !important;
-    border-color: rgba(163, 209, 121, 0.6) !important;
-  }
-  #fanfanba-floating.ffb-can-continue .ffb-ball-main {
-    background: #2e3a28 !important;
-    border-color: rgba(163, 209, 121, 0.62) !important;
-  }
-  #fanfanba-floating.ffb-can-continue [data-action="page-translate"] {
-    background: var(--ffb-dark-green-bg) !important;
-    color: var(--ffb-dark-green) !important;
-  }
-  #fanfanba-floating.ffb-vocab-highlight-on [data-action="vocab-highlight"] {
-    background: rgba(253, 214, 99, 0.18) !important;
-    color: #fdd663 !important;
-  }
+  #fanfanba-floating .ffb-ball-item:hover { background: color-mix(in srgb, var(--ffb-surface) 94%, transparent) !important; }
 
-  /* ── 全文翻譯控制面板 ─────────────────────────── */
-  .ffb-page-translation-panel {
-    background: var(--ffb-dark-surface) !important;
-    border-color: var(--ffb-dark-border) !important;
-    color: var(--ffb-dark-text) !important;
-    box-shadow: var(--ffb-dark-shadow) !important;
-  }
-  .ffb-page-translation-panel .ffb-page-panel-title { color: var(--ffb-dark-text-strong) !important; }
-  .ffb-page-translation-panel .ffb-page-panel-title span,
-  .ffb-page-translation-panel .ffb-page-learning-title { color: var(--ffb-dark-green) !important; }
-  .ffb-page-translation-panel .ffb-page-panel-count {
-    background: var(--ffb-dark-green-bg) !important;
-    color: var(--ffb-dark-green) !important;
-  }
-  .ffb-page-translation-panel .ffb-page-panel-progress { background: var(--ffb-dark-accent-bg) !important; }
-  .ffb-page-translation-panel .ffb-page-panel-progress-label { color: var(--ffb-dark-accent) !important; }
-  .ffb-page-translation-panel .ffb-page-panel-progress-track { background: rgba(138, 180, 248, 0.22) !important; }
-  .ffb-page-translation-panel .ffb-page-panel-progress-bar { background: var(--ffb-dark-accent) !important; }
-  .ffb-page-translation-panel .ffb-page-embedded-summary {
-    background: var(--ffb-dark-orange-bg) !important;
-    color: var(--ffb-dark-orange) !important;
-  }
-  .ffb-page-translation-panel .ffb-page-usage-summary,
-  .ffb-page-translation-panel .ffb-page-learning-vocab { color: var(--ffb-dark-text-muted) !important; }
-  .ffb-page-translation-panel .ffb-page-learning-summary {
-    background: var(--ffb-dark-green-bg) !important;
-    color: var(--ffb-dark-text) !important;
-  }
-  .ffb-page-translation-panel .ffb-page-panel-modes button,
-  .ffb-page-translation-panel .ffb-page-panel-actions button {
-    background: var(--ffb-dark-surface-raised) !important;
-    border-color: var(--ffb-dark-border) !important;
-    color: var(--ffb-dark-text) !important;
-  }
-  .ffb-page-translation-panel .ffb-page-panel-modes button:hover,
-  .ffb-page-translation-panel .ffb-page-panel-actions button:hover,
-  .ffb-page-translation-panel .ffb-page-panel-modes button:focus-visible,
-  .ffb-page-translation-panel .ffb-page-panel-actions button:focus-visible,
-  .ffb-page-translation-panel .ffb-page-panel-modes button.ffb-page-active,
-  .ffb-page-translation-panel .ffb-page-panel-actions button.ffb-page-active {
-    background: var(--ffb-dark-green-bg) !important;
-    border-color: rgba(163, 209, 121, 0.4) !important;
-    color: var(--ffb-dark-green) !important;
-  }
+  /* ── 陰影 ───────────────────────────────────── */
+  #gemini-ai-toolbar,
+  #gemini-ai-toolbar .g-action-menu,
+  .g-vocab-highlight-tip,
+  #fanfanba-floating .ffb-ball-main,
+  #fanfanba-floating .ffb-ball-item,
+  #fanfanba-floating .ffb-continue-tip,
+  .ffb-page-translation-panel { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45) !important; }
+  #gemini-result-card { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 0 0.5px rgba(255, 255, 255, 0.06) !important; }
 }

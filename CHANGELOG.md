@@ -3,6 +3,24 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-10-24 — 網頁浮層改用 Radix Colors（保留毛玻璃）
+
+**裁決**：KAKA 選「只換色票、保留毛玻璃」。PR #2 的「Radix」是 Radix Colors（純 CSS 色值），不是 Radix 元件庫；浮層是 content script 直接插進網頁的元素，沒有 Shadow DOM，所以不引入 React／Radix 元件，隔離方式（5 個根節點＋`!important`）不變。
+**改了什麼**（只動 `content.css` 與測試）：
+- `content.css` 開頭新增 token 區塊：olive／lime／blue／red／amber／violet 各 12 階（Radix v3 色值，前綴 `--ffb-`），加上 `--ffb-surface`、`--ffb-edge`、`--ffb-on-solid`、`--ffb-focus`、`--ffb-focus-ring`，只定義在 5 個根節點。354 個色碼換成 token，3 條同時套到根節點外元素的規則拆開（根節點外仍用原色碼）。
+- 毛玻璃寫成 `color-mix(in srgb, var(--ffb-surface) N%, transparent)`，透明度沿用原值。
+- 第 18 節深色：原本約 530 行逐元件覆寫，改成重新定義同一組 token（約 40 行）。深色下工具列 82%、浮球 86% 不透明，陰影加深；舊的 `--ffb-dark-*` 全部移除。
+- 順帶收斂：錯誤色只剩 red（原 `.g-error` 定義兩次、`#f87171` 白底 2.77:1 → red 11 為 5.21:1）；焦點外框藍綠紫三套 → 一種（lime 8）。淡色底上的彩色字改用 12 階（11 階配 3 階只有約 4.3:1）。
+- `content.css` 3,479 行 → 3,029 行（119 KB → 102 KB）。
+- 不動：版面、尺寸、圓角、動畫、`backdrop-filter`、句子分析的分類螢光色、深底白字 tooltip、插進網頁的譯文段落與單字高亮標記。
+
+**驗證**：
+- Jest 52 suites／854 tests 全過，0 skipped（新增 `tests/content/css-tokens.test.js` 5 條：兩組完整色階只在根節點、不定義在 `:root`、引用都有定義、根節點內不寫死色碼、根節點外不引用 token；4 種突變各自讓測試轉紅）。
+- e2e（全新 profile，build `a1685d4070d6`）：ui-panels 13 PASS／0 FAIL／0 PARTIAL；legacy-regression 16／0／4，4 個 PARTIAL 同既有（§1-2/§1-3 翻譯需 API key、§1-4 需連外、§6-8 以清空 storage 模擬重裝、§7-4 Cloud Sync 需 Google 帳號）；全套 45 案 41／0／4，同基準。
+- 真擴充自動截圖：亮色＋白色網頁、深色＋深色網頁、亮色＋深色網頁三種情境的結果卡、浮球選單、工具列 hover、錯誤卡、全文翻譯面板、單字提示；5 個根節點在 Chrome 裡都讀得到 token 值，深色時正確切換。
+- 對比（網頁底以純白、純黑最壞情況算）：深色全部 ≥ 4.5:1（最低 4.81:1）；亮色＋白色網頁全部 ≥ 4.5:1；亮色＋黑色網頁卡片上的彩色字約 3.6–4.2:1、工具列圖示約 1.3:1，改版前同樣不過（保留毛玻璃的代價，記在 `design.md`）。
+- **未涵蓋**：日常 Chrome 實機觀感、各種真實網站上的毛玻璃效果（列在 PLAN 同名項等 KAKA 看）。
+
 ## 2026-10-23 — e2e 啟動時確認 service worker 是現行版
 
 **問題**：同一個測試 profile＋同一個版本號時，Chrome 會一直跑快取的舊 `background.js`；原本 `launch` 只比 manifest 版本號，看不出來。p2 profile 因此長期測到舊 background（PLAN「實機測試發現 2026-10-22」）。

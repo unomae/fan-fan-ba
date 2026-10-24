@@ -9,8 +9,8 @@
 | 項目 | 狀態 |
 |------|------|
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
-| 自動化單元測試 | <!-- ffb:suites -->51<!-- /ffb:suites --> suites / <!-- ffb:tests -->849<!-- /ffb:tests --> tests 全綠（2026-10-23，含設定頁總覽與未儲存提示、模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表、長難句分析、寫作批改、設定頁搜尋與新功能標籤、術語表（含多分頁同步）、模型比較、單字卡四級評分） |
-| e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-10-23，首次確認測到現行 service worker；改 code 先 `npm run package`，啟動時自動比對建置指紋） |
+| 自動化單元測試 | <!-- ffb:suites -->52<!-- /ffb:suites --> suites / <!-- ffb:tests -->854<!-- /ffb:tests --> tests 全綠（2026-10-24，含浮層色票守門、設定頁總覽與未儲存提示、模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表、長難句分析、寫作批改、設定頁搜尋與新功能標籤、術語表（含多分頁同步）、模型比較、單字卡四級評分） |
+| e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-10-24 浮層 Radix 改版後重跑，同 10-23；改 code 先 `npm run package`，啟動時自動比對建置指紋） |
 | 手動 QA | 全表 55/78；剩 23 項幾乎全卡「無 API key」或「需外部 App／帳號」（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | **2026-09-20 裁決：暫緩送審，先做功能**，告一段落再回頭走上架流程。Chrome Web Store 仍是 release checkpoint |
 | 2026-08-26 全面審查 | 四路平行審查完成：code（30+ 項）、UI/UX（30 項）、流程（A1-A6＋B1-B5）；總評＝工程底子前段班，上架 blocker 集中在安全 P1×2、a11y、上架材料 |
@@ -49,7 +49,7 @@
 - **5. Sprint 3 中期**
 
   - **目的**：改善中期介面與 DOM 維護。
-  - **現況**：**Sprint 3 中期**：dom.js innerHTML 遷移完成（2026-09-30）；dark mode 第一階段完成（2026-09-30，浮層 UI，見 `CHANGELOG.md`；暗色 token 與術語表在 `design.md`）；高亮／全文翻譯接 DOM 變更感知層未開始；亮色的 error／focus 色收斂與 glass 參數未做（`design.md`「浮層 UI 深色模式」記錄了現況）。
+  - **現況**：**Sprint 3 中期**：dom.js innerHTML 遷移完成（2026-09-30）；dark mode 第一階段完成（2026-09-30，浮層 UI，見 `CHANGELOG.md`；暗色 token 與術語表在 `design.md`）；高亮／全文翻譯接 DOM 變更感知層未開始；亮色的 error／focus 色收斂 2026-10-24 隨浮層改用 Radix 一併完成（glass 透明度沿用原值，見 `design.md` 第 2 節「浮層 UI」）。
   - **接續**：依 Sprint 3 原優先序處理，先核對研究與施工界線。
   - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
 
@@ -116,12 +116,12 @@
   - **接續**：KAKA 用日常 Chrome 載入 `dist/pkg`，看 popup（缺金鑰提醒、「填寫金鑰」直達模型分類、logo 光暈）、設定頁總覽、進出 3～4 個分類、改欄位後回總覽看提示，再切系統深色看一遍；另看金鑰狀態標籤、ⓘ 說明、備份勾選加密才出現密碼欄、總覽頁尾快捷鍵是否等於 chrome://extensions/shortcuts 實際綁的鍵；有要調的直接記在這項，沒有就搬 `CHANGELOG.md`。
   - **詳情**：`ui-tokens.css`；`design.md` 1.5 節；`options.html`；`popup.html`；`options.js` 的 `buildSettingsOverview`／`activateSettingsPanel`、`popup.js` 的 `renderKeyAlert`（**引用符號不引行號**）
 
-- **網頁浮層與歡迎頁套用同一套 Radix token**〔待裁決〕
+- **網頁浮層與歡迎頁套用同一套 Radix token**〔待KAKA操作〕
 
   - **目的**：讓工具列、結果卡、浮球、全文翻譯面板與歡迎頁跟 popup／設定頁用同一套色彩與文案規則。
-  - **現況**：2026-10-23 只改了 popup 與設定頁；`content.css`（約 3,500 行，仍用 `--ffb-dark-*` 與舊色碼）和 `welcome.html` 沒動。全文翻譯面板仍有「已完成 0/4 · 失敗 4」這類「·」分隔（`content/page-translator-panel.js`）。
-  - **接續**：KAKA 裁決要不要做；要做先定浮層是否保留毛玻璃與 `!important` 隔離，再分元件改，每個元件都要跑 e2e ui-panels 與 legacy-regression。
-  - **詳情**：`design.md` 1.5 節（全頁面規範）與第 2 節（浮層色票）；`content.css`；`welcome.html`
+  - **現況**：2026-10-24 KAKA 裁決：浮層只換 Radix 色票（純 CSS），保留毛玻璃與 `!important` 隔離，不引入 Radix 元件庫。`content.css` 已在 `worktree-overlay-radix-eval` 分支改完（見 `CHANGELOG.md` 同日），**尚未併回 master**；真擴充只有自動截圖。`welcome.html` 與全文翻譯面板的「·」分隔（`content/page-translator-panel.js`）這次沒動。
+  - **接續**：KAKA 用日常 Chrome 載入分支的 `dist/pkg`，在亮色、深色、深色網頁各看一次工具列、結果卡、浮球、單字提示、全文翻譯面板；沒問題就說「merge 到 main」。歡迎頁與「·」分隔要不要做另外決定。
+  - **詳情**：`design.md` 第 2 節「浮層 UI」；`content.css` 開頭的 token 區塊與第 18 節；`tests/content/css-tokens.test.js`；`welcome.html`
 
 ### 整版 review 遺留（2026-10-19）
 
