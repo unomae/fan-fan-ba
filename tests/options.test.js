@@ -340,6 +340,46 @@ describe('Options module', () => {
   });
 
   describe('瀏覽器內建（只做頁面翻譯的 keyless 模型）', () => {
+    it('改用內建翻譯不會跳過移除既有主模型金鑰的確認', async () => {
+      const originalConfirm = window.confirm;
+      window.confirm = jest.fn(() => false);
+      chrome.storage.local.get.mockResolvedValue({ groqApiKey: 'gsk_dummy_saved' });
+      try {
+        global.optionsModule.renderModelSelect();
+        global.optionsModule.renderPageTranslationModelSelect();
+        document.getElementById('model').value = 'groq:openai/gpt-oss-120b';
+        document.getElementById('pageTranslationModel').value = 'builtin:translator';
+        document.getElementById('groqApiKey').value = '';
+        document.getElementById('btnSave').click();
+        await flushPromises(24);
+        expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('移除'));
+        expect(chrome.storage.sync.set).not.toHaveBeenCalled();
+      } finally {
+        window.confirm = originalConfirm;
+        document.getElementById('pageTranslationModel').value = '';
+      }
+    });
+
+    it('全新使用者所有 key 留空，也能儲存內建全文翻譯而不跳移除確認', async () => {
+      const originalConfirm = window.confirm;
+      window.confirm = jest.fn(() => false);
+      try {
+        global.optionsModule.renderModelSelect();
+        global.optionsModule.renderPageTranslationModelSelect();
+        document.getElementById('model').value = 'groq:openai/gpt-oss-120b';
+        document.getElementById('pageTranslationModel').value = 'builtin:translator';
+        for (const id of ['apiKey', 'groqApiKey', 'openrouterApiKey']) document.getElementById(id).value = '';
+        document.getElementById('btnSave').click();
+        await flushPromises(24);
+        expect(window.confirm).not.toHaveBeenCalled();
+        expect(chrome.storage.sync.set).toHaveBeenCalledWith(expect.objectContaining({ pageTranslationModel: 'builtin:translator' }));
+        expect(document.getElementById('status').className).toBe('ok');
+      } finally {
+        window.confirm = originalConfirm;
+        document.getElementById('pageTranslationModel').value = '';
+      }
+    });
+
     it('不出現在主模型選單——選它做詞典必定失敗，所以不該給選', () => {
       global.optionsModule.renderModelSelect();
       const values = [...document.getElementById('model').querySelectorAll('option')].map(o => o.value);

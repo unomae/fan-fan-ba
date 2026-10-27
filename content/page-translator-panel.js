@@ -20,6 +20,7 @@ function startPageTranslationBeta() {
     stopped: false,
     stopping: false,
     activated: true,
+    autoContinue: true,
     canContinue: false,
     scrollBound: pageTranslationState.scrollBound,
     scrollTimer: pageTranslationState.scrollTimer,
@@ -38,6 +39,7 @@ function startPageTranslationBeta() {
   setPageTranslationMode(pageTranslationState.mode);
   setPageTranslationDensity(pageTranslationState.density);
   bindPageTranslationScrollWatcher();
+  bindPageTranslationContentWatcher();
   bindPageTranslationSelectionWatcher();
   updateFloatingBallPageTranslationState?.(pageTranslationState);
 
@@ -194,7 +196,7 @@ function updatePageTranslationPanel(message = '') {
   renderPageLearningSummary(pageTranslationPanel.querySelector('.ffb-page-learning-summary'));
   modeButtons.forEach(btn => btn.classList.toggle('ffb-page-active', btn.dataset.mode === pageTranslationState.mode));
   densityButtons.forEach(btn => btn.classList.toggle('ffb-page-active', btn.dataset.density === pageTranslationState.density));
-  if (stopButton) stopButton.disabled = !pageTranslationState.running && !pageTranslationState.stopping;
+  if (stopButton) stopButton.disabled = !pageTranslationState.activated || pageTranslationState.stopped;
   copyButtons.forEach(btn => { btn.disabled = !hasCompletedPageTranslationItems(); });
 }
 
@@ -334,10 +336,17 @@ async function writePageTranslationClipboardText(text) {
 }
 
 function stopPageTranslationBeta() {
+  const wasRunning = pageTranslationState.running;
   pageTranslationState.stopped = true;
-  pageTranslationState.stopping = true;
+  pageTranslationState.autoContinue = false;
+  pageTranslationState.stopping = wasRunning;
   pageTranslationState.running = false;
   cancelActivePageTranslationRequest();
+  // 立即清掉未完成標記，停止後立刻重啟也能重新收集；不等待舊 port 的非同步回呼。
+  pageTranslationState.items.filter(item => item.status === 'loading').forEach(clearCancelledPageTranslationItem);
+  pageTranslationObserver?.disconnect();
+  pageTranslationObserver = null;
+  if (pageTranslationState.scrollTimer) clearTimeout(pageTranslationState.scrollTimer);
   pageTranslationState.canContinue = hasVisibleTranslatableBlocks();
   updatePageTranslationPanel();
   updateFloatingBallPageTranslationState?.(pageTranslationState);
@@ -348,6 +357,8 @@ function restorePageTranslationBeta() {
   pageTranslationState.stopping = false;
   pageTranslationState.running = false;
   cancelActivePageTranslationRequest();
+  pageTranslationObserver?.disconnect();
+  pageTranslationObserver = null;
   if (pageTranslationState.scrollTimer) clearTimeout(pageTranslationState.scrollTimer);
   document.querySelectorAll('.ffb-page-translation-block').forEach(node => node.remove());
   document.querySelectorAll('.ffb-page-source-translated').forEach(node => node.classList.remove('ffb-page-source-translated'));
@@ -367,6 +378,7 @@ function restorePageTranslationBeta() {
     stopped: false,
     stopping: false,
     activated: false,
+    autoContinue: false,
     canContinue: false,
     scrollBound: pageTranslationState.scrollBound,
     scrollTimer: null,
@@ -424,15 +436,38 @@ function resetPageTranslationIfLocationChanged() {
 function bindPageTranslationScrollWatcher() {
   if (pageTranslationState.scrollBound) return;
   pageTranslationState.scrollBound = true;
-  window.addEventListener('scroll', schedulePageTranslationAvailabilityCheck, { passive: true });
+  // capture 也接住文章內部捲動容器，不只 window 的捲動。
+  window.addEventListener('scroll', schedulePageTranslationAvailabilityCheck, { passive: true, capture: true });
   window.addEventListener('resize', schedulePageTranslationAvailabilityCheck, { passive: true });
 }
 
+function bindPageTranslationContentWatcher() {
+  pageTranslationObserver?.disconnect();
+  pageTranslationObserver = new MutationObserver(records => {
+    const ownUi = '#gemini-ai-toolbar, #gemini-result-card, #fanfanba-floating, .ffb-page-translation-panel, .ffb-page-translation-block';
+    const hasPageChange = records.some(record => {
+      const el = record.target.nodeType === Node.ELEMENT_NODE ? record.target : record.target.parentElement;
+      if (el?.closest(ownUi)) return false;
+      return record.type === 'characterData' || [...record.addedNodes].some(node =>
+        node.nodeType === Node.TEXT_NODE || (node.nodeType === Node.ELEMENT_NODE && !node.matches(ownUi)));
+    });
+    if (hasPageChange) schedulePageTranslationAvailabilityCheck();
+  });
+  pageTranslationObserver.observe(document.body, { childList: true, characterData: true, subtree: true });
+}
+
 function schedulePageTranslationAvailabilityCheck() {
-  if (!pageTranslationState.activated || pageTranslationState.running) return;
+  if (!pageTranslationState.autoContinue || pageTranslationState.running || pageTranslationState.stopped) return;
   if (pageTranslationState.scrollTimer) clearTimeout(pageTranslationState.scrollTimer);
   pageTranslationState.scrollTimer = setTimeout(() => {
-    pageTranslationState.canContinue = hasVisibleTranslatableBlocks();
+    pageTranslationState.scrollTimer = null;
+    if (!pageTranslationState.autoContinue || pageTranslationState.running || pageTranslationState.stopped) return;
+    const items = collectNextPageTranslationItems();
+    pageTranslationState.canContinue = false;
+    if (items.length) {
+      pageTranslationState.running = true;
+      runPageTranslationQueue();
+    }
     updateFloatingBallPageTranslationState?.(pageTranslationState);
     updatePageTranslationPanel();
   }, 600);

@@ -3,17 +3,21 @@
 // 全文翻譯 Beta：翻譯佇列、串流／批次請求、結果清洗
 
 async function runPageTranslationQueue() {
+  const state = pageTranslationState;
   updateFloatingBallPageTranslationState?.(pageTranslationState);
-  const batches = createPageTranslationBatches(pageTranslationState.items);
-  for (const batch of batches) {
-    if (pageTranslationState.stopped) break;
-    if (batch.length > 1) {
-      await translatePageBatch(batch);
-    } else {
-      await translatePageItem(batch[0]);
+  let pending = state.items.filter(item => item.status === 'pending');
+  while (pending.length && !state.stopped && state === pageTranslationState) {
+    for (const batch of createPageTranslationBatches(pending)) {
+      if (state.stopped || state !== pageTranslationState) break;
+      if (batch.length > 1) await translatePageBatch(batch);
+      else await translatePageItem(batch[0]);
+      if (state !== pageTranslationState) return;
+      updatePageTranslationPanel();
     }
-    updatePageTranslationPanel();
+    if (state.stopped || state !== pageTranslationState || !state.autoContinue) break;
+    pending = collectNextPageTranslationItems();
   }
+  if (state !== pageTranslationState) return;
   hidePageTranslationDownloadProgress();
   pageTranslationState.running = false;
   pageTranslationState.stopping = false;
@@ -22,7 +26,17 @@ async function runPageTranslationQueue() {
   updateFloatingBallPageTranslationState?.(pageTranslationState);
 }
 
+function collectNextPageTranslationItems() {
+  const known = new Set(pageTranslationState.items.map(item => item.el));
+  const items = collectVisibleTranslatableBlocks().filter(item => !known.has(item.el));
+  pageTranslationState.items.push(...items);
+  pageTranslationState.total += items.length;
+  pageTranslationState.usage.paragraphs += items.length;
+  return items;
+}
+
 async function translatePageItem(item, options = {}) {
+  const state = pageTranslationState;
   if (!item.el.isConnected) return;
   item.status = 'loading';
   item.el.classList.add('ffb-page-source-translated');
@@ -44,7 +58,8 @@ async function translatePageItem(item, options = {}) {
       context: options.context || buildPageTranslationContextDigest(item, pageTranslationState.items),
       requestKind: options.requestKind || 'single'
     }), item.text);
-    if (pageTranslationState.stopped) {
+    if (state !== pageTranslationState) return;
+    if (state.stopped) {
       clearCancelledPageTranslationItem(item);
       return;
     }
@@ -60,6 +75,7 @@ async function translatePageItem(item, options = {}) {
     pageTranslationState.usage.succeeded += 1;
     renderPageTranslationResult(item, result);
   } catch (error) {
+    if (state !== pageTranslationState) return;
     if (pageTranslationState.stopped || error.message === 'PAGE_TRANSLATION_CANCELLED') {
       clearCancelledPageTranslationItem(item);
       return;
@@ -71,7 +87,11 @@ async function translatePageItem(item, options = {}) {
   }
 }
 
-function requestPageTranslation(text, options = {}) {
+async function requestPageTranslation(text, options = {}) {
+  // 首次點擊不能搶在 sync 設定讀回之前，以預設雲端模型送出請求。
+  const state = pageTranslationState;
+  if (typeof contentSettingsReady !== 'undefined') await contentSettingsReady;
+  if (state !== pageTranslationState || state.stopped) throw new Error('PAGE_TRANSLATION_CANCELLED');
   return new Promise((resolve, reject) => {
     if (!chrome.runtime?.id) {
       reject(new Error('擴充功能已更新，請重新整理頁面'));
@@ -150,6 +170,7 @@ function requestPageTranslationBatch(items, options = {}) {
 }
 
 async function translatePageBatch(items) {
+  const state = pageTranslationState;
   const batchItems = items.filter(item => preparePageTranslationBatchItem(item));
   if (!batchItems.length) return;
 
@@ -157,6 +178,7 @@ async function translatePageBatch(items) {
     const rawResult = await requestPageTranslationBatch(batchItems, {
       context: buildPageTranslationContextDigest(batchItems[0], pageTranslationState.items)
     });
+    if (state !== pageTranslationState) return;
     const results = parsePageTranslationBatchResult(rawResult, batchItems);
     if (pageTranslationState.stopped) {
       batchItems.forEach(clearCancelledPageTranslationItem);
@@ -164,6 +186,7 @@ async function translatePageBatch(items) {
     }
     batchItems.forEach((item, index) => completePageTranslationBatchItem(item, results[index]));
   } catch (error) {
+    if (state !== pageTranslationState) return;
     if (pageTranslationState.stopped || error.message === 'PAGE_TRANSLATION_CANCELLED') {
       batchItems.forEach(clearCancelledPageTranslationItem);
       return;
@@ -273,6 +296,8 @@ function clearCancelledPageTranslationItem(item) {
   item.translationNode?.remove();
   item.translationNode = null;
   item.el?.classList.remove('ffb-page-source-translated');
+  pageTranslationPairs.delete(item.pairId);
+  if (item.el?.dataset.ffbPairId === item.pairId) delete item.el.dataset.ffbPairId;
 }
 
 function cleanPageTranslationResult(rawResult, sourceText) {

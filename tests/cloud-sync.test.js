@@ -134,6 +134,17 @@ describe('Cloud Sync helper', () => {
     expect(info.hint).toContain('https://mock-extension-id.chromiumapp.org/');
   });
 
+  it.each(['invalid_client', 'unauthorized_client', 'Google OAuth invalid_client'])(
+    'classifies explicit OAuth client error %s', message => {
+      expect(CloudSync.classifyCloudSyncError(new Error(message)).category).toBe('oauth_client');
+    }
+  );
+
+  it('does not mistake a cancelled OAuth client request for invalid credentials', () => {
+    expect(CloudSync.classifyCloudSyncError(new Error('Google OAuth client request was cancelled')).category).toBe('oauth_cancelled');
+    expect(CloudSync.classifyCloudSyncError(new Error('Google OAuth client request failed')).category).not.toBe('oauth_client');
+  });
+
   it('classifies missing Web Auth client id errors', () => {
     const info = CloudSync.classifyCloudSyncError(new Error('尚未設定 Web Auth fallback OAuth Client ID'));
 

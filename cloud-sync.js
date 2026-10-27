@@ -428,7 +428,7 @@
         hint: '請在設定頁的 Edge / Chromium Web Auth Client ID 欄位填入 Web Application OAuth Client ID。'
       };
     }
-    if (/invalid_client|unauthorized_client|client/i.test(raw) && /oauth|google/i.test(raw)) {
+    if (/\b(?:invalid_client|unauthorized_client)\b/i.test(raw)) {
       return {
         category: 'oauth_client',
         message: 'Google OAuth Client ID 設定不正確',

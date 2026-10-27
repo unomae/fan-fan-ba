@@ -141,6 +141,10 @@ module.exports = {
       await web.reload({ waitUntil: 'domcontentloaded' });
       await web.waitForSelector('.ffb-ball-main', { timeout: 20000 });
       await web.waitForTimeout(900);
+      // 測的是靜置半藏：新分頁可能承接滑鼠位置而命中 hover（此時 CSS 會把球拉回 -2px）。
+      await web.mouse.move(20, 20);
+      await web.waitForFunction(() => !document.querySelector('#fanfanba-floating').matches(':hover'));
+      await web.waitForTimeout(250);
       const deskIdle = await overflow(web, '.ffb-ball-main');
       await web.close();
       // 收尾也清一次：別把拖過的位置留給下一輪或下一個 suite

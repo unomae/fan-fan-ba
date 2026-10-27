@@ -3,6 +3,18 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-10-27 — 全文翻譯自動接續、免 key 設定與 OAuth 分類
+
+- 全文翻譯維持每輪段落／字數限制，完成後自動接下一輪；捲動、內部捲動容器及新增文字內容會接續收集。單段翻譯維持按需執行。
+- 自動接續保留累計與全部譯文；停止／還原會取消觀察與待處理請求，舊請求回傳不污染新 session，停止後可立即重新翻譯未完成段落。
+- 主模型沒有存過金鑰且全文翻譯選內建模型時，可以在金鑰留空的情況下儲存；移除既有金鑰仍須確認。首次請求等待設定讀回，也處理設定早於全文翻譯腳本載入的時序。
+- OAuth 只依明確的 `invalid_client`／`unauthorized_client` 分類為 Client ID 問題，取消或一般 client 請求錯誤不再直接歸為設定不正確；未調整 Google Cloud 設定或驗證正式登入。
+- Jest：51 suites／862 tests 通過，0 failed、0 skipped。全新 Chrome 155 測試 profile、真 storage／真內建模型（build `0c72fb4c1ca3`）通過無 key 儲存重開、18 段捲動接續、動態追加、停止與還原。
+- 測試環境：Chrome 149＋Playwright 預設啟動時模型回 `Model not available`；Chrome 155 移除停用背景網路／元件更新的預設旗標後真翻譯成功。此差異不能當作所有 Chrome 版本皆已驗證。
+- e2e 浮球桌機靜置檢查先把滑鼠移出浮球再量測，維持原半藏斷言；未修改版也會在 hover 時量到 `-2px`，不能拿 hover 當靜置。
+- 更新後 scoped e2e（ui-panels＋legacy-regression）：29 PASS／0 FAIL／4 PARTIAL；ui-panels 13/13。4 項仍保留原有未涵蓋部分：需 key 的翻譯、敏感頁連外、以清空 storage 模擬重裝、設定備份僅驗匯出結構，不能宣稱完整真人驗收通過。
+- KAKA 2026-10-27 接受保留這 4 個既有 PARTIAL，核准本輪提交與推送；正式 OAuth 登入、人眼譯文品質與上架驗收未結案。
+
 ## 2026-10-23 — e2e 啟動時確認 service worker 是現行版
 
 **問題**：同一個測試 profile＋同一個版本號時，Chrome 會一直跑快取的舊 `background.js`；原本 `launch` 只比 manifest 版本號，看不出來。p2 profile 因此長期測到舊 background（PLAN「實機測試發現 2026-10-22」）。

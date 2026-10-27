@@ -46,6 +46,7 @@ const pageTranslatorContext = vm.createContext({
   setTimeout,
   clearTimeout,
   Node,
+  MutationObserver: window.MutationObserver,
   URL,
   history: window.history,
   targetLanguage: 'zh-TW',
@@ -693,6 +694,8 @@ function ctxRun(code) {
 }
 
 function resetPageTranslationState() {
+  ctxRun(`pageTranslationObserver?.disconnect(); pageTranslationObserver = null;
+    if (pageTranslationState.scrollTimer) clearTimeout(pageTranslationState.scrollTimer);`);
   ctxRun(`pageTranslationState = {
     running: false, stopped: false, stopping: false, activated: false, canContinue: false,
     scrollBound: false, scrollTimer: null, selectionBound: false, activePairId: null,
@@ -704,6 +707,120 @@ function resetPageTranslationState() {
   ctx.pageTranslationPanel = null;
   document.documentElement.className = '';
 }
+
+describe('全文翻譯持續接續與停止', () => {
+  let oldStyle;
+  let oldRect;
+  const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+  const paragraph = n => `<p>Paragraph ${n} describes inventory planning and regional supply chain decisions.</p>`;
+
+  beforeEach(() => {
+    oldStyle = window.getComputedStyle;
+    oldRect = HTMLElement.prototype.getBoundingClientRect;
+    installPageTranslationDomMocks();
+    resetPageTranslationState();
+    document.body.innerHTML = `<main>${paragraph(1)}</main>`;
+    installStreamingPort({ chunks: ['供應鏈規劃的翻譯結果。'] });
+  });
+  afterEach(() => {
+    restorePageTranslationBeta();
+    window.getComputedStyle = oldStyle;
+    HTMLElement.prototype.getBoundingClientRect = oldRect;
+    delete ctx.pageTranslationModelSetting;
+  });
+
+  it('超過 8 個可見段落會分批接續，並保留全部譯文與累計', async () => {
+    document.querySelector('main').innerHTML = Array.from({ length: 12 }, (_, i) => paragraph(i)).join('');
+    startPageTranslationBeta();
+    await flush();
+    expect(ctxRun('pageTranslationState.done')).toBe(12);
+    expect(ctxRun('pageTranslationState.total')).toBe(12);
+    expect(document.querySelectorAll('.ffb-page-translation-block')).toHaveLength(12);
+  });
+
+  it('新增可見段落自動接續；停止與還原後追加不再送請求', async () => {
+    startPageTranslationBeta();
+    await flush();
+    document.querySelector('main').insertAdjacentHTML('beforeend', paragraph(2));
+    await new Promise(resolve => setTimeout(resolve, 700));
+    expect(ctxRun('pageTranslationState.done')).toBe(2);
+    expect(document.querySelector('[data-action="stop"]').disabled).toBe(false);
+    stopPageTranslationBeta();
+    const calls = chrome.runtime.connect.mock.calls.length;
+    document.querySelector('main').insertAdjacentHTML('beforeend', paragraph(3));
+    window.dispatchEvent(new Event('scroll'));
+    await new Promise(resolve => setTimeout(resolve, 700));
+    expect(chrome.runtime.connect).toHaveBeenCalledTimes(calls);
+    restorePageTranslationBeta();
+    document.querySelector('main').insertAdjacentHTML('beforeend', paragraph(4));
+    await new Promise(resolve => setTimeout(resolve, 700));
+    expect(chrome.runtime.connect).toHaveBeenCalledTimes(calls);
+    expect(document.querySelectorAll('.ffb-page-translation-block')).toHaveLength(0);
+  });
+
+  it('捲動進入可見區域的段落自動翻譯', async () => {
+    document.querySelector('main').insertAdjacentHTML('beforeend', paragraph(2));
+    const next = document.querySelectorAll('main p')[1];
+    next.dataset.rectTop = '1200';
+    startPageTranslationBeta();
+    await flush();
+    expect(ctxRun('pageTranslationState.done')).toBe(1);
+    next.dataset.rectTop = '100';
+    window.dispatchEvent(new Event('scroll'));
+    await new Promise(resolve => setTimeout(resolve, 700));
+    expect(ctxRun('pageTranslationState.done')).toBe(2);
+  });
+
+  it('設定先於 translator scripts 讀回仍使用已儲存的內建模型', () => {
+    ctxRun('pageTranslationModel = null');
+    ctx.pageTranslationModelSetting = 'builtin:translator';
+    expect(getPageTranslationModel()).toBe('builtin:translator');
+  });
+
+  it('只翻單段時捲動不會啟動全文自動接續', async () => {
+    await ctx.translateSinglePageBlock(document.querySelector('main p'));
+    const calls = chrome.runtime.connect.mock.calls.length;
+    document.querySelector('main').insertAdjacentHTML('beforeend', paragraph(2));
+    window.dispatchEvent(new Event('scroll'));
+    await new Promise(resolve => setTimeout(resolve, 700));
+    expect(chrome.runtime.connect).toHaveBeenCalledTimes(calls);
+    expect(document.querySelectorAll('.ffb-page-translation-block')).toHaveLength(1);
+  });
+
+  it('還原後舊請求回傳也不會污染新 session 的計數與畫面', async () => {
+    let reply;
+    chrome.runtime.connect = jest.fn(() => ({
+      onMessage: { addListener: cb => { reply = cb; } },
+      onDisconnect: { addListener: () => {} },
+      postMessage: () => {}, disconnect: () => {}
+    }));
+    startPageTranslationBeta();
+    await flush();
+    restorePageTranslationBeta();
+    reply({ chunk: '延遲回傳的翻譯' });
+    reply({ done: true });
+    await flush();
+    expect(ctxRun('pageTranslationState.done')).toBe(0);
+    expect(document.querySelectorAll('.ffb-page-translation-block')).toHaveLength(0);
+    expect(ctx.pageTranslationPanel).toBeNull();
+  });
+
+  it('停止尚未回傳的請求後可立即重新收集同一段落', async () => {
+    chrome.runtime.connect = jest.fn(() => ({
+      onMessage: { addListener: () => {} }, onDisconnect: { addListener: () => {} },
+      postMessage: () => {}, disconnect: () => {}
+    }));
+    startPageTranslationBeta();
+    await flush();
+    stopPageTranslationBeta();
+    expect(collectVisibleTranslatableBlocks()).toHaveLength(1);
+    expect(document.querySelector('main p').dataset.ffbPairId).toBeUndefined();
+    installStreamingPort({ chunks: ['重新啟動後完成的翻譯。'] });
+    startPageTranslationBeta();
+    await flush();
+    expect(ctxRun('pageTranslationState.done')).toBe(1);
+  });
+});
 
 // 模擬 background 的 ai-stream port：每次 connect() 給一個獨立 port（listener 不互相干擾），
 // postMessage 後以 microtask 回傳 chunk/done/error。

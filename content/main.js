@@ -1,6 +1,7 @@
 'use strict';
 
 let lastSelectionPointerDown = null;
+let contentSettingsReady = Promise.resolve();
 
 // ── 注入品牌字型（content script 無法用靜態 CSS @font-face，需動態取得 extension URL）
 function injectBrandFont() {
@@ -657,7 +658,7 @@ function applyPageTranslationModel() {
 }
 
 function initContentSettings() {
-  chrome.storage.sync.get({ model: FanFanBaModels.DEFAULT_MODEL, pageTranslationModel: '', dictionaryModel: '', targetLanguage: 'zh-TW', explanationLanguage: 'target', ttsLanguageMode: 'auto' })
+  contentSettingsReady = chrome.storage.sync.get({ model: FanFanBaModels.DEFAULT_MODEL, pageTranslationModel: '', dictionaryModel: '', targetLanguage: 'zh-TW', explanationLanguage: 'target', ttsLanguageMode: 'auto' })
     .then(settings => {
       activeModel = FanFanBaModels.normalizeModel(settings.model);
       pageTranslationModelSetting = settings.pageTranslationModel || '';
