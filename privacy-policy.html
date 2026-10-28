@@ -5,11 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>翻翻吧 — 隱私權政策</title>
   <style>
+    @font-face {
+      font-family: 'LINE Seed TW';
+      src: url('fonts/LINESeedTW_OTF_Rg.woff2') format('woff2');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: 'LINE Seed TW';
+      src: url('fonts/LINESeedTW_OTF_Bd.woff2') format('woff2');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     /* ── body：白底，與 options / welcome 一致 ── */
     body {
-      font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+      font-family: 'LINE Seed TW', 'Microsoft JhengHei', sans-serif;
       background: #f5f7f2;
       color: #1a1a1a;
       min-height: 100vh;
@@ -134,12 +150,29 @@
     strong { color: #333; }
 
     /* ── 表格 ── */
+    /* 窄螢幕僅捲動表格，保留欄位對照與鍵盤操作。 */
+    .table-scroll {
+      overflow-x: auto;
+      margin-top: 10px;
+    }
+
+    .table-scroll:focus-visible {
+      outline: 2px solid #5a9a2e;
+      outline-offset: 3px;
+    }
+
     table {
       width: 100%;
+      min-width: 560px;
+      table-layout: fixed;
       border-collapse: collapse;
-      margin-top: 10px;
       font-size: 12.5px;
     }
+
+    th:first-child { width: 34%; }
+    .data-table th:nth-child(2) { width: 33%; }
+
+    th, td { overflow-wrap: anywhere; }
 
     th {
       text-align: left;
@@ -161,11 +194,11 @@
 
     td:first-child {
       color: #333;
-      white-space: nowrap;
       font-weight: 500;
     }
 
     code {
+      font-family: inherit;
       background: #f0f9e6;
       color: #4a8a2a;
       padding: 1px 5px;
@@ -194,6 +227,11 @@
 
     .footer a { color: #bbb; }
     .footer a:hover { color: #5a9a2e; }
+
+    @media (max-width: 600px) {
+      body { padding: 20px 12px 40px; }
+      .card { padding: 24px 16px; }
+    }
   </style>
 </head>
 <body>
@@ -234,12 +272,13 @@
       <div class="section">
         <h2>資料使用方式</h2>
         <p>翻翻吧僅使用以下資料來提供核心功能：</p>
-        <table>
+        <div class="table-scroll" role="region" aria-label="資料使用方式表格（可橫向捲動）" tabindex="0">
+        <table class="data-table">
           <thead>
             <tr>
-              <th>資料</th>
-              <th>用途</th>
-              <th>儲存位置</th>
+              <th scope="col">資料</th>
+              <th scope="col">用途</th>
+              <th scope="col">儲存位置</th>
             </tr>
           </thead>
           <tbody>
@@ -285,6 +324,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       <!-- 3. 第三方服務 -->
@@ -325,11 +365,12 @@
       <!-- 5. 權限說明 -->
       <div class="section">
         <h2>權限說明</h2>
+        <div class="table-scroll" role="region" aria-label="權限說明表格（可橫向捲動）" tabindex="0">
         <table>
           <thead>
             <tr>
-              <th>權限</th>
-              <th>用途</th>
+              <th scope="col">權限</th>
+              <th scope="col">用途</th>
             </tr>
           </thead>
           <tbody>
@@ -363,6 +404,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       <!-- 6. 聯絡方式 -->
