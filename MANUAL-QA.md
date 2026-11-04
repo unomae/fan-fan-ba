@@ -652,6 +652,29 @@ emoji、RTL override（`‮`）、`=cmd|' /C calc'!A0`、`<img src=x onerror=...
 - [ ] 存檔目的地設 Obsidian 的動作：寶石鈕存入週記，內容是「粗體欄位名＋內容」；設「不存」的動作看不到寶石鈕
 - [ ] 系統切深色：三種版面的標題、修改前／後底色可讀
 
+### 預設模型實際翻譯＋404 備援（根 PLAN P-16；需真 Groq API key，與上面「需真 key」各節同一輪跑）
+主模型是 `groq:openai/gpt-oss-120b`，備援是同家 `openai/gpt-oss-20b`（`models.js` 的 `DEFAULT_MODEL`／`GROQ_FALLBACK_MODEL_ID`）。`shouldFallbackModel` 只對 404／502／503 切備援，401／429 照實報錯。
+- [ ] 設定頁只填 Groq 金鑰、主模型維持預設：網頁選一段英文按翻譯，結果卡有正常譯文，底部模型顯示 GPT-OSS 120B（①預設模型實際翻譯）
+- [ ] 同上，全文翻譯一篇英文網頁：各段正常出譯文、沒有錯誤卡
+- [ ] 404 備援：開 `chrome://extensions` → 翻翻吧「Service Worker」的 DevTools（**整段測試別關**，關掉 SW 可能休眠重啟，覆寫就失效），在 console 貼下面這段，只把下一次送主模型的請求假造成 404，備援請求照常打真的 Groq：
+  ```js
+  // 只攔一次主模型請求、回假 404；備援（gpt-oss-20b）的請求不攔
+  const _fetch = self.fetch;
+  let fakeOnce = true;
+  self.fetch = (url, opts) => {
+    if (fakeOnce && String(opts?.body || '').includes('"openai/gpt-oss-120b"')) {
+      fakeOnce = false;
+      return Promise.resolve(new Response(JSON.stringify({ error: { message: 'model not found' } }), {
+        status: 404, headers: { 'Content-Type': 'application/json' }
+      }));
+    }
+    return _fetch(url, opts);
+  };
+  ```
+  回網頁選一段英文按翻譯：結果卡有正常譯文，並出現「原模型暫時無法使用，已自動改用 Groq 備援模型。」；SW 的 Network 分頁看得到第二筆送往 Groq、body 為 `openai/gpt-oss-20b` 的請求且 200（③404 備援實跑；404 是假造的，備援那段是真實 API）
+- [ ] 再翻一次：`fakeOnce` 已用掉，回到主模型、沒有備援提示。測完在 console 執行 `self.fetch = _fetch` 還原
+- [ ] 401 不切備援：設定頁把 Groq 金鑰改錯一碼存檔再翻譯，顯示「Groq驗證失敗，請檢查 API Key 或模型存取權限」，沒有備援提示；測完改回正確金鑰
+
 ---
 
 ## 8. 送審前 gating（Tier 5；非 code，需你確認）
