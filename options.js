@@ -1270,10 +1270,10 @@ $('btnSave').addEventListener('click', async () => {
     // keyless provider（瀏覽器內建）沒有 key，跳過整段驗證；否則會拿別家的空欄位去問「要不要移除金鑰」
     if (info.keyless) { /* 無需驗證 */ }
     else if (!keyValue) {
-      const keylessPage = pageTranslationModel && ModelRegistry.PROVIDERS[ModelRegistry.getProvider(pageTranslationModel)].keyless;
-      const savedSecrets = keylessPage ? await Storage.getSecrets({}) : {};
-      // 沒存過主模型金鑰時，允許只設定免 key 全文翻譯；真正移除既有金鑰仍要確認。
-      if (keylessPage && !savedSecrets[info.apiKeyName]) { /* 主模型仍保留缺金鑰提示 */ }
+      const savedSecrets = await Storage.getSecrets({});
+      // 沒存過這家金鑰：沒有東西可移除，不跳確認、照常存其他設定（popup／總覽仍會提示缺金鑰）。
+      // 以前只在全文翻譯選免 key 模型時放行，其餘情況會問「要移除已儲存的金鑰嗎」，按取消就連無關設定都存不了。
+      if (!savedSecrets[info.apiKeyName]) { /* 主模型仍保留缺金鑰提示 */ }
       else if (confirmRemoveProviderKey(info.label)) {
         removedProviderLabel = info.label;
       } else {

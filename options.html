@@ -806,7 +806,6 @@
 
     @media (max-width: 520px) {
       .app-header { flex-wrap: wrap; }
-      .settings-search { width: 100%; }
       .settings-overview { padding: 16px; }
       .settings-panel { padding: 8px 16px 16px; }
       .settings-crumb { padding: 12px 16px 0; }
@@ -873,6 +872,8 @@
 
     /* ── 設定搜尋（⌘K／Ctrl+K） ── */
     .settings-search { position: relative; width: min(320px, 100%); }
+    /* 窄螢幕撐滿整列；要寫在上一行之後，否則同權重會被 320px 上限蓋掉 */
+    @media (max-width: 520px) { .settings-search { width: 100%; } }
     .settings-search input { min-height: 36px; padding: 0 56px 0 12px; }
     /* 欄位圓角 8、提示內縮 6，提示圓角 2 保持同心 */
     .search-kbd {

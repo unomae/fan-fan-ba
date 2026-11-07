@@ -146,7 +146,8 @@ function formatPageTranslationText(text) {
       return;
     }
 
-    const bulletMatch = line.match(/^(?:[-*•・‧])\s+(.+)$/);
+    // • ・ ‧ 後面的空白可省（模型常回「•關於…」）；- * 仍要空白，免得「-5%」被當清單
+    const bulletMatch = line.match(/^(?:[-*]\s+|[•・‧]\s*)(.+)$/);
     const orderedMatch = line.match(/^([0-9０-９]+)[.)．、]\s+(.+)$/);
 
     if (bulletMatch || orderedMatch) {
@@ -155,7 +156,15 @@ function formatPageTranslationText(text) {
         list = ffbEl(tag, { class: 'ffb-page-translation-list' });
         nodes.push(list);
       }
-      list.appendChild(ffbEl('li', null, bulletMatch ? bulletMatch[1] : orderedMatch[2]));
+      const li = ffbEl('li', null, bulletMatch ? bulletMatch[1] : orderedMatch[2]);
+      if (orderedMatch) {
+        // 保留原文編號：單獨翻原文第 2 項時譯文要顯示 2.，不是新 <ol> 從 1 起算
+        const number = Number(orderedMatch[1].replace(/[０-９]/g, d => String(d.charCodeAt(0) - 0xFF10)));
+        const expected = list.children.length + Number(list.getAttribute('start') || 1);
+        if (!list.children.length && number !== 1) list.setAttribute('start', String(number));
+        else if (number !== expected) li.setAttribute('value', String(number));
+      }
+      list.appendChild(li);
       return;
     }
 

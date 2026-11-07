@@ -2395,7 +2395,9 @@ del.g-diff-del {
 .ffb-page-translation-block {
   position: relative !important;
   --ffb-page-translation-font-size: clamp(11px, calc(var(--ffb-page-source-font-size, 14px) - 1px), 15px);
-  list-style: none !important; /* 譯文區塊複製原文 <li> 標籤時，避免殘留清單 bullet */
+  /* 譯文區塊複製原文 <li> 標籤時：block 不是 list-item，才不會吃掉宿主 <ol> 的計數（原文第 2 項被推成 3.） */
+  display: block !important;
+  list-style: none !important; /* 避免殘留清單 bullet */
   margin: 6px 0 12px !important;
   padding: 8px 0 8px !important;
   border: 0 !important;
@@ -2918,17 +2920,20 @@ html.ffb-page-translation-mode-translation .ffb-page-source-translated {
   font-weight: 600 !important;
 }
 
+/* 每個 selector 多掛 :not(#ffb-rm) 多算一個 ID 權重：元件自己的轉場規則（如 #fanfanba-floating .ffb-continue-tip）
+   也是 !important，權重比「#id *」高就會贏，減少動態時續看提示仍有 0.12s 轉場（2026-11-07 Mac 實測）。
+   #ffb-rm 不存在於任何頁面，只用來加權。 */
 @media (prefers-reduced-motion: reduce) {
-  #gemini-ai-toolbar,
-  #gemini-result-card,
-  #fanfanba-floating,
-  #gemini-ai-toolbar *,
-  #gemini-result-card *,
-  #fanfanba-floating *,
-  .ffb-page-translation-panel,
-  .ffb-page-translation-panel *,
-  .ffb-page-translation-block,
-  .ffb-page-translation-block * {
+  #gemini-ai-toolbar:not(#ffb-rm),
+  #gemini-result-card:not(#ffb-rm),
+  #fanfanba-floating:not(#ffb-rm),
+  #gemini-ai-toolbar *:not(#ffb-rm),
+  #gemini-result-card *:not(#ffb-rm),
+  #fanfanba-floating *:not(#ffb-rm),
+  .ffb-page-translation-panel:not(#ffb-rm),
+  .ffb-page-translation-panel *:not(#ffb-rm),
+  .ffb-page-translation-block:not(#ffb-rm),
+  .ffb-page-translation-block *:not(#ffb-rm) {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;

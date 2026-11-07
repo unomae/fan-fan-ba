@@ -304,9 +304,11 @@ describe('未儲存提示', () => {
     expect($('saveState').textContent).toBe('');
   });
 
-  it('存檔被擋下（缺金鑰又不移除）時提示留著', async () => {
-    await loadOptions({ sync: { model: 'groq:openai/gpt-oss-120b' } });
+  it('存檔被擋下（清空已存金鑰又不移除）時提示留著', async () => {
+    // 2026-11-07 起：沒存過金鑰不再跳移除確認；要擋下存檔得是「已存金鑰被清空＋按取消」
+    await loadOptions({ local: { groqApiKey: 'gsk_dummy' }, sync: { model: 'groq:openai/gpt-oss-120b' } });
     const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(false);
+    $('groqApiKey').value = '';
     tile('obsidian').click();
     edit('obsidianVault', 'Notes');
     $('btnSave').click();

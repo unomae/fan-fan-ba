@@ -279,11 +279,38 @@ describe('Options module', () => {
       global.optionsModule.renderModelSelect();
       document.getElementById('model').value = GROQ_MODEL;
       document.getElementById('btnSave').click();
-      await flushPromises();
+      // 儲存前會先讀已存金鑰，多一段非同步，要沖久一點才看得到結果
+      await flushPromises(24);
     };
+
+    // 「移除」的前提是之前真的存過這家金鑰
+    beforeEach(() => {
+      chrome.storage.local.get.mockResolvedValue({ groqApiKey: 'gsk_dummy_saved' });
+    });
 
     afterEach(() => {
       document.getElementById('groqApiKey').value = '';
+    });
+
+    // 2026-11-07 Mac 實機重現：沒存過金鑰也會問「要移除已儲存的金鑰嗎」，按取消就連 Obsidian 等無關設定都存不了
+    it('沒存過這家金鑰＋空欄位 → 不跳確認、照常儲存，狀態列不說已移除', async () => {
+      const originalConfirm = window.confirm;
+      window.confirm = jest.fn(() => false);
+      chrome.storage.local.get.mockResolvedValue({});
+      chrome.storage.sync.set.mockClear();
+
+      try {
+        document.getElementById('status').textContent = '';
+        await saveCurrentSettings();
+
+        expect(window.confirm).not.toHaveBeenCalled();
+        expect(chrome.storage.sync.set).toHaveBeenCalled();
+        expect(document.getElementById('status').className).toBe('ok');
+        expect(document.getElementById('status').textContent).toContain('設定已儲存');
+        expect(document.getElementById('status').textContent).not.toContain('已移除');
+      } finally {
+        window.confirm = originalConfirm;
+      }
     });
 
     it('空欄位＋confirm 確認 → 寫入空值移除金鑰，狀態列明說已移除', async () => {

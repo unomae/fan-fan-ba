@@ -990,6 +990,17 @@ describe('page translator render helpers', () => {
     expect(html).toContain('<p>一般段落</p>');
   });
 
+  // 2026-11-07 Mac 實測：原文 <ol> 每項單獨翻，譯文各自開新 <ol> 全部顯示 1.；「•關於」沒空白則留成段落
+  it('keeps the source list number and accepts bullets without a space', () => {
+    const wrapper = document.createElement('div');
+    wrapper.append(...formatPageTranslationText('2. 第二項\n\n1. 甲\n3. 丙\n\n•關於這點'));
+    const lists = wrapper.querySelectorAll('ol');
+    expect(lists[0].getAttribute('start')).toBe('2');
+    expect(lists[1].getAttribute('start')).toBeNull();
+    expect(lists[1].children[1].getAttribute('value')).toBe('3');
+    expect(wrapper.querySelector('ul > li').textContent).toBe('關於這點');
+  });
+
   it('builds a loading translation block for paragraphs and list items', () => {
     const p = makeSourceParagraph('Some readable source paragraph text.');
     const block = createPageTranslationBlock({ el: p, pairId: 'blk-1' });
