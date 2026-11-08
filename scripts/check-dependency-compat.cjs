@@ -15,8 +15,8 @@ test('Jest expands project globs, preserves module suggestions, and enforces glo
     const globConsumer = createRequire(consumer.resolve('glob'));
     assert.equal(globConsumer('minimatch/package.json').version, '11.0.1', parent);
   }
-  // Jest canonicalizes paths; macOS temp directories can be /var -> /private/var aliases.
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'jest compat ')));
+  // Match Jest's canonical paths, including macOS aliases and Windows 8.3 temp names.
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'jest compat ')));
   const put = (file, contents) => {
     const target = path.join(root, file);
     fs.mkdirSync(path.dirname(target), { recursive: true });
