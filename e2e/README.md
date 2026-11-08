@@ -27,7 +27,7 @@
 > - **`FFB_E2E_EXECUTABLE` 挑哪顆**：本機實測 `ms-playwright/chromium-1161/chrome-win/chrome.exe` 可跑；`chromium-1228/chrome-win64/chrome.exe` 直接回 **Permission denied**（疑似防毒攔截，非版本問題——`playwright-core` 期望的 revision 其實是 1234，1161 照樣跑得起來）。
 
 > **CI 上不需要做這段前置**：`.github/workflows/ci.yml` 的 `e2e-extension` job
-> （`workflow_dispatch` 手動觸發）會自己裝 Chrome for Testing、依 checkout 路徑現算擴充 ID，
+> （PR 與 `workflow_dispatch` 手動觸發）會自己裝 Chrome for Testing、依 checkout 路徑現算擴充 ID，
 > 並用 xvfb 提供 display。本節的人工前置只適用於本機。
 
 ## 跑
