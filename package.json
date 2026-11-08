@@ -16,7 +16,17 @@
     "playwright-core": "^1.62.1"
   },
   "overrides": {
-    "minimatch@>=7 <11.0.1": "11.0.1",
-    "glob@>=9 <=14.0.1": "14.0.2"
+    "@jest/reporters": {
+      "glob": "14.0.2"
+    },
+    "jest-config": {
+      "glob": "14.0.2"
+    },
+    "jest-runtime": {
+      "glob": "14.0.2"
+    },
+    "glob@14.0.2": {
+      "minimatch": "11.0.1"
+    }
   }
 }
