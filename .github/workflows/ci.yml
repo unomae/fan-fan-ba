@@ -9,6 +9,24 @@ on:
   workflow_dispatch:
 
 jobs:
+  dependency-compat:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        npm: ["10.9.9", "11.9.0"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Clean install with the selected npm version
+        run: npm exec --yes --package=npm@${{ matrix.npm }} -- npm ci --ignore-scripts
+      - name: Lockfile remains unchanged
+        run: git diff --exit-code -- package.json package-lock.json
+      - name: Offline Jest parent integration checks
+        run: node --test scripts/check-dependency-compat.cjs
+
   test-and-package:
     runs-on: ubuntu-latest
     steps:
