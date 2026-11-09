@@ -84,6 +84,8 @@ node e2e/run.js --list
 - **人眼觀感**：版面美醜、譯文品質、字型是否「好看」。這裡只驗客觀值（載入狀態、溢出像素、DOM 結構）。
 - **真正的移除擴充再重裝**：`legacy-regression` 只用「清空 `storage.local`」模擬。
 
+`legacy-regression` 的離線部分會明確斷言主頁／iframe 選取工具列、單字備份清空後所有條目欄位還原一致，以及十一個受支援設定的匯出／清空／storage 還原／重匯出一致。設定使用 dummy 值，預設不匯出金鑰，結束後還原隔離 profile 的原設定。這些斷言失敗會讓 runner exit 1；成功後仍保留 PARTIAL，分別註明真翻譯、實際重裝及 Google Sync 尚未涵蓋，不把離線成功當成完整產品驗收。
+
 逐項對照與尚未涵蓋的清單見 `MANUAL-QA.md`。
 
 ## 本機環境會製造的假訊號
