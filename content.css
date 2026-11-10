@@ -2632,7 +2632,7 @@ html.ffb-page-translation-mode-original .ffb-page-translation-block {
   display: none !important;
 }
 
-html.ffb-page-translation-mode-translation .ffb-page-source-translated {
+html.ffb-page-translation-mode-translation .ffb-page-source-ready {
   display: none !important;
 }
 

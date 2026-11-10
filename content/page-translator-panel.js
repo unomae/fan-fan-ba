@@ -344,8 +344,6 @@ function stopPageTranslationBeta() {
   cancelActivePageTranslationRequest();
   // 立即清掉未完成標記，停止後立刻重啟也能重新收集；不等待舊 port 的非同步回呼。
   pageTranslationState.items.filter(item => item.status === 'loading').forEach(clearCancelledPageTranslationItem);
-  pageTranslationObserver?.disconnect();
-  pageTranslationObserver = null;
   if (pageTranslationState.scrollTimer) clearTimeout(pageTranslationState.scrollTimer);
   pageTranslationState.canContinue = hasVisibleTranslatableBlocks();
   updatePageTranslationPanel();
@@ -361,7 +359,11 @@ function restorePageTranslationBeta() {
   pageTranslationObserver = null;
   if (pageTranslationState.scrollTimer) clearTimeout(pageTranslationState.scrollTimer);
   document.querySelectorAll('.ffb-page-translation-block').forEach(node => node.remove());
-  document.querySelectorAll('.ffb-page-source-translated').forEach(node => node.classList.remove('ffb-page-source-translated'));
+  pageTranslationPairs.forEach(({ item }) => {
+    if (item) clearCancelledPageTranslationItem(item);
+  });
+  document.querySelectorAll('.ffb-page-source-translated, .ffb-page-source-ready').forEach(node =>
+    node.classList.remove('ffb-page-source-translated', 'ffb-page-source-ready'));
   document.documentElement.classList.remove(
     'ffb-page-translation-mode-bilingual',
     'ffb-page-translation-mode-translation',
@@ -442,16 +444,35 @@ function bindPageTranslationScrollWatcher() {
 }
 
 function bindPageTranslationContentWatcher() {
-  pageTranslationObserver?.disconnect();
+  if (pageTranslationObserver) return;
   pageTranslationObserver = new MutationObserver(records => {
     const ownUi = '#gemini-ai-toolbar, #gemini-result-card, #fanfanba-floating, .ffb-page-translation-panel, .ffb-page-translation-block';
-    const hasPageChange = records.some(record => {
+    const changed = new Set();
+    let hasRemoval = false;
+    for (const record of records) {
       const el = record.target.nodeType === Node.ELEMENT_NODE ? record.target : record.target.parentElement;
-      if (el?.closest(ownUi)) return false;
-      return record.type === 'characterData' || [...record.addedNodes].some(node =>
-        node.nodeType === Node.TEXT_NODE || (node.nodeType === Node.ELEMENT_NODE && !node.matches(ownUi)));
-    });
-    if (hasPageChange) schedulePageTranslationAvailabilityCheck();
+      if (!el || el.closest(ownUi)) continue;
+      if (record.removedNodes.length) hasRemoval = true;
+      if (record.type === 'characterData' || [...record.addedNodes, ...record.removedNodes].some(node =>
+        node.nodeType === Node.TEXT_NODE || (node.nodeType === Node.ELEMENT_NODE && !node.matches(ownUi)))) {
+        changed.add(el);
+      }
+    }
+    if (!changed.size && !hasRemoval) return;
+
+    const changedElements = [...changed];
+    let invalidated = false;
+    for (const { item, sourceEl, translationEl } of pageTranslationPairs.values()) {
+      if (!item) continue;
+      if (!sourceEl.isConnected || !translationEl.isConnected || sourceEl.nextElementSibling !== translationEl) {
+        invalidatePageTranslationItem(item);
+        invalidated = true;
+      } else if (changedElements.some(el => sourceEl.contains(el)) && !hasCurrentPageTranslationSource(item)) {
+        invalidated = true;
+      }
+    }
+    if (invalidated) updatePageTranslationPanel();
+    if (invalidated || changed.size) schedulePageTranslationAvailabilityCheck();
   });
   pageTranslationObserver.observe(document.body, { childList: true, characterData: true, subtree: true });
 }
@@ -522,7 +543,8 @@ function setActivePageTranslationPair(pairId) {
   const pair = pageTranslationPairs.get(pairId);
   if (!pair) return;
   if (!pair.sourceEl?.isConnected || !pair.translationEl?.isConnected) {
-    pageTranslationPairs.delete(pairId);
+    if (pair.item) invalidatePageTranslationItem(pair.item);
+    else pageTranslationPairs.delete(pairId);
     return;
   }
   pageTranslationState.activePairId = pairId;

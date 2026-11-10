@@ -805,6 +805,64 @@ describe('全文翻譯持續接續與停止', () => {
     expect(ctx.pageTranslationPanel).toBeNull();
   });
 
+  it('來源字元變更會撤掉已完成的譯文；同文重繪會保留譯文', async () => {
+    const source = document.querySelector('main p');
+    await ctx.translateSinglePageBlock(source);
+    const translation = source.nextElementSibling;
+    source.innerHTML = `<span>${source.textContent}</span>`;
+    await flush();
+    expect(source.nextElementSibling).toBe(translation);
+
+    source.querySelector('span').firstChild.data = 'A different paragraph replaced the original source text.';
+    await flush();
+    expect(translation.isConnected).toBe(false);
+    expect(source.classList.contains('ffb-page-source-ready')).toBe(false);
+    expect(ctxRun('pageTranslationState.done')).toBe(0);
+    expect(ctxRun('pageTranslationState.total')).toBe(0);
+    expect(chrome.runtime.connect).toHaveBeenCalledTimes(1);
+  });
+
+  it('批次在途時只丟棄變動段落的過期結果，其他段照常完成', async () => {
+    document.querySelector('main').insertAdjacentHTML('beforeend', paragraph(2));
+    let reply;
+    chrome.runtime.connect = jest.fn(() => ({
+      onMessage: { addListener: cb => { reply = cb; } },
+      onDisconnect: { addListener: () => {} },
+      postMessage: () => {}, disconnect: () => {}
+    }));
+    startPageTranslationBeta();
+    await flush();
+    const sources = [...document.querySelectorAll('main > p')];
+    const oldTranslation = sources[0].nextElementSibling;
+    sources[0].textContent = 'Replacement copy describing warehouse shipments and the loading dock.';
+    await flush();
+    expect(oldTranslation.isConnected).toBe(false);
+    reply({ chunk: JSON.stringify({ translations: ['舊的批次譯文', '第二段批次譯文'] }) });
+    reply({ done: true });
+    await flush();
+    expect(document.body.textContent).not.toContain('舊的批次譯文');
+    expect(sources[1].nextElementSibling.textContent).toContain('第二段批次譯文');
+    expect(ctxRun('pageTranslationState.done')).toBe(1);
+    expect(ctxRun('pageTranslationState.errors')).toBe(0);
+    expect(chrome.runtime.connect).toHaveBeenCalledTimes(2);
+  });
+
+  it('來源被替換後，停止狀態也會移除殘留譯文但不再送請求', async () => {
+    const source = document.querySelector('main p');
+    await ctx.translateSinglePageBlock(source);
+    const translation = source.nextElementSibling;
+    stopPageTranslationBeta();
+    const replacement = source.cloneNode(false);
+    replacement.removeAttribute('class');
+    replacement.removeAttribute('data-ffb-pair-id');
+    replacement.textContent = 'A different paragraph is now visible beside the loading dock.';
+    source.replaceWith(replacement);
+    await flush();
+    expect(translation.isConnected).toBe(false);
+    expect(ctxRun('pageTranslationState.done')).toBe(0);
+    expect(chrome.runtime.connect).toHaveBeenCalledTimes(1);
+  });
+
   it('停止尚未回傳的請求後可立即重新收集同一段落', async () => {
     chrome.runtime.connect = jest.fn(() => ({
       onMessage: { addListener: () => {} }, onDisconnect: { addListener: () => {} },
@@ -1030,9 +1088,11 @@ describe('page translator render helpers', () => {
 
   it('renders an error node with a working retry button', async () => {
     const p = makeSourceParagraph('Source paragraph for the error path.');
-    const item = { el: p, pairId: 'e-1', status: 'error', translationNode: createPageTranslationBlock({ el: p, pairId: 'e-1' }) };
-    renderPageTranslationError(item, '翻譯失敗');
+    const item = { el: p, text: p.textContent, pairId: 'e-1', status: 'pending', translationNode: null };
+    installStreamingPort({ error: '翻譯失敗' });
+    await translatePageItem(item);
     expect(item.translationNode.classList.contains('ffb-page-translation-error')).toBe(true);
+    expect(p.classList.contains('ffb-page-source-ready')).toBe(false);
     const retry = item.translationNode.querySelector('.ffb-page-retry');
     expect(retry).not.toBeNull();
 
@@ -1040,6 +1100,7 @@ describe('page translator render helpers', () => {
     retry.click();
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(item.translatedText).toBe('重試後的譯文');
+    expect(p.classList.contains('ffb-page-source-ready')).toBe(true);
   });
 
   it('applies source typography variables onto the translation block', () => {
@@ -1109,6 +1170,7 @@ describe('page translator request pipeline', () => {
 
     expect(item.status).toBe('error');
     expect(item.translationNode.classList.contains('ffb-page-translation-error')).toBe(true);
+    expect(p.classList.contains('ffb-page-source-ready')).toBe(false);
   });
 
   it('translates a batch via JSON response', async () => {

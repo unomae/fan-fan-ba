@@ -37,49 +37,24 @@ function collectNextPageTranslationItems() {
 
 async function translatePageItem(item, options = {}) {
   const state = pageTranslationState;
-  if (!item.el.isConnected) return;
-  item.status = 'loading';
-  item.el.classList.add('ffb-page-source-translated');
-  item.el.dataset.ffbPairId = item.pairId;
-  bindPageTranslationSourceEvents(item.el);
-  item.translationNode?.remove();
-  item.translationNode = createPageTranslationBlock(item);
-  applyPageTranslationSourceTypography(item.el, item.translationNode);
-  item.el.insertAdjacentElement('afterend', item.translationNode);
-  pageTranslationPairs.set(item.pairId, {
-    sourceEl: item.el,
-    translationEl: item.translationNode,
-    sourceText: item.text,
-    translatedText: ''
-  });
+  // 先等設定讀回，再建立這次請求與原文配對。
+  if (typeof contentSettingsReady !== 'undefined') await contentSettingsReady;
+  if (state !== pageTranslationState || state.stopped) return;
+  if (options.retry && item.status !== 'error') return;
+  const node = preparePageTranslationItem(item);
+  if (!node) return;
 
   try {
     const result = cleanPageTranslationResult(await requestPageTranslation(item.text, {
       context: options.context || buildPageTranslationContextDigest(item, pageTranslationState.items),
-      requestKind: options.requestKind || 'single'
+      requestKind: options.requestKind || 'single',
+      isCurrent: () => isPageTranslationAttemptCurrent(state, item, node)
     }), item.text);
-    if (state !== pageTranslationState) return;
-    if (state.stopped) {
-      clearCancelledPageTranslationItem(item);
-      return;
-    }
-    item.status = 'done';
-    item.translatedText = result;
-    pageTranslationPairs.set(item.pairId, {
-      sourceEl: item.el,
-      translationEl: item.translationNode,
-      sourceText: item.text,
-      translatedText: result
-    });
-    pageTranslationState.done += 1;
-    pageTranslationState.usage.succeeded += 1;
-    renderPageTranslationResult(item, result);
+    if (!isPageTranslationAttemptCurrent(state, item, node)) return;
+    if (!result) throw new Error('翻譯未回傳內容');
+    completePageTranslationItem(item, result);
   } catch (error) {
-    if (state !== pageTranslationState) return;
-    if (pageTranslationState.stopped || error.message === 'PAGE_TRANSLATION_CANCELLED') {
-      clearCancelledPageTranslationItem(item);
-      return;
-    }
+    if (!isPageTranslationAttemptCurrent(state, item, node)) return;
     item.status = 'error';
     pageTranslationState.errors += 1;
     pageTranslationState.usage.failed += 1;
@@ -87,11 +62,7 @@ async function translatePageItem(item, options = {}) {
   }
 }
 
-async function requestPageTranslation(text, options = {}) {
-  // 首次點擊不能搶在 sync 設定讀回之前，以預設雲端模型送出請求。
-  const state = pageTranslationState;
-  if (typeof contentSettingsReady !== 'undefined') await contentSettingsReady;
-  if (state !== pageTranslationState || state.stopped) throw new Error('PAGE_TRANSLATION_CANCELLED');
+function requestPageTranslation(text, options = {}) {
   return new Promise((resolve, reject) => {
     if (!chrome.runtime?.id) {
       reject(new Error('擴充功能已更新，請重新整理頁面'));
@@ -108,7 +79,7 @@ async function requestPageTranslation(text, options = {}) {
     };
 
     port.onMessage.addListener(response => {
-      if (response.requestId && response.requestId !== requestId) return;
+      if (settled || (response.requestId && response.requestId !== requestId)) return;
       if (response.chunk) {
         accumulated += response.chunk;
         return;
@@ -116,7 +87,7 @@ async function requestPageTranslation(text, options = {}) {
       // status 是背景送來的進度／通知。目前只有內建模型的下載進度需要渲染；
       // 其餘（例如備援模型通知）維持既有行為不顯示，避免蓋掉翻譯進度文字。
       if (response.status) {
-        if (response.status.kind === 'download-progress') {
+        if (response.status.kind === 'download-progress' && options.isCurrent()) {
           renderPageTranslationDownloadProgress(response.status.percent);
         }
         return;
@@ -161,6 +132,7 @@ async function requestPageTranslation(text, options = {}) {
 function requestPageTranslationBatch(items, options = {}) {
   return requestPageTranslation(buildPageTranslationBatchSourceText(items), {
     context: options.context || buildPageTranslationContextDigest(items[0], pageTranslationState.items),
+    isCurrent: options.isCurrent,
     requestKind: 'batch',
     pageTranslation: {
       batch: true,
@@ -171,39 +143,49 @@ function requestPageTranslationBatch(items, options = {}) {
 
 async function translatePageBatch(items) {
   const state = pageTranslationState;
-  const batchItems = items.filter(item => preparePageTranslationBatchItem(item));
+  if (typeof contentSettingsReady !== 'undefined') await contentSettingsReady;
+  if (state !== pageTranslationState || state.stopped) return;
+  const attempts = [];
+  for (const item of items) {
+    const node = preparePageTranslationItem(item);
+    if (node) attempts.push({ item, node });
+  }
+  const batchItems = attempts.map(({ item }) => item);
   if (!batchItems.length) return;
 
   try {
     const rawResult = await requestPageTranslationBatch(batchItems, {
-      context: buildPageTranslationContextDigest(batchItems[0], pageTranslationState.items)
+      context: buildPageTranslationContextDigest(batchItems[0], pageTranslationState.items),
+      isCurrent: () => attempts.some(({ item, node }) => isPageTranslationAttemptCurrent(state, item, node))
     });
     if (state !== pageTranslationState) return;
     const results = parsePageTranslationBatchResult(rawResult, batchItems);
-    if (pageTranslationState.stopped) {
-      batchItems.forEach(clearCancelledPageTranslationItem);
-      return;
-    }
-    batchItems.forEach((item, index) => completePageTranslationBatchItem(item, results[index]));
+    attempts.forEach(({ item, node }, index) => {
+      if (isPageTranslationAttemptCurrent(state, item, node)) completePageTranslationItem(item, results[index]);
+    });
   } catch (error) {
-    if (state !== pageTranslationState) return;
-    if (pageTranslationState.stopped || error.message === 'PAGE_TRANSLATION_CANCELLED') {
-      batchItems.forEach(clearCancelledPageTranslationItem);
-      return;
-    }
-    for (const item of batchItems) {
-      if (pageTranslationState.stopped) {
-        clearCancelledPageTranslationItem(item);
-        break;
-      }
+    for (const { item, node } of attempts) {
+      if (!isPageTranslationAttemptCurrent(state, item, node)) continue;
       await translatePageItem(item, { requestKind: 'fallback' });
     }
   }
 }
 
-function preparePageTranslationBatchItem(item) {
-  if (!item.el.isConnected) return false;
+function preparePageTranslationItem(item) {
+  if (item.status === 'cancelled') return null;
+  const owner = pageTranslationPairs.get(item.el.dataset.ffbPairId)?.item;
+  if (owner && owner !== item) {
+    invalidatePageTranslationItem(item);
+    return null;
+  }
+  item.sourceSnapshot ??= getPageTranslationSourceSnapshot(item.el);
+  if (!hasCurrentPageTranslationSource(item)) return null;
+  if (item.status === 'error') {
+    pageTranslationState.errors = Math.max(0, pageTranslationState.errors - 1);
+    pageTranslationState.usage.failed = Math.max(0, pageTranslationState.usage.failed - 1);
+  }
   item.status = 'loading';
+  item.el.classList.remove('ffb-page-source-ready');
   item.el.classList.add('ffb-page-source-translated');
   item.el.dataset.ffbPairId = item.pairId;
   bindPageTranslationSourceEvents(item.el);
@@ -212,26 +194,56 @@ function preparePageTranslationBatchItem(item) {
   applyPageTranslationSourceTypography(item.el, item.translationNode);
   item.el.insertAdjacentElement('afterend', item.translationNode);
   pageTranslationPairs.set(item.pairId, {
+    item,
     sourceEl: item.el,
     translationEl: item.translationNode,
     sourceText: item.text,
     translatedText: ''
   });
-  return true;
+  return item.translationNode;
 }
 
-function completePageTranslationBatchItem(item, result) {
+function completePageTranslationItem(item, result) {
+  renderPageTranslationResult(item, result);
+  item.el.classList.add('ffb-page-source-ready');
   item.status = 'done';
   item.translatedText = result;
-  pageTranslationPairs.set(item.pairId, {
-    sourceEl: item.el,
-    translationEl: item.translationNode,
-    sourceText: item.text,
-    translatedText: result
-  });
+  pageTranslationPairs.get(item.pairId).translatedText = result;
   pageTranslationState.done += 1;
   pageTranslationState.usage.succeeded += 1;
-  renderPageTranslationResult(item, result);
+}
+
+function hasCurrentPageTranslationSource(item) {
+  if (item.el.isConnected && getPageTranslationSourceSnapshot(item.el) === item.sourceSnapshot) return true;
+  invalidatePageTranslationItem(item);
+  return false;
+}
+
+function isPageTranslationAttemptCurrent(state, item, node) {
+  if (state !== pageTranslationState || state.stopped || item.translationNode !== node) return false;
+  if (!node.isConnected || item.el.nextElementSibling !== node) {
+    invalidatePageTranslationItem(item);
+    return false;
+  }
+  return hasCurrentPageTranslationSource(item);
+}
+
+function invalidatePageTranslationItem(item) {
+  const state = pageTranslationState;
+  const index = state.items.indexOf(item);
+  if (index !== -1) {
+    state.items.splice(index, 1);
+    state.total -= 1;
+    state.usage.paragraphs -= 1;
+    if (item.status === 'done') {
+      state.done -= 1;
+      state.usage.succeeded -= 1;
+    } else if (item.status === 'error') {
+      state.errors -= 1;
+      state.usage.failed -= 1;
+    }
+  }
+  clearCancelledPageTranslationItem(item);
 }
 
 function createPageTranslationBatches(items = []) {
@@ -295,9 +307,12 @@ function clearCancelledPageTranslationItem(item) {
   item.status = 'cancelled';
   item.translationNode?.remove();
   item.translationNode = null;
-  item.el?.classList.remove('ffb-page-source-translated');
+  if (item.el && (!item.el.dataset.ffbPairId || item.el.dataset.ffbPairId === item.pairId)) {
+    item.el.classList.remove('ffb-page-source-translated', 'ffb-page-source-ready', 'ffb-pair-active');
+    delete item.el.dataset.ffbPairId;
+  }
+  if (pageTranslationState.activePairId === item.pairId) pageTranslationState.activePairId = null;
   pageTranslationPairs.delete(item.pairId);
-  if (item.el?.dataset.ffbPairId === item.pairId) delete item.el.dataset.ffbPairId;
 }
 
 function cleanPageTranslationResult(rawResult, sourceText) {

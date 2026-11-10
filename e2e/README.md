@@ -73,6 +73,7 @@ node e2e/run.js --list
 | `ui-panels` | 14 | 收藏面板可見性、歷史回看＋SRS、options 無初始化錯誤、375 版面與拖曳、高亮開關與記憶、Obsidian 未設定不謊報、全文翻譯的嵌入提示 |
 | `hostile-data` | 5 | 5,000 筆＋emoji／RTL／公式／HTML／超長字串：不卡死、不執行內容、並發不爆增、高亮不污染互動元件、CSV 公式前綴防護 |
 | `legacy-regression` | 19 | §1–§7 legacy 回歸的可自動化部分（frame-split、品牌字型、單段翻譯 UI、診斷自檢、SRS、匯入硬化、綜合回歸）|
+| `page-translation` | 3 | 只看譯文的原文可見性、同節點換文、在途回應過期。用真擴充與固定 HTTP 回應，僅使用測試金鑰。 |
 
 ## 這裡驗不到什麼（**別把全綠當成可以送審**）
 

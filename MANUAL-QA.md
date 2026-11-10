@@ -675,6 +675,16 @@ emoji、RTL override（`‮`）、`=cmd|' /C calc'!A0`、`<img src=x onerror=...
 - [ ] 再翻一次：`fakeOnce` 已用掉，回到主模型、沒有備援提示。測完在 console 執行 `self.fetch = _fetch` 還原
 - [ ] 401 不切備援：設定頁把 Groq 金鑰改錯一碼存檔再翻譯，顯示「Groq驗證失敗，請檢查 API Key 或模型存取權限」，沒有備援提示；測完改回正確金鑰
 
+### 2026-11-10 全文翻譯 P0 Chrome 腳本複驗
+
+Windows Chrome 157.0.8103.50、隔離 profile、SW 指紋 `559f5b8d8db7`。使用本機頁面與固定供應商回應。三案皆通過，保留既有人工驗收勾選。
+
+1. 「只看譯文」在等待與 HTTP 400 時顯示原文。點「重試此段」成功後才隱藏原文，切回雙語可見。
+2. 同一個段落的原文從燈塔換成倉庫，撤掉舊譯文，只重送一筆新請求，面板顯示 `1/1`。按「還原」會清除譯文。
+3. 請求在途時改原文，先放行舊回應，舊譯文未插回頁面。新譯文成功後面板顯示 `1/1`。
+
+重跑命令為 `node e2e/run.js page-translation`，前置條件與測試 profile 見 `e2e/README.md`。
+
 ### 2026-11-07 Mac 腳本實測（不需 key 的部分；**不勾上面任何一格**）
 
 環境：Mac、Google Chrome 155.0.8059.80、全新拋棄式 profile、`npm run package` build `59dfd3e3d37c`（SW 記憶體指紋一致）。以 Playwright 透過 CDP 驅動真 Chrome＋真擴充，fixture 頁為本機 127.0.0.1。依本節開頭規定，腳本實測不代替人工確認，所以上面各格維持未勾；本段只記證據與發現的問題，供人驗時對照。

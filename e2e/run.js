@@ -8,7 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const H = require('./lib/harness');
 
-const SUITES = ['vocab-import', 'ui-panels', 'hostile-data', 'legacy-regression'];
+const SUITES = ['vocab-import', 'ui-panels', 'hostile-data', 'legacy-regression', 'page-translation'];
 
 async function makeSession(cfg, pages) {
   const s = {
