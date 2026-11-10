@@ -6,8 +6,7 @@ const {
   parseJSON,
   getWeekLabel,
   getPosClass,
-  extractContext,
-  renderDiff
+  extractContext
 } = require('../../content/utils');
 
 // 格式化函式回傳 DOM 節點：放進容器後再檢查
@@ -69,14 +68,6 @@ describe('Utils module', () => {
     it('should return correct class', () => {
       expect(getPosClass('noun')).toBe('g-pos-n');
       expect(getPosClass('adj')).toBe('g-pos-adj');
-    });
-  });
-
-  describe('renderDiff', () => {
-    it('should generate diff', () => {
-      const html = renderInto(renderDiff('bad', 'good')).innerHTML;
-      expect(html).toContain('<del');
-      expect(html).toContain('<ins');
     });
   });
 });

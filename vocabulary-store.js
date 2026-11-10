@@ -318,15 +318,6 @@
     });
   }
 
-  async function mergeItems(incomingMap) {
-    const incoming = normalizeItemsMap(incomingMap);
-    return enqueue(async () => {
-      const next = { ...(await loadLegacyMap()), ...incoming };
-      await writeLegacyMap(next);
-      return { count: Object.keys(next).length };
-    });
-  }
-
   // ── 快照讀取（給 options 頁的還原入口用；仍不在主讀寫路徑上）──────────
   // 走佇列：避免在輪替寫入的中間讀到半套狀態。
   const SNAPSHOT_SLOTS = [['current', LOCAL_SNAPSHOT_KEY], ['prev', LOCAL_SNAPSHOT_PREV_KEY]];
@@ -377,7 +368,6 @@
     if (action === 'replaceAll') {
       return { ok: true, ...(await replaceAll(request.items || {}, { snapshot: request.snapshot !== false })) };
     }
-    if (action === 'merge') return { ok: true, ...(await mergeItems(request.items || {})) };
     if (action === 'snapshots') return { ok: true, snapshots: await listSnapshots() };
     if (action === 'snapshot') return { ok: true, snapshot: await getSnapshot(request.slot) };
     throw new Error('未知的單字本操作');
@@ -398,7 +388,6 @@
     upsertItem,
     deleteItem,
     replaceAll,
-    mergeItems,
     listSnapshots,
     getSnapshot,
     handleMessage,

@@ -3,6 +3,15 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-11-11 — 刪除零引用程式與孤兒檔、修正打包誤帶字型
+
+- 打包：`fonts/` 內的 LINE Seed TW（兩顆 woff2＋授權檔）只給 GitHub Pages 上的 `privacy-policy.html` 用，擴充本體不載入，卻自 2026-10-28 起被整夾收進 zip。改列入 `PRUNE`，zip 由 10.2 MB 回到 3.2 MB，內含字型只剩 `jf-openhuninn-2.1.ttf`。
+- 刪除沒有任何執行期呼叫端的程式：`renderDiff`（`content/utils.js`，優化卡早已不用 diff 檢視）與其測試、`CHEVRON_SVG`（`content/result-card.js`）、單字本的 `mergeItems` 與 `merge` 訊息 action（`vocabulary-store.js`；匯入與還原走的是 `vocabulary-backup.js` 的 `mergeBackup`＋`replaceAll`，不受影響）。
+- 刪除沒有任何 JS 會產生的樣式：`.g-diff-*`、`.g-num`、`.g-chevron`、`.ffb-page-translation-mark(-error)`（含深色模式對應規則），`content.css` 少 96 行。
+- 刪除孤兒檔：`tests/setup.js`（沒被任何設定或測試引用，生效的是 `jest.setup.js`）、根目錄三個 6 月的一次性預覽頁（`floating-ball-layout-preview.html`、`page-translation-card-color-preview.html`、`generate-icons.html`）；`.gitignore` 移除 Vitest 時代的殘留規則。
+- 文件測試數由 864 更正為 866：改動前實跑是 867（文件自 11-10 起過期，master CI 的 `check-docs --verify` 因此是紅的），本次刪掉 `renderDiff` 的 1 條測試後為 866。
+- 驗證：Jest 51 suites／866 tests 全過、0 skip；`npm run check-docs -- --verify` exit 0；`npm run package` 成功並核對 zip 清單。未跑 e2e 與真瀏覽器（本次沒有改到任何仍在使用的執行路徑）。
+
 ## 2026-11-10 — 修正全文翻譯的原文顯示與舊譯文
 
 - 「只看譯文」模式下，等待中和失敗的段落會保留原文，成功後才隱藏。

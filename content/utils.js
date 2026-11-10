@@ -129,43 +129,6 @@ function extractContext(selectedText, range) {
   } catch { return ''; }
 }
 
-// LCS word-level diff：比對原文與優化後版本，回傳帶 <ins>/<del> 標記的 DocumentFragment
-function renderDiff(original, optimized) {
-  const a = original.match(/\S+|\s+/g) || [];
-  const b = optimized.match(/\S+|\s+/g) || [];
-
-  // 文字過長時降級顯示（避免 LCS 表格佔用過多記憶體）
-  if (a.length > 600 || b.length > 600) {
-    return ffbFragment(ffbEl('ins', { class: 'g-diff-ins' }, optimized));
-  }
-
-  const n = a.length, m = b.length;
-  const dp = Array.from({ length: n + 1 }, () => new Int16Array(m + 1));
-  for (let i = 1; i <= n; i++)
-    for (let j = 1; j <= m; j++)
-      dp[i][j] = a[i-1] === b[j-1]
-        ? dp[i-1][j-1] + 1
-        : Math.max(dp[i-1][j], dp[i][j-1]);
-
-  const ops = [];
-  let i = n, j = m;
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && a[i-1] === b[j-1]) {
-      ops.unshift({ t: '=', v: a[i-1] }); i--; j--;
-    } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
-      ops.unshift({ t: '+', v: b[j-1] }); j--;
-    } else {
-      ops.unshift({ t: '-', v: a[i-1] }); i--;
-    }
-  }
-
-  return ffbFragment(ops.map(o =>
-    o.t === '=' ? o.v :
-    o.t === '+' ? ffbEl('ins', { class: 'g-diff-ins' }, o.v) :
-                  ffbEl('del', { class: 'g-diff-del' }, o.v)
-  ));
-}
-
 // 字典例句：把查詢詞在例句中的原樣（surface，可含詞形變化）加粗。
 // 規則：大小寫不敏感、只取第一個完整比對；拉丁／希臘／西里爾字母與數字的邊緣要落在詞界上
 // （避免 "art" 命中 "start"），中日韓等無空格文字不檢查詞界。比對不到就整句純文字，不猜。
@@ -210,4 +173,4 @@ function normalizeCefr(value) {
   return /^[ABC][12]$/.test(level) ? level : '';
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { escapeHtml, formatMarkdown, parseJSON, getWeekLabel, getPosClass, extractContext, renderDiff, highlightExample, normalizeCefr }; }
+if (typeof module !== 'undefined' && module.exports) { module.exports = { escapeHtml, formatMarkdown, parseJSON, getWeekLabel, getPosClass, extractContext, highlightExample, normalizeCefr }; }

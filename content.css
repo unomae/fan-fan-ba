@@ -925,11 +925,6 @@
   color:       #111 !important;
 }
 
-.g-num {
-  font-weight: 600 !important;
-  color:       #1a73e8 !important;
-}
-
 .g-error {
   color:     #d93025 !important;
   font-size: 12.5px !important;
@@ -1259,68 +1254,12 @@
 }
 
 /* ════════════════════════════════════════════════
-   10. 深讀分隔線與 chevron（折疊機制已移除）
+   10. 深讀分隔線
    ════════════════════════════════════════════════ */
-.g-chevron {
-  transition:  transform 0.2s ease !important;
-  margin-left: auto !important;
-  color:       #bbb !important;
-  flex-shrink: 0 !important;
-}
-
 hr.g-deep-divider {
   border:        none !important;
   border-top:    1px dashed rgba(0, 0, 0, 0.12) !important;
   margin:        8px 0 !important;
-}
-
-/* ════════════════════════════════════════════════
-   11. Diff View（優化模式）
-   ════════════════════════════════════════════════ */
-.g-diff-view {
-  font-size:   13px !important;
-  line-height: 1.75 !important;
-  word-break:  break-word !important;
-  padding:     2px 0 !important;
-}
-
-ins.g-diff-ins {
-  background:      rgba(52, 168, 83, 0.14) !important;
-  color:           #1a7a3a !important;
-  text-decoration: none !important;
-  border-radius:   3px !important;
-  padding:         0 2px !important;
-}
-
-del.g-diff-del {
-  background:      rgba(234, 67, 53, 0.10) !important;
-  color:           #c62828 !important;
-  text-decoration: line-through !important;
-  border-radius:   3px !important;
-  padding:         0 2px !important;
-}
-
-.g-diff-legend {
-  display:       flex !important;
-  gap:           8px !important;
-  margin-bottom: 8px !important;
-  font-size:     11px !important;
-}
-
-.g-diff-label-del {
-  background:    rgba(234, 67, 53, 0.10) !important;
-  color:         #c62828 !important;
-  padding:       1px 9px !important;
-  border-radius: 10px !important;
-  font-weight:   600 !important;
-}
-
-.g-diff-label-ins {
-  background:    rgba(52, 168, 83, 0.12) !important;
-  color:         #1a7a3a !important;
-  padding:       1px 9px !important;
-  border-radius: 10px !important;
-  font-weight:   600 !important;
 }
 
 /* ════════════════════════════════════════════════
@@ -2432,28 +2371,6 @@ del.g-diff-del {
   pointer-events: none !important;
 }
 
-.ffb-page-translation-mark {
-  display: none !important;
-  align-items: center !important;
-  justify-content: center !important;
-  flex: 0 0 auto !important;
-  width: 18px !important;
-  height: 18px !important;
-  border: 1px solid rgba(90, 158, 58, 0.18) !important;
-  border-radius: 999px !important;
-  background: rgba(255, 255, 255, 0.66) !important;
-  color: #4f7f35 !important;
-  font-size: 10.5px !important;
-  font-weight: 750 !important;
-  line-height: 1 !important;
-  box-shadow: none !important;
-}
-
-.ffb-page-translation-mark-error {
-  border-color: rgba(185, 28, 28, 0.24) !important;
-  color: #b91c1c !important;
-}
-
 .ffb-page-translation-actions {
   display: inline-flex !important;
   flex-wrap: wrap !important;
@@ -3077,10 +2994,8 @@ html.ffb-page-translation-mode-translation .ffb-page-source-ready {
   #gemini-result-card .g-dict-pos-def,
   #gemini-result-card .g-ex-en { color: var(--ffb-dark-text) !important; }
   #gemini-result-card .g-text-body strong { color: var(--ffb-dark-text-strong) !important; }
-  #gemini-result-card .g-num,
   #gemini-result-card .g-streaming::after { color: var(--ffb-dark-accent) !important; }
   #gemini-result-card hr.g-deep-divider { border-top-color: var(--ffb-dark-border-strong) !important; }
-  #gemini-result-card .g-chevron { color: var(--ffb-dark-text-muted) !important; }
   #gemini-result-card .g-tag {
     background: var(--ffb-dark-accent-bg) !important;
     border-color: rgba(138, 180, 248, 0.32) !important;
@@ -3199,16 +3114,6 @@ html.ffb-page-translation-mode-translation .ffb-page-source-ready {
     background: var(--ffb-dark-green-bg) !important;
     border-color: rgba(163, 209, 121, 0.45) !important;
     color: var(--ffb-dark-green) !important;
-  }
-  #gemini-result-card ins.g-diff-ins,
-  #gemini-result-card .g-diff-label-ins {
-    background: rgba(129, 201, 149, 0.18) !important;
-    color: #9fdcae !important;
-  }
-  #gemini-result-card del.g-diff-del,
-  #gemini-result-card .g-diff-label-del {
-    background: var(--ffb-dark-danger-bg) !important;
-    color: var(--ffb-dark-danger) !important;
   }
 
   /* ── 錯誤、提示、自動存入提示列 ───────────────── */

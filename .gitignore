@@ -8,10 +8,7 @@ SESSION_CONTEXT.md
 # 否則他機 clone 後 npm test 會因缺檔失敗）
 node_modules/
 coverage/
-.vitest/
 dist/
-__tests__/
-vitest.config.js
 
 # Claude Code 工作目錄
 .claude/

@@ -33,7 +33,13 @@ const INCLUDE_FILES = [
 ];
 const INCLUDE_DIRS = ['content', 'icons', 'fonts'];
 // 複製後要從 staging 移除的 dev 資產（原始美術檔等，不該上架）
-const PRUNE = ['icons/source.png'];
+// LINE Seed TW 只給 GitHub Pages 上的 privacy-policy.html 用，擴充本體不載入（各 7MB 級，不該進 zip）
+const PRUNE = [
+  'icons/source.png',
+  'fonts/LINESeedTW_OTF_Rg.woff2',
+  'fonts/LINESeedTW_OTF_Bd.woff2',
+  'fonts/LINESeedTW-license.txt'
+];
 
 function readVersion() {
   return JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8')).version;
