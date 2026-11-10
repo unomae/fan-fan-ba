@@ -5,7 +5,7 @@
 > 否則驗到的是舊版擴充。e2e 全綠**不等於**可以送審——需要 API key、Obsidian App、Excel
 > 或人眼觀感的項目它一律驗不到，那些仍在本表、仍要人工跑。
 
-> 這份是「**人要做**」的手動驗收，與 `npm test`（<!-- ffb:tests -->866<!-- /ffb:tests --> 個自動化單元測試，2026-10-27）互補。
+> 這份是「**人要做**」的手動驗收，與 `npm test`（自動化單元測試）互補。
 > 自動測試涵蓋純函式邏輯；以下這些只有在真實瀏覽器載入擴充功能才驗得了。
 > 涵蓋版本：v1.9.6（注入面收斂）→ v1.9.9（security hardening）→ **v1.10.0（WS-E 資料層 migration）** + Phase A–D review 修正
 > → **v1.10.1（2026-08-14 bump：CSV 公式注入防護）**。
@@ -135,8 +135,7 @@ fire-and-forget 出佇列鏈、下次啟動補刪的路徑——三個 profile �
 - 2 個 P1：`QA-P1-001` 收藏／紀錄面板透明；`QA-P1-003` 375px 浮球展開仍被右側裁切。
 - 1 個 P2：`QA-P2-002` Options 啟動時發生 `LAST_VOCAB_BACKUP_KEY` TDZ。
 - SKIP 不算通過：真實 AI / TTS API Key、Google OAuth / Drive、Obsidian 與 install/update 事件仍待人工。
-- 主整合報告：[`qa-reports/fan-fan-ba-qa-report-20260724.html`](qa-reports/fan-fan-ba-qa-report-20260724.html)
-- 原始結果：[`qa-reports/phase1-2-results.json`](qa-reports/phase1-2-results.json)
+- 主整合報告與原始結果：2026-11-11 起移出公開 repo，存於知識庫 `40_Todo/archive/fan-fan-ba-repo-history/`的 `qa-reports/`（`fan-fan-ba-qa-report-20260724.html`、`phase1-2-results.json`）
 
 ---
 
@@ -338,11 +337,8 @@ emoji、RTL override（`‮`）、`=cmd|' /C calc'!A0`、`<img src=x onerror=...
       → 該筆的 `savedAt` 變成「現在」、**items 一個都沒少**（採重錨不採刪除：那可能是唯一的救援資料）
 - [x] **30 天保留上限**：把 `savedAt` 塞成 40 天前 → 重載 extension → 該槽**被清掉**；
       另一槽若還在保留期內則不受影響（兩槽各自獨立判斷）
-- [~] **清空連帶刪快照**：**目前沒有「清空單字本」控制項可按**（`replaceAll` 的 `clearing`
-      需呼叫端顯式宣告，全 repo 無觸發者），此條在 UI 上無法驗證 → 等真的加了清空鈕再補驗
-      → 2026-08-10 複驗仍無 production 觸發者：`grep clearing` 只命中 `replaceAll` 定義處、
-      一條單元測試（`vocabulary-store-snapshot.test.js:93`），以及 `vocabulary-store.js:375`
-      「handleMessage **不轉發** clearing」——訊息路徑也到不了。**維持跳過，不計為通過。**
+- [~] **清空連帶刪快照**：不適用。`replaceAll` 的 `clearing` 參數從未有呼叫端，已於 2026-11-11 刪除；
+      將來加「清空單字本」鈕時另開明確 action 並重開此條。**維持跳過，不計為通過。**
 
 ### 2026-08-13 執行結果（Tier 2 後半，匯入 7 項）：**7/7 PASS**
 
@@ -466,7 +462,7 @@ emoji、RTL override（`‮`）、`=cmd|' /C calc'!A0`、`<img src=x onerror=...
       且以**獨立寫的 RFC4180 解析器 round-trip**確認含逗號／雙引號／換行的值不會讓欄位錯位，
       公式起頭的值讀回來仍帶著保護用的 `'`
       → 證據：`tests/vocabulary-backup.test.js`〈CSV round-trip〉與〈兩份實作不得漂移〉；
-      `qa-reports/scripts/run-phase1-2.js` 的 TC-B4-002（改驗 BOM／CRLF／欄數）
+      `qa-reports/scripts/run-phase1-2.js` 的 TC-B4-002（改驗 BOM／CRLF／欄數；該腳本 2026-11-11 起移至知識庫）
 - [ ] **Excel／Sheets 實際渲染：無自動化證據，刻意不勾**。上一格驗的是「檔案內容對不對」，
       **證明不了**「Excel 顯示成什麼樣」——公式格是否真被當純文字、中文是否真的不亂碼，
       只能人眼開檔確認。**不得用上一格代替這格**（自動驗過 ≠ 人眼驗過）

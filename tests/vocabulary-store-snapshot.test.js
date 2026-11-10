@@ -82,21 +82,6 @@ describe('本機自動快照', () => {
     expect(data[SNAPSHOT_KEY].items['en:cat']).toBeDefined();
   });
 
-  // 意圖由呼叫端宣告（`{ clearing: true }`），不從「items 是空的」推論——見 replaceAll 檔內註解
-  it('顯式宣告清空：不留快照，既有兩槽一併移除', async () => {
-    const { data } = installStatefulLocalStorage({
-      [KEY]: { 'en:cat': entry('en:cat', 'cat') },
-      [SNAPSHOT_KEY]: { savedAt: iso(T0 - HOUR_MS), items: { 'en:old': entry('en:old', 'old') } },
-      [PREV_KEY]: { savedAt: iso(T0 - DAY_MS), items: { 'en:older': entry('en:older', 'older') } }
-    });
-
-    await freshStore().replaceAll({}, { clearing: true });
-
-    expect(Object.keys(data[KEY])).toEqual([]);
-    expect(data[SNAPSHOT_KEY]).toBeUndefined();
-    expect(data[PREV_KEY]).toBeUndefined();
-  });
-
   it('過期就輪替：舊的降到 prev，救援窗拉到 48h', async () => {
     const { data } = installStatefulLocalStorage({
       [KEY]: { 'en:cat': entry('en:cat', 'cat') },

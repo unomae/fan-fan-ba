@@ -9,7 +9,7 @@
 | 項目 | 狀態 |
 |------|------|
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
-| 自動化單元測試 | <!-- ffb:suites -->51<!-- /ffb:suites --> suites / <!-- ffb:tests -->866<!-- /ffb:tests --> tests 全綠（2026-10-27，含設定頁總覽與未儲存提示、模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表、長難句分析、寫作批改、設定頁搜尋與新功能標籤、術語表（含多分頁同步）、模型比較、單字卡四級評分） |
+| 自動化單元測試 | 全綠，數字以 `npm test` 輸出為準、文件不記（涵蓋設定頁總覽與未儲存提示、模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表、長難句分析、寫作批改、設定頁搜尋與新功能標籤、術語表（含多分頁同步）、模型比較、單字卡四級評分） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-10-23，首次確認測到現行 service worker；改 code 先 `npm run package`，啟動時自動比對建置指紋） |
 | 手動 QA | 全表 55/78；剩 23 項幾乎全卡「無 API key」或「需外部 App／帳號」（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | **2026-09-20 裁決：暫緩送審，先做功能**，告一段落再回頭走上架流程。Chrome Web Store 仍是 release checkpoint |
@@ -75,13 +75,6 @@
   - **接續**：先補 onblocked 自然情境證據，再決定處置；不直接刪庫。
   - **詳情**：`vocabulary-store.js:229`；`MANUAL-QA.md`
 
-- **replaceAll({clearing:true}) 無 production 觸發者，handleMessage 不轉發 clearing**
-
-  - **目的**：確認 clearing 介面是否有正式用途。
-  - **現況**：風險：`replaceAll({clearing:true})` 無 production 觸發者，handleMessage 不轉發 clearing | 證據：`vocabulary-store.js:304`、`:375` | 處置建議：未來加「清空單字本」鈕時必須一起接線＋補驗，否則快照刪除語意靜默失效
-  - **接續**：先追 production caller 與 handleMessage 契約，再決定保留或處置。
-  - **詳情**：`vocabulary-store.js:304`
-
 ### 介面與操作體驗（續 2）
 
 - **content.css 整理（2708 行）deferred**
@@ -135,17 +128,12 @@
 ## 驗證指令速查
 
 ```bash
-npm test                                  # Jest 30 + jsdom（覆蓋率預設開）
+npm test                                  # Jest 30 + jsdom（要覆蓋率加 --coverage）
 npx jest --testPathIgnorePatterns '<rootDir>/\.claude/'   # 主樹取值用（要錨定 <rootDir>，Git Bash 會把 / 開頭的參數改寫成路徑）
 npm run package                           # 產 dist/pkg + zip（e2e / 載入前必跑）
 npm run e2e                               # Playwright 真 Chrome 45 案
 npm run check-models                      # OpenRouter 模型下架對賬（免 key；0=通過 1=有下架 2=未檢）
 node scripts/check-models.js --selftest    # 對賬邏輯自測，期望 SELFTEST 7/7 PASS
-npm run check-docs                        # 現況數字一致性（快，不跑 jest；0=一致 1=不一致 2=未檢）
-npm run check-docs -- --verify            # 權威版：實跑 jest 對照文件數字（慢，release／CI 用）
-node scripts/check-doc-numbers.js --selftest  # 期望 SELFTEST 9/9 PASS
 ```
 
-> **改測試數時**：現況數字用 `<!-- ffb:tests -->N<!-- /ffb:tests -->`（`N` 換成實際數字）這種標記包住，`check-docs` 只認標記、不碰未標記的歷史數字。新增一處現況宣稱要記得加標記，新增檔案要加進 `scripts/check-doc-numbers.js` 的 `FILES`。此處 `N` 是佔位符、刻意不寫成數字，否則這行說明自己會被當成一處現況宣稱。
-
-> 更新規則：完成一個 slice 就把它從「下一步」移進 `CHANGELOG.md`，本檔不留完成紀錄；測試數字異動時同步 `TESTING.md` 標頭與 `MANUAL-QA.md` 頂部計數。
+> 更新規則：完成一個 slice 就把它從「下一步」移進 `CHANGELOG.md`，本檔不留完成紀錄。

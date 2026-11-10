@@ -295,25 +295,18 @@
     });
   }
 
-  // 清空＝使用者明確要求刪除，隱私優先於救援：不留快照，連既有兩槽一併移除。
-  // **意圖必須由呼叫端宣告，不從資料形狀推論**（2026-07-30 red-team F1）：
-  // 原本用 `Object.keys(items).length === 0` 推論，於是「使用者把單字刪光後，
-  // 想匯入備份救回來、但那份備份零有效條目」會一路走到 replaceAll({})，被判成
-  // 「明確清空」而清掉兩槽——**正好在快照唯一該發揮作用的時刻把它刪掉**，
-  // 而且畫面只顯示「新增 0、更新 0」，看起來像什麼都沒發生。
-  // 現況全 repo 沒有任何「清空單字本」控制項，clearing 因此沒有真實觸發者；
-  // 保留這個參數是為了讓將來要加清空鈕的人有明確的接法，不必再走形狀推論。
-  // 逐一 delete 不算清空宣告，仍會留快照——那才是誤刪救回的主場。
+  // 空的 items 不代表「使用者要清空」：不從資料形狀推論清空意圖，一律照常留快照
+  // （2026-07-30 red-team F1：刪光後匯入一份零有效條目的備份，會在快照唯一該發揮
+  // 作用的時刻把它刪掉）。將來要做「清空單字本」須另開明確的 action 並自行刪快照。
   // `snapshot: false` 給「還原快照」用（2026-07-30 red-team F4）：還原走 mergeBackup
   // 'merge'，只會補字與取較新的複習進度、不刪不回滾，所以還原**前**的狀態沒有備份
   // 價值；而使用者通常隔天才發現資料沒了，此時 current 已 stale → 一還原就輪替，
   // 把還原前的壞狀態寫進 current、好快照擠到 prev，再過一天再還原一次就全沒了。
   // 拿救援槽去備份一個非破壞性動作的前態，是把救命繩換成雜訊。
-  async function replaceAll(itemsMap, { clearing = false, snapshot = !clearing } = {}) {
+  async function replaceAll(itemsMap, { snapshot = true } = {}) {
     const items = normalizeItemsMap(itemsMap);
     return enqueue(async () => {
       await writeLegacyMap(items, { snapshot });
-      if (clearing) await removeLocal([LOCAL_SNAPSHOT_KEY, LOCAL_SNAPSHOT_PREV_KEY]);
       return { count: Object.keys(items).length };
     });
   }
@@ -363,8 +356,6 @@
     if (action === 'get') return { ok: true, item: await getItem(request.id) };
     if (action === 'upsert') return { ok: true, item: await upsertItem(request.item) };
     if (action === 'delete') return { ok: true, deleted: await deleteItem(request.id) };
-    // 只轉發 snapshot（要不要順手備份），**不轉發 clearing** —— 刪快照是不可逆的，
-    // 不開放給訊息端；將來要加清空鈕時另開一個明確的 action。
     if (action === 'replaceAll') {
       return { ok: true, ...(await replaceAll(request.items || {}, { snapshot: request.snapshot !== false })) };
     }

@@ -3,7 +3,7 @@
 這個專案使用 **Jest 30** + **jsdom** 作為測試框架（早期曾用 Vitest，已全面遷移到 Jest）。
 本檔說明的是**自動化單元測試**；需要在真實瀏覽器執行的**手動驗收**請見 [`MANUAL-QA.md`](MANUAL-QA.md)。
 
-最後更新：2026-11-11 · <!-- ffb:suites -->51<!-- /ffb:suites --> suites / <!-- ffb:tests -->866<!-- /ffb:tests --> tests 全綠（0 failed、0 skipped）。
+最後更新：2026-11-11 · 全綠（0 failed、0 skipped）。suites／tests 數以 `npm test` 的輸出為準，文件不再記數字。
 
 ---
 
@@ -13,9 +13,9 @@
 npm test
 ```
 
-- **本機有註冊 worktree 時要加過濾**：裸 `npm test` 會把 `.claude/worktrees/` 底下的測試檔一起掃進來，檔數會比主樹多一截。主樹取值一律用 `npx jest --testPathIgnorePatterns '<rootDir>/\.claude/'`（要錨定 `<rootDir>`：Windows 的 Git Bash 會把 `/` 開頭的參數改寫成 Windows 路徑，過濾會靜默失效）；本檔標頭的 suites／tests 數字是這個過濾後的值。
-- 設定在 [`jest.config.js`](jest.config.js)：`testEnvironment: 'jsdom'`、`setupFilesAfterEnv: jest.setup.js`、`collectCoverage: true`。
-- **覆蓋率預設開啟**，報告輸出到 `coverage/`（reporters：`text` 印在終端、`lcov` 供工具讀）。目前行覆蓋約 **68%**。
+- **本機有註冊 worktree 時要加過濾**：裸 `npm test` 會把 `.claude/worktrees/` 底下的測試檔一起掃進來，檔數會比主樹多一截。主樹取值一律用 `npx jest --testPathIgnorePatterns '<rootDir>/\.claude/'`（要錨定 `<rootDir>`：Windows 的 Git Bash 會把 `/` 開頭的參數改寫成 Windows 路徑，過濾會靜默失效）。
+- 設定在 [`jest.config.js`](jest.config.js)：`testEnvironment: 'jsdom'`、`setupFilesAfterEnv: jest.setup.js`。
+- **覆蓋率預設不開**（2026-11-11 起；沒有任何工具或 CI 讀它）。要量時跑 `npx jest --coverage`，報告輸出到 `coverage/`（reporters：`text` 印在終端、`lcov` 供工具讀）。目前行覆蓋約 **68%**。
 - 跑單一檔：`npx jest tests/background.test.js`
 - 跑單一案例：`npx jest -t "關鍵字"`
 - 序列執行（debug 偶發順序問題）：`npm test -- --runInBand`

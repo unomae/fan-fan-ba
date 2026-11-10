@@ -582,7 +582,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
               <tr><td><code>content.css</code></td><td>content script UI 樣式。</td><td>檔案大，整理需真瀏覽器 QA；目前列為 deferred。</td></tr>
               <tr><td><code>tests/</code></td><td>Jest + jsdom 自動化測試。</td><td>自動測試不能取代 <code>MANUAL-QA.md</code>。</td></tr>
               <tr><td><code>scripts/package-extension.js</code></td><td>產出 Chrome Web Store zip。</td><td>送審前用 <code>npm run package</code>。</td></tr>
-              <tr><td><code>archive/</code></td><td>歷史 review、決策看板、舊 roadmap。</td><td>查脈絡用，不是目前主線入口。</td></tr>
+              <tr><td><code>archive/</code></td><td>歷史 review、決策看板、舊 roadmap。2026-11-11 起連同 <code>qa-reports/</code> 移出公開 repo，改存知識庫 <code>40_Todo/archive/fan-fan-ba-repo-history/</code>。</td><td>查脈絡用，不是目前主線入口。</td></tr>
             </table>
           </div>
         </details>
@@ -712,7 +712,7 @@ content/page-translator-single.js</pre>
         <div class="grid">
           <div class="card">
             <h3>自動測試</h3>
-            <p>目前測試框架是 Jest 30 + jsdom。2026-11-07 fresh run 為 <code><!-- ffb:suites -->51<!-- /ffb:suites --> suites / <!-- ffb:tests -->866<!-- /ffb:tests --> tests</code> 全綠。<strong>專案內若有 <code>.claude/worktrees/</code>，jest 會連 worktree 的 <code>tests/</code> 一起掃、筆數灌水一倍</strong>，驗收前先 <code>git worktree list</code>，並用下面第二條指令取值。</p>
+            <p>目前測試框架是 Jest 30 + jsdom。全套測試全綠，suites／tests 數以 <code>npm test</code> 輸出為準。<strong>專案內若有 <code>.claude/worktrees/</code>，jest 會連 worktree 的 <code>tests/</code> 一起掃、筆數灌水一倍</strong>，驗收前先 <code>git worktree list</code>，並用下面第二條指令取值。</p>
             <pre>npm test
 npx jest --testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</pre>
           </div>
@@ -729,7 +729,7 @@ npx jest --testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</pre>
 
         <table style="margin-top:12px;">
           <tr><th>發布前 gate</th><th>狀態</th><th>說明</th></tr>
-          <tr><td>Jest</td><td><span class="pill green">fresh run 通過</span></td><td>2026-11-07：<code><!-- ffb:suites -->51<!-- /ffb:suites --> suites / <!-- ffb:tests -->866<!-- /ffb:tests --> tests</code>，0 failed、0 skipped（主樹實跑，取值請帶 <code>--testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</code>；Git Bash 下不能寫裸 <code>'/\.claude/'</code>，會被改寫成路徑而失效）。</td></tr>
+          <tr><td>Jest</td><td><span class="pill green">fresh run 通過</span></td><td>2026-11-11：全套通過，0 failed、0 skipped（主樹實跑，取值請帶 <code>--testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</code>；Git Bash 下不能寫裸 <code>'/\.claude/'</code>，會被改寫成路徑而失效）。</td></tr>
           <tr><td>Manual QA</td><td><span class="pill red">待真瀏覽器重跑</span></td><td>Phase 0-C～4-B：<code>60 TC / 32 PASS / 4 FAIL / 24 SKIP</code>。QA-P1-001、QA-P1-003、QA-P2-002 已於 2026-07-28 修復並補回歸測試；4 個失敗 TC 的真瀏覽器重跑清單、加上同日接線輪 6 條的新驗收項，都在 <code>MANUAL-QA.md</code>。完整報告見 <code>qa-reports/fan-fan-ba-qa-report-20260724.html</code>。</td></tr>
           <tr><td>OAuth / Cloud Sync</td><td><span class="pill red">T7 待人工</span></td><td>Chrome native auth 與 Edge Web Auth fallback 都要回填結果；Google Cloud Console 設定送審前必查。</td></tr>
           <tr><td>Chrome Web Store</td><td><span class="pill orange">checkpoint</span></td><td>等產品打磨完成後，再依 <code>STORE-SUBMISSION.md</code> 送審。</td></tr>
@@ -811,13 +811,13 @@ npx jest --testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</pre>
           <div>
             <table>
               <tr><th>檔案</th><th>用途</th><th>狀態</th></tr>
-              <tr><td><code>archive/2026-07-07_product-polish-decision-board.html</code></td><td>2026-07-07 產品打磨決策看板。</td><td><span class="pill green">保留</span></td></tr>
-              <tr><td><code>archive/2026-07-06_security-decision-board.html</code></td><td>v1.9.9 安全 hardening 決策看板。</td><td><span class="pill green">保留</span></td></tr>
+              <tr><td><code>archive/2026-07-07_product-polish-decision-board.html</code></td><td>2026-07-07 產品打磨決策看板。</td><td><span class="pill orange">已移至知識庫</span></td></tr>
+              <tr><td><code>archive/2026-07-06_security-decision-board.html</code></td><td>v1.9.9 安全 hardening 決策看板。</td><td><span class="pill orange">已移至知識庫</span></td></tr>
               <tr><td><code>docs/security-improvement-plan.md</code></td><td>資安健檢報告、工單與驗證紀錄。</td><td><span class="pill green">保留</span></td></tr>
-              <tr><td><code>archive/code-review-2026-06-18.md</code></td><td>多視角 code review 匯出，查 P0 / P1 / P2 脈絡。</td><td><span class="pill green">保留</span></td></tr>
-              <tr><td><code>archive/project-review-roadmap.html</code></td><td>舊產品 / 工程 / UI review。</td><td><span class="pill orange">歷史快照</span></td></tr>
-              <tr><td><code>archive/vocabulary-notebook-roadmap.html</code></td><td>單字本資料模型與 Obsidian export 規劃。</td><td><span class="pill orange">歷史快照</span></td></tr>
-              <tr><td><code>archive/page-translation-ux-review.html</code></td><td>全文翻譯 UX review。</td><td><span class="pill orange">歷史快照</span></td></tr>
+              <tr><td><code>archive/code-review-2026-06-18.md</code></td><td>多視角 code review 匯出，查 P0 / P1 / P2 脈絡。</td><td><span class="pill orange">已移至知識庫</span></td></tr>
+              <tr><td><code>archive/project-review-roadmap.html</code></td><td>舊產品 / 工程 / UI review。</td><td><span class="pill orange">已移至知識庫</span></td></tr>
+              <tr><td><code>archive/vocabulary-notebook-roadmap.html</code></td><td>單字本資料模型與 Obsidian export 規劃。</td><td><span class="pill orange">已移至知識庫</span></td></tr>
+              <tr><td><code>archive/page-translation-ux-review.html</code></td><td>全文翻譯 UX review。</td><td><span class="pill orange">已移至知識庫</span></td></tr>
             </table>
           </div>
         </details>

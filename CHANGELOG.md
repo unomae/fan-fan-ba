@@ -3,6 +3,18 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-11-11 — 移除文件測試數 gate、修隱私權政策連結、歷史資料移出 repo
+
+KAKA 同日裁決，承接下一條的審核。
+
+- **文件不再記測試數，`check-docs` 整組移除**：刪 `scripts/check-doc-numbers.js`、`npm run check-docs`、CI 的兩個步驟，以及 `TESTING.md`／`MANUAL-QA.md`／`PLAN.md`／`project-overview.html` 的 `ffb:suites`／`ffb:tests` 標記與數字。理由：這組 gate 只保護「文件裡的數字」，數字本身對使用者沒有價值，卻在 11-10 讓 master CI 變紅而產品沒壞；測試有沒有過由 CI 的 Jest 步驟證明。本檔更早條目裡的 `check-docs` 字樣是歷史紀錄，保留原文。
+- **隱私權政策連結**：歡迎頁與設定頁原本連到 `privacy-policy.html`，但該檔不在打包白名單、安裝後是壞連結。改連正式網址 `https://unomae.github.io/fan-fan-ba/privacy-policy.html`（實測 HTTP 200）。
+- **刪 `replaceAll` 的 `clearing` 參數**與其 1 條測試：從未有呼叫端。「不從資料形狀推論清空意圖」的教訓留在註解；`PLAN.md` 對應技術債項移除，`MANUAL-QA.md` 該條改標不適用（計數不變）。
+- **Jest 覆蓋率改為預設不開**：沒有任何工具或 CI 讀它，要量時跑 `npx jest --coverage`。
+- **歷史資料移出公開 repo**：`archive/`（10 檔，含兩份決策看板）與 `qa-reports/`（73 檔）搬到知識庫 `40_Todo/archive/fan-fan-ba-repo-history/`，搬前以 `diff -rq` 確認兩邊一致；刪 `screenshots/` 內無引用的 Snipaste 5 張與 `mockups/` 6 張。git 歷史仍保有這些檔。
+- 沒動：金鑰 sync→local、IndexedDB cutover、`MODEL_MIGRATIONS` 三組舊資料遷移（刪錯的代價是資料遺失，維持保留）。
+- 驗證：Jest 51 suites／865 tests 全過、0 skip；`npm run package` 成功，`dist/pkg` 兩頁連結已是正式網址；`check-models --selftest` 7/7；`ci.yml` 可解析。未跑 e2e，兩個連結未在真瀏覽器點過。
+
 ## 2026-11-11 — 刪除零引用程式與孤兒檔、修正打包誤帶字型
 
 - 打包：`fonts/` 內的 LINE Seed TW（兩顆 woff2＋授權檔）只給 GitHub Pages 上的 `privacy-policy.html` 用，擴充本體不載入，卻自 2026-10-28 起被整夾收進 zip。改列入 `PRUNE`，zip 由 10.2 MB 回到 3.2 MB，內含字型只剩 `jf-openhuninn-2.1.ttf`。

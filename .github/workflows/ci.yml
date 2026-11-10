@@ -24,16 +24,10 @@ jobs:
       - name: 打包 smoke（含 manifest/package.json 版本一致 assert）
         run: npm run package
 
-      # ── 兩支 lint gate（P-03）─────────────────────────────────────────
-      # 兩支都免金鑰，所以可以無條件掛在這裡；Groq／Gemini 需 key 的部分刻意
+      # ── 模型下架 gate（P-03）─────────────────────────────────────────
+      # 免金鑰，所以可以無條件掛在這裡；Groq／Gemini 需 key 的部分刻意
       # 不涵蓋，依 2026-08-14「QA 不配 key」裁決。
-      # 各自先跑 --selftest：gate 自己壞掉卻還回 0，比沒有 gate 更糟。
-      - name: 現況數字 gate 自測（離線）
-        run: npm run check-docs -- --selftest
-      # 用 --verify 而非預設模式：預設只比對文件彼此，四處一起過期它抓不到。
-      # --verify 會實跑 jest 取真實數字再比對（腳本檔頭指定此模式給 CI 用）。
-      - name: 現況數字權威檢查（--verify，實跑 jest 對照真實數字）
-        run: npm run check-docs -- --verify
+      # 先跑 --selftest：gate 自己壞掉卻還回 0，比沒有 gate 更糟。
       - name: 模型下架 gate 自測（離線）
         run: npm run check-models -- --selftest
       # exit 1 = 真的下架；exit 2 = 未檢（連不上／回應不合預期）。
