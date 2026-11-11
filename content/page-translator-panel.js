@@ -2,7 +2,7 @@
 
 // 全文翻譯 Beta：面板 UI、事件綁定、watcher、生命週期、配對高亮與複製
 
-function startPageTranslationBeta() {
+function startPageTranslationBeta({ modelOverride = '' } = {}) {
   bindPageTranslationNavigationWatcher();
   pageTranslationLocationKey = getPageTranslationLocationKey();
 
@@ -26,6 +26,7 @@ function startPageTranslationBeta() {
     scrollTimer: pageTranslationState.scrollTimer,
     selectionBound: pageTranslationState.selectionBound,
     activePairId: pageTranslationState.activePairId,
+    modelOverride: modelOverride || pageTranslationState.modelOverride || '',
     mode: pageTranslationState.mode || 'bilingual',
     density: pageTranslationState.density || 'compact',
     items,
@@ -51,6 +52,31 @@ function startPageTranslationBeta() {
 
   updatePageTranslationPanel();
   runPageTranslationQueue();
+}
+
+function handlePageTranslationPopupAction({ action, documentKey, model }) {
+  resetPageTranslationIfLocationChanged();
+  const key = `${window.performance.timeOrigin}:${getPageTranslationLocationKey()}`;
+  if (fanFanBaPaused) return { documentKey: key, paused: true };
+  if (action !== 'status' && documentKey !== key) return null;
+
+  if (action === 'start' && !pageTranslationState.activated && typeof model === 'string' && model) {
+    startPageTranslationBeta({ modelOverride: model });
+  } else if (action === 'restore' && pageTranslationState.activated) {
+    restorePageTranslationBeta();
+  }
+
+  const { activated, running, total, errors } = pageTranslationState;
+  const progress = pageTranslationPanel?.querySelector('.ffb-page-panel-progress');
+  const message = progress && !progress.hidden
+    ? progress.querySelector('.ffb-page-panel-progress-label')?.textContent
+    : errors ? `${errors} 段翻譯失敗，可在頁面查看原因並重試。`
+      : total ? getPageTranslationStatusText(pageTranslationState) : '目前沒有可翻譯的段落。';
+  return {
+    documentKey: key, active: activated, running,
+    model: activated ? getPageTranslationModel() : '',
+    message: activated ? message : ''
+  };
 }
 
 function cancelActivePageTranslationRequest() {

@@ -1,0 +1,17 @@
+body {
+  margin: 0;
+  background: var(--surface, #fff);
+  color: var(--text, #182024);
+  font-family: system-ui, sans-serif;
+}
+main { max-width: 56rem; margin: 0 auto; padding: 1rem; }
+header, nav, .translation { padding-block: .75rem; }
+nav { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+button, input { font: inherit; }
+button { min-height: 2.5rem; padding: .35rem .8rem; }
+#page-number { width: 5rem; min-height: 2rem; }
+#pdf-file { display: block; max-width: 100%; margin-block: .4rem; }
+#preview { overflow: auto; background: var(--surface-2, #f0f2f3); }
+#preview canvas { display: block; max-width: 100%; height: auto; margin-inline: auto; }
+#translation-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+

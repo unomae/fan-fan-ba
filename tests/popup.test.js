@@ -54,13 +54,88 @@ describe('Popup module', () => {
     it('缺金鑰時點名缺哪一家', () => {
       global.popupModule.renderKeyAlert(global.popupModule.MODELS[0].id, {});
       expect(document.getElementById('keyAlert').hidden).toBe(false);
-      expect(document.getElementById('keyAlertText').textContent).toBe('缺少 Groq API Key');
+      expect(document.getElementById('keyAlertText').textContent).toBe('選字等功能缺少 Groq API Key');
     });
 
     it('「填寫金鑰」直接開到設定頁的模型分類', () => {
       chrome.runtime.getURL = jest.fn(path => `chrome-extension://id/${path}`);
       document.getElementById('keyAlertAction').click();
       expect(chrome.tabs.create).toHaveBeenCalledWith({ url: 'chrome-extension://id/options.html#model' });
+    });
+  });
+
+  describe('全文翻譯主按鈕', () => {
+    const builtin = { model: 'builtin:translator' };
+    const cloud = { model: 'groq:openai/gpt-oss-120b' };
+    const idle = { documentKey: 'document-1', active: false };
+    const active = { ...idle, active: true, ...builtin, message: '翻譯中 0/1' };
+    const action = () => document.getElementById('pageTranslationAction');
+    const status = () => document.getElementById('pageTranslationStatus').textContent;
+    let current;
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      document.body.insertAdjacentHTML('beforeend', `
+        <div id="pageTranslationFixture">
+          <button id="pageTranslationAction" disabled></button>
+          <p id="pageTranslationRoute"></p><p id="pageTranslationStatus" role="status"></p>
+        </div>`);
+      current = idle;
+      chrome.tabs.query.mockReset().mockResolvedValue([{ id: 7 }]);
+      chrome.runtime.sendMessage.mockReset().mockResolvedValue(builtin);
+      chrome.tabs.sendMessage.mockReset().mockImplementation(async (_tab, message) => {
+        if (message.action === 'start') current = active;
+        if (message.action === 'restore') current = idle;
+        return current;
+      });
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+      document.getElementById('pageTranslationFixture').remove();
+    });
+
+    it('顯示裝置端路由，明確向 top frame 開始和還原', async () => {
+      await global.popupModule.refreshPopupPageTranslation();
+      expect(action().disabled).toBe(false);
+      expect(document.getElementById('pageTranslationRoute').textContent).toContain('裝置端');
+      await global.popupModule.runPopupPageTranslation();
+      expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(7, {
+        type: 'FFB_POPUP_PAGE', action: 'start', documentKey: 'document-1', ...builtin
+      }, { frameId: 0 });
+      expect(action().textContent).toBe('還原原文');
+      await global.popupModule.runPopupPageTranslation();
+      expect(status()).toBe('已還原原文。');
+    });
+
+    it('顯示過裝置端後改成雲端時，首次點擊只更新路由', async () => {
+      await global.popupModule.refreshPopupPageTranslation();
+      chrome.runtime.sendMessage.mockResolvedValue(cloud);
+      await global.popupModule.runPopupPageTranslation();
+      expect(chrome.tabs.sendMessage.mock.calls.every(([, message]) => message.action === 'status')).toBe(true);
+      expect(document.getElementById('pageTranslationRoute').textContent).toBe('雲端 · Groq');
+      expect(status()).toContain('請再確認');
+    });
+
+    it('分頁已換文件或無法使用時，不送出翻譯動作', async () => {
+      await global.popupModule.refreshPopupPageTranslation();
+      current = { ...idle, documentKey: 'document-2' };
+      await global.popupModule.runPopupPageTranslation();
+      expect(chrome.tabs.sendMessage.mock.calls.every(([, message]) => message.action === 'status')).toBe(true);
+      current = { paused: true };
+      await global.popupModule.refreshPopupPageTranslation();
+      expect(action().disabled).toBe(true);
+      expect(status()).toContain('停用');
+    });
+
+    it('現有工作階段的錯誤在重開 Popup 後仍可看到和還原', async () => {
+      current = { ...active, message: '1 段翻譯失敗，可在頁面查看原因並重試。' };
+      await global.popupModule.refreshPopupPageTranslation();
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+      expect(action().disabled).toBe(false);
+      expect(action().textContent).toBe('還原原文');
+      expect(status()).toContain('1 段翻譯失敗');
     });
   });
 

@@ -777,6 +777,30 @@ describe('全文翻譯持續接續與停止', () => {
     expect(getPageTranslationModel()).toBe('builtin:translator');
   });
 
+  it('Popup 只能操作原文件，本次使用的模型在設定變動後仍固定到還原為止', async () => {
+    ctx.fanFanBaPaused = false;
+    try {
+      const status = ctx.handlePageTranslationPopupAction({ action: 'status' });
+      expect(ctx.handlePageTranslationPopupAction({
+        action: 'start', documentKey: 'old-document', model: 'builtin:translator'
+      })).toBeNull();
+      expect(chrome.runtime.connect).not.toHaveBeenCalled();
+      expect(ctx.handlePageTranslationPopupAction({
+        action: 'start', documentKey: status.documentKey, model: 'builtin:translator'
+      })).toMatchObject({ active: true, model: 'builtin:translator' });
+      await flush();
+      setPageTranslationModel('gemini-3.8-flash');
+      expect(getPageTranslationModel()).toBe('builtin:translator');
+      expect(ctx.handlePageTranslationPopupAction({
+        action: 'restore', documentKey: status.documentKey
+      })).toMatchObject({ active: false });
+      expect(getPageTranslationModel()).toBe('gemini-3.8-flash');
+    } finally {
+      delete ctx.fanFanBaPaused;
+      ctxRun('pageTranslationModel = null');
+    }
+  });
+
   it('只翻單段時捲動不會啟動全文自動接續', async () => {
     await ctx.translateSinglePageBlock(document.querySelector('main p'));
     const calls = chrome.runtime.connect.mock.calls.length;

@@ -6,10 +6,13 @@ const ModelRegistry = globalThis.FanFanBaModels || require('./models');
 const Storage = globalThis.FanFanBaStorage || require('./storage');
 const MODELS = ModelRegistry.MODELS;
 
-// ── 初始化 ────────────────────────────────────────────
-initPopup();
+let popupPageTranslation = {};
+let pageActionPending = false;
+let pageStatusTimer = null;
+let pageStatusRevision = 0;
 
 async function initPopup() {
+  void refreshPopupPageTranslation();
   const [sync, secrets] = await Promise.all([
     chrome.storage.sync.get(['model']),
     Storage.getSecrets(getKeyDefaults())
@@ -77,6 +80,7 @@ function selectModel(id, clickedItem) {
     clickedItem.classList.add('active');
     clickedItem.setAttribute('aria-checked', 'true');
     renderKeyAlert(id, await Storage.getSecrets(getKeyDefaults()));
+    void refreshPopupPageTranslation();
   });
 }
 
@@ -96,7 +100,98 @@ function renderKeyAlert(model, secrets = {}) {
   if (!alert || !text) return;
   const { provider, hasKey } = getApiKeyStatus(model, secrets);
   alert.hidden = hasKey;
-  text.textContent = hasKey ? '' : `缺少 ${ModelRegistry.PROVIDERS[provider]?.label || ''} API Key`;
+  text.textContent = hasKey ? '' : `選字等功能缺少 ${ModelRegistry.PROVIDERS[provider]?.label || ''} API Key`;
+}
+
+// ── 目前分頁的全文翻譯 ────────────────────────────────
+const activeTabId = async () => (await chrome.tabs.query({ active: true, currentWindow: true }))[0]?.id;
+
+async function readPopupPageTranslation() {
+  const tabId = await activeTabId();
+  if (!Number.isInteger(tabId)) return {};
+  const status = await chrome.tabs.sendMessage(tabId, { type: 'FFB_POPUP_PAGE', action: 'status' }, { frameId: 0 })
+    .catch(() => null);
+  if (!status || status.paused || status.active) return { tabId, status };
+  const route = await chrome.runtime.sendMessage({ type: 'POPUP_PAGE_TRANSLATION_ROUTE' });
+  return { tabId, status, route };
+}
+
+function renderPopupPageTranslation(target, notice = '') {
+  popupPageTranslation = target;
+  const { status, route } = target;
+  const action = document.getElementById('pageTranslationAction');
+  const routeText = document.getElementById('pageTranslationRoute');
+  const statusText = document.getElementById('pageTranslationStatus');
+  const model = status?.active ? status.model : route?.model;
+  const provider = model && ModelRegistry.PROVIDERS[ModelRegistry.getProvider(model)];
+  action.textContent = status?.active ? '還原原文' : '翻譯這一頁';
+  action.disabled = !status || status.paused || (!status.active && (!route?.model || !!route.error));
+  routeText.textContent = provider?.keyless ? '裝置端 · 瀏覽器內建翻譯' : (provider ? `雲端 · ${provider.label}` : '');
+  let detail = route?.error || '';
+  if (!status) detail = '目前無法在這個分頁翻譯。一般網頁可重新整理後再試。';
+  else if (status.paused) detail = '翻翻吧已在這個網站停用。';
+  else if (status.active) detail = status.message;
+  else if (!route?.model && !detail) detail = '無法讀取翻譯設定，請重開彈窗。';
+  const nextStatus = [notice, detail].filter(Boolean).join(' ');
+  if (statusText.textContent !== nextStatus) statusText.textContent = nextStatus;
+}
+
+function schedulePopupPageStatus() {
+  clearTimeout(pageStatusTimer);
+  if (popupPageTranslation.status?.active) {
+    pageStatusTimer = setTimeout(refreshPopupPageTranslation, 750);
+  }
+}
+
+async function refreshPopupPageTranslation() {
+  if (pageActionPending || !document.getElementById('pageTranslationAction')) return;
+  clearTimeout(pageStatusTimer);
+  const revision = ++pageStatusRevision;
+  const target = await readPopupPageTranslation().catch(() => ({}));
+  if (revision !== pageStatusRevision) return;
+  renderPopupPageTranslation(target);
+  schedulePopupPageStatus();
+}
+
+async function runPopupPageTranslation() {
+  const button = document.getElementById('pageTranslationAction');
+  if (pageActionPending || button.disabled) return;
+  pageActionPending = true;
+  pageStatusRevision += 1;
+  clearTimeout(pageStatusTimer);
+  button.setAttribute('aria-busy', 'true');
+
+  const shown = popupPageTranslation;
+  try {
+    const current = await readPopupPageTranslation();
+    const { status, route, tabId } = current;
+    if (!status || status.paused || (await activeTabId()) !== tabId
+      || tabId !== shown.tabId || status.documentKey !== shown.status.documentKey
+      || status.active !== shown.status.active || route?.model !== shown.route?.model || route?.error) {
+      renderPopupPageTranslation(current, '分頁或翻譯設定已變更，請再確認。');
+      return;
+    }
+    const updated = await chrome.tabs.sendMessage(tabId, {
+      type: 'FFB_POPUP_PAGE',
+      action: status.active ? 'restore' : 'start',
+      documentKey: status.documentKey,
+      model: route?.model
+    }, { frameId: 0 });
+    if (!updated) {
+      renderPopupPageTranslation(await readPopupPageTranslation(), '頁面已變更，請再確認。');
+    } else if (updated.active || updated.paused) {
+      renderPopupPageTranslation({ tabId, status: updated });
+    } else {
+      const notice = status.active ? '已還原原文。' : '未能啟動翻譯，請重試。';
+      renderPopupPageTranslation(await readPopupPageTranslation(), notice);
+    }
+  } catch {
+    renderPopupPageTranslation(await readPopupPageTranslation().catch(() => ({})), '無法操作目前分頁，請重試。');
+  } finally {
+    button.removeAttribute('aria-busy');
+    pageActionPending = false;
+    schedulePopupPageStatus();
+  }
 }
 
 // ── 快捷鍵 ────────────────────────────────────────────
@@ -147,4 +242,29 @@ document.getElementById('keyAlertAction')?.addEventListener('click', () => {
   chrome.tabs.create({ url: chrome.runtime.getURL('options.html#model') });
 });
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { initPopup, renderModels, selectModel, renderKeyAlert, getApiKeyStatus, renderShortcuts, loadShortcuts, SHORTCUTS_PAGE_URL, MODELS }; }
+async function openPdfFromPopup(current, button) {
+  button.disabled = true;
+  const status = document.getElementById('pdfPopupStatus');
+  status.hidden = true;
+  try {
+    if (current) {
+      const tabId = await activeTabId();
+      const response = await chrome.runtime.sendMessage({ type: 'OPEN_CURRENT_PDF', tabId });
+      if (!response?.ok) throw new Error('無法開啟目前 PDF');
+    } else {
+      await chrome.tabs.create({ url: chrome.runtime.getURL('reader/pdf.html') });
+    }
+  } catch {
+    status.textContent = '無法開啟 PDF 閱讀器，請重試。';
+    status.hidden = false;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+document.getElementById('openCurrentPdf')?.addEventListener('click', event => openPdfFromPopup(true, event.currentTarget));
+document.getElementById('openLocalPdf')?.addEventListener('click', event => openPdfFromPopup(false, event.currentTarget));
+document.getElementById('pageTranslationAction')?.addEventListener('click', runPopupPageTranslation);
+initPopup();
+
+if (typeof module !== 'undefined' && module.exports) { module.exports = { initPopup, renderModels, selectModel, renderKeyAlert, getApiKeyStatus, renderShortcuts, loadShortcuts, refreshPopupPageTranslation, runPopupPageTranslation, SHORTCUTS_PAGE_URL, MODELS }; }

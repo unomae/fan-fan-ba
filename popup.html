@@ -6,10 +6,16 @@
   <link rel="stylesheet" href="ui-tokens.css">
   <style>
     @font-face {
-      font-family: 'jf-openhuninn';
-      src: url('fonts/jf-openhuninn-2.1.ttf') format('truetype');
-      font-weight: normal;
-      font-style: normal;
+      font-family: 'LINE Seed TW';
+      src: url('fonts/LINESeedTW_OTF_Rg.woff2') format('woff2');
+      font-weight: 400;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: 'LINE Seed TW';
+      src: url('fonts/LINESeedTW_OTF_Bd.woff2') format('woff2');
+      font-weight: 700;
       font-display: swap;
     }
 
@@ -25,7 +31,7 @@
       overflow-x: hidden;
       color: var(--text);
       background: var(--page);
-      font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+      font-family: 'LINE Seed TW', 'Microsoft JhengHei', sans-serif;
       font-size: 13px;
       line-height: 1.4;
     }
@@ -62,7 +68,6 @@
 
     .header h1 {
       flex: 1;
-      font-family: 'jf-openhuninn', 'Microsoft JhengHei', sans-serif;
       font-size: 14px;
       font-weight: 700;
     }
@@ -80,6 +85,30 @@
 
     .text-button:hover { background: var(--accent-soft); }
     .text-button:focus-visible, .model-item:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+    .page-translation {
+      display: grid;
+      gap: 6px;
+      padding: 12px 12px 8px;
+    }
+
+    .page-translation button {
+      min-height: 40px;
+      padding: 6px 10px;
+      border: var(--hairline) solid var(--accent-line);
+      border-radius: 8px;
+      background: var(--accent-solid);
+      color: var(--accent-on-solid);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .page-translation button:not(:disabled):hover { background: var(--accent-solid-hover); }
+    .page-translation button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .page-translation button:disabled { background: var(--surface); color: var(--text-muted); cursor: default; }
+    .page-translation p { color: var(--text-muted); font-size: 12px; }
+    .page-translation p:empty { display: none; }
+    #pageTranslationStatus:empty { display: block; }
 
     /* 只有功能會壞掉時才出現 */
     .alert {
@@ -223,6 +252,19 @@
     <img class="header-icon" src="icons/icon128.png" alt="">
     <h1>翻翻吧</h1>
     <button class="text-button" id="openOptions" type="button">設定</button>
+  </div>
+
+  <div class="page-translation">
+    <button id="pageTranslationAction" type="button" aria-describedby="pageTranslationRoute pageTranslationStatus" disabled>翻譯這一頁</button>
+    <p id="pageTranslationRoute"></p>
+    <p id="pageTranslationStatus" role="status">正在確認這一頁能否翻譯…</p>
+  </div>
+
+  <div class="page-translation">
+    <div class="section-head">PDF</div>
+    <button class="text-button" id="openCurrentPdf" type="button">開啟目前 PDF</button>
+    <button class="text-button" id="openLocalPdf" type="button">選擇本機 PDF</button>
+    <p id="pdfPopupStatus" role="status" hidden></p>
   </div>
 
   <div class="alert" id="keyAlert" role="alert" hidden>
