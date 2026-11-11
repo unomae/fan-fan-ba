@@ -31,7 +31,10 @@ const INCLUDE_FILES = [
   'options.html', 'options.js',
   'welcome.html', 'welcome.js'
 ];
-const INCLUDE_DIRS = ['content', 'icons', 'fonts'];
+const INCLUDE_DIRS = ['content', 'icons', 'fonts', 'reader'];
+const PDFJS_DIST = path.join(ROOT, 'node_modules', 'pdfjs-dist');
+const PDFJS_FILES = ['LICENSE', 'build/pdf.min.mjs', 'build/pdf.worker.min.mjs'];
+const PDFJS_DIRS = ['cmaps', 'standard_fonts'];
 // 複製後要從 staging 移除的 dev 資產（原始美術檔等，不該上架）
 // LINE Seed TW 只給 GitHub Pages 上的 privacy-policy.html 用，擴充本體不載入（各 7MB 級，不該進 zip）
 const PRUNE = [
@@ -73,6 +76,15 @@ function copyAllowlisted() {
     fs.cpSync(src, path.join(STAGE, dir), { recursive: true });
     copied.push(`${dir}/`);
   }
+  const pdfjs = path.join(STAGE, 'vendor', 'pdfjs');
+  fs.mkdirSync(pdfjs, { recursive: true });
+  for (const rel of PDFJS_FILES) {
+    fs.copyFileSync(path.join(PDFJS_DIST, rel), path.join(pdfjs, path.basename(rel)));
+  }
+  for (const dir of PDFJS_DIRS) {
+    fs.cpSync(path.join(PDFJS_DIST, dir), path.join(pdfjs, dir), { recursive: true });
+  }
+  copied.push('vendor/pdfjs/');
   for (const rel of PRUNE) {
     fs.rmSync(path.join(STAGE, rel), { force: true });
   }
