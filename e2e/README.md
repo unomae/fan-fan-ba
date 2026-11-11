@@ -27,7 +27,7 @@
 > - **`FFB_E2E_EXECUTABLE` 挑哪顆**：本機實測 `ms-playwright/chromium-1161/chrome-win/chrome.exe` 可跑；`chromium-1228/chrome-win64/chrome.exe` 直接回 **Permission denied**（疑似防毒攔截，非版本問題——`playwright-core` 期望的 revision 其實是 1234，1161 照樣跑得起來）。
 
 > **CI 上不需要做這段前置**：`.github/workflows/ci.yml` 的 `e2e-extension` job
-> （`workflow_dispatch` 手動觸發）會自己裝 Chrome for Testing、依 checkout 路徑現算擴充 ID，
+> （PR 與 `workflow_dispatch` 手動觸發）會自己裝 Chrome for Testing、依 checkout 路徑現算擴充 ID，
 > 並用 xvfb 提供 display。本節的人工前置只適用於本機。
 
 ## 跑
@@ -84,6 +84,8 @@ node e2e/run.js --list
 - **需要外部 App／帳號**：Obsidian 週記落檔（`obsidian://`）、Excel 開 CSV、Cloud Sync 登入。
 - **人眼觀感**：版面美醜、譯文品質、字型是否「好看」。這裡只驗客觀值（載入狀態、溢出像素、DOM 結構）。
 - **真正的移除擴充再重裝**：`legacy-regression` 只用「清空 `storage.local`」模擬。
+
+`legacy-regression` 的離線部分會明確斷言主頁／iframe 選取工具列、單字備份清空後所有條目欄位還原一致，以及十一個受支援設定的匯出／清空／storage 還原／重匯出一致。設定使用 dummy 值，預設不匯出金鑰，結束後還原隔離 profile 的原設定。這些斷言失敗會讓 runner exit 1；成功後仍保留 PARTIAL，分別註明真翻譯、實際重裝及 Google Sync 尚未涵蓋，不把離線成功當成完整產品驗收。
 
 逐項對照與尚未涵蓋的清單見 `MANUAL-QA.md`。
 

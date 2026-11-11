@@ -715,6 +715,7 @@ content/page-translator-single.js</pre>
             <p>目前測試框架是 Jest 30 + jsdom。全套測試全綠，suites／tests 數以 <code>npm test</code> 輸出為準。<strong>專案內若有 <code>.claude/worktrees/</code>，jest 會連 worktree 的 <code>tests/</code> 一起掃、筆數灌水一倍</strong>，驗收前先 <code>git worktree list</code>，並用下面第二條指令取值。</p>
             <pre>npm test
 npx jest --testPathIgnorePatterns '&lt;rootDir&gt;/\.claude/'</pre>
+            <p>2026-11-08 補上獨立的離線工具相容性回歸：直接透過 Jest 驗證多專案 glob 展開、副檔名提示與 coverage glob 門檻的正負向控制；執行 <code>node --test scripts/check-dependency-compat.cjs</code>。此測試與上列應用程式測試數分開計算。CI 另外在 Linux、Windows、macOS 以 npm 10.9.9、11.9.0 做乾淨安裝及鎖檔不變檢查；本機及 CI 結果均不代表商店已發布，原有人工 QA 缺口仍保留。</p>
           </div>
           <div class="card">
             <h3>打包</h3>
