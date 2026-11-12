@@ -112,7 +112,7 @@
 - **網頁浮層與歡迎頁套用同一套 Radix token**〔待裁決〕
 
   - **目的**：讓工具列、結果卡、浮球、全文翻譯面板與歡迎頁跟 popup／設定頁用同一套色彩與文案規則。
-  - **現況**：2026-10-23 只改了 popup 與設定頁；`content.css`（約 3,500 行，仍用 `--ffb-dark-*` 與舊色碼）和 `welcome.html` 沒動。全文翻譯面板仍有「已完成 0/4 · 失敗 4」這類「·」分隔（`content/page-translator-panel.js`）。
+  - **現況**：2026-10-23 只改了 popup 與設定頁；`content.css`（約 3,500 行，仍用 `--ffb-dark-*` 與舊色碼）和 `welcome.html` 沒動。全文翻譯面板仍有「已完成 0/4 · 失敗 4」這類「·」分隔（`content/page-translator-panel.js`）。2026-10-24 有一份 `content.css` 改 token 的試作（`604f776`，未併），只留在遠端分支 `origin/worktree-overlay-radix-eval`；2026-11-13 本機 worktree 已收掉。
   - **接續**：KAKA 裁決要不要做；要做先定浮層是否保留毛玻璃與 `!important` 隔離，再分元件改，每個元件都要跑 e2e ui-panels 與 legacy-regression。
   - **詳情**：`design.md` 1.5 節（全頁面規範）與第 2 節（浮層色票）；`content.css`；`welcome.html`
 
