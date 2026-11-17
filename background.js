@@ -9,12 +9,15 @@ if (typeof importScripts === 'function') {
   if (!globalThis.FanFanBaVocabularyStore) importScripts('vocabulary-store.js');
   if (!globalThis.FanFanBaCustomActions) importScripts('custom-actions.js');
   if (!globalThis.FanFanBaGlossary) importScripts('content/glossary.js');
+  importScripts('content/site-policy.js');
 }
 const ModelRegistry = globalThis.FanFanBaModels || require('./models');
 const Storage = globalThis.FanFanBaStorage || require('./storage');
 const VocabularyStore = globalThis.FanFanBaVocabularyStore || require('./vocabulary-store');
 const CustomActions = globalThis.FanFanBaCustomActions || require('./custom-actions');
 const Glossary = globalThis.FanFanBaGlossary || require('./content/glossary');
+const isPdfSensitiveHost = typeof fanFanBaIsSensitiveHost === 'function'
+  ? fanFanBaIsSensitiveHost : require('./content/site-policy').fanFanBaIsSensitiveHost;
 
 // ── 首次安裝時開啟 Welcome 頁面 ──────────────────────
 chrome.runtime.onInstalled.addListener(details => {
@@ -30,6 +33,9 @@ chrome.runtime.onInstalled.addListener(details => {
 // 敏感網域（登入／密碼管理）不注入 content script，訊息送不到就靜默略過。
 const CONTEXT_MENU_TRANSLATE_SELECTION = 'ffb-translate-selection';
 const CONTEXT_MENU_TRANSLATE_PAGE = 'ffb-translate-page';
+const CONTEXT_MENU_OPEN_PDF = 'ffb-open-pdf-link';
+const PDF_READER_PATH = 'reader/pdf.html';
+const PDF_WEB_PATTERNS = ['http://*/*', 'https://*/*'];
 const COMMAND_TRIGGERS = {
   'toggle-page-translation': { trigger: 'toggle-page-translation', topFrameOnly: true },
   'translate-selection': { trigger: 'translate-selection', topFrameOnly: false }
@@ -41,6 +47,10 @@ function registerContextMenus() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({ id: CONTEXT_MENU_TRANSLATE_SELECTION, title: '翻翻吧：翻譯選取文字', contexts: ['selection'] });
     chrome.contextMenus.create({ id: CONTEXT_MENU_TRANSLATE_PAGE, title: '翻翻吧：翻譯整頁', contexts: ['page'] });
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_OPEN_PDF, title: '翻翻吧：開啟 PDF 連結', contexts: ['link'],
+      documentUrlPatterns: PDF_WEB_PATTERNS, targetUrlPatterns: PDF_WEB_PATTERNS
+    });
   });
 }
 
@@ -52,7 +62,52 @@ function sendTriggerToTab(tabId, message, frameId) {
     .catch(() => false); // 分頁沒有 content script（chrome://、敏感網域、尚未載入）
 }
 
+function readPdfWebUrl(value) {
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
+    url.hash = '';
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+async function openPdfReader(tab, linkUrl) {
+  const reader = chrome.runtime.getURL(PDF_READER_PATH);
+  const page = readPdfWebUrl(tab?.url);
+  const target = linkUrl === undefined ? page : readPdfWebUrl(linkUrl);
+  if (!page || !target || !Number.isInteger(tab.id) || isPdfSensitiveHost(page.hostname)) {
+    await chrome.tabs.create({ url: reader + '#unavailable' });
+    return;
+  }
+  if (target.origin !== page.origin) {
+    await chrome.tabs.create({ url: reader + '#cross-origin' });
+    return;
+  }
+  const pauseKey = 'fanFanBaPaused:' + page.hostname;
+  if ((await chrome.storage.local.get(pauseKey))[pauseKey]) {
+    await chrome.tabs.create({ url: reader + '#unavailable' });
+    return;
+  }
+  // 只在瀏覽器 session 留一筆一次性來源；Reader URL 與歷史紀錄不帶原址。
+  const token = crypto.randomUUID();
+  const key = 'ffbPdfSource:' + token;
+  await chrome.storage.session.set({ [key]: {
+    tabId: tab.id, pageUrl: page.href, url: target.href, expiresAt: Date.now() + 60000
+  } });
+  try {
+    await chrome.tabs.create({ url: reader + '#source=' + token });
+  } catch (error) {
+    await chrome.storage.session.remove(key);
+    throw error;
+  }
+}
+
 function handleContextMenuClick(info, tab) {
+  if (info?.menuItemId === CONTEXT_MENU_OPEN_PDF) {
+    return openPdfReader(tab, info.linkUrl).catch(() => false);
+  }
   if (info?.menuItemId === CONTEXT_MENU_TRANSLATE_SELECTION) {
     // 右鍵點在哪個 frame 就送哪個 frame，由它讀自己的選取範圍
     return sendTriggerToTab(tab?.id, { trigger: 'translate-selection' }, info.frameId ?? 0);
@@ -87,7 +142,7 @@ const MAX_PAGE_URL_CHARS = 2048;
 const MAX_TTS_TEXT_CHARS = 160;
 const MAX_OBSIDIAN_URIS = 50;
 const MAX_OBSIDIAN_URI_CHARS = 4096;
-const ALLOWED_MESSAGE_TYPES = new Set(['GEMINI_REQUEST', 'TTS_REQUEST', 'OPEN_OPTIONS', 'OBSIDIAN_URI', 'VOCABULARY_STORE', 'MODEL_AVAILABILITY']);
+const ALLOWED_MESSAGE_TYPES = new Set(['GEMINI_REQUEST', 'TTS_REQUEST', 'OPEN_OPTIONS', 'OBSIDIAN_URI', 'VOCABULARY_STORE', 'MODEL_AVAILABILITY', 'POPUP_PAGE_TRANSLATION_ROUTE', 'OPEN_CURRENT_PDF', 'PDF_TRANSLATION_ROUTE']);
 
 // ── Exponential Backoff with Full Jitter ──────────
 function createAbortError() {
@@ -191,6 +246,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     handleAIRequest(safeAIRequest)
       .then(result => { recordAiDiagnostics(request); reply(result); })
       .catch(err => { recordDiagnosticError(); reply({ error: err.message }); });
+    return true;
+  }
+  if (request.type === 'OPEN_CURRENT_PDF') {
+    if (!isTrustedExtensionSender(sender) || sender.url !== chrome.runtime.getURL('popup.html')) return false;
+    const tab = Number.isInteger(request.tabId) ? chrome.tabs.get(request.tabId).catch(() => null) : Promise.resolve(null);
+    tab.then(current => openPdfReader(current?.active ? current : null))
+      .then(() => reply({ ok: true }))
+      .catch(() => reply({ error: '無法開啟 PDF 閱讀器。' }));
+    return true;
+  }
+  if (request.type === 'POPUP_PAGE_TRANSLATION_ROUTE' || request.type === 'PDF_TRANSLATION_ROUTE') {
+    const source = request.type === 'PDF_TRANSLATION_ROUTE' ? PDF_READER_PATH : 'popup.html';
+    if (!isTrustedExtensionSender(sender) || sender.url?.split('#', 1)[0] !== chrome.runtime.getURL(source)) return false;
+    getPopupPageTranslationRoute()
+      .then(reply)
+      .catch(() => reply({ error: '無法讀取翻譯設定，請重開彈窗。' }));
     return true;
   }
   if (request.type === 'MODEL_AVAILABILITY') {
@@ -511,6 +582,26 @@ async function assertRoutePermission(route) {
 //
 // 「無前綴 id＝Gemini」是史前遺留 id 依賴的路由約定，`provider-endpoints.test.js`
 // 兩個 describe 各有一條鎖住它。
+async function getPopupPageTranslationRoute() {
+  const [settings, secrets] = await Promise.all([
+    chrome.storage.sync.get({ model: DEFAULT_MODEL, pageTranslationModel: '', customApiBase: '', customModelName: '' }),
+    Storage.getSecrets()
+  ]);
+  const configured = ModelRegistry.normalizeModel(settings.pageTranslationModel || settings.model);
+  const model = ModelRegistry.isModelConfigured(ModelRegistry.getModel(configured), secrets, settings)
+    ? configured : ModelRegistry.BUILTIN_TRANSLATOR_MODEL;
+  try {
+    const route = resolveRoute(model, secrets, settings);
+    if (route.kind === 'builtin' && (typeof self.Translator === 'undefined' || typeof self.LanguageDetector === 'undefined')) {
+      return { model, error: '此瀏覽器無法使用裝置端翻譯。可在設定中選擇並設定雲端模型。' };
+    }
+    await assertRoutePermission(route);
+    return { model };
+  } catch (error) {
+    return { model, error: error.message };
+  }
+}
+
 function resolveRoute(selectedModel, { apiKey, groqApiKey, openrouterApiKey, customApiKey }, settings = {}) {
   if (selectedModel.startsWith('groq:')) {
     if (!groqApiKey) throw new Error('請先在設定頁面輸入 Groq API Key');
@@ -660,13 +751,13 @@ async function handleWithModelFallback(params, model) {
 // 日期當英文送去翻。
 const BUILTIN_MIN_DETECTION_CONFIDENCE = 0.8;
 
-async function detectBuiltinSourceLanguage(text) {
+async function detectBuiltinSourceLanguage(text, signal) {
   if (typeof self.LanguageDetector === 'undefined') {
     throw new Error('此瀏覽器不支援內建語言偵測，請改用雲端模型');
   }
-  const detector = await self.LanguageDetector.create();
+  const detector = await self.LanguageDetector.create({ signal });
   try {
-    const results = await detector.detect(text);
+    const results = await detector.detect(text, { signal });
     const top = Array.isArray(results) ? results[0] : null;
     if (!top || !top.detectedLanguage || top.detectedLanguage === 'und'
         || Number(top.confidence) < BUILTIN_MIN_DETECTION_CONFIDENCE) {
@@ -689,7 +780,7 @@ async function handleBuiltinTranslateRequest({ action, selectedText, targetLangu
   const isBatch = pageTranslation.batch === true;
   const items = isBatch ? JSON.parse(selectedText) : [{ id: 1, text: String(selectedText || '') }];
   const target = ModelRegistry.toBuiltinLanguageCode(targetLanguage, browserLanguage);
-  const source = await detectBuiltinSourceLanguage(items.map(item => item.text).join('\n'));
+  const source = await detectBuiltinSourceLanguage(items.map(item => item.text).join('\n'), signal);
 
   // 來源＝目標就不送翻譯：省一次呼叫，也避開相同語言對的未定義行為
   if (source === target) {

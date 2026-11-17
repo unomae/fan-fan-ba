@@ -41,7 +41,10 @@ function collectVisibleTranslatableBlocks() {
     seen.add(el);
     seenTexts.add(normalizedText);
     charCount += text.length;
-    items.push({ el, text, pairId: createPageTranslationPairId(), status: 'pending', translationNode: null, translatedText: '' });
+    items.push({
+      el, text, sourceSnapshot: getPageTranslationSourceSnapshot(el),
+      pairId: createPageTranslationPairId(), status: 'pending', translationNode: null, translatedText: ''
+    });
   });
 
   return items;
@@ -94,6 +97,17 @@ function isAllowedEditablePageTranslationElement(el, editableEl) {
   if (!inNotionContent) return false;
   if (node.closest('[role="toolbar"], [role="menu"], [role="menubar"], [role="dialog"], [role="button"], button, form, nav, aside, header, footer')) return false;
   return true;
+}
+
+// 使用不受「只看譯文」影響的文字，略過插入在來源容器內的擴充譯文。
+function getPageTranslationSourceSnapshot(el) {
+  function readText(node) {
+    if (node.nodeType === Node.TEXT_NODE) return node.data;
+    if (node.nodeType !== Node.ELEMENT_NODE || node.classList.contains('ffb-page-translation-block')) return '';
+    return Array.from(node.childNodes, readText).join('');
+  }
+  const text = el.querySelector('.ffb-page-translation-block') ? readText(el) : el.textContent;
+  return text.replace(/\s+/g, ' ').trim();
 }
 
 function getElementTranslationText(el) {

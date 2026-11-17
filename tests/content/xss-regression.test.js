@@ -4,7 +4,7 @@ const vm = require('vm');
 
 // utils 的格式化函式在執行時才找 ffbEl 等 DOM helper（瀏覽器端由 dom.js 提供），測試端掛到 global
 Object.assign(global, require('../../content/dom'));
-const { escapeHtml, getPosClass, formatMarkdown, renderDiff, highlightExample, normalizeCefr } = require('../../content/utils');
+const { escapeHtml, getPosClass, formatMarkdown, highlightExample, normalizeCefr } = require('../../content/utils');
 
 function runContentScript(file, context) {
   const source = fs.readFileSync(path.join(__dirname, '../../', file), 'utf8');
@@ -33,7 +33,6 @@ function loadResultCard() {
     escapeHtml,
     getPosClass,
     formatMarkdown,
-    renderDiff,
     highlightExample,
     normalizeCefr,
     loadRecentFolders: jest.fn(async () => []),

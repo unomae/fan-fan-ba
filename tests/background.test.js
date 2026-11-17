@@ -22,6 +22,57 @@ const { ReadableStream } = require('stream/web');
 const aiStreamConnectListener = chrome.runtime.onConnect.addListener.mock.calls[0][0];
 
 describe('Background module', () => {
+  it('取消裝置端翻譯時一併取消等待中的語言偵測模型', async () => {
+    const oldDetector = self.LanguageDetector;
+    const oldTranslator = self.Translator;
+    self.Translator = {};
+    self.LanguageDetector = {
+      create: jest.fn(({ signal }) => new Promise((_, reject) => {
+        signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+      }))
+    };
+    try {
+      const controller = new AbortController();
+      const pending = handleBuiltinTranslateRequest({
+        action: 'translate', selectedText: 'A paragraph waiting for the language model.',
+        targetLanguage: 'zh-TW', pageTranslation: {}, signal: controller.signal
+      });
+      controller.abort();
+      await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    } finally {
+      self.LanguageDetector = oldDetector;
+      self.Translator = oldTranslator;
+    }
+  });
+
+  it('Popup 路由未設定金鑰時只回裝置端，已設定全文模型時回所選雲端模型', async () => {
+    const listener = chrome.runtime.onMessage.addListener.mock.calls[0][0];
+    const oldId = chrome.runtime.id;
+    const oldDetector = self.LanguageDetector;
+    const oldTranslator = self.Translator;
+    chrome.runtime.id = 'mock-id';
+    self.LanguageDetector = {};
+    self.Translator = {};
+    const request = { type: 'POPUP_PAGE_TRANSLATION_ROUTE' };
+    const route = () => new Promise(resolve => {
+      expect(listener(request, { id: 'mock-id', url: 'chrome-extension://mock-id/popup.html' }, resolve)).toBe(true);
+    });
+    try {
+      chrome.storage.sync.get.mockResolvedValueOnce({ model: 'gemini-3.8-flash' });
+      expect(await route()).toEqual({ model: 'builtin:translator' });
+      chrome.storage.sync.get.mockResolvedValueOnce({ model: 'gemini-3.8-flash', pageTranslationModel: 'groq:openai/gpt-oss-120b' });
+      chrome.storage.local.get.mockImplementation(keys =>
+        Promise.resolve(keys.includes('groqApiKey') ? { groqApiKey: 'dummy-local-test-only' } : {}));
+      expect(await route()).toEqual({ model: 'groq:openai/gpt-oss-120b' });
+      expect(listener(request, { id: 'mock-id', url: 'https://example.com' }, jest.fn())).toBe(false);
+    } finally {
+      chrome.runtime.id = oldId;
+      self.LanguageDetector = oldDetector;
+      self.Translator = oldTranslator;
+      chrome.storage.local.get.mockReset().mockResolvedValue({});
+    }
+  });
+
   describe('isRetryable', () => {
     it('should return true for 429 and 503', () => {
       expect(isRetryable({ status: 429 })).toBe(true);

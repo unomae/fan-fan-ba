@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>翻翻吧 · PDF 閱讀器</title>
+  <link rel="stylesheet" href="../ui-tokens.css">
+  <link rel="stylesheet" href="pdf.css">
+  <script type="module" src="pdf.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>PDF 閱讀器</h1>
+      <label for="pdf-file">選擇本機 PDF</label>
+      <input id="pdf-file" type="file" accept=".pdf,application/pdf">
+      <p id="document-status" role="status">請選擇 PDF 檔案。</p>
+    </header>
+
+    <section id="document" aria-label="PDF 原文與翻譯" hidden>
+      <nav aria-label="PDF 頁次">
+        <button id="previous" type="button">上一頁</button>
+        <label for="page-number">頁次</label>
+        <input id="page-number" type="number" min="1" step="1" value="1">
+        <span id="page-total"></span>
+        <button id="next" type="button">下一頁</button>
+      </nav>
+      <p id="page-status" role="status"></p>
+      <div id="preview"></div>
+
+      <div class="translation">
+        <h2>目前頁的譯文</h2>
+        <p id="translate-help">按下翻譯後才會處理這一頁。使用雲端模型時，會送出該頁文字。</p>
+        <button id="translate" type="button" aria-describedby="translate-help" disabled>翻譯目前頁</button>
+        <button id="cancel-translation" type="button" hidden>取消翻譯</button>
+        <p id="translation-status" role="status"></p>
+        <div id="translation-text"></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
+

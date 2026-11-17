@@ -188,9 +188,8 @@ function renderPageTranslationError(item, message) {
   bindPageTranslationBlockEvents(item.translationNode);
   retryButton.addEventListener('click', async e => {
     e.stopPropagation();
-    pageTranslationState.errors = Math.max(0, pageTranslationState.errors - 1);
-    pageTranslationState.usage.failed = Math.max(0, pageTranslationState.usage.failed - 1);
-    await translatePageItem(item);
+    if (item.status !== 'error' || !retryButton.isConnected || pageTranslationState.stopped) return;
+    await translatePageItem(item, { retry: true });
     updatePageTranslationPanel();
   });
 }

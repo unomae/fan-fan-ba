@@ -77,10 +77,12 @@ async function translateSinglePageBlock(el) {
   if (!text) return false;
 
   ensurePageTranslationSessionForSingle();
+  const state = pageTranslationState;
 
   const item = {
     el: block,
     text,
+    sourceSnapshot: getPageTranslationSourceSnapshot(block),
     pairId: createPageTranslationPairId(),
     status: 'pending',
     translationNode: null,
@@ -97,6 +99,7 @@ async function translateSinglePageBlock(el) {
   // 讓 AI 拿到前後文，翻得更準（Phase C 長文 context 調優）。
   await translatePageItem(item, { requestKind: 'single', context: buildSinglePageContext(item) });
 
+  if (state !== pageTranslationState) return true;
   pageTranslationState.canContinue = hasVisibleTranslatableBlocks();
   updatePageTranslationPanel();
   updateFloatingBallPageTranslationState?.(pageTranslationState);
@@ -128,6 +131,7 @@ function ensurePageTranslationSessionForSingle() {
   ensurePageTranslationPanel();
   pageTranslationState.stopped = false;
   pageTranslationState.stopping = false;
+  bindPageTranslationContentWatcher();
   if (!pageTranslationState.activated) {
     pageTranslationState.activated = true;
     setPageTranslationMode(pageTranslationState.mode || 'bilingual');

@@ -12,14 +12,18 @@ const TRIGGER = 'FFB_TRIGGER';
 beforeEach(() => jest.clearAllMocks());
 
 describe('右鍵選單', () => {
-  it('建立「翻譯選取文字」與「翻譯整頁」兩項，且先清掉舊選單', () => {
+  it('建立翻譯與 PDF 入口，且先清掉舊選單', () => {
     registerContextMenus();
     expect(chrome.contextMenus.removeAll).toHaveBeenCalledTimes(1);
-    expect(chrome.contextMenus.create).toHaveBeenCalledTimes(2);
+    expect(chrome.contextMenus.create).toHaveBeenCalledTimes(3);
     const items = chrome.contextMenus.create.mock.calls.map(([item]) => item);
     expect(items).toEqual([
       { id: 'ffb-translate-selection', title: '翻翻吧：翻譯選取文字', contexts: ['selection'] },
-      { id: 'ffb-translate-page', title: '翻翻吧：翻譯整頁', contexts: ['page'] }
+      { id: 'ffb-translate-page', title: '翻翻吧：翻譯整頁', contexts: ['page'] },
+      {
+        id: 'ffb-open-pdf-link', title: '翻翻吧：開啟 PDF 連結', contexts: ['link'],
+        documentUrlPatterns: ['http://*/*', 'https://*/*'], targetUrlPatterns: ['http://*/*', 'https://*/*']
+      }
     ]);
   });
 
@@ -41,6 +45,33 @@ describe('右鍵選單', () => {
   it('分頁沒有 content script（敏感網域、chrome:// 頁）時靜默回 false', async () => {
     chrome.tabs.sendMessage.mockRejectedValueOnce(new Error('Could not establish connection'));
     await expect(handleContextMenuClick({ menuItemId: 'ffb-translate-page' }, { id: 3 })).resolves.toBe(false);
+  });
+});
+
+describe('PDF 訊息入口', () => {
+  const listener = chrome.runtime.onMessage.addListener.mock.calls[0][0];
+
+  it('Popup 可從未授權分頁開啟手選入口，網頁不能代為開啟', async () => {
+    const request = { type: 'OPEN_CURRENT_PDF' };
+    const id = chrome.runtime.id;
+    const reply = jest.fn();
+    expect(listener(request, { id, url: 'https://example.com/' }, reply)).toBe(false);
+    const result = await new Promise(resolve => {
+      expect(listener(request, { id, url: chrome.runtime.getURL('popup.html') }, resolve)).toBe(true);
+    });
+    expect(result).toEqual({ ok: true });
+    expect(chrome.tabs.create).toHaveBeenCalledWith({ url: chrome.runtime.getURL('reader/pdf.html') + '#unavailable' });
+  });
+
+  it('只有 PDF 閱讀器可以查詢 PDF 翻譯路由', async () => {
+    const request = { type: 'PDF_TRANSLATION_ROUTE' };
+    const id = chrome.runtime.id;
+    expect(listener(request, { id, url: chrome.runtime.getURL('popup.html') }, jest.fn())).toBe(false);
+    chrome.storage.sync.get.mockResolvedValueOnce({ model: 'gemini-3.8-flash' });
+    const route = await new Promise(resolve => {
+      expect(listener(request, { id, url: chrome.runtime.getURL('reader/pdf.html') }, resolve)).toBe(true);
+    });
+    expect(route.model).toBe('builtin:translator');
   });
 });
 

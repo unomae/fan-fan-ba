@@ -645,8 +645,6 @@ function closeSourceEditor(el = resultCard) {
   el?.querySelector('.g-rc-edit-source')?.setAttribute('aria-expanded', 'false');
 }
 
-const CHEVRON_SVG = `<svg class="g-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
-
 // 字典卡內容（DocumentFragment）；AI 回傳欄位一律當純文字
 function buildDictContent(d) {
   const translations = normalizeTranslations(d.translations);

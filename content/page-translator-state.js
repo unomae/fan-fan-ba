@@ -93,5 +93,5 @@ function setPageTranslationModel(model) {
 function getPageTranslationModel() {
   // main.js 可能在本檔載入前已讀完設定，當時 setter 尚不存在；讀回設定值補上這個時序。
   const savedModel = typeof pageTranslationModelSetting === 'string' ? pageTranslationModelSetting : '';
-  return FanFanBaModels.normalizeModel(pageTranslationModel || savedModel || activeModel);
+  return FanFanBaModels.normalizeModel(pageTranslationState.modelOverride || pageTranslationModel || savedModel || activeModel);
 }

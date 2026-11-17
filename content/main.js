@@ -2,6 +2,7 @@
 
 let lastSelectionPointerDown = null;
 let contentSettingsReady = Promise.resolve();
+let contentSitePolicyReady = Promise.resolve(false);
 
 // ── 注入品牌字型（content script 無法用靜態 CSS @font-face，需動態取得 extension URL）
 function injectBrandFont() {
@@ -36,7 +37,15 @@ if (fanFanBaShouldActivate()) {
 
 // ── 快捷鍵／右鍵選單觸發（由 background 轉來）──────────
 // 站點停用時一律不作用；沒有選取文字就什麼都不做（不跳錯誤、不彈 UI）。
-function onExtensionTrigger(message) {
+function onExtensionTrigger(message, sender, sendResponse) {
+  if (message?.type === 'FFB_POPUP_PAGE') {
+    if (sender?.id !== chrome.runtime.id || sender?.url !== chrome.runtime.getURL('popup.html')
+      || !fanFanBaIsTopFrame()) return false;
+    contentSitePolicyReady.then(ready =>
+      sendResponse(ready && typeof handlePageTranslationPopupAction === 'function'
+        ? handlePageTranslationPopupAction(message) : null));
+    return true;
+  }
   if (!message || message.type !== 'FFB_TRIGGER') return false;
   if (fanFanBaPaused || !fanFanBaShouldActivate()) return false;
   if (message.trigger === 'translate-selection') {
@@ -670,12 +679,13 @@ function initContentSettings() {
     })
     .catch(() => {});
 
-  chrome.storage.local.get(getPauseStorageKey())
+  contentSitePolicyReady = chrome.storage.local.get(getPauseStorageKey())
     .then(data => {
       fanFanBaPaused = !!data[getPauseStorageKey()];
       globalThis.updateFloatingBallPausedState?.();
+      return true;
     })
-    .catch(() => {});
+    .catch(() => false);
 
   loadToolbarActionList();
 
