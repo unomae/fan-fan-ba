@@ -2,6 +2,7 @@
 // frame-split／訊息硬化／品牌字型／單段翻譯 UI／診斷自檢／SRS／匯入硬化／綜合回歸
 const path = require('path');
 const fs = require('fs');
+const assert = require('node:assert/strict');
 const H = require('../lib/harness');
 
 module.exports = {
@@ -55,6 +56,11 @@ module.exports = {
           return el ? getComputedStyle(el).display !== 'none' : false;
         });
       }
+      // 主頁與 fixture iframe 都應出現選取工具列；真翻譯仍需另行驗證。
+      assert.equal(mainTb.visible, true, '主頁選取後工具列必須可見');
+      assert.equal(mainTb.buttons, 4, '主頁工具列應保留四個動作');
+      assert.ok(frame, 'fixture 必須存在可讀的 iframe');
+      assert.equal(frameTb, true, 'iframe 選取後工具列必須可見');
       await s.shot(web, 'legacy-toolbar');
       await web.close();
       rec.partial('§1-2/§1-3 選取文字跳出工具列',
@@ -305,15 +311,23 @@ module.exports = {
     } catch (e) { rec.fail('§6-5 匯出 JSON', 'EXCEPTION ' + e.message); }
 
     try {
-      const before = (await H.listWords(opt)).length;
+      const beforeItems = (await H.send(opt, 'list')).items;
+      const keyedItems = items => Object.fromEntries(items.map(item => [item.id, item]));
+      assert.ok(beforeItems.length > 0, '清空前必須有 dummy 條目');
+      assert.deepEqual(JSON.parse(fs.readFileSync(exported, 'utf8')).items, keyedItems(beforeItems),
+        '備份必須保留所有條目欄位，不只筆數');
       await opt.evaluate(() => chrome.storage.local.clear());
       await opt.reload({ waitUntil: 'domcontentloaded' }); await opt.waitForTimeout(1000);
       await H.openBackupTab(opt);
       const emptied = (await H.listWords(opt)).length;
+      assert.equal(emptied, 0, '必須先確認 dummy 條目真的清空');
       const st = await H.importVocabFile(opt, exported);
-      const restored = (await H.listWords(opt)).length;
+      assert.match(st, /^匯入完成：/, '還原必須回報匯入成功');
+      const restoredItems = (await H.send(opt, 'list')).items;
+      assert.deepEqual(keyedItems(restoredItems), keyedItems(beforeItems),
+        '還原後所有條目與欄位必須一致');
       rec.partial('§6-8 清空 storage 後匯入救回',
-        `${before} 筆 → 清空後 ${emptied} 筆 → 匯入「${st}」→ ${restored} 筆`
+        `${beforeItems.length} 筆 → 清空後 ${emptied} 筆 → 匯入「${st}」→ ${restoredItems.length} 筆；全部條目欄位一致`
         + '（**以清空 storage 模擬，不是真正的移除擴充再重裝**）');
     } catch (e) { rec.fail('§6-8 清空 storage 後匯入救回', 'EXCEPTION ' + e.message); }
 
@@ -370,22 +384,61 @@ module.exports = {
     } catch (e) { rec.fail('§7-3 釘住／最近查詢／單字本／高亮', 'EXCEPTION ' + e.message); }
 
     // ── §7-4 設定匯出／匯入 ──
+    // 使用全部十一個受支援的備份欄位，只寫隔離 profile，絕不配置帳號或真 key。
+    const dummySettings = {
+      model: 'groq:openai/gpt-oss-120b', pageTranslationModel: '',
+      dictionaryModel: 'groq:openai/gpt-oss-120b', targetLanguage: 'ja',
+      explanationLanguage: 'en', ttsLanguageMode: 'source',
+      vocabularyHighlightMode: 'auto', obsidianVault: 'dummy-vault',
+      obsidianDefaultFolder: 'dummy/日本語',
+      customApiBase: 'https://example.invalid/v1', customModelName: 'dummy-model'
+    };
+    const settingKeys = Object.keys(dummySettings);
+    const priorSettings = await opt.evaluate(keys => chrome.storage.sync.get(keys), settingKeys);
     try {
+      await opt.evaluate(values => chrome.storage.sync.set(values), dummySettings);
+      await opt.reload({ waitUntil: 'domcontentloaded' });
       await H.openBackupTab(opt);
-      const [dl] = await Promise.all([
-        opt.waitForEvent('download', { timeout: 20000 }),
-        opt.evaluate(() => document.getElementById('btnExportSettings').click()),
-      ]);
-      const p = path.join(tmp, dl.suggestedFilename());
-      await dl.saveAs(p);
-      const keys = Object.keys(JSON.parse(fs.readFileSync(p, 'utf8'))).length;
+      const exportSettings = async filename => {
+        const [dl] = await Promise.all([
+          opt.waitForEvent('download', { timeout: 20000 }),
+          opt.evaluate(() => {
+            document.getElementById('includeSecretsExport').checked = false;
+            document.getElementById('btnExportSettings').click();
+          }),
+        ]);
+        const file = path.join(tmp, filename);
+        await dl.saveAs(file);
+        const payload = JSON.parse(fs.readFileSync(file, 'utf8'));
+        assert.equal(payload.app, 'fan-fan-ba');
+        assert.equal(payload.schemaVersion, 1);
+        assert.equal(Object.hasOwn(payload, 'secrets'), false);
+        assert.equal(Object.hasOwn(payload, 'secretsEncrypted'), false);
+        return { file, payload };
+      };
+      const { file: p, payload: first } = await exportSettings('settings-before.json');
+      assert.deepEqual(first.settings, dummySettings, '匯出必須保留完整 dummy 設定');
+      await opt.evaluate(keys => chrome.storage.sync.remove(keys), settingKeys);
+      assert.deepEqual(await opt.evaluate(keys => chrome.storage.sync.get(keys), settingKeys), {},
+        '匯入前必須先確定受測設定已移除');
+      await opt.evaluate(() => { document.getElementById('status').textContent = ''; });
       await opt.setInputFiles('#settingsImportFile', p);
-      await opt.waitForTimeout(2000);
-      const feedback = await opt.evaluate(() => /設定檔已匯入|匯入/.test(document.body.innerText));
+      await opt.waitForFunction(() => document.getElementById('status').textContent.includes('✓ 設定檔已匯入'),
+        null, { timeout: 20000 });
+      assert.deepEqual(await opt.evaluate(keys => chrome.storage.sync.get(keys), settingKeys), dummySettings,
+        '匯入必須逐欄還原 storage 中的設定');
+      const { payload: second } = await exportSettings('settings-after.json');
+      assert.deepEqual(second.settings, first.settings, '重匯出的設定必須一致');
       rec.partial('§7-4 設定匯出／匯入',
-        `匯出 ${dl.suggestedFilename()}（${keys} 個鍵）→ 重新匯入有回饋=${feedback}`
-        + '（**Cloud Sync 登入同步需 Google 帳號、hover 設定未逐欄核對，未涵蓋**）');
+        `匯出／清空／還原 storage／重匯出 ${settingKeys.length} 個設定逐欄一致，未匯出金鑰`
+        + '（**Cloud Sync 登入同步需 Google 帳號；備份契約外的其他介面偏好未涵蓋**）');
     } catch (e) { rec.fail('§7-4 設定匯出／匯入', 'EXCEPTION ' + e.message); }
+    finally {
+      await opt.evaluate(async ([keys, values]) => {
+        await chrome.storage.sync.remove(keys);
+        await chrome.storage.sync.set(values);
+      }, [settingKeys, priorSettings]);
+    }
 
     // 收尾
     await H.seed(opt, { 'en:merge': { id: 'en:merge', word: 'merge', count: 1, status: 'learning', lastSeenAt: new Date().toISOString() } });

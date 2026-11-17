@@ -9,6 +9,25 @@ on:
   workflow_dispatch:
 
 jobs:
+  dependency-compat:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        npm: ["10.9.9", "11.9.0"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Clean install with the selected npm version
+        run: npm exec --yes --package=npm@${{ matrix.npm }} -- npm ci --ignore-scripts
+      - name: Lockfile remains unchanged
+        run: git diff --exit-code -- package.json package-lock.json
+      - name: Offline Jest parent integration checks
+        run: node --test scripts/check-dependency-compat.cjs
+
   test-and-package:
     runs-on: ubuntu-latest
     steps:
@@ -38,10 +57,9 @@ jobs:
         run: npm run check-models
 
   e2e-extension:
-    # workflow_dispatch 專用。這 45 案要真 Chromium ＋ 真擴充、要 headed 瀏覽器、
-    # 還要下載 Chrome for Testing，跑一輪數分鐘，所以不綁每個 PR，由人手動觸發。
-    # 覆蓋範圍與「這裡驗不到什麼」見 e2e/README.md；人工 QA 仍照 MANUAL-QA.md。
-    if: github.event_name == 'workflow_dispatch'
+    # PR 與手動執行均驗證真 Chromium、真擴充與隔離假資料。
+    # 覆蓋範圍與未涵蓋項目見 e2e/README.md；人工 QA 仍照 MANUAL-QA.md。
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
