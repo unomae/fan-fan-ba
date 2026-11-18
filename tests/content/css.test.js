@@ -54,7 +54,7 @@ describe('content CSS UI safeguards', () => {
 
   it('hides the autosave-bar bottom border until it is shown (no leaked green line)', () => {
     // 收合狀態 border 寬度必須是 0，避免 max-height:0 時漏出一條綠線
-    expect(css).toContain('border-bottom:   0 solid #bbf7d0 !important;');
+    expect(css).toContain('border-bottom:   0 solid var(--ffb-lime-6) !important;');
     // 只有 .show 時才補回 1px 分隔線
     expect(css).toMatch(/\.g-autosave-bar\.show\s*{[^}]*border-bottom-width:\s*1px\s*!important;/);
   });
@@ -148,7 +148,10 @@ describe('content CSS UI safeguards', () => {
 
     it('只作用在翻翻吧自己的元件，不碰頁面 :root／html／body', () => {
       const selectors = rules().flatMap(rule => rule.selectors);
-      expect(selectors.length).toBeGreaterThan(50);
+      // 深色只換 token：5 個根節點都要在這裡重新定義全部色階
+      const tokenRule = rules().find(rule => /--ffb-olive-1:/.test(rule.body));
+      expect(tokenRule.selectors).toEqual(ROOTS);
+      expect(tokenRule.body.match(/--ffb-(olive|lime|blue|red|amber|violet)-\d+:/g)).toHaveLength(72);
       const outside = selectors.filter(selector => !ROOTS.some(root => selector.startsWith(root)));
       expect(outside).toEqual([]);
       expect(dark).not.toMatch(/(^|[\s,}]):root\b|(^|[\s,}])(html|body)\b/);
