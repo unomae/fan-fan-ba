@@ -102,6 +102,8 @@ describe('寫作批改：新格式', () => {
     const counts = () => [...document.querySelectorAll('.g-opt-count')].map(el => [el.dataset.type, el.textContent]);
     render(context, REVIEW);
     expect(counts()).toEqual([['error', '錯誤 2'], ['awkward', '不自然 1'], ['good', '寫得好 1']]);
+    // 計數之間用頓號分隔，不用「·」
+    expect(document.querySelector('.g-opt-counts').textContent).toBe('錯誤 2、不自然 1、寫得好 1');
     render(context, REVIEW.replace(/\*\*原文標記：\*\*[\s\S]*?(?=\*\*總評)/, '**原文標記：**\n- 無\n\n'));
     expect(counts()).toEqual([]);
     expect(document.querySelector('.g-opt-marks')).toBeNull();
