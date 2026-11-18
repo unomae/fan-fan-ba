@@ -855,7 +855,7 @@ function buildOptimizeMarkedOriginal(original, marks) {
     ffbEl('div', { class: 'g-optimize-label-row' }, [
       ffbEl('span', { class: 'g-optimize-label' }, '原文'),
       counts.length > 0 && ffbEl('span', { class: 'g-opt-counts' }, counts.map(([type, count], index) => [
-        index > 0 && ' · ',
+        index > 0 && '、', // 文案規則：不用「·」當分隔（design.md 1.5 節）
         ffbEl('span', { class: `g-opt-count g-ca-type-${type}`, dataset: { type } }, `${OPTIMIZE_MARK_LABELS[type]} ${count}`)
       ]))
     ]),

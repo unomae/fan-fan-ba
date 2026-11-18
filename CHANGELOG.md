@@ -3,6 +3,15 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-11-19 — 結果卡計數改頓號、歡迎頁加色彩守門測試
+
+承接 11-18 改版的合併前自審。
+
+- **結果卡優化模式的計數**：「錯誤 2 · 不自然 1」改成「錯誤 2、不自然 1」（`content/result-card.js` 的 `.g-opt-counts`），跟全文翻譯面板同一套「不用『·』當分隔」規則。`tests/content/writing-review.test.js` 補斷言，退回舊實作時變紅。
+- **歡迎頁色彩守門**：新增 `tests/welcome-tokens.test.js`（4 條）：`ui-tokens.css` 要在 `<style>` 之前載入、`<style>` 不寫死色碼、元素不用 inline style 設顏色、用到的 token 都要在 `ui-tokens.css` 有定義。寫回 `#999`、加回 inline 色、引用不存在的 token、拿掉 `ui-tokens.css` 四種突變各紅 1 條。
+- **還留著「·」的地方（這次沒動）**：popup 的翻譯路線文字「雲端 · Groq」（`popup.js`，屬 10-23 已改版的頁面，漏網）；`content/obsidian.js` 寫進 Obsidian 筆記的標題與來源行，是使用者筆記的格式，改了會讓新舊筆記不一致，要不要改交 KAKA 決定。
+- 驗證：全套 Jest 53 suites／888 tests 全過、0 skip。沒跑 e2e：改動只有一行文案與測試，優化結果卡需要 API key，e2e 本來就驗不到。
+
 ## 2026-11-19 — 深色網頁上的錯誤譯文區塊改成看得清楚
 
 - **問題**：全文翻譯失敗時插進網頁的錯誤區塊（`.ffb-page-translation-error`），底色寫死成淺粉色；但網頁底色偏深時，`getPageTranslationContrastTheme` 會把譯文字換成白色 `#f8fafc`，結果是淺粉底配白字。前一條改版的截圖時發現，改版前就是這樣。
