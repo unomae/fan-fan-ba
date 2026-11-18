@@ -92,13 +92,13 @@ function buildPageTranslationUsageSummaryText(summary = pageTranslationState.usa
     summary.singleRequests ? `單段 ${summary.singleRequests}` : '',
     summary.fallbackRequests ? `重試 ${summary.fallbackRequests}` : ''
   ].filter(Boolean);
-  return [
+  const main = [
     `本次全文翻譯：段落 ${summary.paragraphs}`,
     `成功 ${summary.succeeded}`,
     `失敗 ${summary.failed}`,
-    `request 約 ${summary.requests}`,
-    requestParts.length ? `(${requestParts.join('、')})` : ''
-  ].filter(Boolean).join(' · ');
+    `request 約 ${summary.requests}`
+  ].join('，');
+  return requestParts.length ? `${main}（${requestParts.join('、')}）` : main;
 }
 
 function ensurePageTranslationPanel() {
@@ -241,7 +241,7 @@ function renderPageLearningSummary(container) {
   container.hidden = !(keySentences.length || vocabulary.length);
   if (container.hidden) return;
 
-  container.appendChild(ffbEl('div', { class: 'ffb-page-learning-title' }, `本頁重點 · 已譯 ${summary.sourceCount} 段`));
+  container.appendChild(ffbEl('div', { class: 'ffb-page-learning-title' }, `本頁重點（已譯 ${summary.sourceCount} 段）`));
   if (keySentences.length) {
     container.appendChild(ffbEl('ul', { class: 'ffb-page-learning-sentences' },
       keySentences.map(sentence => ffbEl('li', null, sentence))));
@@ -260,22 +260,22 @@ function getPageTranslationStatusText(state, message = '') {
   const progress = total ? `${done}/${total}` : '0/0';
 
   if (state?.stopping) {
-    return [`正在停止 ${progress}`, errors ? `失敗 ${errors}` : ''].filter(Boolean).join(' · ');
+    return [`正在停止 ${progress}`, errors ? `失敗 ${errors}` : ''].filter(Boolean).join('，');
   }
   if (state?.running) {
-    return [`翻譯中 ${progress}`, errors ? `失敗 ${errors}` : ''].filter(Boolean).join(' · ');
+    return [`翻譯中 ${progress}`, errors ? `失敗 ${errors}` : ''].filter(Boolean).join('，');
   }
   if (state?.stopped) {
-    return [`已停止 ${progress}`, errors ? `失敗 ${errors}` : ''].filter(Boolean).join(' · ');
+    return [`已停止 ${progress}`, errors ? `失敗 ${errors}` : ''].filter(Boolean).join('，');
   }
   if (state?.canContinue) {
-    return `有新段落可翻譯 · 已完成 ${progress}`;
+    return `有新段落可翻譯，已完成 ${progress}`;
   }
   if (total && done >= total && !errors) {
-    return `可見區域翻譯完成 · ${progress}`;
+    return `可見區域翻譯完成（${progress}）`;
   }
   if (total && errors) {
-    return `已完成 ${progress} · 失敗 ${errors}`;
+    return `已完成 ${progress}，失敗 ${errors}`;
   }
   return '待命';
 }

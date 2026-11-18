@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>歡迎使用翻翻吧</title>
+  <link rel="stylesheet" href="ui-tokens.css">
   <style>
+    /* 色彩一律用 ui-tokens.css（Radix Colors v3），深色模式由 token 自動切換，這裡不另寫暗色規則。 */
     @font-face {
       font-family: 'jf-openhuninn';
       src: url('fonts/jf-openhuninn-2.1.ttf') format('truetype');
@@ -17,8 +19,9 @@
 
     body {
       font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-      background: #f7f9f5;
-      color: #1a1a1a;
+      background: var(--page-bg);
+      background-color: var(--page);
+      color: var(--text);
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -30,11 +33,13 @@
     .card {
       max-width: 580px;
       width: 100%;
-      background: #fff;
-      border: 1px solid #e8ede2;
-      border-radius: 18px;
+      background: var(--shell-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: var(--hairline) solid var(--line);
+      border-radius: 16px;
       padding: 44px 40px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      box-shadow: var(--shadow-shell);
     }
 
     /* ── Hero ── */
@@ -42,7 +47,7 @@
       text-align: center;
       margin-bottom: 36px;
       padding-bottom: 28px;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: var(--hairline) solid var(--line);
     }
 
     .logo-wrap {
@@ -60,23 +65,27 @@
     }
 
     @keyframes logo-glow {
-      0%, 100% { filter: drop-shadow(0 0 6px rgba(163, 209, 121, 1)) drop-shadow(0 0 12px rgba(163, 209, 121, 0.5)); }
-      50%       { filter: drop-shadow(0 0 6px rgba(249, 212, 35,  1)) drop-shadow(0 0 14px rgba(249, 212, 35,  0.5)); }
+      0%, 100% { filter: drop-shadow(0 0 6px var(--lime-9)) drop-shadow(0 0 12px color-mix(in srgb, var(--lime-9) 50%, transparent)); }
+      50%       { filter: drop-shadow(0 0 6px var(--amber-9)) drop-shadow(0 0 14px color-mix(in srgb, var(--amber-9) 50%, transparent)); }
     }
 
     .logo-icon { animation: logo-glow 2.5s ease-in-out infinite; }
 
+    @media (prefers-reduced-motion: reduce) {
+      .logo-icon { animation: none; }
+    }
+
     h1 {
       font-size: 22px;
       font-weight: 800;
-      color: #1a1a1a;
+      color: var(--text);
       margin-bottom: 6px;
       font-family: 'jf-openhuninn', 'Microsoft JhengHei', sans-serif;
     }
 
     .subtitle {
       font-size: 13px;
-      color: #999;
+      color: var(--text-muted);
     }
 
     /* ── 步驟 ── */
@@ -91,24 +100,24 @@
       display: flex;
       align-items: flex-start;
       gap: 14px;
-      background: #fafafa;
-      border: 1.5px solid #f0f0f0;
-      border-radius: 11px;
+      background: var(--surface);
+      border: var(--hairline) solid var(--line);
+      border-radius: 8px;
       padding: 14px 16px;
       transition: background 0.15s, border-color 0.15s;
     }
 
     .step:hover {
-      background: #f5fbee;
-      border-color: #A3D179;
+      background: var(--accent-soft);
+      border-color: var(--accent-line);
     }
 
     .step-num {
       width: 28px;
       height: 28px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #A3D179, #F9D423);
-      color: #1a3a0a;
+      background: var(--accent-solid);
+      color: var(--accent-on-solid);
       font-weight: 800;
       font-size: 13px;
       display: flex;
@@ -121,21 +130,21 @@
     .step-content h3 {
       font-size: 13.5px;
       font-weight: 700;
-      color: #1a1a1a;
+      color: var(--text);
       margin-bottom: 5px;
       font-family: 'jf-openhuninn', 'Microsoft JhengHei', sans-serif;
     }
 
     .step-content p {
       font-size: 12.5px;
-      color: #666;
+      color: var(--text-muted);
       line-height: 1.65;
     }
 
     /* 完成狀態。step 1／2 由 welcome.js 自動偵測，step 3 由使用者自己勾。 */
     .step.is-done {
-      background: #f3faea;
-      border-color: #A3D179;
+      background: var(--accent-soft);
+      border-color: var(--accent-line);
     }
 
     .step-content h3 {
@@ -151,16 +160,16 @@
       gap: 4px;
       padding: 1px 8px;
       border-radius: 999px;
-      background: #f0f0f0;
-      color: #8a8a8a;
-      font-size: 11px;
+      background: var(--hover);
+      color: var(--text-muted);
+      font-size: 12px;
       font-weight: 700;
       font-family: -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
     }
 
     .step.is-done .step-state {
-      background: #dff0c6;
-      color: #3f6c14;
+      background: var(--accent-soft-hover);
+      color: var(--lime-12);
     }
 
     /* step 3 是使用者自己勾的，所以做成可點；1／2 自動偵測、不可點。 */
@@ -169,33 +178,34 @@
       border: 0;
     }
 
-    .step-state.is-toggle:hover { background: #e4e4e4; }
-    .step.is-done .step-state.is-toggle:hover { background: #d2e9b1; }
+    .step-state.is-toggle:hover { background: var(--pressed); }
+    .step.is-done .step-state.is-toggle:hover { background: var(--lime-5); }
+    .step-state.is-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
     .step-prereq {
       margin-top: 7px;
       padding: 8px 10px;
       border-radius: 8px;
-      background: #fffbe8;
-      border: 1px solid #f6e6a8;
-      color: #6b5a10;
-      font-size: 11.5px;
+      background: var(--warn-soft);
+      border: var(--hairline) solid var(--warn-line);
+      color: var(--amber-12);
+      font-size: 12px;
       line-height: 1.6;
     }
 
     .step-prereq a {
-      color: #5a9a2e;
+      color: var(--lime-12);
       font-weight: 700;
     }
 
-    .step-content strong { color: #333; }
+    .step-content strong { color: var(--text); }
 
     .step-content code {
-      background: #f0f9e6;
-      color: #5a9a2e;
+      background: var(--accent-soft);
+      color: var(--lime-12);
       padding: 1px 6px;
       border-radius: 6px;
-      font-size: 11.5px;
+      font-size: 12px;
       font-weight: 600;
     }
 
@@ -212,16 +222,16 @@
       align-items: center;
       gap: 8px;
       font-size: 12px;
-      color: #666;
+      color: var(--text-muted);
       padding: 6px 10px;
       border-radius: 8px;
-      border: 1px solid transparent;
+      border: var(--hairline) solid transparent;
       transition: background 0.12s;
     }
 
     .api-item.featured {
-      background: #f0f9e6;
-      border-color: #c8e6a0;
+      background: var(--accent-soft);
+      border-color: var(--accent-line);
     }
 
     .api-dot {
@@ -231,25 +241,30 @@
       flex-shrink: 0;
     }
 
+    .dot-groq   { background: var(--lime-9); }
+    .dot-gemini { background: var(--amber-9); }
+    .dot-or     { background: var(--amber-11); }
+
     .api-badge {
-      font-size: 10px;
+      font-size: 12px;
       font-weight: 600;
-      padding: 2px 7px;
-      border-radius: 99px;
+      padding: 1px 7px;
+      border-radius: 999px;
       flex-shrink: 0;
     }
 
-    .badge-free { background: #f0f9e6; color: #5a9a2e; }
-    .badge-fast { background: #fffbea; color: #9a6e00; }
-    .badge-or   { background: #fff4e6; color: #c05a00; }
+    .badge-free { background: var(--accent-soft-hover); color: var(--lime-12); }
+    .badge-fast { background: var(--warn-soft); color: var(--amber-12); }
+    .badge-or   { background: var(--warn-soft); color: var(--amber-12); }
 
     .api-item a {
-      color: #5a9a2e;
+      color: var(--accent-text);
       text-decoration: none;
       font-weight: 600;
       margin-left: 2px;
     }
 
+    .featured.api-item a { color: var(--lime-12); }
     .api-item a:hover { text-decoration: underline; }
 
     /* ── 按鈕區 ── */
@@ -261,79 +276,84 @@
     .btn-primary {
       flex: 1;
       padding: 11px 20px;
-      border-radius: 9px;
+      border-radius: 8px;
       border: none;
-      background: linear-gradient(135deg, #A3D179, #8fc45e);
-      color: #1a3a0a;
+      background: var(--accent-solid);
+      color: var(--accent-on-solid);
       font-size: 13px;
       font-weight: 700;
       cursor: pointer;
-      transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s;
-      box-shadow: 0 2px 8px rgba(163, 209, 121, 0.4);
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+      box-shadow: var(--shadow-brand);
       font-family: inherit;
     }
 
-    .btn-primary:hover  { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(163, 209, 121, 0.5); }
-    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:hover  { background: var(--accent-solid-hover); transform: translateY(-1px); }
+    .btn-primary:active { transform: scale(0.98); }
 
     .btn-secondary {
       padding: 11px 18px;
-      border-radius: 9px;
-      border: 1px solid #e0e0e0;
-      background: transparent;
-      color: #999;
+      border-radius: 8px;
+      border: var(--hairline) solid var(--line-strong);
+      background: var(--surface);
+      color: var(--text-muted);
       font-size: 13px;
       cursor: pointer;
-      transition: border-color 0.15s, color 0.15s;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
       white-space: nowrap;
       font-family: inherit;
     }
 
-    .btn-secondary:hover { border-color: #b0b0b0; color: #555; }
+    .btn-secondary:hover { background: var(--hover); color: var(--text); }
+
+    .btn-primary:focus-visible,
+    .btn-secondary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
     /* ── 頁尾 ── */
     .tips {
       margin: 16px 0;
       padding: 14px 16px;
-      border: 1.5px solid #f0f0f0;
-      border-radius: 11px;
+      border: var(--hairline) solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
     }
     .tips h2 {
       font-size: 13.5px;
       font-weight: 700;
-      color: #1a1a1a;
+      color: var(--text);
       margin-bottom: 6px;
       font-family: 'jf-openhuninn', 'Microsoft JhengHei', sans-serif;
     }
     .tips ul {
       margin-left: 18px;
       font-size: 12.5px;
-      color: #666;
+      color: var(--text-muted);
       line-height: 1.7;
     }
-    .tips strong { color: #333; }
+    .tips strong { color: var(--text); }
     .tips kbd {
       font-family: inherit;
       font-weight: 700;
       padding: 0 4px;
-      border: 1px solid #e3e3e3;
+      border: var(--hairline) solid var(--line-strong);
       border-radius: 4px;
-      background: #fafafa;
+      background: var(--field);
+      color: var(--text);
     }
 
     .footer-links {
       text-align: center;
       margin-top: 18px;
-      font-size: 11.5px;
+      font-size: 12px;
     }
 
     .footer-links a {
-      color: #bbb;
+      color: var(--text-muted);
       text-decoration: none;
       margin: 0 8px;
     }
 
-    .footer-links a:hover { color: #5a9a2e; }
+    .footer-links a:hover { color: var(--accent-text); }
   </style>
 </head>
 <body>
@@ -358,18 +378,18 @@
           <p>點擊下方「前往設定」，至少設定一個 API Key 即可開始使用。</p>
           <div class="api-list">
             <div class="api-item featured">
-              <div class="api-dot" style="background:#A3D179;"></div>
-              <span class="api-badge badge-free">推薦・免費</span>
+              <div class="api-dot dot-groq"></div>
+              <span class="api-badge badge-free">推薦、免費</span>
               <span><strong>Groq</strong> — 免費額度最大方，速度最快</span>
               <a href="https://console.groq.com/keys" target="_blank">申請 →</a>
             </div>
             <div class="api-item">
-              <div class="api-dot" style="background:#F9D423;"></div>
+              <div class="api-dot dot-gemini"></div>
               <span class="api-badge badge-fast">免費</span>
               <span><strong>Gemini</strong> — Google 官方，只有基本免費額度</span>
             </div>
             <div class="api-item">
-              <div class="api-dot" style="background:#f9ab00;"></div>
+              <div class="api-dot dot-or"></div>
               <span class="api-badge badge-or">免費額度</span>
               <span><strong>OpenRouter</strong> — 多模型聚合，只有基本免費額度</span>
             </div>

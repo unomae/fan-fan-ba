@@ -3,6 +3,16 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-11-18 — 網頁浮層與歡迎頁改用 Radix Colors（保留毛玻璃）
+
+**裁決**：KAKA 看過三版 mockup（A 現況、B Radix＋毛玻璃、C Radix 實色）後選 B，也就是 2026-10-24 試作 `604f776` 的做法。試作分支直接併回 master 會在 `content.css` 等 6 檔衝突，所以在現行 master 上重做；試作分支 `origin/worktree-overlay-radix-eval` 留著沒刪。
+
+- **浮層 `content.css`**：以試作版為底，套回 master 在試作之後的改動（刪掉 `.g-num`、`.g-chevron`、Diff View、`.ffb-page-translation-mark` 等沒有 JS 會產生的樣式；譯文區塊 `display: block`；只看譯文模式改用 `.ffb-page-source-ready`；減少動態時 selector 加 `:not(#ffb-rm)` 權重）。結果與試作相同：olive／lime／blue／red／amber／violet 各 12 階 token 只定義在 5 個浮層根節點，元件不寫色碼；深色模式改成重新定義同一組 token，`--ffb-dark-*` 全數移除；錯誤色收成 red 一種（原 `#f87171` 白底 2.8:1），焦點外框收成 lime 8 一種（原藍綠紫三套）。原 Sprint 3 併入本項的亮色錯誤色、焦點外框就此解決；glass 參數（透明度、blur）依裁決照舊。`content.css` 3,389 行 → 2,951 行。
+- **全文翻譯面板文案**：「·」分隔改成逗號或括號，例如「已完成 0/4，失敗 4」「可見區域翻譯完成（8/8）」「本頁重點（已譯 1 段）」（`content/page-translator-panel.js`）。
+- **歡迎頁**：`welcome.html` 改用 `ui-tokens.css`，跟 popup、設定頁同一套色彩，淡色光暈背景、毛玻璃外框；因此也有了深色模式（原本沒有）。三個供應商圓點的內嵌色碼改成 class，「推薦・免費」改「推薦、免費」，小於 12px 的字調到 12px，logo 光暈在減少動態時關閉。
+- 新增 `tests/content/css-tokens.test.js`（5 條，取自試作）；`tests/content/css.test.js`、`tests/content/page-translator.test.js` 跟著改。`design.md` 1.5 節與第 2 節改成浮層、歡迎頁都已跟上。
+- 驗證：全套 Jest 52 suites／883 tests 全過、0 skip（基準 51／878，多出的就是 css-tokens 5 條）；把一個元件色改回寫死的 `#1a73e8`，css-tokens 測試轉紅 1 條，還原後全綠。e2e（Chrome for Testing `chromium-1228`＋全新 profile，build `1189318af8fd`）：ui-panels＋legacy-regression 33 案＝29 PASS／0 FAIL／4 PARTIAL，與改動前同一套件的基準完全相同，PARTIAL 是既有的需 key／連外／重裝項；自動截圖看得到全文翻譯面板、單字本已換新色與新文案。另用同一套 harness 截真擴充 18 張圖（亮／暗 × 白色、深色、彩色漸層網頁 × 工具列、結果卡、全文翻譯面板＋浮球），各元件都正確換色、深色時跟著切換。截圖時看到深色網頁上插進網頁的錯誤譯文區塊（`.ffb-page-translation-error`）是淺粉底配淺色字、不好讀；那條規則在根節點外、這次沒動，改版前就是這樣。對比依現行 `content.css` 的 token 重算 94 組：白色網頁與深色模式全部 ≥ 4.5:1；亮色浮層疊在黑色網頁上有 10 組低於 4.5:1（工具列圖示最低 1.25:1），這是 `design.md` 已記的保留毛玻璃的代價，改版前也一樣。歡迎頁在瀏覽器實開亮、暗兩種，console 沒有錯誤。**未涵蓋**：日常 Chrome 實機觀感與各種真實網站上的毛玻璃效果，記在 `PLAN.md` 的實機觀感項等 KAKA 看。
+
 ## 2026-11-18 — Sprint 3 中期結案：單字高亮接網頁變動
 
 - **單字高亮會跟著網頁變動補標記**：開著高亮時用 MutationObserver 監聽 `document.body`，新加入或文字改變的區塊等 250 ms 防抖動後只掃那一塊（`content/vocabulary-highlighter.js` 的 `startVocabularyHighlightObserver`／`flushVocabularyHighlightRescan`）。沿用整頁 80 個標記上限與原本的略過清單（翻翻吧自己的 UI、表單、程式碼等）；自己插入標記產生的變動用 `takeRecords()` 丟掉，不會回頭重掃；關閉高亮就停止監聽。比對器沿用上次整頁掃描的結果，期間新存的單字要等下次開啟或重整才算進去。

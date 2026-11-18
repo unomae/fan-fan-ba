@@ -328,7 +328,7 @@ describe('page translator helpers', () => {
       done: 3,
       total: 8,
       errors: 1
-    })).toBe('翻譯中 3/8 · 失敗 1');
+    })).toBe('翻譯中 3/8，失敗 1');
 
     expect(getPageTranslationStatusText({
       stopping: true,
@@ -350,7 +350,7 @@ describe('page translator helpers', () => {
       done: 8,
       total: 8,
       errors: 0
-    })).toBe('有新段落可翻譯 · 已完成 8/8');
+    })).toBe('有新段落可翻譯，已完成 8/8');
   });
 
   it('builds copy text for translated and bilingual page translation results', () => {
@@ -451,7 +451,7 @@ describe('page translator helpers', () => {
     summary.fallbackRequests = 1;
 
     expect(buildPageTranslationUsageSummaryText(summary)).toBe(
-      '本次全文翻譯：段落 5 · 成功 4 · 失敗 1 · request 約 3 · (批次 1、單段 1、重試 1)'
+      '本次全文翻譯：段落 5，成功 4，失敗 1，request 約 3（批次 1、單段 1、重試 1）'
     );
   });
 
@@ -1661,7 +1661,7 @@ describe('page learning summary wiring (半接線接線完工)', () => {
     const learning = learningEl();
     expect(learning).not.toBeNull();
     expect(learning.hidden).toBe(false);
-    expect(learning.querySelector('.ffb-page-learning-title').textContent).toBe('本頁重點 · 已譯 1 段');
+    expect(learning.querySelector('.ffb-page-learning-title').textContent).toBe('本頁重點（已譯 1 段）');
     expect([...learning.querySelectorAll('.ffb-page-learning-sentences li')].map(li => li.textContent)).toEqual([
       'Allocation planning improved after repeated scenario reviews.',
       'Regional teams rebuilt allocation buffers.'
