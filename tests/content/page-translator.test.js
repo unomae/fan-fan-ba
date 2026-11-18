@@ -310,6 +310,8 @@ describe('page translator helpers', () => {
 
     expect(theme['--ffb-page-translation-color']).toBe('#f8fafc');
     expect(theme['--ffb-page-translation-accent']).toBe('rgba(250, 204, 21, 0.92)');
+    // 錯誤區塊底色要跟著換，不然白字落在預設的淺粉底上
+    expect(theme['--ffb-page-translation-error-bg']).toBe('rgba(248, 113, 113, 0.16)');
   });
 
   it('keeps the default translation colors on light source backgrounds', () => {

@@ -3,6 +3,13 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-11-19 — 深色網頁上的錯誤譯文區塊改成看得清楚
+
+- **問題**：全文翻譯失敗時插進網頁的錯誤區塊（`.ffb-page-translation-error`），底色寫死成淺粉色；但網頁底色偏深時，`getPageTranslationContrastTheme` 會把譯文字換成白色 `#f8fafc`，結果是淺粉底配白字。前一條改版的截圖時發現，改版前就是這樣。
+- **修法**：錯誤區塊的底色與邊線改走 `--ffb-page-translation-error-bg`／`-border` 變數，深色網頁時由 `getPageTranslationContrastTheme` 一起換成半透明紅（`content/page-translator-renderer.js`）；「重試此段」鈕改用譯文動作鈕同一組 `--ffb-page-translation-action-*` 變數。淺色網頁的預設值與原本相同，外觀不變。
+- 驗證：新增 2 條斷言（深色主題會帶錯誤底色、CSS 的錯誤底色與重試鈕走變數），退回舊實作時這 2 條變紅；全套 Jest 52 suites／884 tests 全過、0 skip。e2e（build `2c5f3f27d445`）：ui-panels＋legacy-regression＋page-translation 36 案＝32 PASS／0 FAIL／4 PARTIAL，PARTIAL 同既有。真擴充截圖在 `#121212` 網頁上改成深紅底白字；算得白字 14.3:1、重試鈕字 8.37:1。
+- **未處理的疑點（計算所得，未在真實網站重現）**：深淺判斷門檻是 luminance 0.34，網頁底色剛好在門檻下方的中灰（約 `#9b9b9b`）時，白色譯文字對比只有約 2.7:1。一般譯文段落也一樣，是門檻本身的問題，不是錯誤區塊特有，這次沒動。
+
 ## 2026-11-18 — 網頁浮層與歡迎頁改用 Radix Colors（保留毛玻璃）
 
 **裁決**：KAKA 看過三版 mockup（A 現況、B Radix＋毛玻璃、C Radix 實色）後選 B，也就是 2026-10-24 試作 `604f776` 的做法。試作分支直接併回 master 會在 `content.css` 等 6 檔衝突，所以在現行 master 上重做；試作分支 `origin/worktree-overlay-radix-eval` 留著沒刪。

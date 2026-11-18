@@ -49,7 +49,9 @@ function getPageTranslationContrastTheme(sourceEl) {
     '--ffb-page-translation-action-color': '#fff7d6',
     '--ffb-page-translation-action-bg': 'rgba(255, 255, 255, 0.16)',
     '--ffb-page-translation-action-border': 'rgba(255, 255, 255, 0.34)',
-    '--ffb-page-translation-fade-bg': 'rgba(2, 6, 23, 0.92)'
+    '--ffb-page-translation-fade-bg': 'rgba(2, 6, 23, 0.92)',
+    '--ffb-page-translation-error-bg': 'rgba(248, 113, 113, 0.16)',
+    '--ffb-page-translation-error-border': 'rgba(248, 113, 113, 0.40)'
   };
 }
 
