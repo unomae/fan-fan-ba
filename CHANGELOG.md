@@ -3,6 +3,12 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-11-18 — Sprint 3 中期結案：單字高亮接網頁變動
+
+- **單字高亮會跟著網頁變動補標記**：開著高亮時用 MutationObserver 監聽 `document.body`，新加入或文字改變的區塊等 250 ms 防抖動後只掃那一塊（`content/vocabulary-highlighter.js` 的 `startVocabularyHighlightObserver`／`flushVocabularyHighlightRescan`）。沿用整頁 80 個標記上限與原本的略過清單（翻翻吧自己的 UI、表單、程式碼等）；自己插入標記產生的變動用 `takeRecords()` 丟掉，不會回頭重掃；關閉高亮就停止監聽。比對器沿用上次整頁掃描的結果，期間新存的單字要等下次開啟或重整才算進去。
+- **Sprint 3 四件事的結算**：dom.js innerHTML 改寫、深色模式第一階段、術語表已於 2026-09-30 完成；全文翻譯接網頁變動已在 2026-10-27（`cd0f9b7`，`bindPageTranslationContentWatcher`）隨自動接續一起做掉，PLAN 原本誤寫成「未開始」。亮色錯誤色、焦點外框與 glass 參數同在 `content.css`，和「網頁浮層套用 Radix token」〔待裁決〕要定的毛玻璃去留是同一件事，改併入該項，不在這裡先改亮色外觀。
+- 驗證：新增 4 條 Jest（動態段落會標記、自家 UI 不標、關閉後不標、上限守住）。退回舊實作時「動態段落會標記」那條變紅；另做兩個突變（上限改成從 0 算、關閉時不停監聽）各紅 1 條。測試補上 afterEach 停掉各 vm context 的 observer（共用同一份 jsdom document，不停會讓上一個測試替下一個測試補標記）。全套 Jest 51 suites／878 tests 全過、0 skip。`npm run package` 成功（build `a505e4f095dc`；Mac 本機要先 `npm ci`，原本少裝 `pdfjs-dist` 會打包失敗）。e2e 用 Chrome for Testing（`chromium-1228`）＋全新 profile：48 案＝44 PASS／0 FAIL／4 PARTIAL，PARTIAL 是既有的需 key／連外／重裝項。真網站的無限捲動與 SPA 換頁還沒人驗，步驟見 `MANUAL-QA.md`「單字高亮：網頁新載入的內容自動補標記」。
+
 ## 2026-11-11 — 移除文件測試數 gate、修隱私權政策連結、歷史資料移出 repo
 
 KAKA 同日裁決，承接下一條的審核。

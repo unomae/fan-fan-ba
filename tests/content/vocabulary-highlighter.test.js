@@ -8,6 +8,10 @@ function runContentScript(file, context) {
   vm.runInContext(source, context, { filename: file });
 }
 
+// 每個測試各自建 vm context，但共用同一份 jsdom document；
+// 測試結束要停掉各 context 的監聽，否則上一個測試的 observer 會替下一個測試補標記
+const createdContexts = [];
+
 function createHighlighterContext() {
   const localStore = {};
   const context = vm.createContext({
@@ -17,6 +21,9 @@ function createHighlighterContext() {
     Node,
     NodeFilter,
     console,
+    MutationObserver,
+    setTimeout,
+    clearTimeout,
     chrome: {
       storage: {
         local: {
@@ -42,8 +49,13 @@ function createHighlighterContext() {
   runContentScript('content/utils.js', context);
   runContentScript('content/vocabulary.js', context);
   runContentScript('content/vocabulary-highlighter.js', context);
+  createdContexts.push(context);
   return { context, localStore };
 }
+
+afterEach(() => {
+  createdContexts.splice(0).forEach(context => context.stopVocabularyHighlightObserver());
+});
 
 describe('Vocabulary highlighter', () => {
   beforeEach(() => {
@@ -165,6 +177,76 @@ describe('Vocabulary highlighter', () => {
     await context.toggleVocabularyHighlightForSite();
     expect(localStore[key]).toBe(false);
     expect(document.querySelectorAll('mark.g-vocab-highlight')).toHaveLength(0);
+  });
+
+  // 無限捲動／SPA 換頁後才出現的段落，開著高亮時要自動補標記
+  describe('網頁內容變動後補標記', () => {
+    const BEACON = {
+      'en:beacon': { id: 'en:beacon', word: 'Beacon', lang: 'en', translations: ['燈塔'], count: 1 }
+    };
+    // 等 MutationObserver 回呼與防抖動計時器都跑完
+    const waitForRescan = () => new Promise(resolve => setTimeout(resolve, 400));
+
+    function appendParagraph(parent, text) {
+      const p = document.createElement('p');
+      p.className = 'late';
+      p.textContent = text;
+      parent.appendChild(p);
+      return p;
+    }
+
+    it('開啟高亮後，動態加入的段落會被標記', async () => {
+      const { context, localStore } = createHighlighterContext();
+      localStore.fanFanBaVocabularyItems = BEACON;
+      await context.setVocabularyHighlightMode('auto');
+      expect(document.querySelectorAll('mark.g-vocab-highlight')).toHaveLength(1);
+
+      const late = appendParagraph(document.querySelector('main'), 'A new Beacon appeared after scrolling.');
+      await waitForRescan();
+
+      expect(late.querySelectorAll('mark.g-vocab-highlight')).toHaveLength(1);
+      expect(document.querySelectorAll('mark.g-vocab-highlight')).toHaveLength(2);
+      await context.setVocabularyHighlightMode('off');
+    });
+
+    it('翻翻吧自己的 UI 動態長出內容時不標記', async () => {
+      const { context, localStore } = createHighlighterContext();
+      localStore.fanFanBaVocabularyItems = BEACON;
+      await context.setVocabularyHighlightMode('auto');
+
+      appendParagraph(document.getElementById('fanfanba-floating'), 'Beacon inside our own panel');
+      await waitForRescan();
+
+      expect(document.querySelector('#fanfanba-floating mark')).toBeNull();
+      await context.setVocabularyHighlightMode('off');
+    });
+
+    it('關閉高亮後，新加入的段落不再標記', async () => {
+      const { context, localStore } = createHighlighterContext();
+      localStore.fanFanBaVocabularyItems = BEACON;
+      await context.setVocabularyHighlightMode('auto');
+      await context.setVocabularyHighlightMode('off');
+
+      const late = appendParagraph(document.querySelector('main'), 'Another Beacon after turning off.');
+      await waitForRescan();
+
+      expect(late.querySelector('mark')).toBeNull();
+      expect(document.querySelectorAll('mark.g-vocab-highlight')).toHaveLength(0);
+    });
+
+    it('整頁已達標記上限時，新段落不再加標記', async () => {
+      document.body.innerHTML = `<main><p>${Array(100).fill('Beacon').join(' ')}</p></main>`;
+      const { context, localStore } = createHighlighterContext();
+      localStore.fanFanBaVocabularyItems = BEACON;
+      await context.setVocabularyHighlightMode('auto');
+      expect(document.querySelectorAll('mark.g-vocab-highlight')).toHaveLength(80);
+
+      appendParagraph(document.querySelector('main'), 'One more Beacon here.');
+      await waitForRescan();
+
+      expect(document.querySelectorAll('mark.g-vocab-highlight')).toHaveLength(80);
+      await context.setVocabularyHighlightMode('off');
+    });
   });
 
   it('caps the number of inserted marks', async () => {

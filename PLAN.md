@@ -44,15 +44,6 @@
   - **接續**：**2026-09-20 裁決暫緩**，與 Sprint 1 上架 blocker 同步；回頭做上架時才由 KAKA 處理 client ID 與 console／商店人工項，再核對 Tier 5。
   - **詳情**：`STORE-SUBMISSION.md`
 
-### 介面與操作體驗
-
-- **5. Sprint 3 中期**
-
-  - **目的**：改善中期介面與 DOM 維護。
-  - **現況**：**Sprint 3 中期**：dom.js innerHTML 遷移完成（2026-09-30）；dark mode 第一階段完成（2026-09-30，浮層 UI，見 `CHANGELOG.md`；暗色 token 與術語表在 `design.md`）；高亮／全文翻譯接 DOM 變更感知層未開始；亮色的 error／focus 色收斂與 glass 參數未做（`design.md`「浮層 UI 深色模式」記錄了現況）。
-  - **接續**：依 Sprint 3 原優先序處理，先核對研究與施工界線。
-  - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
-
 ### 內建翻譯 provider
 
 - [ ] **7. 內建翻譯 provider｜真實網頁端到端人驗**〔待KAKA操作〕（2026-09-21）
@@ -113,7 +104,7 @@
 
   - **目的**：讓工具列、結果卡、浮球、全文翻譯面板與歡迎頁跟 popup／設定頁用同一套色彩與文案規則。
   - **現況**：2026-10-23 只改了 popup 與設定頁；`content.css`（約 3,500 行，仍用 `--ffb-dark-*` 與舊色碼）和 `welcome.html` 沒動。全文翻譯面板仍有「已完成 0/4 · 失敗 4」這類「·」分隔（`content/page-translator-panel.js`）。2026-10-24 有一份 `content.css` 改 token 的試作（`604f776`，未併），只留在遠端分支 `origin/worktree-overlay-radix-eval`；2026-11-13 本機 worktree 已收掉。
-  - **接續**：KAKA 裁決要不要做；要做先定浮層是否保留毛玻璃與 `!important` 隔離，再分元件改，每個元件都要跑 e2e ui-panels 與 legacy-regression。
+  - **接續**：KAKA 裁決要不要做；要做先定浮層是否保留毛玻璃與 `!important` 隔離，再分元件改，每個元件都要跑 e2e ui-panels 與 legacy-regression。11-18 起本項一併收原 Sprint 3 的亮色錯誤色、焦點外框與 glass 參數（現況見 `design.md` 收斂段）。
   - **詳情**：`design.md` 1.5 節（全頁面規範）與第 2 節（浮層色票）；`content.css`；`welcome.html`
 
 ### 整版 review 遺留（2026-10-19）

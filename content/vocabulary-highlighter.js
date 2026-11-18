@@ -4,10 +4,15 @@ const VOCABULARY_HIGHLIGHT_LIMITS = {
   maxTerms: 80,
   maxTextNodes: 800,
   maxMarks: 80,
-  minTermLength: 2
+  minTermLength: 2,
+  rescanDelayMs: 250 // 網頁內容變動後的防抖動時間
 };
 
 let vocabularyHighlightEnabled = false;
+let vocabularyHighlightMatcher = null; // 最近一次整頁掃描用的比對器，補標記時沿用
+let vocabularyHighlightObserver = null;
+let vocabularyHighlightPendingRoots = new Set();
+let vocabularyHighlightRescanTimer = null;
 let vocabularyHighlightTooltip = null;
 let vocabularyHighlightUserToggled = false; // 使用者按過浮球開關就不讓初始讀取蓋回去
 
@@ -46,7 +51,10 @@ async function setVocabularyHighlightMode(mode = 'off') {
     await chrome.storage.local.set({ [getVocabularyHighlightStorageKey()]: vocabularyHighlightEnabled });
   }
   if (vocabularyHighlightEnabled) await applyVocabularyHighlights();
-  else clearVocabularyHighlights();
+  else {
+    stopVocabularyHighlightObserver();
+    clearVocabularyHighlights();
+  }
   globalThis.updateFloatingBallVocabularyHighlightState?.(vocabularyHighlightEnabled);
   return vocabularyHighlightEnabled;
 }
@@ -63,6 +71,7 @@ async function getVocabularyHighlightMode() {
 
 async function applyVocabularyHighlights() {
   clearVocabularyHighlights();
+  vocabularyHighlightMatcher = null;
   let allItems;
   try {
     allItems = await listVocabularyItems?.();
@@ -73,9 +82,21 @@ async function applyVocabularyHighlights() {
   if (!terms.length || !document.body) return 0;
 
   const pattern = terms.map(term => escapeVocabularyHighlightRegExp(term.word)).join('|');
-  const matcher = new RegExp(pattern, 'giu');
-  const termMap = new Map(terms.map(term => [term.word.toLowerCase(), term]));
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+  vocabularyHighlightMatcher = {
+    matcher: new RegExp(pattern, 'giu'),
+    termMap: new Map(terms.map(term => [term.word.toLowerCase(), term]))
+  };
+  const markCount = highlightVocabularyWithin(document.body, 0);
+  // 讀取單字本期間使用者可能已關閉高亮，此時不再開始監聽
+  if (vocabularyHighlightEnabled) startVocabularyHighlightObserver();
+  return markCount;
+}
+
+// 在 root 底下標記單字；markCount 是整頁已有的標記數，用來守住整頁上限
+function highlightVocabularyWithin(root, markCount) {
+  if (!vocabularyHighlightMatcher || markCount >= VOCABULARY_HIGHLIGHT_LIMITS.maxMarks) return markCount;
+  const { matcher, termMap } = vocabularyHighlightMatcher;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       if (!node.nodeValue?.trim()) return NodeFilter.FILTER_REJECT;
       if (shouldSkipVocabularyHighlightNode(node.parentElement)) return NodeFilter.FILTER_REJECT;
@@ -90,7 +111,6 @@ async function applyVocabularyHighlights() {
     nodes.push(node);
   }
 
-  let markCount = 0;
   for (const node of nodes) {
     if (markCount >= VOCABULARY_HIGHLIGHT_LIMITS.maxMarks) break;
     const result = buildVocabularyHighlightFragment(node, matcher, termMap, markCount);
@@ -98,7 +118,49 @@ async function applyVocabularyHighlights() {
     node.parentNode?.replaceChild(result.fragment, node);
     markCount = result.markCount;
   }
+  // 丟掉自己插入標記產生的變動紀錄，避免回頭再掃一次
+  vocabularyHighlightObserver?.takeRecords();
   return markCount;
+}
+
+// 網頁內容變動（無限捲動、SPA 換頁）後，只對新增或改動的區塊補標記
+function startVocabularyHighlightObserver() {
+  if (vocabularyHighlightObserver || typeof MutationObserver === 'undefined' || !document.body) return;
+  vocabularyHighlightObserver = new MutationObserver(records => {
+    for (const record of records) {
+      const targets = record.type === 'characterData' ? [record.target] : [...record.addedNodes];
+      for (const node of targets) {
+        const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+        if (!el || !el.isConnected || shouldSkipVocabularyHighlightNode(el)) continue;
+        vocabularyHighlightPendingRoots.add(el);
+      }
+    }
+    if (!vocabularyHighlightPendingRoots.size || vocabularyHighlightRescanTimer) return;
+    vocabularyHighlightRescanTimer = setTimeout(flushVocabularyHighlightRescan, VOCABULARY_HIGHLIGHT_LIMITS.rescanDelayMs);
+  });
+  vocabularyHighlightObserver.observe(document.body, { childList: true, characterData: true, subtree: true });
+}
+
+function flushVocabularyHighlightRescan() {
+  vocabularyHighlightRescanTimer = null;
+  const roots = [...vocabularyHighlightPendingRoots];
+  vocabularyHighlightPendingRoots = new Set();
+  if (!vocabularyHighlightEnabled) return;
+  let markCount = document.querySelectorAll('mark.g-vocab-highlight').length;
+  for (const root of roots) {
+    // 已被其他待掃區塊包住的就跳過，避免同一段掃兩次
+    if (!root.isConnected || roots.some(other => other !== root && other.contains(root))) continue;
+    markCount = highlightVocabularyWithin(root, markCount);
+    if (markCount >= VOCABULARY_HIGHLIGHT_LIMITS.maxMarks) break;
+  }
+}
+
+function stopVocabularyHighlightObserver() {
+  vocabularyHighlightObserver?.disconnect();
+  vocabularyHighlightObserver = null;
+  if (vocabularyHighlightRescanTimer) clearTimeout(vocabularyHighlightRescanTimer);
+  vocabularyHighlightRescanTimer = null;
+  vocabularyHighlightPendingRoots = new Set();
 }
 
 function buildVocabularyHighlightTerms(items) {
