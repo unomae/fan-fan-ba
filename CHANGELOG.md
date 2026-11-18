@@ -9,7 +9,8 @@
 
 - **結果卡優化模式的計數**：「錯誤 2 · 不自然 1」改成「錯誤 2、不自然 1」（`content/result-card.js` 的 `.g-opt-counts`），跟全文翻譯面板同一套「不用『·』當分隔」規則。`tests/content/writing-review.test.js` 補斷言，退回舊實作時變紅。
 - **歡迎頁色彩守門**：新增 `tests/welcome-tokens.test.js`（4 條）：`ui-tokens.css` 要在 `<style>` 之前載入、`<style>` 不寫死色碼、元素不用 inline style 設顏色、用到的 token 都要在 `ui-tokens.css` 有定義。寫回 `#999`、加回 inline 色、引用不存在的 token、拿掉 `ui-tokens.css` 四種突變各紅 1 條。
-- **追加（同日，KAKA 裁示「兩個都改」）**：popup 翻譯路線改成「雲端：Groq」「裝置端：瀏覽器內建翻譯」；Obsidian 筆記標題改成「### 優化（10:00）」、來源行的日期前改用全形逗號。**舊筆記不會回頭改**，同一份筆記裡新舊區塊的標題格式會不同。測試：`popup.test.js` 改期望值，`writing-review.test.js` 加標題、來源行與「不含 ·」三條斷言（退回舊實作 2 條紅，還原全綠），全套 51 suites／865 tests 過。仍留著「·」的是 `privacy-policy.html` 頁尾、`reader/pdf.html` 的 `<title>`、`screenshots/promo-marquee.html` 宣傳圖，都不在浮層與 popup 範圍。
+- **追加（同日，KAKA 裁示「兩個都改」）**：popup 翻譯路線改成「雲端：Groq」「裝置端：瀏覽器內建翻譯」；Obsidian 筆記標題改成「### 優化（10:00）」、來源行的日期前改用全形逗號。**舊筆記不會回頭改**，同一份筆記裡新舊區塊的標題格式會不同。測試：`popup.test.js` 改期望值，`writing-review.test.js` 加標題、來源行與「不含 ·」三條斷言（退回舊實作 2 條紅，還原全綠），全套 51 suites／865 tests 過。
+- **追加（同日，KAKA 裁示「剩下三處也一起改」）**：隱私權政策頁尾改成「翻翻吧原始碼在 GitHub，本政策隨擴充功能版本更新而修訂」；PDF 閱讀器分頁標題改「翻翻吧 PDF 閱讀器」；`screenshots/promo-marquee.html`、`promo-small.html` 的「·」「・」改頓號（這兩個是 10-14 換新版前的舊原始檔，新版 HTML 沒進 repo，改了不影響現行 PNG）。**商店小圖 `promo-small.png` 現行版本上有「翻譯・解釋・優化」**：用 LINE Seed TW Regular 18px 重畫成「翻譯、解釋、優化」，只替換文字那一條（像素變動僅 x 91–350、y 226–244）；原圖是 ClearType 次像素渲染，新的那行是灰階反鋸齒，放大看筆畫略細。**要重新上傳到 Chrome 線上應用程式商店才會生效**。`content/` 裡的「・」是條列符號的解析規則，保留。全套 53 suites／888 tests 過。
 - 驗證：全套 Jest 53 suites／888 tests 全過、0 skip。沒跑 e2e：改動只有一行文案與測試，優化結果卡需要 API key，e2e 本來就驗不到。
 
 ## 2026-11-19 — 深色網頁上的錯誤譯文區塊改成看得清楚
