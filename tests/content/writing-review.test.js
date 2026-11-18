@@ -158,5 +158,9 @@ describe('寫作批改：舊格式與相容', () => {
     expect(block).toContain('**場合：** 寫給客服的詢問信');
     expect(block).toContain('**總評：** 意思清楚');
     expect(block).toContain('**優化後版本：**');
+    // 標題與來源行不用「·」當分隔
+    expect(block).toContain('### 優化（10:00）');
+    expect(block).toMatch(/^> 來源：\[.*\]\(.*\)，2026\/10\/1$/m);
+    expect(block).not.toContain('·');
   });
 });

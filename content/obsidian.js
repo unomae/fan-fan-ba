@@ -22,9 +22,9 @@ function buildObsidianBlock({ tag, hm, date, preview }) {
     '',
     '---',
     '',
-    `### ${tag} · ${hm}`,
+    `### ${tag}（${hm}）`, // 文案規則：不用「·」當分隔
     `**原文：** \`${preview}\``,
-    `> 來源：[${document.title}](${window.location.href}) · ${date}`,
+    `> 來源：[${document.title}](${window.location.href})，${date}`,
     ''
   ];
 
