@@ -114,7 +114,7 @@ describe('Popup module', () => {
       chrome.runtime.sendMessage.mockResolvedValue(cloud);
       await global.popupModule.runPopupPageTranslation();
       expect(chrome.tabs.sendMessage.mock.calls.every(([, message]) => message.action === 'status')).toBe(true);
-      expect(document.getElementById('pageTranslationRoute').textContent).toBe('雲端 · Groq');
+      expect(document.getElementById('pageTranslationRoute').textContent).toBe('雲端：Groq');
       expect(status()).toContain('請再確認');
     });
 
