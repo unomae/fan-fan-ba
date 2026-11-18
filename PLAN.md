@@ -100,11 +100,12 @@
   - **接續**：KAKA 用日常 Chrome 載入 `dist/pkg`，看 popup（缺金鑰提醒、「填寫金鑰」直達模型分類、logo 光暈）、設定頁總覽、進出 3～4 個分類、改欄位後回總覽看提示，再切系統深色看一遍；另看金鑰狀態標籤、ⓘ 說明、備份勾選加密才出現密碼欄、總覽頁尾快捷鍵是否等於 chrome://extensions/shortcuts 實際綁的鍵；有要調的直接記在這項，沒有就搬 `CHANGELOG.md`。
   - **詳情**：`ui-tokens.css`；`design.md` 1.5 節；`options.html`；`popup.html`；`options.js` 的 `buildSettingsOverview`／`activateSettingsPanel`、`popup.js` 的 `renderKeyAlert`（**引用符號不引行號**）
 
-- **網頁浮層與歡迎頁套用同一套 Radix token**〔待裁決〕
+- **網頁浮層與歡迎頁套用同一套 Radix token**〔已裁決：做，B 版〕
 
   - **目的**：讓工具列、結果卡、浮球、全文翻譯面板與歡迎頁跟 popup／設定頁用同一套色彩與文案規則。
   - **現況**：2026-10-23 只改了 popup 與設定頁；`content.css`（約 3,500 行，仍用 `--ffb-dark-*` 與舊色碼）和 `welcome.html` 沒動。全文翻譯面板仍有「已完成 0/4 · 失敗 4」這類「·」分隔（`content/page-translator-panel.js`）。2026-10-24 有一份 `content.css` 改 token 的試作（`604f776`，未併），只留在遠端分支 `origin/worktree-overlay-radix-eval`；2026-11-13 本機 worktree 已收掉。
-  - **接續**：KAKA 裁決要不要做；要做先定浮層是否保留毛玻璃與 `!important` 隔離，再分元件改，每個元件都要跑 e2e ui-panels 與 legacy-regression。11-18 起本項一併收原 Sprint 3 的亮色錯誤色、焦點外框與 glass 參數（現況見 `design.md` 收斂段）。
+  - **裁決**：2026-11-18 KAKA 看過三版 mockup（A 現況／B Radix＋毛玻璃／C Radix 實色）後選 B：照 `604f776` 的做法換 Radix 色票，保留毛玻璃與 `!important` 隔離。試作分支直接併回 master 會在 `content.css` 等 6 檔衝突（master 之後改過 `content.css` 126 行），要在現行 master 上重做。
+  - **接續**：在現行 master 上依 `604f776` 重做 `content.css` token，再改 `welcome.html` 套 `ui-tokens.css`、全文翻譯面板拿掉「·」分隔；每個元件都要跑 e2e ui-panels 與 legacy-regression。11-18 起本項一併收原 Sprint 3 的亮色錯誤色、焦點外框與 glass 參數（現況見 `design.md` 收斂段）。
   - **詳情**：`design.md` 1.5 節（全頁面規範）與第 2 節（浮層色票）；`content.css`；`welcome.html`
 
 ### 整版 review 遺留（2026-10-19）
