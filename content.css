@@ -2314,10 +2314,10 @@ hr.g-deep-divider {
 }
 
 .ffb-page-retry {
-  border: 1px solid rgba(31, 41, 55, 0.12) !important;
+  border: 1px solid var(--ffb-page-translation-action-border, rgba(31, 41, 55, 0.12)) !important;
   border-radius: 6px !important;
-  background: rgba(255, 255, 255, 0.76) !important;
-  color: #374151 !important;
+  background: var(--ffb-page-translation-action-bg, rgba(255, 255, 255, 0.76)) !important;
+  color: var(--ffb-page-translation-action-color, #374151) !important;
   cursor: pointer !important;
   font-size: 11px !important;
   font-weight: 800 !important;
@@ -2535,9 +2535,10 @@ hr.g-deep-divider {
   color: var(--ffb-page-translation-muted-color, #6b7280) !important;
 }
 
+/* 底色與邊線走變數：深色網頁由 getPageTranslationContrastTheme 換成半透明紅，跟白色譯文字配對 */
 .ffb-page-translation-error {
-  background: rgba(255, 247, 247, 0.78) !important;
-  box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.18),
+  background: var(--ffb-page-translation-error-bg, rgba(255, 247, 247, 0.78)) !important;
+  box-shadow: inset 0 0 0 1px var(--ffb-page-translation-error-border, rgba(248, 113, 113, 0.18)),
               0 4px 12px rgba(127, 29, 29, 0.08) !important;
 }
 

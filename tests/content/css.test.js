@@ -127,6 +127,13 @@ describe('content CSS UI safeguards', () => {
     expect(css).not.toContain('.ffb-single-translate-btn');
   });
 
+  // 深色網頁會把譯文字換成白色；錯誤區塊與重試鈕的底色若寫死成淺色，就會白字配淺底
+  it('lets the in-page error block and retry button follow the page contrast theme', () => {
+    expect(css).toMatch(/\.ffb-page-translation-error \{[^}]*background: var\(--ffb-page-translation-error-bg,/);
+    expect(css).toMatch(/\.ffb-page-retry \{[^}]*background: var\(--ffb-page-translation-action-bg,/);
+    expect(css).toMatch(/\.ffb-page-retry \{[^}]*color: var\(--ffb-page-translation-action-color,/);
+  });
+
   describe('深色模式區塊', () => {
     const ROOTS = ['#gemini-ai-toolbar', '#gemini-result-card', '#fanfanba-floating', '.g-vocab-highlight-tip', '.ffb-page-translation-panel'];
     let dark;
