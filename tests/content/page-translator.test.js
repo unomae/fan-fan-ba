@@ -803,6 +803,26 @@ describe('全文翻譯持續接續與停止', () => {
     }
   });
 
+  it('只用 Alt+T 翻過單段時，popup 顯示未啟用並可開整頁', async () => {
+    ctx.fanFanBaPaused = false;
+    try {
+      document.querySelector('main').insertAdjacentHTML('beforeend', paragraph(2));
+      await ctx.translateSinglePageBlock(document.querySelector('main p'));
+      const status = ctx.handlePageTranslationPopupAction({ action: 'status' });
+      expect(status).toMatchObject({ active: false, model: '', message: '' });
+      expect(ctx.handlePageTranslationPopupAction({
+        action: 'restore', documentKey: status.documentKey
+      })).toMatchObject({ active: false });
+      expect(document.querySelectorAll('.ffb-page-translation-block')).toHaveLength(1);
+      expect(ctx.handlePageTranslationPopupAction({
+        action: 'start', documentKey: status.documentKey, model: 'builtin:translator'
+      })).toMatchObject({ active: true, model: 'builtin:translator' });
+    } finally {
+      delete ctx.fanFanBaPaused;
+      ctxRun('pageTranslationModel = null');
+    }
+  });
+
   it('只翻單段時捲動不會啟動全文自動接續', async () => {
     await ctx.translateSinglePageBlock(document.querySelector('main p'));
     const calls = chrome.runtime.connect.mock.calls.length;

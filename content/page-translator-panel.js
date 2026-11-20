@@ -61,13 +61,15 @@ function handlePageTranslationPopupAction({ action, documentKey, model }) {
   if (fanFanBaPaused) return { documentKey: key, paused: true };
   if (action !== 'status' && documentKey !== key) return null;
 
-  if (action === 'start' && !pageTranslationState.activated && typeof model === 'string' && model) {
+  // 跟切換快捷鍵同一個判斷：只用 Alt+T 翻過單段不算「已開全文翻譯」
+  if (action === 'start' && !pageTranslationState.fullPage && typeof model === 'string' && model) {
     startPageTranslationBeta({ modelOverride: model });
-  } else if (action === 'restore' && pageTranslationState.activated) {
+  } else if (action === 'restore' && pageTranslationState.fullPage) {
     restorePageTranslationBeta();
   }
 
-  const { activated, running, total, errors } = pageTranslationState;
+  const activated = !!pageTranslationState.fullPage;
+  const { running, total, errors } = pageTranslationState;
   const progress = pageTranslationPanel?.querySelector('.ffb-page-panel-progress');
   const message = progress && !progress.hidden
     ? progress.querySelector('.ffb-page-panel-progress-label')?.textContent

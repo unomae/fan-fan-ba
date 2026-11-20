@@ -9,7 +9,7 @@ Tier 3／4 補驗時發現，KAKA 裁示修正。
 
 - **問題**：先用 Alt+T 翻一段，再按全文翻譯快捷鍵（Alt+A，`toggle-page-translation`），不會翻整頁，反而把剛翻的那段也還原掉。原因是單段翻譯也會把 `pageTranslationState.activated` 設成 true，而 `content/main.js` 的 `runPageTranslationTrigger` 只看這個旗標，就把頁面當成「已在全文翻譯」。從浮球或右鍵開全文翻譯不受影響。
 - **修法**：狀態加 `fullPage` 旗標，只有 `startPageTranslationBeta` 會設成 true，還原時歸零（`content/page-translator-state.js`、`content/page-translator-panel.js`）；切換快捷鍵改看 `fullPage`。整頁翻譯中途按「停止」後再按快捷鍵，仍是還原，行為不變。
-- **未動**：popup 判斷「這頁是否已啟用」仍看 `activated`，所以 Alt+T 翻過一段後打開 popup，會顯示「還原」而不是「開始」。這次沒改。
+- **追加（同日，KAKA 裁示「popup 那處也一起改」）**：popup 的狀態與開始／還原也改看 `fullPage`（`content/page-translator-panel.js` 的 `handlePageTranslationPopupAction`，回傳的 `active` 一律是布林）。Alt+T 翻過一段後打開 popup，按鈕是「翻譯這一頁」，按下去開整頁；popup 的「還原」不會收掉單段譯文。`tests/content/page-translator.test.js` 新增 1 條，退回舊判斷時這條紅；全套 Jest 53 suites／890 tests 全過、0 skip。**未涵蓋：真的 popup 畫面**。測試用的 Chrome 把 `popup.html` 當一般分頁開，這時連沒按過 Alt+T 的新頁面都回「目前無法在這個分頁翻譯」，屬測試環境限制，與這次改動無關，所以沒有 popup 實際畫面的證據。
 - 驗證：`tests/content/shortcut-trigger.test.js` 新增 1 條（只翻過單段時改為開整頁），退回 `main.js` 舊判斷時這條紅、其餘 10 條綠；全套 Jest 53 suites／889 tests 全過、0 skip。真擴充（Chrome for Testing＋模擬 provider，build `5eff034873b5`）：Alt+T 翻一段後送 `toggle-page-translation`，譯文區塊 1 → 7、新增 2 筆請求，6 個段落各 1 個譯文區塊（不重複）；再送一次，譯文區塊 0、面板關閉。e2e `page-translation` 3 PASS／0 FAIL。
 
 ## 2026-11-19 — 結果卡計數改頓號、歡迎頁加色彩守門測試
