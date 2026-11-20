@@ -11,12 +11,27 @@ function startPageTranslationBeta({ modelOverride = '' } = {}) {
     return;
   }
 
-  const items = collectVisibleTranslatableBlocks();
+  // 保留既有仍連線且未取消的已譯段落（例如先 Alt+T 翻單段、或捲動後再點繼續翻譯），
+  // 避免覆寫 items 與計數導致複製譯文／學習摘要遺失先前段落
+  const existingItems = (pageTranslationState.items || [])
+    .filter(item => item && item.status !== 'cancelled' && item.el?.isConnected);
+  const knownElements = new Set(existingItems.map(item => item.el));
+  const newItems = collectVisibleTranslatableBlocks().filter(item => !knownElements.has(item.el));
+  const items = [...existingItems, ...newItems];
+  const prevUsage = existingItems.length && pageTranslationState.usage
+    ? pageTranslationState.usage
+    : createPageTranslationUsageSummary(0);
+  const usage = {
+    ...prevUsage,
+    paragraphs: existingItems.length + newItems.length
+  };
+  const done = existingItems.filter(item => item.status === 'done').length;
+  const errors = existingItems.filter(item => item.status === 'error').length;
   const embeddedSummary = detectEmbeddedTranslationTargets();
   const embeddedTargets = collectEmbeddedTranslationTargets();
   ensurePageTranslationPanel();
   pageTranslationState = {
-    running: items.length > 0,
+    running: newItems.length > 0,
     stopped: false,
     stopping: false,
     activated: true,
@@ -33,9 +48,9 @@ function startPageTranslationBeta({ modelOverride = '' } = {}) {
     items,
     embeddedSummary,
     embeddedTargets,
-    usage: createPageTranslationUsageSummary(items.length),
-    done: 0,
-    errors: 0,
+    usage,
+    done,
+    errors,
     total: items.length
   };
   setPageTranslationMode(pageTranslationState.mode);
@@ -45,7 +60,7 @@ function startPageTranslationBeta({ modelOverride = '' } = {}) {
   bindPageTranslationSelectionWatcher();
   updateFloatingBallPageTranslationState?.(pageTranslationState);
 
-  if (!items.length) {
+  if (!newItems.length) {
     updatePageTranslationPanel('目前沒有新段落');
     schedulePageTranslationAvailabilityCheck();
     return;

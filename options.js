@@ -1,8 +1,7 @@
-// options.js — 設定頁邏輯：儲存 / 載入 API Key、測試連線
+// options.js — 設定頁入口協調器：載入各領域模組、管理模型／金鑰／語言表單與連線測試
 
 'use strict';
 
-const $ = id => document.getElementById(id);
 const ModelRegistry = globalThis.FanFanBaModels || require('./models');
 const Storage = globalThis.FanFanBaStorage || require('./storage');
 const CloudSync = globalThis.FanFanBaCloudSync || require('./cloud-sync');
@@ -14,494 +13,44 @@ const Dom = typeof globalThis.ffbEl === 'function' ? globalThis : require('./con
 const ActionRender = typeof globalThis.buildCustomActionContent === 'function'
   ? globalThis
   : require('./content/custom-action-render');
-const SETTINGS_BACKUP_APP = 'fan-fan-ba';
-const SETTINGS_BACKUP_SCHEMA_VERSION = 1;
-const SECRET_BACKUP_CRYPTO_VERSION = 1;
-const SECRET_BACKUP_KDF_ITERATIONS = 210000;
-const MIN_SECRET_BACKUP_KDF_ITERATIONS = 100000;
-const MAX_SECRET_BACKUP_KDF_ITERATIONS = 1000000;
-const MAX_SETTINGS_IMPORT_BYTES = 2 * 1024 * 1024;
-const TEST_CONNECTION_TIMEOUT_MS = 20000;
-let statusClearTimer = null;
-const SYNC_SETTING_KEYS = [
-  'model',
-  'pageTranslationModel',
-  'dictionaryModel',
-  'targetLanguage',
-  'explanationLanguage',
-  'ttsLanguageMode',
-  'vocabularyHighlightMode',
-  'obsidianVault',
-  'obsidianDefaultFolder',
-  // 自訂端點的網址與模型名稱不是機密，跟著備份與雲端同步；金鑰 customApiKey 另存本機
-  'customApiBase',
-  'customModelName'
-];
-const DIAGNOSTICS_SETTING_KEYS = [
-  'model',
-  'pageTranslationModel',
-  'targetLanguage',
-  'vocabularyHighlightMode',
-  'customApiBase',
-  'customModelName'
-];
-// A1''' 補償控制（最小版）：mirror-only 後 storage.local 是單一副本，
-// 損毀即全滅。這裡只做「上次備份多久前」的 staleness 提醒，推使用者定期
-// JSON 匯出（完整可還原）。跨裝置 Drive 備份留待另一張 KAKA 決策工單。
-// 常數必須宣告在下方 initVocabularyBackup() 之前，否則 async 的
-// renderVocabularyBackupStaleness() 會在 TDZ 讀到它而炸掉（QA-P2-002）。
-const LAST_VOCAB_BACKUP_KEY = 'lastVocabularyBackupAt';
-const VOCAB_BACKUP_STALE_DAYS = 30;
-// 新功能標籤：已點過的項目 id 存本機（只是介面狀態，不進備份與雲端同步）
-const SEEN_FEATURE_BADGES_KEY = 'seenFeatureBadges';
-const FEATURE_BADGE_TEXT = { new: '新增', updated: '已更新' };
-// 動作清單上的標籤（清單是動態產生的）；其他標籤直接寫在 options.html 的 data-badge-for
-const ACTION_FEATURE_BADGES = { analyze: 'new', optimize: 'updated' };
-const SEARCH_RESULT_LIMIT = 8;
-const SEARCH_HIT_MS = 2000;
-// null＝還沒讀到已看過清單，標籤先全部藏著，避免載入時閃一下
-let seenFeatureBadges = null;
-let settingsSearchState = { results: [], active: 0 };
-// 這幾個分類的欄位由「儲存設定」一起寫入；其他分類各有自己的按鈕，詳細頁只留狀態列
-const SAVE_BUTTON_PANELS = new Set(['model', 'language', 'glossary', 'obsidian']);
-// 改了還沒按「儲存設定」的分類（只收 SAVE_BUTTON_PANELS 裡的）
-const settingsDirtyPanels = new Set();
-const OVERVIEW_RENDER_DELAY_MS = 80;
-let overviewRenderSeq = 0;
-let overviewRenderTimer = null;
-// provider 顯示名／key 欄位名／前綴統一取自 ModelRegistry.PROVIDERS（WS-E M3''）
 
-renderModelSelect();
-renderPageTranslationModelSelect();
-renderDictionaryModelSelect();
-renderLanguageSelects();
-initSettingsTabs();
-initSettingsSearch();
-initFeatureModelHints();
-initSettingsDirtyTracking();
-
-loadSettings();
-initDiagnosticsPanel();
-initVocabularyBackup();
-initActionEditor();
-initGlossaryEditor();
-initModelCompare();
-initFeatureBadges();
-initSettingsOverview();
-initOverviewShortcuts();
-
-// ── 單字本備份 / 還原（Phase B）──────────────────────
-function initVocabularyBackup() {
-  $('btnExportVocabulary')?.addEventListener('click', exportVocabularyBackup);
-  $('btnExportVocabularyCsv')?.addEventListener('click', exportVocabularyCsv);
-  const fileInput = $('vocabularyImportFile');
-  $('btnImportVocabulary')?.addEventListener('click', () => fileInput?.click());
-  fileInput?.addEventListener('change', importVocabularyBackup);
-  renderVocabularyBackupStaleness();
-  renderVocabularySnapshots();
+// Node/Jest 環境優先走 require 以完整支援 jest.isolateModules()；瀏覽器端讀 options.html 預先載入的工廠
+function loadOptionsModule(name, relPath) {
+  return typeof require === 'function' ? require(relPath) : globalThis.FanFanBaOptionsModules[name];
 }
 
-// ── 本機自動快照還原（red-team F3）─────────────────────
-// 快照本身在 vocabulary-store.js 自動輪替；這裡只給讀取與還原入口。
-// **一律走 mergeBackup 合併、絕不 replace**：快照是過去狀態，replace 會把快照
-// 之後新增的單字砍掉。合併方向由 mergeEntry 的時鐘決定，所以現有較新的複習進度
-// 不會被快照回滾（見 vocabulary-backup.js mergeClock）。
-function formatSnapshotLabel({ slot, savedAt, count }) {
-  const when = Date.parse(savedAt || '') ? new Date(savedAt).toLocaleString() : '時間未知';
-  const which = slot === 'prev' ? '較舊' : '最近';
-  return `還原${which}快照（${when}，${count} 個單字）`;
-}
+const ctx = {
+  ModelRegistry,
+  Storage,
+  CloudSync,
+  VocabBackup,
+  CustomActions,
+  Glossary,
+  Dom,
+  ActionRender
+};
 
-async function renderVocabularySnapshots() {
-  const container = $('vocabularySnapshotActions');
-  const note = $('vocabularySnapshotNote');
-  if (!container) return;
-  let snapshots = [];
-  try {
-    const response = await requestVocabularyStore('snapshots');
-    snapshots = Array.isArray(response.snapshots) ? response.snapshots : [];
-  } catch {
-    snapshots = []; // 讀不到就當沒有快照可還原，不吵使用者
-  }
-  container.textContent = '';
-  snapshots.forEach(snapshot => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'btn-test';
-    button.textContent = formatSnapshotLabel(snapshot);
-    button.addEventListener('click', () => restoreVocabularySnapshot(snapshot.slot));
-    container.appendChild(button);
-  });
-  container.hidden = snapshots.length === 0;
-  if (note) note.hidden = snapshots.length === 0;
-}
+ctx.shared = loadOptionsModule('shared', './options/shared')(ctx);
+const {
+  $,
+  SYNC_SETTING_KEYS,
+  providerName,
+  setModelSelectValue,
+  showStatus,
+  fetchWithTimeout
+} = ctx.shared;
 
-async function restoreVocabularySnapshot(slot) {
-  try {
-    const { snapshot } = await requestVocabularyStore('snapshot', { slot });
-    const incoming = VocabBackup.normalizeItemsMap(snapshot?.items || {});
-    if (!Object.keys(incoming).length) {
-      setVocabularyBackupStatus('這份快照沒有可還原的單字。');
-      await renderVocabularySnapshots();
-      return;
-    }
-    // 與匯入同一條路：existing 讀取失敗必須中止（空集會讓 mergeBackup 退化成 replace）
-    const existing = await getVocabularyItemsMap();
-    const { items, summary } = VocabBackup.mergeBackup(existing, incoming, 'merge');
-    // 還原不備份前態：不然這一下就把好快照擠到 prev、壞狀態寫進 current（red-team F4）
-    await replaceVocabularyItemsMap(items, { snapshot: false });
-    setVocabularyBackupStatus(`已從快照還原：補回 ${summary.added}、更新 ${summary.updated}，目前共 ${summary.total} 個單字。`);
-    await renderVocabularySnapshots();
-  } catch (error) {
-    setVocabularyBackupStatus(`還原失敗：${error?.message || '請再試一次'}`);
-  }
-}
+// 先建立全部領域模組並掛回 ctx，再進行初始化，杜絕跨模組 TDZ 相依
+ctx.vocabulary = loadOptionsModule('vocabularyBackup', './options/vocabulary-backup-ui')(ctx);
+ctx.diagnostics = loadOptionsModule('diagnostics', './options/diagnostics')(ctx);
+ctx.navigation = loadOptionsModule('navigation', './options/navigation')(ctx);
+ctx.backup = loadOptionsModule('backupCrypto', './options/backup-crypto')(ctx);
+ctx.cloud = loadOptionsModule('cloudSyncUi', './options/cloud-sync-ui')(ctx);
+ctx.glossary = loadOptionsModule('glossaryEditor', './options/glossary-editor')(ctx);
+ctx.compare = loadOptionsModule('modelCompare', './options/model-compare')(ctx);
+ctx.actions = loadOptionsModule('actionEditor', './options/action-editor')(ctx);
 
-async function renderVocabularyBackupStaleness() {
-  const el = $('vocabularyBackupReminder');
-  if (!el) return;
-  const { [LAST_VOCAB_BACKUP_KEY]: last } = await chrome.storage.local.get(LAST_VOCAB_BACKUP_KEY);
-  el.textContent = formatVocabularyBackupReminder(last);
-}
-
-function formatVocabularyBackupReminder(lastIso) {
-  const last = Date.parse(lastIso || '');
-  if (!last) return '尚未匯出過單字本備份，建議定期匯出 JSON 以免資料遺失。';
-  const days = Math.floor((Date.now() - last) / (24 * 60 * 60 * 1000));
-  const when = days <= 0 ? '今天' : `${days} 天前`;
-  const tail = days >= VOCAB_BACKUP_STALE_DAYS ? '（已超過 30 天，建議重新匯出）' : '';
-  return `上次備份：${when}${tail}`;
-}
-
-function setVocabularyBackupStatus(text) {
-  const el = $('vocabularyBackupStatus');
-  if (el) el.textContent = text;
-}
-
-async function exportVocabularyBackup() {
-  try {
-    const items = await getVocabularyItemsMap();
-    const backup = VocabBackup.buildBackup(items);
-    if (!backup.count) { setVocabularyBackupStatus('單字本是空的，沒有可匯出的單字。'); return; }
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `fan-fan-ba-vocabulary-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    // 只在 JSON 匯出（完整可還原）成功後蓋章；CSV 是 lossy 不算備份
-    await chrome.storage.local.set({ [LAST_VOCAB_BACKUP_KEY]: new Date().toISOString() });
-    renderVocabularyBackupStaleness();
-    setVocabularyBackupStatus(`已匯出 ${backup.count} 個單字。`);
-  } catch {
-    setVocabularyBackupStatus('匯出失敗，請再試一次。');
-  }
-}
-
-// 檢視用的單向匯出（2026-09-13 由 XLSX 換成 CSV）。刻意不在這裡蓋
-// 「已備份」的章——那只屬於 JSON 匯出，CSV 是 lossy 的，不能還原。
-async function exportVocabularyCsv() {
-  try {
-    const items = await getVocabularyItemsMap();
-    const normalized = VocabBackup.normalizeItemsMap(items);
-    const count = Object.keys(normalized).length;
-    if (!count) { setVocabularyBackupStatus('單字本是空的，沒有可匯出的單字。'); return; }
-    const csv = VocabBackup.buildVocabularyCsv(normalized);
-    const blob = new Blob([csv], { type: VocabBackup.CSV_MIME_TYPE });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `fan-fan-ba-vocabulary-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setVocabularyBackupStatus(`已匯出 ${count} 個單字成 CSV。`);
-  } catch {
-    setVocabularyBackupStatus('CSV 匯出失敗，請再試一次。');
-  }
-}
-
-const MAX_VOCAB_IMPORT_BYTES = 10 * 1024 * 1024; // 10MB，避免超大檔塞爆 storage
-
-async function importVocabularyBackup(event) {
-  const file = event.target.files?.[0];
-  event.target.value = '';
-  if (!file) return;
-  if (file.size > MAX_VOCAB_IMPORT_BYTES) {
-    setVocabularyBackupStatus('檔案太大（上限 10MB），請確認是翻翻吧的單字本備份。');
-    return;
-  }
-  try {
-    const text = await file.text();
-    const incoming = VocabBackup.parseBackup(text);
-    const existing = await getVocabularyItemsMap();
-    const { items, summary } = VocabBackup.mergeBackup(existing, incoming, 'merge');
-    await replaceVocabularyItemsMap(items);
-    setVocabularyBackupStatus(`匯入完成：新增 ${summary.added}、更新 ${summary.updated}，目前共 ${summary.total} 個單字。`);
-  } catch (error) {
-    setVocabularyBackupStatus(`匯入失敗：${error?.message || '檔案格式不正確'}`);
-  }
-}
-
-// A1'''：不再 fallback 直讀/直寫 storage——匯入流程的 existing 讀取失敗必須
-// 讓匯入整個中止（若降級成空集，mergeBackup 會退化成 replace、舊備份蓋掉活資料）。
-// 失敗往上拋，由 importVocabularyBackup 的 catch 浮出錯誤。
-async function getVocabularyItemsMap() {
-  const response = await requestVocabularyStore('list');
-  // 非陣列一律視為讀取失敗並中止（絕不降級成空集）：匯入流程若拿到空集，
-  // mergeBackup 會退化成 replace，把舊備份蓋掉整個活單字本（WS-E A1'''）
-  if (!Array.isArray(response.items)) throw new Error('單字本資料讀取失敗');
-  return response.items.reduce((acc, item) => {
-    if (item?.id) acc[item.id] = item;
-    return acc;
-  }, {});
-}
-
-// snapshot=false 只給還原用：還原是非破壞性的合併，備份它的前態沒有價值，
-// 卻會佔掉一個救援槽（red-team F4）。匯入維持預設 true——匯入會帶進外部資料，
-// 前態值得留一份。
-async function replaceVocabularyItemsMap(items, { snapshot = true } = {}) {
-  await requestVocabularyStore('replaceAll', { items, snapshot });
-}
-
-async function requestVocabularyStore(action, payload = {}) {
-  if (!chrome.runtime?.sendMessage) throw new Error('單字本資料層不可用');
-  const response = await chrome.runtime.sendMessage({
-    type: 'VOCABULARY_STORE',
-    action,
-    ...payload
-  });
-  if (!response || response.ok !== true) {
-    throw new Error(response?.error || '單字本資料層不可用');
-  }
-  return response;
-}
-
-// ── 本機診斷摘要（v1.9.8）────────────────────────────
-function initDiagnosticsPanel() {
-  renderDiagnostics();
-  $('btnClearDiagnostics')?.addEventListener('click', async () => {
-    await Storage.clearDiagnostics();
-    renderDiagnostics('已清除診斷資料。');
-  });
-}
-
-async function renderDiagnostics(note = '') {
-  const el = $('diagnosticsSummary');
-  if (!el) return;
-  try {
-    const [diagnostics, settings, secrets] = await Promise.all([
-      Storage.getDiagnostics(),
-      chrome.storage.sync.get(DIAGNOSTICS_SETTING_KEYS),
-      Storage.getSecrets({})
-    ]);
-    renderDiagnosticsSelfCheck(el, {
-      note,
-      diagnostics,
-      rows: buildDiagnosticsChecklist(diagnostics, settings, secrets, getCurrentAppVersion())
-    });
-  } catch {
-    el.textContent = note || '無法讀取本機診斷資料，請重新開啟設定頁再試一次。';
-  }
-}
-
-function renderDiagnosticsSelfCheck(el, { note = '', diagnostics = Storage.emptyDiagnostics(), rows = [] } = {}) {
-  el.textContent = '';
-  const warningCount = rows.filter(row => row.status === 'warn').length;
-  const overview = document.createElement('div');
-  overview.className = `diagnostics-overview${warningCount ? ' is-warn' : ''}`;
-
-  const title = document.createElement('strong');
-  title.textContent = warningCount ? `自檢結果：${warningCount} 項需要處理` : '自檢結果：本機狀態正常';
-  const summary = document.createElement('span');
-  summary.textContent = formatDiagnosticsSummary(diagnostics, note);
-  overview.append(title, summary);
-
-  const list = document.createElement('ul');
-  list.className = 'diagnostics-checklist';
-  rows.forEach(row => {
-    const item = document.createElement('li');
-    const dot = document.createElement('span');
-    const content = document.createElement('div');
-    const label = document.createElement('strong');
-    const value = document.createElement('span');
-    dot.className = `diagnostics-dot ${row.status || 'info'}`;
-    label.textContent = row.label || '';
-    value.textContent = row.value || '';
-    content.append(label, value);
-    if (row.detail) {
-      const detail = document.createElement('small');
-      detail.textContent = row.detail;
-      content.appendChild(detail);
-    }
-    item.append(dot, content);
-    list.appendChild(item);
-  });
-
-  el.append(overview, list);
-}
-
-function formatDiagnosticsSummary(d = Storage.emptyDiagnostics(), note = '') {
-  const total = d.actions.translate + d.actions.explain + d.actions.optimize + d.pageTranslations;
-  if (!total && !d.errors) return note || '尚無使用紀錄。';
-  const sinceText = formatDiagnosticsDate(d.since);
-  const parts = [
-    `翻譯 ${d.actions.translate}`,
-    `解釋 ${d.actions.explain}`,
-    `優化 ${d.actions.optimize}`,
-    `全文翻譯 ${d.pageTranslations}`,
-    `失敗 ${d.errors}`
-  ];
-  return `${note ? note + ' ' : ''}自 ${sinceText} 起：${parts.join('、')}`;
-}
-
-function formatDiagnosticsDate(value = '') {
-  const t = Date.parse(value);
-  return Number.isFinite(t) ? new Date(t).toLocaleDateString() : '未知日期';
-}
-
-function formatDiagnosticModelStatus(model, ready) {
-  const provider = ModelRegistry.PROVIDERS[model?.provider];
-  if (provider?.keyless) return `${providerName(model.provider)} / ${model.name}：免金鑰（本機執行）`;
-  if (provider?.userConfigured) {
-    return `${providerName(model.provider)} / ${model.name}${ready ? '：端點與金鑰已設定' : '：缺端點網址、模型名稱或 API Key'}`;
-  }
-  return `${providerName(model.provider)} / ${model.name}${ready ? '：API Key 已設定' : '：缺 API Key'}`;
-}
-
-function buildDiagnosticsChecklist(diagnostics = Storage.emptyDiagnostics(), settings = {}, secrets = {}, appVersion = '') {
-  const model = ModelRegistry.getModel(settings.model);
-  const pageTranslationModel = ModelRegistry.getModel(settings.pageTranslationModel || model.id);
-  const modelKeyReady = hasProviderKey(model, secrets, settings);
-  const pageModelKeyReady = hasProviderKey(pageTranslationModel, secrets, settings);
-  const total = diagnostics.actions.translate + diagnostics.actions.explain + diagnostics.actions.optimize + diagnostics.pageTranslations;
-  const targetLanguage = ModelRegistry.getLanguageOption?.(ModelRegistry.normalizeLanguage(settings.targetLanguage, 'zh-TW'))?.name || '繁體中文';
-  const rows = [
-    {
-      status: modelKeyReady ? 'ok' : 'warn',
-      label: '單段翻譯模型',
-      value: formatDiagnosticModelStatus(model, modelKeyReady),
-      detail: modelKeyReady ? '可按「測試連線」確認 API 是否可用。' : `目前選用 ${model.name}，請先填入 ${providerName(model.provider)} API Key。`
-    },
-    {
-      status: pageModelKeyReady ? 'ok' : 'warn',
-      label: '全文翻譯模型',
-      value: formatDiagnosticModelStatus(pageTranslationModel, pageModelKeyReady),
-      detail: `目標語言：${targetLanguage}；此檢查不會發送測試請求。`
-    },
-    {
-      status: settings.vocabularyHighlightMode === 'auto' ? 'ok' : 'info',
-      label: '單字高亮',
-      value: settings.vocabularyHighlightMode === 'auto' ? '自動標示已收藏單字' : '關閉',
-      detail: settings.vocabularyHighlightMode === 'auto' ? '瀏覽網頁時會用本機單字本輔助提醒。' : '不影響翻譯，只是不在頁面上標示已收藏單字。'
-    },
-    {
-      status: diagnostics.errors ? 'warn' : total ? 'ok' : 'info',
-      label: '本機使用紀錄',
-      value: diagnostics.errors ? `累計 ${diagnostics.errors} 次失敗` : total ? `累計 ${total} 次成功操作` : '尚無使用紀錄',
-      detail: formatDiagnosticsSummary(diagnostics)
-    },
-    {
-      status: 'ok',
-      label: '隱私邊界',
-      value: '僅保留本機計數，不含選取文字、網址或內容',
-      detail: '不會上傳 telemetry；按下清除後會重設這份本機摘要。'
-    }
-  ];
-
-  if (appVersion) {
-    rows.unshift({
-      status: 'ok',
-      label: '擴充功能版本',
-      value: `v${appVersion}`,
-      detail: '從本機 manifest 讀取。'
-    });
-  }
-
-  return rows;
-}
-
-function hasProviderKey(model = {}, secrets = {}, settings = {}) {
-  const provider = ModelRegistry.PROVIDERS[model.provider];
-  if (provider?.keyless) return true;
-  if (provider?.userConfigured) {
-    return !!String(settings.customApiBase || '').trim()
-      && !!String(settings.customModelName || '').trim()
-      && !!String(secrets[provider.apiKeyName] || '').trim();
-  }
-  const keyName = model.apiKeyName || providerApiKeyName(model.provider);
-  return !!String(secrets[keyName] || '').trim();
-}
-
-function providerApiKeyName(provider = '') {
-  return (ModelRegistry.PROVIDERS[provider] || ModelRegistry.PROVIDERS.gemini).apiKeyName;
-}
-
-function providerName(provider = '') {
-  return ModelRegistry.PROVIDERS[provider]?.label || provider || '未知模型';
-}
-
-// 未在冊的舊版 model id（如 gemini-2.5-flash）：select 沒有對應選項時補一個
-// 保留現行設定，避免 select 落回第一個選項、儲存時被靜默改掉（WS-E M3'' 附帶修復）
-function setModelSelectValue(select, modelId) {
-  if (!select) return;
-  select.value = modelId;
-  if (select.value !== modelId) {
-    const opt = document.createElement('option');
-    opt.value = modelId;
-    opt.textContent = `${ModelRegistry.getModelDisplayName(modelId)}（舊版）`;
-    select.appendChild(opt);
-    select.value = modelId;
-  }
-}
-
-// ── 載入已儲存的設定 ─────────────────────────────────
-async function loadSettings() {
-  const [
-    { model, pageTranslationModel, dictionaryModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder, customApiBase, customModelName },
-    { apiKey, groqApiKey, openrouterApiKey, customApiKey, ttsApiKey }
-  ] = await Promise.all([
-    chrome.storage.sync.get(SYNC_SETTING_KEYS),
-    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', customApiKey: '', ttsApiKey: '' })
-  ]);
-
-  if (apiKey)                 $('apiKey').value                 = apiKey;
-  if (groqApiKey)             $('groqApiKey').value             = groqApiKey;
-  if (openrouterApiKey)       $('openrouterApiKey').value       = openrouterApiKey;
-  if (customApiBase && $('customApiBase'))     $('customApiBase').value   = customApiBase;
-  if (customModelName && $('customModelName')) $('customModelName').value = customModelName;
-  if (customApiKey && $('customApiKey'))       $('customApiKey').value    = customApiKey;
-  // 無儲存紀錄時預設 Groq（免費額度最大方）
-  const currentModel = ModelRegistry.normalizeModel(model);
-  setModelSelectValue($('model'), currentModel);
-  // 沒存過（或存成空字串）＝跟隨主模型
-  if ($('pageTranslationModel')) setModelSelectValue($('pageTranslationModel'), pageTranslationModel ? ModelRegistry.normalizeModel(pageTranslationModel) : '');
-  if ($('dictionaryModel')) setModelSelectValue($('dictionaryModel'), dictionaryModel || '');
-  if (model && currentModel !== model) chrome.storage.sync.set({ model: currentModel });
-  if ($('targetLanguage')) {
-    $('targetLanguage').value = ModelRegistry.normalizeLanguage(targetLanguage, 'zh-TW');
-  }
-  if ($('explanationLanguage')) {
-    $('explanationLanguage').value = ModelRegistry.normalizeExplanationLanguage(explanationLanguage, 'target');
-  }
-  if ($('ttsLanguageMode')) {
-    $('ttsLanguageMode').value = ModelRegistry.normalizeTtsLanguageMode(ttsLanguageMode, 'auto');
-  }
-  if ($('vocabularyHighlightMode')) {
-    $('vocabularyHighlightMode').value = vocabularyHighlightMode === 'auto' ? 'auto' : 'off';
-  }
-  if (obsidianVault)          $('obsidianVault').value          = obsidianVault;
-  if (ttsApiKey)              $('ttsApiKey').value              = ttsApiKey;
-  if (obsidianDefaultFolder)  $('obsidianDefaultFolder').value  = obsidianDefaultFolder;
-  updateFeatureModelHints();
-  // 表單已換成 storage 裡的值；術語表編輯器另外載入，由 markGlossaryEditorSynced 清
-  clearSettingsDirty(['model', 'language', 'obsidian']);
-}
-
+// ── 核心模型／金鑰／語言表單 ──────────────────────────────
 function renderModelSelect() {
   const select = $('model');
   if (!select || select.tagName !== 'SELECT') return;
@@ -513,28 +62,25 @@ function renderModelSelect() {
     custom: '自訂端點（需在下方填寫網址、模型與金鑰）'
   };
 
-  // pageTranslationOnly 的模型（瀏覽器內建）刻意不進主選單：它給不出詞典要的結構化 JSON，
-  // 讓人選得到只會換來必定失敗的操作。它只出現在下方的頁面翻譯專用選單。
-  select.innerHTML = ['groq', 'gemini', 'openrouter', 'custom'].map(provider => {
+  // pageTranslationOnly 的模型（瀏覽器內建）刻意不進主選單：它給不出詞典要的結構化 JSON
+  Dom.ffbClear(select).append(...['groq', 'gemini', 'openrouter', 'custom'].map(provider => {
     const options = ModelRegistry.MODELS
       .filter(model => model.provider === provider && !model.pageTranslationOnly)
-      .map(model => `<option value="${model.id}">${model.name}（${model.desc}）</option>`)
-      .join('');
-    return `<optgroup label="${providerLabels[provider]}">${options}</optgroup>`;
-  }).join('');
+      .map(model => Dom.ffbEl('option', { value: model.id }, `${model.name}（${model.desc}）`));
+    return Dom.ffbEl('optgroup', { label: providerLabels[provider] }, options);
+  }));
 }
 
 function renderPageTranslationModelSelect() {
   const select = $('pageTranslationModel');
   if (!select || select.tagName !== 'SELECT') return;
 
-  select.innerHTML = '<option value="">跟隨主模型</option>' + ModelRegistry.MODELS
-    .map(model => `<option value="${model.id}">${model.name}（${model.desc}）</option>`)
-    .join('');
+  Dom.ffbClear(select).append(
+    Dom.ffbEl('option', { value: '' }, '跟隨主模型'),
+    ...ModelRegistry.MODELS.map(model => Dom.ffbEl('option', { value: model.id }, `${model.name}（${model.desc}）`))
+  );
 }
 
-// ── 各功能使用的模型 ─────────────────────────────────
-// 字典與各動作可選的模型：不含只做全文翻譯的模型（給不出結構化 JSON）
 function buildFeatureModelOptions(defaultValue) {
   return [
     Dom.ffbEl('option', { value: defaultValue }, '跟隨主模型'),
@@ -549,23 +95,19 @@ function renderDictionaryModelSelect() {
   if (select) Dom.ffbClear(select).append(...buildFeatureModelOptions(''));
 }
 
-// 動作清單的每個動作一列；值寫在動作的 model 欄位，按「儲存設定」才寫回
-function renderFeatureActionModelRows() {
-  const body = $('featureActionModelRows');
-  if (!body) return;
-  // 清單被別處改動而重畫時，保留使用者在表上還沒存的選擇
-  const unsaved = new Map(readUnsavedActionModels());
-  Dom.ffbClear(body).append(...actionListState.map(action => {
-    const id = `featureModel-${action.id}`;
-    const savedModel = action.model || 'default';
-    const select = Dom.ffbEl('select', { id, dataset: { featureModel: '', actionId: action.id, savedModel } }, buildFeatureModelOptions('default'));
-    setModelSelectValue(select, unsaved.get(action.id) || savedModel);
-    return Dom.ffbEl('tr', null, [
-      Dom.ffbEl('th', { scope: 'row' }, Dom.ffbEl('label', { for: id }, action.builtin ? action.name : `自訂：${action.name}`)),
-      Dom.ffbEl('td', null, select)
-    ]);
-  }));
-  updateFeatureModelHints();
+function renderLanguageSelects() {
+  const targetSelect = $('targetLanguage');
+  const explanationSelect = $('explanationLanguage');
+  const ttsSelect = $('ttsLanguageMode');
+  if (targetSelect) {
+    Dom.ffbClear(targetSelect).append(...ModelRegistry.LANGUAGE_OPTIONS.map(lang => Dom.ffbEl('option', { value: lang.id }, lang.name)));
+  }
+  if (explanationSelect) {
+    Dom.ffbClear(explanationSelect).append(...ModelRegistry.EXPLANATION_LANGUAGE_OPTIONS.map(lang => Dom.ffbEl('option', { value: lang.id }, lang.name)));
+  }
+  if (ttsSelect) {
+    Dom.ffbClear(ttsSelect).append(...ModelRegistry.TTS_LANGUAGE_OPTIONS.map(mode => Dom.ffbEl('option', { value: mode.id }, mode.name)));
+  }
 }
 
 // 缺什麼才能用這個模型；回傳 null 表示可用。focusId 是「前往填寫」要聚焦的欄位
@@ -582,7 +124,6 @@ function getFeatureModelGap(modelId) {
   return valueOf(provider.apiKeyName) ? null : { message: `缺 ${provider.label} API Key`, focusId: provider.apiKeyName };
 }
 
-// 每個功能下拉選到缺金鑰的模型時，就地顯示提示與「前往填寫」
 function updateFeatureModelHints() {
   document.querySelectorAll('select[data-feature-model]').forEach(select => {
     const hintId = `${select.id}-hint`;
@@ -612,8 +153,6 @@ function updateFeatureModelHints() {
   renderProviderKeyStates();
 }
 
-// 金鑰欄位旁的狀態：表單上（含各功能）選到的模型用到這家 → 使用中／缺 Key；沒用到 → 已填／未填
-// 初始化在檔案開頭就會呼叫到，文字表放函式裡（頂層 const 會踩 TDZ）
 function getProvidersInUse() {
   const mainModel = $('model')?.value || '';
   const ids = [mainModel, ...[...document.querySelectorAll('select[data-feature-model]')]
@@ -646,793 +185,55 @@ function initFeatureModelHints() {
   });
 }
 
-// 表上改過、還沒存的動作模型：[[動作 id, 模型], …]
-function readUnsavedActionModels() {
-  return [...document.querySelectorAll('select[data-action-id]')]
-    .filter(select => (select.value || 'default') !== select.dataset.savedModel)
-    .map(select => [select.dataset.actionId, select.value || 'default']);
-}
-
-// 按「儲存設定」時把表上改過的動作模型寫回動作清單；沒有變動就不寫。
-// 先重讀 storage 裡最新的清單，只改這幾個動作的 model，不蓋掉別的分頁剛改的釘選或順序
-async function saveFeatureActionModels() {
-  const changed = new Map(readUnsavedActionModels());
-  if (!changed.size) return;
-  const latest = await CustomActions.loadActionList();
-  actionListState = await CustomActions.saveActionList(latest.map(action => (
-    changed.has(action.id) ? { ...action, model: changed.get(action.id) } : action
-  )));
-  renderActionList();
-}
-
-// 網頁「⋯」選單或其他設定分頁改了動作清單：換上最新清單，之後的排序、啟用、存檔才不會拿舊資料蓋回去。
-// 內容跟手上一樣（多半是這頁自己剛存的）就不重畫，以免打斷鍵盤焦點
-function initActionListSync() {
-  chrome.storage.onChanged?.addListener((changes, area) => {
-    if (area !== 'local' || !changes[CustomActions.STORAGE_KEY]) return;
-    const next = CustomActions.normalizeActionList(changes[CustomActions.STORAGE_KEY].newValue);
-    if (JSON.stringify(next) === JSON.stringify(CustomActions.normalizeActionList(actionListState))) return;
-    actionListState = next;
-    renderActionList();
-  });
-}
-
-function renderLanguageSelects() {
-  const targetSelect = $('targetLanguage');
-  const explanationSelect = $('explanationLanguage');
-  const ttsSelect = $('ttsLanguageMode');
-  if (targetSelect) {
-    targetSelect.innerHTML = ModelRegistry.LANGUAGE_OPTIONS
-      .map(lang => `<option value="${lang.id}">${lang.name}</option>`)
-      .join('');
-  }
-  if (explanationSelect) {
-    explanationSelect.innerHTML = ModelRegistry.EXPLANATION_LANGUAGE_OPTIONS
-      .map(lang => `<option value="${lang.id}">${lang.name}</option>`)
-      .join('');
-  }
-  if (ttsSelect) {
-    ttsSelect.innerHTML = ModelRegistry.TTS_LANGUAGE_OPTIONS
-      .map(mode => `<option value="${mode.id}">${mode.name}</option>`)
-      .join('');
-  }
-}
-
-// ── 總覽與分類切換 ─────────────────────────────────────
-// 打開設定先看總覽；點卡片進詳細頁。網址 #分類名 直接開到該分類，瀏覽器上一頁回總覽。
-
-// 用函式宣告：初始化在檔案開頭就會呼叫到（const 會踩 TDZ）
-function settingsPanelTitle(panelName) {
-  return searchableText(document.querySelector(`.settings-tab[data-panel="${panelName}"]`));
-}
-
-function getSettingsPanelNames() {
-  return [...document.querySelectorAll('.settings-panel[data-panel-content]')].map(panel => panel.dataset.panelContent);
-}
-
-// pushState 不會觸發 hashchange，切換時不會自己再跑一次路由
-function setSettingsHash(panelName) {
-  const target = panelName ? `#${panelName}` : '';
-  if ((location.hash || '') === target) return;
-  try {
-    history.pushState(null, '', target || `${location.pathname}${location.search}`);
-  } catch (error) {
-    console.warn('[翻翻吧] 設定頁網址更新失敗', error);
-  }
-}
-
-function activateSettingsPanel(panelName, { updateHistory = true } = {}) {
-  document.querySelectorAll('.settings-tab[data-panel]').forEach(tab => {
-    const isActive = tab.dataset.panel === panelName;
-    tab.classList.toggle('is-active', isActive);
-    if (isActive) tab.setAttribute('aria-current', 'true');
-    else tab.removeAttribute('aria-current');
-  });
-
-  document.querySelectorAll('.settings-panel[data-panel-content]').forEach(panel => {
-    panel.hidden = panel.dataset.panelContent !== panelName;
-  });
-
-  if ($('settingsOverview')) $('settingsOverview').hidden = true;
-  if ($('settingsDetail')) $('settingsDetail').hidden = false;
-  if ($('saveButtons')) $('saveButtons').hidden = !SAVE_BUTTON_PANELS.has(panelName);
-  // 從總覽下方的卡片點進來時，詳細頁開頭可能在視窗外
-  const detail = $('settingsDetail');
-  if (detail && detail.getBoundingClientRect().top < 0) detail.scrollIntoView?.({ block: 'start' });
-  if (updateHistory) setSettingsHash(panelName);
-}
-
-function showSettingsOverview({ updateHistory = true } = {}) {
-  const from = document.querySelector('.settings-tab.is-active[data-panel]');
-  document.querySelectorAll('.settings-tab[data-panel]').forEach(tab => {
-    tab.classList.remove('is-active');
-    tab.removeAttribute('aria-current');
-  });
-  if ($('settingsOverview')) $('settingsOverview').hidden = false;
-  if ($('settingsDetail')) $('settingsDetail').hidden = true;
-  if (updateHistory) setSettingsHash('');
-  // 鍵盤使用者回到剛才那張卡片
-  from?.focus({ preventScroll: true });
-}
-
-function routeSettingsFromHash() {
-  let name = '';
-  try { name = decodeURIComponent((location.hash || '').slice(1)); } catch { name = ''; }
-  if (getSettingsPanelNames().includes(name)) activateSettingsPanel(name, { updateHistory: false });
-  else showSettingsOverview({ updateHistory: false });
-}
-
-function initSettingsTabs() {
-  const tabs = document.querySelectorAll('.settings-tab[data-panel]');
-  const panels = document.querySelectorAll('.settings-panel[data-panel-content]');
-  if (!tabs.length || !panels.length) return;
-
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => activateSettingsPanel(tab.dataset.panel));
-  });
-  $('btnBackToOverview')?.addEventListener('click', () => showSettingsOverview());
-  // 總覽上「需要注意」與「未儲存」提示裡的按鈕
-  $('settingsOverview')?.addEventListener('click', event => {
-    const go = event.target.closest?.('[data-go-panel]');
-    if (go) activateSettingsPanel(go.dataset.goPanel);
-  });
-  window.addEventListener('popstate', routeSettingsFromHash);
-  window.addEventListener('hashchange', routeSettingsFromHash);
-  routeSettingsFromHash();
-}
-
-// ── 總覽狀態摘要 ─────────────────────────────────────
-// 卡片顯示的是已儲存的值，不是表單上還沒存的內容；storage 一有變動就重畫。
-
-// 這個模型要能用還缺什麼；不缺回空字串
-function getSavedModelKeyGap(modelId, settings = {}, secrets = {}) {
-  const provider = ModelRegistry.PROVIDERS[ModelRegistry.getProvider(modelId)];
-  if (!provider || provider.keyless) return '';
-  const has = value => !!String(value || '').trim();
-  if (provider.userConfigured) {
-    return has(settings.customApiBase) && has(settings.customModelName) && has(secrets[provider.apiKeyName])
-      ? ''
-      : '自訂端點的網址、模型名稱或金鑰還沒填';
-  }
-  return has(secrets[provider.apiKeyName]) ? '' : `缺 ${provider.label} API Key`;
-}
-
-function formatBackupAge(lastIso, now) {
-  const last = Date.parse(lastIso || '');
-  if (!last) return null;
-  return Math.max(0, Math.floor((now - last) / (24 * 60 * 60 * 1000)));
-}
-
-// 純函式：把讀到的資料整理成總覽要顯示的文字，方便測試
-function buildSettingsOverview(data = {}, now = Date.now()) {
-  const { settings = {}, secrets = {}, lastBackupAt = '', actions = null, glossary = null, cloud = null } = data;
-  const model = ModelRegistry.normalizeModel(settings.model);
-  const modelName = ModelRegistry.getModelDisplayName(model);
-  const provider = ModelRegistry.PROVIDERS[ModelRegistry.getProvider(model)];
-  const mainGap = getSavedModelKeyGap(model, settings, secrets);
-  // 大卡片上逐家列出金鑰有沒有填；自訂端點沒設網址時不列
-  const keys = Object.values(ModelRegistry.PROVIDERS)
-    .filter(item => item.apiKeyName && (!item.userConfigured || String(settings.customApiBase || '').trim()))
-    .map(item => ({ label: item.label, filled: !!String(secrets[item.apiKeyName] || '').trim() }));
-
-  // 只放「功能會壞掉」的事；選填功能沒設定不算
-  const attention = [];
-  if (mainGap) attention.push({ panel: 'model', text: `預設模型「${modelName}」${mainGap}，翻譯會無法使用` });
-  for (const [key, label] of [['dictionaryModel', '字典'], ['pageTranslationModel', '全文翻譯']]) {
-    const value = settings[key];
-    if (!value || value === 'default') continue;
-    const gap = getSavedModelKeyGap(value, settings, secrets);
-    if (gap && gap !== mainGap) attention.push({ panel: 'model', text: `${label}選的模型${gap}，這個功能會無法使用` });
-  }
-
-  const language = ModelRegistry.getLanguageOption(ModelRegistry.normalizeLanguage(settings.targetLanguage, 'zh-TW'));
-  const enabledActions = Array.isArray(actions) ? actions.filter(action => action.enabled).length : null;
-  const terms = glossary ? glossary.terms.length : null;
-  const sites = glossary ? glossary.sites.length : 0;
-  const backupDays = formatBackupAge(lastBackupAt, now);
-
-  let cloudTile = { summary: '同步狀態讀取失敗' };
-  if (cloud && !cloud.configured) {
-    cloudTile = { summary: '尚未完成 Google OAuth 設定', status: ['off', '未設定'] };
-  } else if (cloud) {
-    cloudTile = { summary: formatCloudSyncSummary(cloud.meta || {}), status: cloud.meta?.signedIn ? ['ok', '已登入'] : ['off', '未登入'] };
-  }
-
-  return {
-    keys,
-    attention,
-    tiles: {
-      model: {
-        summary: `預設：${modelName}`,
-        status: mainGap ? ['warn', mainGap] : provider?.keyless ? ['ok', '不需金鑰'] : ['ok', '金鑰已設定']
-      },
-      language: {
-        summary: `翻譯成 ${language?.name || '繁體中文'}，單字高亮${settings.vocabularyHighlightMode === 'auto' ? '開啟' : '關閉'}`
-      },
-      actions: { summary: enabledActions === null ? '動作清單讀取失敗' : `${enabledActions} 個動作啟用中` },
-      glossary: {
-        summary: terms === null ? '術語表讀取失敗' : terms ? `${terms} 筆術語${sites ? `，限 ${sites} 個網站` : ''}` : '還沒有術語'
-      },
-      compare: { summary: '' },
-      obsidian: { summary: settings.obsidianVault ? `Vault：${settings.obsidianVault}` : '存到目前開啟的 Vault' },
-      backup: backupDays === null
-        ? { summary: '單字本還沒匯出過備份', status: ['off', '未備份'] }
-        : {
-          summary: `單字本上次備份：${backupDays === 0 ? '今天' : `${backupDays} 天前`}`,
-          ...(backupDays >= VOCAB_BACKUP_STALE_DAYS ? { status: ['warn', `超過 ${VOCAB_BACKUP_STALE_DAYS} 天`] } : {})
-        },
-      cloud: cloudTile,
-      privacy: { summary: '' }
-    }
-  };
-}
-
-async function loadSettingsOverviewData() {
-  const safe = async (read, fallback) => {
-    try {
-      return await read();
-    } catch (error) {
-      console.warn('[翻翻吧] 總覽資料讀取失敗', error);
-      return fallback;
-    }
-  };
-  const keyDefaults = Object.fromEntries(Object.values(ModelRegistry.PROVIDERS)
-    .map(item => item.apiKeyName).filter(Boolean).map(name => [name, '']));
-  const [settings, secrets, local, actions, glossary, cloud] = await Promise.all([
-    safe(() => chrome.storage.sync.get(SYNC_SETTING_KEYS), {}),
-    safe(() => Storage.getSecrets(keyDefaults), {}),
-    safe(() => chrome.storage.local.get(LAST_VOCAB_BACKUP_KEY), {}),
-    safe(() => CustomActions.loadActionList(), null),
-    safe(() => loadStoredGlossary(), null),
-    safe(async () => {
-      await CloudSync.loadWebAuthClientId?.();
-      const configured = CloudSync.isOAuthConfigured(CloudSync.getOAuthConfig());
-      return { configured, meta: configured ? await CloudSync.getCloudSyncMeta() : {} };
-    }, null)
+async function loadSettings() {
+  const [
+    { model, pageTranslationModel, dictionaryModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder, customApiBase, customModelName },
+    { apiKey, groqApiKey, openrouterApiKey, customApiKey, ttsApiKey }
+  ] = await Promise.all([
+    chrome.storage.sync.get(SYNC_SETTING_KEYS),
+    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', customApiKey: '', ttsApiKey: '' })
   ]);
-  return { settings: settings || {}, secrets: secrets || {}, lastBackupAt: local?.[LAST_VOCAB_BACKUP_KEY] || '', actions, glossary, cloud };
+
+  if (apiKey)                 $('apiKey').value                 = apiKey;
+  if (groqApiKey)             $('groqApiKey').value             = groqApiKey;
+  if (openrouterApiKey)       $('openrouterApiKey').value       = openrouterApiKey;
+  if (customApiBase && $('customApiBase'))     $('customApiBase').value   = customApiBase;
+  if (customModelName && $('customModelName')) $('customModelName').value = customModelName;
+  if (customApiKey && $('customApiKey'))       $('customApiKey').value    = customApiKey;
+  const currentModel = ModelRegistry.normalizeModel(model);
+  setModelSelectValue($('model'), currentModel);
+  if ($('pageTranslationModel')) setModelSelectValue($('pageTranslationModel'), pageTranslationModel ? ModelRegistry.normalizeModel(pageTranslationModel) : '');
+  if ($('dictionaryModel')) setModelSelectValue($('dictionaryModel'), dictionaryModel || '');
+  if (model && currentModel !== model) chrome.storage.sync.set({ model: currentModel });
+  if ($('targetLanguage')) $('targetLanguage').value = ModelRegistry.normalizeLanguage(targetLanguage, 'zh-TW');
+  if ($('explanationLanguage')) $('explanationLanguage').value = ModelRegistry.normalizeExplanationLanguage(explanationLanguage, 'target');
+  if ($('ttsLanguageMode')) $('ttsLanguageMode').value = ModelRegistry.normalizeTtsLanguageMode(ttsLanguageMode, 'auto');
+  if ($('vocabularyHighlightMode')) $('vocabularyHighlightMode').value = vocabularyHighlightMode === 'auto' ? 'auto' : 'off';
+  if (obsidianVault)          $('obsidianVault').value          = obsidianVault;
+  if (ttsApiKey)              $('ttsApiKey').value              = ttsApiKey;
+  if (obsidianDefaultFolder)  $('obsidianDefaultFolder').value  = obsidianDefaultFolder;
+  updateFeatureModelHints();
+  ctx.navigation.clearSettingsDirty(['model', 'language', 'obsidian']);
 }
 
-async function renderSettingsOverview() {
-  const seq = ++overviewRenderSeq;
-  const overview = buildSettingsOverview(await loadSettingsOverviewData());
-  // 連續觸發時只畫最後一次讀到的資料
-  if (seq !== overviewRenderSeq) return overview;
-
-  Object.entries(overview.tiles).forEach(([panelName, tile]) => {
-    const summary = document.querySelector(`[data-summary-for="${panelName}"]`);
-    const status = document.querySelector(`[data-status-for="${panelName}"]`);
-    if (summary) summary.textContent = tile.summary;
-    if (status) {
-      status.hidden = !tile.status;
-      status.dataset.kind = tile.status?.[0] || '';
-      status.textContent = tile.status?.[1] || '';
-    }
-  });
-
-  const keyList = $('overviewKeys');
-  if (keyList) {
-    Dom.ffbClear(keyList).append(...overview.keys.map(key => Dom.ffbEl('span', {
-      class: `tile-key${key.filled ? ' is-filled' : ''}`
-    }, `${key.label} 金鑰${key.filled ? '已填' : '未填'}`)));
-  }
-
-  const list = $('overviewAttention');
-  if (list) {
-    Dom.ffbClear(list);
-    overview.attention.forEach(item => {
-      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      icon.setAttribute('aria-hidden', 'true');
-      const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-      use.setAttribute('href', '#ico-alert');
-      icon.append(use);
-      list.append(Dom.ffbEl('li', null, [
-        icon,
-        Dom.ffbEl('span', null, item.text),
-        Dom.ffbEl('button', { type: 'button', dataset: { goPanel: item.panel } }, '去設定')
-      ]));
-    });
-    list.hidden = !overview.attention.length;
-  }
-  return overview;
-}
-
-function scheduleSettingsOverviewRender() {
-  clearTimeout(overviewRenderTimer);
-  overviewRenderTimer = setTimeout(() => { renderSettingsOverview(); }, OVERVIEW_RENDER_DELAY_MS);
-}
-
-// ── 總覽頁尾快捷鍵 ─────────────────────────────────
-// 顯示瀏覽器實際綁定的鍵（預設鍵可能沒綁上或被使用者改過）；讀不到就整列不顯示
-const OVERVIEW_SHORTCUT_COMMANDS = ['translate-selection', 'toggle-page-translation'];
-
-function renderOverviewShortcuts(commands = []) {
-  const row = $('overviewShortcuts');
-  const list = $('overviewShortcutList');
-  if (!row || !list) return;
-  const byName = new Map(commands.map(command => [command.name, command]));
-  const items = OVERVIEW_SHORTCUT_COMMANDS.map(name => byName.get(name)).filter(Boolean).map(command =>
-    Dom.ffbEl('span', null, [
-      `${command.description || command.name} `,
-      Dom.ffbEl('kbd', command.shortcut ? null : { class: 'is-unset' }, command.shortcut || '未設定')
-    ]));
-  Dom.ffbClear(list).append(...items);
-  row.hidden = !items.length;
-}
-
-async function initOverviewShortcuts() {
-  // chrome:// 頁面不能用一般連結開，要走 tabs.create
-  $('btnOpenShortcuts')?.addEventListener('click', () => chrome.tabs?.create({ url: 'chrome://extensions/shortcuts' }));
-  let commands = [];
-  try {
-    commands = (await chrome.commands?.getAll?.()) || [];
-  } catch {
-    commands = [];
-  }
-  renderOverviewShortcuts(commands);
-}
-
-function initSettingsOverview() {
-  // 存檔、匯入、雲端下載、備份、動作與術語表變動都會寫 storage，一律從這裡重畫
-  chrome.storage.onChanged?.addListener(scheduleSettingsOverviewRender);
-  return renderSettingsOverview();
-}
-
-// ── 未儲存提示 ───────────────────────────────────────
-// 改了要按「儲存設定」的欄位就記下來：儲存列顯示提示、總覽列出分類、關頁時瀏覽器跳確認。
-
-function renderSettingsSaveState() {
-  const dirty = [...settingsDirtyPanels];
-  if ($('saveState')) $('saveState').textContent = dirty.length ? '有未儲存的變更' : '';
-  const notice = $('overviewUnsaved');
-  if (!notice) return;
-  notice.hidden = !dirty.length;
-  Dom.ffbClear(notice);
-  if (!dirty.length) return;
-  notice.append(
-    Dom.ffbEl('span', null, `「${dirty.map(settingsPanelTitle).join('、')}」有未儲存的變更`),
-    Dom.ffbEl('button', { type: 'button', dataset: { goPanel: dirty[0] } }, '回去儲存')
-  );
-}
-
-function markSettingsDirty(panelName) {
-  if (!SAVE_BUTTON_PANELS.has(panelName) || settingsDirtyPanels.has(panelName)) return;
-  settingsDirtyPanels.add(panelName);
-  renderSettingsSaveState();
-}
-
-function clearSettingsDirty(panelNames = [...settingsDirtyPanels]) {
-  panelNames.forEach(name => settingsDirtyPanels.delete(name));
-  renderSettingsSaveState();
-}
-
-function initSettingsDirtyTracking() {
-  const onEdit = event => {
-    const target = event.target;
-    if (!target?.matches?.('input, select, textarea') || target.type === 'file') return;
-    const panel = target.closest('.settings-panel[data-panel-content]');
-    if (panel) markSettingsDirty(panel.dataset.panelContent);
-  };
-  document.addEventListener('input', onEdit);
-  document.addEventListener('change', onEdit);
-  // 術語表的刪除列不會觸發 input
-  $('glossaryRows')?.addEventListener('click', event => {
-    if (event.target.closest('button')) markSettingsDirty('glossary');
-  });
-  window.addEventListener('beforeunload', event => {
-    if (!settingsDirtyPanels.size) return;
-    event.preventDefault();
-    event.returnValue = '';
-  });
-}
-
-// ── 設定搜尋（⌘K／Ctrl+K）────────────────────────────
-// 比對各分頁的標題、小標與欄位標籤；選中後切到該分頁、捲過去並短暫高亮。
-// 索引每次搜尋時現場從 DOM 收集，動作清單這類動態列也找得到。
-
-// 取元素的可搜尋文字：去掉新功能標籤、「必填／選填」提示與總覽卡片上的狀態摘要
-function searchableText(el) {
-  if (!el) return '';
-  const clone = el.cloneNode(true);
-  clone.querySelectorAll('.feature-badge, .hint, small, .tile-meta').forEach(node => node.remove());
-  return clone.textContent.replace(/\s+/g, ' ').trim();
-}
-
-// 元素到所在分頁之間只要有一層 hidden（例如關著的動作編輯器）就不收
-function isHiddenInPanel(el, panel) {
-  for (let node = el; node && node !== panel; node = node.parentElement) {
-    if (node.hidden) return true;
-  }
-  return false;
-}
-
-function collectSettingsSearchEntries() {
-  const entries = [];
-  const seen = new Set();
-  const add = (panel, panelTitle, text, target) => {
-    const key = `${panel}\n${text}`;
-    if (!text || seen.has(key)) return;
-    seen.add(key);
-    entries.push({ panel, panelTitle, text, target });
-  };
-  document.querySelectorAll('.settings-panel[data-panel-content]').forEach(panel => {
-    const panelName = panel.dataset.panelContent;
-    const tab = document.querySelector(`.settings-tab[data-panel="${panelName}"]`);
-    const panelTitle = searchableText(tab) || searchableText(panel.querySelector('h2'));
-    // 左側分頁名稱和面板大標可能不同（「模型與金鑰」／「模型與 API Key」），兩個都收
-    add(panelName, panelTitle, panelTitle, panel.querySelector('.panel-head') || panel);
-    panel.querySelectorAll('h2, h3, label, .field-label').forEach(el => {
-      if (!isHiddenInPanel(el, panel)) add(panelName, panelTitle, searchableText(el), el);
-    });
-  });
-  return entries;
-}
-
-// 不分大小寫；以空白分開的每個詞都要出現。開頭就符合的排前面。
-function searchSettings(query) {
-  const terms = String(query || '').toLowerCase().split(/\s+/).filter(Boolean);
-  if (!terms.length) return [];
-  const hits = collectSettingsSearchEntries().filter(entry => {
-    const text = entry.text.toLowerCase();
-    return terms.every(term => text.includes(term));
-  });
-  const starts = hits.filter(entry => entry.text.toLowerCase().startsWith(terms[0]));
-  const rest = hits.filter(entry => !starts.includes(entry));
-  return [...starts, ...rest].slice(0, SEARCH_RESULT_LIMIT);
-}
-
-function setSettingsSearchOpen(open) {
-  const list = $('settingsSearchResults');
-  const input = $('settingsSearch');
-  list.hidden = !open;
-  input.setAttribute('aria-expanded', open ? 'true' : 'false');
-  if (!open) input.removeAttribute('aria-activedescendant');
-}
-
-function renderSettingsSearchResults() {
-  const list = $('settingsSearchResults');
-  const input = $('settingsSearch');
-  const { results, active } = settingsSearchState;
-  if (!input.value.trim()) {
-    Dom.ffbClear(list);
-    setSettingsSearchOpen(false);
-    return;
-  }
-  if (!results.length) {
-    Dom.ffbClear(list).append(Dom.ffbEl('li', { class: 'search-empty', role: 'presentation' }, '沒有符合的設定'));
-    setSettingsSearchOpen(true);
-    return;
-  }
-  Dom.ffbClear(list).append(...results.map((entry, index) => {
-    const item = Dom.ffbEl('li', {
-      class: 'search-result',
-      role: 'option',
-      id: `settingsSearchResult${index}`,
-      'aria-selected': index === active ? 'true' : 'false'
-    }, [
-      Dom.ffbEl('span', null, entry.text),
-      entry.text !== entry.panelTitle && Dom.ffbEl('small', null, entry.panelTitle)
-    ]);
-    // mousedown 先擋掉，焦點才不會在 click 之前離開搜尋框把清單關掉
-    item.addEventListener('mousedown', event => event.preventDefault());
-    item.addEventListener('click', () => jumpToSettingsSearchResult(entry));
-    return item;
-  }));
-  input.setAttribute('aria-activedescendant', `settingsSearchResult${active}`);
-  setSettingsSearchOpen(true);
-}
-
-function jumpToSettingsSearchResult(entry) {
-  if (!entry) return false;
-  activateSettingsPanel(entry.panel);
-  const block = entry.target.closest('tr, .provider-card, .field, .info-block, .panel-head') || entry.target;
-  block.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
-  // 欄位標籤直接把焦點交給對應的輸入框，跳過去就能改
-  const control = entry.target.htmlFor ? $(entry.target.htmlFor) : null;
-  control?.focus({ preventScroll: true });
-  block.classList.remove('search-hit');
-  void block.offsetWidth; // 重新觸發高亮動畫
-  block.classList.add('search-hit');
-  setTimeout(() => block.classList.remove('search-hit'), SEARCH_HIT_MS);
-
-  $('settingsSearch').value = '';
-  settingsSearchState = { results: [], active: 0 };
-  renderSettingsSearchResults();
-  return true;
-}
-
-function updateSettingsSearch() {
-  settingsSearchState = { results: searchSettings($('settingsSearch').value), active: 0 };
-  renderSettingsSearchResults();
-}
-
-function initSettingsSearch() {
-  const input = $('settingsSearch');
-  if (!input) return;
-  const isMac = /Mac|iPhone|iPad/.test(globalThis.navigator?.platform || '');
-  if ($('settingsSearchKbd')) $('settingsSearchKbd').textContent = isMac ? '⌘K' : 'Ctrl K';
-
-  input.addEventListener('input', updateSettingsSearch);
-  input.addEventListener('focus', () => { if (input.value.trim()) updateSettingsSearch(); });
-  input.addEventListener('blur', () => setSettingsSearchOpen(false));
-  input.addEventListener('keydown', event => {
-    const { results, active } = settingsSearchState;
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      if (!results.length) return;
-      event.preventDefault();
-      const step = event.key === 'ArrowDown' ? 1 : -1;
-      settingsSearchState.active = (active + step + results.length) % results.length;
-      renderSettingsSearchResults();
-    } else if (event.key === 'Enter') {
-      event.preventDefault();
-      jumpToSettingsSearchResult(results[active]);
-    } else if (event.key === 'Escape') {
-      event.preventDefault();
-      input.value = '';
-      updateSettingsSearch();
-    }
-  });
-
-  document.addEventListener('keydown', event => {
-    if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'k') {
-      event.preventDefault();
-      input.focus();
-      input.select();
-    }
-  });
-}
-
-// ── 新功能標籤 ─────────────────────────────────────
-// 標籤預設 hidden；讀到已看過清單後，沒看過的才顯示。使用者在該項目內點任何地方
-// （分頁是點開分頁）就記為已看過。
-
-function buildFeatureBadge(id, kind) {
-  return Dom.ffbEl('span', { class: 'feature-badge', dataset: { badgeFor: id, kind }, hidden: true }, FEATURE_BADGE_TEXT[kind]);
-}
-
-function applyFeatureBadges() {
-  document.querySelectorAll('.feature-badge[data-badge-for]').forEach(badge => {
-    badge.hidden = !seenFeatureBadges || seenFeatureBadges.has(badge.dataset.badgeFor);
-  });
-  // 分頁本身有標籤時不再加圓點；否則分頁裡有沒看過的標籤就加圓點
-  document.querySelectorAll('.settings-tab[data-panel]').forEach(tab => {
-    const ownBadge = tab.querySelector('.feature-badge:not([hidden])');
-    const panel = document.querySelector(`.settings-panel[data-panel-content="${tab.dataset.panel}"]`);
-    const unseen = !!panel && !!panel.querySelector('.feature-badge[data-badge-for]:not([hidden])');
-    tab.classList.toggle('has-unseen', !ownBadge && unseen);
-  });
-}
-
-async function markFeatureSeen(id) {
-  if (!seenFeatureBadges || !id || seenFeatureBadges.has(id)) return false;
-  seenFeatureBadges.add(id);
-  applyFeatureBadges();
-  try {
-    await chrome.storage.local.set({ [SEEN_FEATURE_BADGES_KEY]: [...seenFeatureBadges] });
-  } catch (error) {
-    console.warn('[翻翻吧] 新功能標籤狀態儲存失敗', error);
-  }
-  return true;
-}
-
-async function initFeatureBadges() {
-  document.addEventListener('click', event => {
-    const item = event.target.closest?.('[data-feature-item]');
-    if (item) markFeatureSeen(item.dataset.featureItem);
-  });
-  let stored = [];
-  try {
-    ({ [SEEN_FEATURE_BADGES_KEY]: stored } = await chrome.storage.local.get({ [SEEN_FEATURE_BADGES_KEY]: [] }));
-  } catch (error) {
-    console.warn('[翻翻吧] 新功能標籤狀態讀取失敗', error);
-  }
-  seenFeatureBadges = new Set(Array.isArray(stored) ? stored.filter(id => typeof id === 'string') : []);
-  applyFeatureBadges();
-  return seenFeatureBadges;
-}
+ctx.core = {
+  buildFeatureModelOptions,
+  updateFeatureModelHints,
+  loadSettings
+};
 
 // ── 顯示 / 隱藏 API Key 共用函式 ─────────────────────
 function bindToggleVis(btnId, inputId, showId, hideId) {
   $(btnId).addEventListener('click', () => {
-    const input    = $(inputId);
+    const input = $(inputId);
     const isHidden = input.type === 'password';
-    input.type               = isHidden ? 'text' : 'password';
-    $(showId).style.display  = isHidden ? 'none' : '';
-    $(hideId).style.display  = isHidden ? ''     : 'none';
+    input.type = isHidden ? 'text' : 'password';
+    $(showId).style.display = isHidden ? 'none' : '';
+    $(hideId).style.display = isHidden ? '' : 'none';
   });
 }
-
-bindToggleVis('toggleVis',    'apiKey',           'eye-show',      'eye-hide');
-bindToggleVis('toggleGroqVis','groqApiKey',        'groq-eye-show', 'groq-eye-hide');
-bindToggleVis('toggleOrVis',  'openrouterApiKey',  'or-eye-show',   'or-eye-hide');
-bindToggleVis('toggleTtsVis', 'ttsApiKey',         'tts-eye-show',  'tts-eye-hide');
-if ($('toggleCustomVis')) bindToggleVis('toggleCustomVis', 'customApiKey', 'custom-eye-show', 'custom-eye-hide');
-$('btnTestCustom')?.addEventListener('click', () => testCustomEndpoint());
-bindBackupControls();
-bindCloudSyncControls();
-loadCloudWebAuthClientId();
-renderCloudSyncStatus();
-
-// ── 儲存設定 ─────────────────────────────────────────
-$('btnSave').addEventListener('click', async () => {
-  const apiKey           = $('apiKey').value.trim();
-  const groqApiKey       = $('groqApiKey').value.trim();
-  const openrouterApiKey = $('openrouterApiKey').value.trim();
-  const model            = $('model').value;
-  const pageTranslationValue = $('pageTranslationModel')?.value || '';
-  const pageTranslationModel = pageTranslationValue ? ModelRegistry.normalizeModel(pageTranslationValue) : '';
-  const dictionaryModel  = $('dictionaryModel')?.value || '';
-  const targetLanguage   = ModelRegistry.normalizeLanguage($('targetLanguage')?.value, 'zh-TW');
-  const explanationLanguage = ModelRegistry.normalizeExplanationLanguage($('explanationLanguage')?.value, 'target');
-  const ttsLanguageMode  = ModelRegistry.normalizeTtsLanguageMode($('ttsLanguageMode')?.value, 'auto');
-  const vocabularyHighlightMode = $('vocabularyHighlightMode')?.value === 'auto' ? 'auto' : 'off';
-  const customApiKey     = $('customApiKey')?.value.trim() || '';
-
-  // 自訂端點要先做：chrome.permissions.request 必須在使用者點擊後立刻呼叫，
-  // 前面若先 await 別的東西或跳 confirm，瀏覽器可能判定不是使用者操作而拒絕
-  const custom = await prepareCustomEndpointSettings({
-    apiBase: $('customApiBase')?.value,
-    modelName: $('customModelName')?.value,
-    required: ModelRegistry.getProvider(model) === 'custom'
-  });
-  if (!custom.ok) { showStatus('err', custom.error); return; }
-
-  const glossaryDraft = glossaryEditorLoaded ? readGlossaryEditor() : null;
-  if (glossaryDraft?.errors.length) {
-    activateSettingsPanel('glossary');
-    showStatus('err', `術語表：${glossaryDraft.errors[0]}`);
-    return;
-  }
-
-  // 依選擇的模型驗證對應 API Key（前綴與顯示名來源：ModelRegistry.PROVIDERS）
-  let removedProviderLabel = '';
-  {
-    const provider = ModelRegistry.getProvider(model);
-    const info = ModelRegistry.PROVIDERS[provider];
-    const keyValue = { groq: groqApiKey, openrouter: openrouterApiKey, custom: customApiKey }[provider] ?? apiKey;
-    // keyless provider（瀏覽器內建）沒有 key，跳過整段驗證；否則會拿別家的空欄位去問「要不要移除金鑰」
-    if (info.keyless) { /* 無需驗證 */ }
-    else if (!keyValue) {
-      const savedSecrets = await Storage.getSecrets({});
-      // 沒存過這家金鑰：沒有東西可移除，不跳確認、照常存其他設定（popup／總覽仍會提示缺金鑰）。
-      // 以前只在全文翻譯選免 key 模型時放行，其餘情況會問「要移除已儲存的金鑰嗎」，按取消就連無關設定都存不了。
-      if (!savedSecrets[info.apiKeyName]) { /* 主模型仍保留缺金鑰提示 */ }
-      else if (confirmRemoveProviderKey(info.label)) {
-        removedProviderLabel = info.label;
-      } else {
-        showStatus('err', `使用 ${info.label} 模型請輸入 ${info.label} API Key`);
-        return;
-      }
-    } else if (!keyValue.startsWith(info.keyPrefix)) { showStatus('err', `${info.label} API Key 格式不正確，應以 ${info.keyPrefix} 開頭`); return; }
-  }
-
-  const obsidianVault         = $('obsidianVault').value.trim();
-  const ttsApiKey             = $('ttsApiKey').value.trim();
-  const obsidianDefaultFolder = $('obsidianDefaultFolder').value.trim();
-
-  await Promise.all([
-    chrome.storage.sync.set({ model, pageTranslationModel, dictionaryModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder, ...custom.settings }),
-    Storage.setSecrets({ apiKey, groqApiKey, openrouterApiKey, customApiKey, ttsApiKey })
-  ]);
-  try {
-    await saveFeatureActionModels();
-  } catch (error) {
-    showStatus('err', `各動作的模型沒有存成功：${error.message}`);
-    return;
-  }
-  let glossaryConflict = false;
-  if (glossaryDraft && isGlossaryDraftChanged(glossaryDraft.glossary)) {
-    try {
-      // 開頁後別處改過術語表：不拿這頁的版本整份蓋掉
-      const stored = await loadStoredGlossary();
-      if (JSON.stringify(stored) !== glossaryEditorBaseline) glossaryConflict = true;
-      else await writeGlossary(glossaryDraft.glossary);
-    } catch (error) {
-      showStatus('err', `術語表沒有存成功：${error.message}`);
-      return;
-    }
-  }
-  const savedText = removedProviderLabel ? `✓ 設定已儲存（${removedProviderLabel} API Key 已移除）` : '✓ 設定已儲存';
-  clearSettingsDirty(glossaryConflict || glossaryLoadFailed ? ['model', 'language', 'obsidian'] : undefined);
-  if (glossaryConflict) {
-    showStatus('err', `${savedText}；但術語表已在其他分頁修改，這頁的術語表沒有存。請先複製需要的內容，重新整理頁面後再改`);
-  } else if (glossaryLoadFailed) {
-    showStatus('err', `${savedText}；但術語表讀取失敗，術語表沒有儲存，請重新整理頁面再試`);
-  } else {
-    showStatus('ok', savedText);
-  }
-});
-
-// ── 測試連線 ─────────────────────────────────────────
-async function fetchWithTimeout(url, options = {}, timeoutMs = TEST_CONNECTION_TIMEOUT_MS) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-// 不把上游錯誤原文直接回顯到 UI（比照 background.js 的 T3 原則）
-function formatConnectionTestError(status, providerLabel) {
-  const provider = String(providerLabel || '').trim() || 'AI 服務';
-  if (status === 401 || status === 403) return `連線失敗：${provider}驗證失敗，請檢查 API Key 或模型存取權限`;
-  if (status === 429) return `連線失敗：${provider}請求過於頻繁或額度已達上限，請稍後再試`;
-  if (status >= 500) return `連線失敗：${provider}目前忙碌或暫時不可用（HTTP ${status}）`;
-  return `連線失敗：${provider}回應錯誤（HTTP ${status}）`;
-}
-
-$('btnTest').addEventListener('click', async () => {
-  const model        = $('model').value || ModelRegistry.DEFAULT_MODEL;
-  if (ModelRegistry.getProvider(model) === 'custom') return testCustomEndpoint();
-  const isGroq       = model.startsWith('groq:');
-  const isOpenRouter = model.startsWith('openrouter:');
-  const P            = ModelRegistry.PROVIDERS; // URL / 顯示名單一來源（WS-E M3''）
-
-  let apiKey, displayName, providerLabel, fetchUrl, fetchBody, fetchHeaders;
-
-  if (isGroq) {
-    apiKey        = $('groqApiKey').value.trim();
-    providerLabel = P.groq.label;
-    displayName   = `${ModelRegistry.getModel(model).name} (${P.groq.label})`;
-    fetchUrl      = `${P.groq.apiBase}/chat/completions`;
-    fetchHeaders  = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
-    fetchBody     = buildOpenAICompatTestBody(ModelRegistry.toApiModelId(model));
-  } else if (isOpenRouter) {
-    apiKey        = $('openrouterApiKey').value.trim();
-    providerLabel = P.openrouter.label;
-    displayName   = ModelRegistry.toApiModelId(model);
-    fetchUrl      = `${P.openrouter.apiBase}/chat/completions`;
-    fetchHeaders  = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, ...P.openrouter.extraHeaders };
-    fetchBody     = buildOpenAICompatTestBody(ModelRegistry.toApiModelId(model));
-  } else {
-    apiKey        = $('apiKey').value.trim();
-    providerLabel = P.gemini.label;
-    displayName   = model;
-    fetchUrl      = `${P.gemini.apiBase}/${model}:generateContent`;
-    fetchHeaders  = { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey };
-    fetchBody     = JSON.stringify({ contents: [{ parts: [{ text: '回覆 OK 即可' }] }], generationConfig: { maxOutputTokens: 10 } });
-  }
-
-  if (!apiKey) {
-    showStatus('err', `請先輸入 ${providerLabel} API Key`);
-    return;
-  }
-
-  showStatus('info', '測試中...');
-  $('btnTest').disabled = true;
-
-  try {
-    let res = await fetchWithTimeout(fetchUrl, { method: 'POST', headers: fetchHeaders, body: fetchBody });
-    let fallbackUsed = false;
-    // Groq／OpenRouter 共用：主模型被下架時測試連線也要試備援，
-    // 否則會出現「測試連線失敗、實際翻譯卻正常」的分裂結果
-    if ((isGroq || isOpenRouter) && !res.ok) {
-      const err = await res.clone().json().catch(() => ({}));
-      const fallbackModelId = ModelRegistry.getFallbackModelId(model);
-      if (ModelRegistry.shouldFallbackModel(model, res.status, err.error?.message)) {
-        fallbackUsed = true;
-        displayName = fallbackModelId;
-        fetchBody = buildOpenAICompatTestBody(fallbackModelId);
-        res = await fetchWithTimeout(fetchUrl, { method: 'POST', headers: fetchHeaders, body: fetchBody });
-      }
-    }
-    if (res.ok) {
-      showStatus('ok', `✓ 連線成功！模型：${displayName}${fallbackUsed ? '（備援）' : ''}`);
-    } else {
-      showStatus('err', formatConnectionTestError(res.status, providerLabel));
-    }
-  } catch (e) {
-    showStatus('err', e?.name === 'AbortError' ? '連線失敗：請求逾時，請稍後重試' : '網路錯誤：無法連線到 AI 服務');
-  } finally {
-    $('btnTest').disabled = false;
-  }
-});
 
 // ── 自訂 OpenAI 相容端點 ─────────────────────────────
-// 儲存前的檢查與網域授權。網址留空＝不使用自訂端點（主模型選它時才必填）；
-// 有填就只收 https，並只請求這一個網域的存取權，使用者拒絕就整個不儲存
 async function prepareCustomEndpointSettings({ apiBase = '', modelName = '', required = false } = {}) {
   const rawBase = String(apiBase || '').trim();
   const customModelName = String(modelName || '').trim();
@@ -1455,12 +256,11 @@ async function prepareCustomEndpointSettings({ apiBase = '', modelName = '', req
 async function requestCustomEndpointPermission(originPattern) {
   try {
     return await chrome.permissions.request({ origins: [originPattern] });
-  } catch (error) {
+  } catch {
     return false;
   }
 }
 
-// 測試連線打 {base}/models。上游錯誤訊息不顯示給使用者（同 background 的 formatApiErrorMessage 原則）
 function classifyCustomEndpointResponse({ status = 0, ok = false, body = null, modelName = '' } = {}) {
   if (status === 401 || status === 403) return formatCustomEndpointTestResult({ kind: 'auth' });
   if (!ok && status >= 500) return formatCustomEndpointTestResult({ kind: 'server', status });
@@ -1498,7 +298,6 @@ async function testCustomEndpoint() {
     return;
   }
   if (!apiKey) { showStatus('err', '請先輸入自訂端點 API Key'); return; }
-  // 權限請求要在使用者點擊後立刻做，所以排在任何 await 之前
   const granted = await requestCustomEndpointPermission(endpoint.originPattern);
   const show = result => showStatus(result.level, result.message);
   if (!granted) { show(formatCustomEndpointTestResult({ kind: 'permission' })); return; }
@@ -1510,7 +309,7 @@ async function testCustomEndpoint() {
     let res;
     try {
       res = await fetchWithTimeout(`${endpoint.base}/models`, { headers: { Authorization: `Bearer ${apiKey}` } });
-    } catch (error) {
+    } catch {
       show(formatCustomEndpointTestResult({ kind: 'network' }));
       return;
     }
@@ -1521,1467 +320,200 @@ async function testCustomEndpoint() {
   }
 }
 
-// ── 工具函式 ─────────────────────────────────────────
-function showStatus(type, msg) {
-  const el = $('status');
-  clearTimeout(statusClearTimer);
-  statusClearTimer = null;
-  el.className   = type;
-  el.textContent = msg;
-  if (type === 'ok') {
-    statusClearTimer = setTimeout(() => {
-      statusClearTimer = null;
-      el.className = '';
-      el.textContent = '';
-    }, 3000);
-  }
+// 不把上游錯誤原文直接回顯到 UI（比照 background.js 的 T3 原則）
+function formatConnectionTestError(status, providerLabel) {
+  const provider = String(providerLabel || '').trim() || 'AI 服務';
+  if (status === 401 || status === 403) return `連線失敗：${provider}驗證失敗，請檢查 API Key 或模型存取權限`;
+  if (status === 429) return `連線失敗：${provider}請求過於頻繁或額度已達上限，請稍後再試`;
+  if (status >= 500) return `連線失敗：${provider}目前忙碌或暫時不可用（HTTP ${status}）`;
+  return `連線失敗：${provider}回應錯誤（HTTP ${status}）`;
 }
 
 function buildOpenAICompatTestBody(modelId) {
   return JSON.stringify({ model: modelId, messages: [{ role: 'user', content: '回覆 OK 即可' }], max_tokens: 10 });
 }
 
-function bindBackupControls() {
-  const exportButton = $('btnExportSettings');
-  const includeSecretsCheckbox = $('includeSecretsExport');
-  const importButton = $('btnImportSettings');
-  const fileInput = $('settingsImportFile');
-  const passwordInput = $('backupPassword');
-  const passwordField = $('backupPasswordField');
+// ── 啟動與事件綁定 ────────────────────────────────────
+renderModelSelect();
+renderPageTranslationModelSelect();
+renderDictionaryModelSelect();
+renderLanguageSelects();
+ctx.navigation.initSettingsTabs();
+ctx.navigation.initSettingsSearch();
+initFeatureModelHints();
+ctx.navigation.initSettingsDirtyTracking();
 
-  // 密碼欄只在要加密匯出時出現；匯入加密備份缺密碼時也會打開它
-  includeSecretsCheckbox?.addEventListener('change', () => {
-    if (passwordField) passwordField.hidden = !includeSecretsCheckbox.checked;
+loadSettings();
+ctx.diagnostics.initDiagnosticsPanel();
+ctx.vocabulary.initVocabularyBackup();
+ctx.actions.initActionEditor();
+ctx.glossary.initGlossaryEditor();
+ctx.compare.initModelCompare();
+ctx.navigation.initFeatureBadges();
+ctx.navigation.initSettingsOverview();
+ctx.navigation.initOverviewShortcuts();
+
+bindToggleVis('toggleVis',    'apiKey',           'eye-show',      'eye-hide');
+bindToggleVis('toggleGroqVis','groqApiKey',        'groq-eye-show', 'groq-eye-hide');
+bindToggleVis('toggleOrVis',  'openrouterApiKey',  'or-eye-show',   'or-eye-hide');
+bindToggleVis('toggleTtsVis', 'ttsApiKey',         'tts-eye-show',  'tts-eye-hide');
+if ($('toggleCustomVis')) bindToggleVis('toggleCustomVis', 'customApiKey', 'custom-eye-show', 'custom-eye-hide');
+$('btnTestCustom')?.addEventListener('click', () => testCustomEndpoint());
+ctx.backup.bindBackupControls();
+ctx.cloud.bindCloudSyncControls();
+ctx.cloud.loadCloudWebAuthClientId();
+ctx.cloud.renderCloudSyncStatus();
+
+// ── 儲存設定 ─────────────────────────────────────────
+$('btnSave').addEventListener('click', async () => {
+  const apiKey           = $('apiKey').value.trim();
+  const groqApiKey       = $('groqApiKey').value.trim();
+  const openrouterApiKey = $('openrouterApiKey').value.trim();
+  const model            = $('model').value;
+  const pageTranslationValue = $('pageTranslationModel')?.value || '';
+  const pageTranslationModel = pageTranslationValue ? ModelRegistry.normalizeModel(pageTranslationValue) : '';
+  const dictionaryModel  = $('dictionaryModel')?.value || '';
+  const targetLanguage   = ModelRegistry.normalizeLanguage($('targetLanguage')?.value, 'zh-TW');
+  const explanationLanguage = ModelRegistry.normalizeExplanationLanguage($('explanationLanguage')?.value, 'target');
+  const ttsLanguageMode  = ModelRegistry.normalizeTtsLanguageMode($('ttsLanguageMode')?.value, 'auto');
+  const vocabularyHighlightMode = $('vocabularyHighlightMode')?.value === 'auto' ? 'auto' : 'off';
+  const customApiKey     = $('customApiKey')?.value.trim() || '';
+
+  // 自訂端點要先做：chrome.permissions.request 必須在使用者點擊後立刻呼叫
+  const custom = await prepareCustomEndpointSettings({
+    apiBase: $('customApiBase')?.value,
+    modelName: $('customModelName')?.value,
+    required: ModelRegistry.getProvider(model) === 'custom'
   });
+  if (!custom.ok) { showStatus('err', custom.error); return; }
 
-  if (exportButton) {
-    exportButton.addEventListener('click', async () => {
-      exportButton.disabled = true;
-      try {
-        const includeSecrets = !!includeSecretsCheckbox?.checked;
-        if (includeSecrets && !confirmSecretsExport()) return;
-        const payload = await buildSettingsBackupPayload(includeSecrets, {
-          password: includeSecrets ? passwordInput?.value || '' : ''
-        });
-        downloadSettingsBackup(payload);
-        showStatus('ok', includeSecrets ? '✓ 設定與加密 API Keys 已匯出' : '✓ 設定檔已匯出');
-      } catch (e) {
-        showStatus('err', `匯出失敗：${e.message}`);
-      } finally {
-        exportButton.disabled = false;
-      }
-    });
-  }
-
-  if (importButton && fileInput) {
-    importButton.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', async () => {
-      const file = fileInput.files?.[0];
-      if (!file) return;
-
-      importButton.disabled = true;
-      try {
-        const result = await importSettingsBackupFile(file, { password: passwordInput?.value || '' });
-        showStatus('ok', formatImportSettingsStatus(result));
-      } catch (e) {
-        if (e.needsPassword && passwordField) {
-          passwordField.hidden = false;
-          passwordInput?.focus();
-        }
-        showStatus('err', `匯入失敗：${e.message}`);
-      } finally {
-        importButton.disabled = false;
-        fileInput.value = '';
-      }
-    });
-  }
-}
-
-function bindCloudSyncControls() {
-  const webAuthClientInput = $('cloudWebAuthClientId');
-  const saveWebAuthClientButton = $('btnCloudSaveWebAuthClientId');
-  const signInButton = $('btnCloudSignIn');
-  const uploadButton = $('btnCloudUpload');
-  const downloadButton = $('btnCloudDownload');
-  const signOutButton = $('btnCloudSignOut');
-  if (!saveWebAuthClientButton && !signInButton && !uploadButton && !downloadButton && !signOutButton) return;
-
-  saveWebAuthClientButton?.addEventListener('click', () => runCloudSyncAction(saveWebAuthClientButton, async () => {
-    const savedClientId = await CloudSync.setWebAuthClientId(webAuthClientInput?.value || '');
-    await renderCloudSyncStatus(savedClientId ? 'Web Auth Client ID 已儲存。' : 'Web Auth Client ID 已清除。');
-    showStatus('ok', savedClientId ? '✓ Web Auth Client ID 已儲存' : '✓ Web Auth Client ID 已清除');
-  }));
-
-  signInButton?.addEventListener('click', () => runCloudSyncAction(signInButton, async () => {
-    await CloudSync.getAuthToken(true);
-    await CloudSync.recordCloudSyncSignIn?.();
-    await renderCloudSyncStatus('已登入 Google，可上傳或下載一般設定。');
-    showStatus('ok', '✓ Google 登入成功');
-  }));
-
-  uploadButton?.addEventListener('click', () => runCloudSyncAction(uploadButton, async () => {
-    const token = await CloudSync.getAuthToken(true);
-    await CloudSync.recordCloudSyncSignIn?.();
-    const existingFile = await CloudSync.findCloudSettingsFile(token);
-    if (existingFile && !confirmCloudUploadOverwrite(existingFile)) {
-      await renderCloudSyncStatus('已取消上傳，雲端設定未變更。');
-      showStatus('info', '已取消雲端設定上傳');
-      return;
-    }
-    const payload = await buildCloudSettingsPayload();
-    const file = await CloudSync.uploadCloudSettings(token, payload);
-    await renderCloudSyncStatus(`已上傳 ${CloudSync.countCloudGeneralSettings(payload.settings)} 個一般設定${payload.settings?.glossary ? '與術語表' : ''}：版本 ${payload.appVersion || '未知'}，${formatCloudSyncTime(payload.updatedAt)}`);
-    showStatus('ok', `✓ 雲端設定已上傳${file?.id ? `（${file.id}）` : ''}`);
-  }));
-
-  downloadButton?.addEventListener('click', () => runCloudSyncAction(downloadButton, async () => {
-    const token = await CloudSync.getAuthToken(true);
-    await CloudSync.recordCloudSyncSignIn?.();
-    const existingFile = await CloudSync.findCloudSettingsFile(token);
-    if (!existingFile) throw new Error('找不到雲端設定檔');
-    if (!confirmCloudDownloadOverwrite(existingFile)) {
-      await renderCloudSyncStatus('已取消下載，本機設定未變更。');
-      showStatus('info', '已取消雲端設定下載');
-      return;
-    }
-    const payload = await CloudSync.downloadCloudSettings(token);
-    const settings = normalizeImportedSettings(payload.settings || {});
-    if (!Object.keys(settings).length) throw new Error('雲端設定檔沒有可還原的設定');
-    await chrome.storage.sync.set(settings);
-    const cloudGlossary = payload.settings?.glossary && typeof payload.settings.glossary === 'object'
-      ? await saveImportedGlossary(payload.settings.glossary)
-      : null;
-    await loadSettings();
-    await renderCloudSyncStatus(`已下載雲端設定：${payload.updatedAt || '未知時間'}`);
-    showStatus('ok', `✓ 已還原 ${Object.keys(settings).length} 個一般設定${cloudGlossary ? `與術語表（${cloudGlossary.terms.length} 筆）` : ''}`);
-  }));
-
-  signOutButton?.addEventListener('click', () => runCloudSyncAction(signOutButton, async () => {
-    const token = await CloudSync.getAuthToken(false).catch(() => '');
-    await CloudSync.signOut(token);
-    await CloudSync.recordCloudSyncSignOut?.();
-    await renderCloudSyncStatus('已登出 Google。');
-    showStatus('ok', '✓ 已登出 Google');
-  }));
-}
-
-async function runCloudSyncAction(button, action) {
-  const buttons = ['btnCloudSaveWebAuthClientId', 'btnCloudSignIn', 'btnCloudUpload', 'btnCloudDownload', 'btnCloudSignOut']
-    .map(id => $(id))
-    .filter(Boolean);
-  buttons.forEach(btn => { btn.disabled = true; });
-  try {
-    await action();
-  } catch (e) {
-    const info = CloudSync.classifyCloudSyncError?.(e) || { message: e.message, hint: '' };
-    await CloudSync.recordCloudSyncError?.(e, button?.id || '');
-    await renderCloudSyncStatus(`${info.message}${info.hint ? `｜${info.hint}` : ''}`);
-    showStatus('err', `雲端同步失敗：${info.message}`);
-  } finally {
-    buttons.forEach(btn => { btn.disabled = false; });
-    if (button) button.focus?.();
-  }
-}
-
-async function buildCloudSettingsPayload() {
-  const backup = await buildSettingsBackupPayload(false);
-  const settings = backup.glossary ? { ...backup.settings, glossary: backup.glossary } : backup.settings;
-  return CloudSync.buildCloudSettingsPayload(settings, {
-    appVersion: chrome.runtime?.getManifest?.().version || ''
-  });
-}
-
-async function renderCloudSyncStatus(message = '') {
-  const el = $('cloudSyncStatus');
-  if (!el) return;
-  await CloudSync.loadWebAuthClientId?.();
-  const config = CloudSync.getOAuthConfig();
-  if (!CloudSync.isOAuthConfigured(config)) {
-    renderCloudSyncStatusRows(el, [
-      ['登入狀態', '尚未完成 OAuth 設定'],
-      ['目前版本', getCurrentAppVersion()],
-      ['注意', '請先完成 Google OAuth Client ID 設定；API Key 不會同步。']
-    ]);
+  const glossaryState = ctx.glossary.getGlossaryState();
+  const glossaryDraft = glossaryState.loaded ? ctx.glossary.readGlossaryEditor() : null;
+  if (glossaryDraft?.errors.length) {
+    ctx.navigation.activateSettingsPanel('glossary');
+    showStatus('err', `術語表：${glossaryDraft.errors[0]}`);
     return;
   }
 
-  const meta = await CloudSync.getCloudSyncMeta();
-  const support = CloudSync.getOAuthSupport?.() || {};
-  const authMode = support.nativeAuth && support.webAuthFlow
-    ? 'Chrome native auth / cross-browser Web Auth fallback'
-    : support.webAuthFlow
-      ? 'cross-browser Web Auth'
-      : 'Chrome native auth';
-  const rows = [
-    ['同步摘要', formatCloudSyncSummary(meta)],
-    ['登入狀態', formatCloudSignedInStatus(meta)],
-    ['目前版本', getCurrentAppVersion()],
-    ['同步範圍', '一般設定與術語表，不含 API Key、單字本、查詢歷史'],
-    ['儲存位置', 'Google Drive 隱藏 appDataFolder'],
-    ['操作方向', '上傳：這台覆蓋雲端；下載：雲端覆蓋這台'],
-    ['登入流程', authMode],
-    ['Native Client', support.nativeAuthConfigured ? '已設定' : '未設定']
-  ];
-  if (support.webAuthFlow) rows.push(['Web Auth Client', support.webAuthConfigured ? '已設定' : '未設定']);
-  const redirectUrl = CloudSync.getOAuthRedirectUrl?.();
-  if (support.webAuthFlow && redirectUrl) rows.push(['Redirect URL', redirectUrl]);
-  if (support.webAuthFlow && !support.webAuthConfigured) {
-    rows.push(['提醒', 'Edge / Chromium 需設定 Web Auth fallback OAuth Client ID']);
-  }
-  if (meta.lastUploadAt) rows.push(['最後上傳', `${formatCloudSyncTime(meta.lastUploadAt)}${formatCloudSettingsCount(meta.lastUploadSettingsCount)}${meta.lastUploadAppVersion ? `，版本 ${meta.lastUploadAppVersion}` : ''}`]);
-  if (meta.lastDownloadAt) rows.push(['最後下載', `${formatCloudSyncTime(meta.lastDownloadAt)}${formatCloudSettingsCount(meta.lastDownloadSettingsCount)}${meta.lastCloudAppVersion ? `，雲端版本 ${meta.lastCloudAppVersion}` : ''}`]);
-  if (meta.lastErrorAt) rows.push(['最後錯誤', `${meta.lastErrorCategory || 'unknown'}，${formatCloudSyncTime(meta.lastErrorAt)}`]);
-  if (message) rows.push(['最新訊息', message]);
-  renderCloudSyncStatusRows(el, rows);
-}
-
-function renderCloudSyncStatusRows(el, rows = []) {
-  el.textContent = '';
-  rows.forEach(([label, value]) => {
-    const row = document.createElement('div');
-    const strong = document.createElement('strong');
-    const span = document.createElement('span');
-    strong.textContent = label;
-    span.textContent = value || '-';
-    row.append(strong, span);
-    el.appendChild(row);
-  });
-}
-
-function getCurrentAppVersion() {
-  return chrome.runtime?.getManifest?.().version || '未知';
-}
-
-function formatCloudSyncSummary(meta = {}) {
-  const uploadAt = parseCloudSyncTime(meta.lastUploadAt);
-  const downloadAt = parseCloudSyncTime(meta.lastDownloadAt);
-  if (uploadAt && (!downloadAt || uploadAt >= downloadAt)) {
-    return `最近上傳：${formatCloudSyncTime(meta.lastUploadAt)}${formatCloudSettingsCount(meta.lastUploadSettingsCount)}`;
-  }
-  if (downloadAt) {
-    return `最近下載：${formatCloudSyncTime(meta.lastDownloadAt)}${formatCloudSettingsCount(meta.lastDownloadSettingsCount)}`;
-  }
-  if (meta.signedIn) return '已登入，尚未上傳或下載設定';
-  if (meta.lastSignOutAt) return '已登出，雲端同步暫停';
-  return '尚未開始雲端同步';
-}
-
-function formatCloudSignedInStatus(meta = {}) {
-  if (meta.signedIn) {
-    return meta.lastSignInAt ? `已登入，${formatCloudSyncTime(meta.lastSignInAt)}` : '已登入';
-  }
-  if (meta.lastSignOutAt) return `已登出，${formatCloudSyncTime(meta.lastSignOutAt)}`;
-  return '尚未登入';
-}
-
-function parseCloudSyncTime(value = '') {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatCloudSettingsCount(value) {
-  const count = Number(value);
-  return Number.isFinite(count) ? `，${count} 個設定` : '';
-}
-
-function formatCloudSyncTime(value = '') {
-  if (!value) return '未知時間';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString('zh-TW', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  });
-}
-
-async function loadCloudWebAuthClientId() {
-  const input = $('cloudWebAuthClientId');
-  if (!input) return '';
-  const clientId = await CloudSync.loadWebAuthClientId?.() || '';
-  input.value = clientId;
-  return clientId;
-}
-
-async function buildSettingsBackupPayload(includeSecrets = false, options = {}) {
-  const syncSettings = await chrome.storage.sync.get(SYNC_SETTING_KEYS);
-  const payload = {
-    app: SETTINGS_BACKUP_APP,
-    schemaVersion: SETTINGS_BACKUP_SCHEMA_VERSION,
-    exportedAt: new Date().toISOString(),
-    settings: pickBackupSettings(syncSettings)
-  };
-
-  if (includeSecrets) {
-    payload.secretsEncrypted = await encryptBackupSecrets(pickBackupSecrets(await Storage.getSecrets({})), options.password || '');
+  let removedProviderLabel = '';
+  {
+    const provider = ModelRegistry.getProvider(model);
+    const info = ModelRegistry.PROVIDERS[provider];
+    const keyValue = { groq: groqApiKey, openrouter: openrouterApiKey, custom: customApiKey }[provider] ?? apiKey;
+    if (info.keyless) { /* 無需驗證 */ }
+    else if (!keyValue) {
+      const savedSecrets = await Storage.getSecrets({});
+      if (!savedSecrets[info.apiKeyName]) { /* 主模型仍保留缺金鑰提示 */ }
+      else if (ctx.backup.confirmRemoveProviderKey(info.label)) {
+        removedProviderLabel = info.label;
+      } else {
+        showStatus('err', `使用 ${info.label} 模型請輸入 ${info.label} API Key`);
+        return;
+      }
+    } else if (!keyValue.startsWith(info.keyPrefix)) { showStatus('err', `${info.label} API Key 格式不正確，應以 ${info.keyPrefix} 開頭`); return; }
   }
 
-  // 動作清單只進本機設定檔、不進雲端同步（雲端 payload 只取 settings）；沒存過就不帶這個鍵
-  const { [CustomActions.STORAGE_KEY]: storedActions } = await chrome.storage.local.get({ [CustomActions.STORAGE_KEY]: [] });
-  if (Array.isArray(storedActions) && storedActions.length) payload.actions = storedActions;
+  const obsidianVault         = $('obsidianVault').value.trim();
+  const ttsApiKey             = $('ttsApiKey').value.trim();
+  const obsidianDefaultFolder = $('obsidianDefaultFolder').value.trim();
 
-  // 術語表跟著設定檔匯出，也跟著雲端同步（見 buildCloudSettingsPayload）。從沒存過就不帶；
-  // 存過但清空了要帶空表，還原端才會跟著清空，而不是當成沒有術語表資料保留舊術語；
-  // 存的值損毀（不是物件）就不帶，免得被當成「清空」把還原端正常的術語表清掉
-  const { [Glossary.STORAGE_KEY]: storedGlossary } = await chrome.storage.local.get({ [Glossary.STORAGE_KEY]: null });
-  if (storedGlossary && typeof storedGlossary === 'object' && !Array.isArray(storedGlossary)) {
-    payload.glossary = Glossary.normalizeGlossary(storedGlossary);
-  }
-
-  return payload;
-}
-
-async function encryptBackupSecrets(secrets = {}, password = '') {
-  const pickedSecrets = pickBackupSecrets(secrets);
-  if (!Object.keys(pickedSecrets).length) return null;
-  assertBackupPassword(password);
-  const cryptoImpl = getCryptoImpl();
-  const salt = cryptoImpl.getRandomValues(new Uint8Array(16));
-  const iv = cryptoImpl.getRandomValues(new Uint8Array(12));
-  const key = await deriveBackupSecretKey(password, salt);
-  const encoded = new TextEncoder().encode(JSON.stringify(pickedSecrets));
-  const encrypted = await cryptoImpl.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
-  return {
-    version: SECRET_BACKUP_CRYPTO_VERSION,
-    algorithm: 'AES-GCM',
-    kdf: 'PBKDF2-SHA-256',
-    iterations: SECRET_BACKUP_KDF_ITERATIONS,
-    salt: bytesToBase64(salt),
-    iv: bytesToBase64(iv),
-    data: bytesToBase64(new Uint8Array(encrypted))
-  };
-}
-
-async function decryptBackupSecrets(encrypted = {}, password = '') {
-  if (!encrypted) return {};
-  assertBackupPassword(password);
-  const iterations = encrypted.iterations == null ? SECRET_BACKUP_KDF_ITERATIONS : Number(encrypted.iterations);
-  if (encrypted.version !== SECRET_BACKUP_CRYPTO_VERSION
-    || encrypted.algorithm !== 'AES-GCM'
-    || !Number.isInteger(iterations)
-    || iterations < MIN_SECRET_BACKUP_KDF_ITERATIONS
-    || iterations > MAX_SECRET_BACKUP_KDF_ITERATIONS) {
-    throw new Error('API Key 加密備份格式不支援');
-  }
+  await Promise.all([
+    chrome.storage.sync.set({ model, pageTranslationModel, dictionaryModel, targetLanguage, explanationLanguage, ttsLanguageMode, vocabularyHighlightMode, obsidianVault, obsidianDefaultFolder, ...custom.settings }),
+    Storage.setSecrets({ apiKey, groqApiKey, openrouterApiKey, customApiKey, ttsApiKey })
+  ]);
   try {
-    const cryptoImpl = getCryptoImpl();
-    const salt = base64ToBytes(encrypted.salt);
-    const iv = base64ToBytes(encrypted.iv);
-    const key = await deriveBackupSecretKey(password, salt, iterations);
-    const decrypted = await cryptoImpl.subtle.decrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      base64ToBytes(encrypted.data)
-    );
-    return pickBackupSecrets(JSON.parse(new TextDecoder().decode(decrypted)));
+    await ctx.actions.saveFeatureActionModels();
   } catch (error) {
-    if (/API Key 加密備份格式不支援|API Key 備份密碼/.test(String(error?.message || error))) throw error;
-    throw new Error('API Key 備份密碼不正確或檔案已損壞');
+    showStatus('err', `各動作的模型沒有存成功：${error.message}`);
+    return;
   }
-}
-
-async function deriveBackupSecretKey(password, salt, iterations = SECRET_BACKUP_KDF_ITERATIONS) {
-  const cryptoImpl = getCryptoImpl();
-  const baseKey = await cryptoImpl.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(password),
-    'PBKDF2',
-    false,
-    ['deriveKey']
-  );
-  return cryptoImpl.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt,
-      iterations,
-      hash: 'SHA-256'
-    },
-    baseKey,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-}
-
-function assertBackupPassword(password = '') {
-  if (String(password).length < 8) {
-    throw new Error('API Key 備份密碼至少需要 8 個字元');
-  }
-}
-
-function getCryptoImpl() {
-  const cryptoImpl = globalThis.crypto?.subtle
-    ? globalThis.crypto
-    : typeof require === 'function'
-      ? require('crypto').webcrypto
-      : null;
-  if (!cryptoImpl?.subtle || typeof cryptoImpl.getRandomValues !== 'function') {
-    throw new Error('此環境不支援 API Key 加密備份');
-  }
-  return cryptoImpl;
-}
-
-function bytesToBase64(bytes) {
-  if (typeof btoa === 'function') {
-    return btoa(String.fromCharCode(...bytes));
-  }
-  return Buffer.from(bytes).toString('base64');
-}
-
-function base64ToBytes(value = '') {
-  if (typeof atob === 'function') {
-    return Uint8Array.from(atob(value), char => char.charCodeAt(0));
-  }
-  return Uint8Array.from(Buffer.from(value, 'base64'));
-}
-
-function pickBackupSettings(values = {}) {
-  return SYNC_SETTING_KEYS.reduce((acc, key) => {
-    if (Object.prototype.hasOwnProperty.call(values, key)) {
-      acc[key] = values[key] == null ? '' : values[key];
-    }
-    return acc;
-  }, {});
-}
-
-function pickBackupSecrets(values = {}) {
-  return Storage.SECRET_KEYS.reduce((acc, key) => {
-    if (Object.prototype.hasOwnProperty.call(values, key) && values[key]) {
-      acc[key] = values[key];
-    }
-    return acc;
-  }, {});
-}
-
-function downloadSettingsBackup(payload) {
-  const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = buildSettingsBackupFilename();
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function buildSettingsBackupFilename(date = new Date()) {
-  const stamp = date.toISOString().slice(0, 10).replace(/-/g, '');
-  return `fan-fan-ba-settings-${stamp}.json`;
-}
-
-async function importSettingsBackupFile(file, options = {}) {
-  if (file?.size > MAX_SETTINGS_IMPORT_BYTES) {
-    throw new Error('設定檔太大（上限 2MB），請確認是翻翻吧的設定備份');
-  }
-  const payload = parseSettingsBackup(await readTextFile(file));
-  const settings = normalizeImportedSettings(payload.settings || {});
-  const secrets = await resolveImportedBackupSecrets(payload, options.password || '');
-  const hasActions = Array.isArray(payload.actions);
-  const hasGlossary = !!payload.glossary && typeof payload.glossary === 'object';
-
-  if (!Object.keys(settings).length && !Object.keys(secrets).length && !hasActions && !hasGlossary) {
-    throw new Error('設定檔沒有可匯入的設定');
-  }
-
-  const writes = [];
-  if (Object.keys(settings).length) writes.push(chrome.storage.sync.set(settings));
-  if (Object.keys(secrets).length) writes.push(Storage.setSecrets(secrets));
-  // 動作清單整份取代：讀取端容錯（壞掉的自訂動作略過），再走嚴格存檔
-  let actions = null;
-  if (hasActions) writes.push(CustomActions.saveActionList(CustomActions.normalizeActionList(payload.actions)).then(list => { actions = list; }));
-  // 術語表整份取代，壞掉的列略過
-  let glossary = null;
-  if (hasGlossary) writes.push(saveImportedGlossary(payload.glossary).then(saved => { glossary = saved; }));
-  await Promise.all(writes);
-  await loadSettings();
-  const result = { settingsCount: Object.keys(settings).length, secretsCount: Object.keys(secrets).length };
-  // 舊版備份把 API Key 明文寫在檔案裡：照常匯入，但提醒重新匯出成加密版
-  if (!payload.secretsEncrypted && result.secretsCount) result.legacyPlainSecrets = true;
-  if (actions) {
-    result.actionsCount = actions.filter(action => !action.builtin).length;
-    actionListState = actions;
-    renderActionList();
-  }
-  if (glossary) result.glossaryCount = glossary.terms.length;
-  return result;
-}
-
-async function resolveImportedBackupSecrets(payload = {}, password = '') {
-  if (payload.secretsEncrypted && !password) {
-    // 密碼欄平常收起來，缺密碼時讓呼叫端把它打開
-    const error = new Error('這份設定檔的 API Key 有加密，請輸入備份密碼後再匯入一次');
-    error.needsPassword = true;
-    throw error;
-  }
-  if (payload.secretsEncrypted) {
-    return decryptBackupSecrets(payload.secretsEncrypted, password);
-  }
-  return pickBackupSecrets(payload.secrets || {});
-}
-
-function parseSettingsBackup(text) {
-  let payload;
-  try {
-    payload = JSON.parse(text);
-  } catch {
-    throw new Error('JSON 格式不正確');
-  }
-
-  if (!payload || payload.app !== SETTINGS_BACKUP_APP) {
-    throw new Error('不是翻翻吧設定檔');
-  }
-  if (payload.schemaVersion !== SETTINGS_BACKUP_SCHEMA_VERSION) {
-    throw new Error('設定檔版本不支援');
-  }
-  return payload;
-}
-
-function normalizeImportedSettings(values = {}) {
-  const settings = {};
-  SYNC_SETTING_KEYS.forEach(key => {
-    if (!Object.prototype.hasOwnProperty.call(values, key)) return;
-    settings[key] = normalizeImportedSetting(key, values[key]);
-  });
-  return settings;
-}
-
-function normalizeImportedSetting(key, value) {
-  // 全文翻譯的空字串＝跟隨主模型，不能被 normalizeModel 補成預設模型
-  if (key === 'pageTranslationModel' && !String(value || '').trim()) return '';
-  if (key === 'dictionaryModel') {
-    const raw = String(value || '').trim();
-    if (!raw || raw === 'default') return '';
-    const normalized = ModelRegistry.normalizeModel(raw);
-    const entry = ModelRegistry.MODELS.find(item => item.id === normalized);
-    return entry && !entry.pageTranslationOnly ? normalized : '';
-  }
-  if (key === 'model' || key === 'pageTranslationModel') {
-    return ModelRegistry.normalizeModel(String(value || ''));
-  }
-  if (key === 'targetLanguage') {
-    return ModelRegistry.normalizeLanguage(value, 'zh-TW');
-  }
-  if (key === 'explanationLanguage') {
-    return ModelRegistry.normalizeExplanationLanguage(value, 'target');
-  }
-  if (key === 'ttsLanguageMode') {
-    return ModelRegistry.normalizeTtsLanguageMode(value, 'auto');
-  }
-  if (key === 'vocabularyHighlightMode') {
-    return value === 'auto' ? 'auto' : 'off';
-  }
-  if (key === 'customApiBase') {
+  let glossaryConflict = false;
+  if (glossaryDraft && ctx.glossary.isGlossaryDraftChanged(glossaryDraft.glossary)) {
     try {
-      return ModelRegistry.normalizeCustomEndpoint(value).base;
+      const stored = await ctx.glossary.loadStoredGlossary();
+      if (JSON.stringify(stored) !== ctx.glossary.getGlossaryState().baseline) glossaryConflict = true;
+      else await ctx.glossary.writeGlossary(glossaryDraft.glossary);
     } catch (error) {
-      return '';
-    }
-  }
-  return String(value || '').trim();
-}
-
-async function readTextFile(file) {
-  if (file && typeof file.text === 'function') return file.text();
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('無法讀取設定檔'));
-    reader.readAsText(file);
-  });
-}
-
-function formatImportSettingsStatus({ settingsCount = 0, secretsCount = 0, actionsCount = null, glossaryCount = null, legacyPlainSecrets = false } = {}) {
-  const parts = [];
-  if (settingsCount) parts.push(`${settingsCount} 個設定`);
-  if (secretsCount) parts.push(`${secretsCount} 個 API Key`);
-  if (actionsCount !== null) parts.push(`動作清單（${actionsCount} 個自訂動作）`);
-  if (glossaryCount !== null) parts.push(`術語表（${glossaryCount} 筆）`);
-  const legacyNote = legacyPlainSecrets ? '。這是舊版未加密的備份，建議重新匯出成加密備份' : '';
-  return `✓ 設定檔已匯入${parts.length ? `：${parts.join('、')}` : ''}${legacyNote}`;
-}
-
-function confirmSecretsExport() {
-  if (typeof window === 'undefined' || typeof window.confirm !== 'function') return true;
-  return window.confirm('API Keys 會用你輸入的密碼加密後匯出。請記住密碼，忘記後無法還原。確定要匯出嗎？');
-}
-
-function confirmRemoveProviderKey(label) {
-  if (typeof window === 'undefined' || typeof window.confirm !== 'function') return false;
-  return window.confirm(`${label} API Key 欄位目前是空的。要移除已儲存的 ${label} API Key 嗎？移除後翻譯功能會要求重新設定金鑰。`);
-}
-
-function confirmCloudUploadOverwrite(file = {}) {
-  if (typeof window === 'undefined' || typeof window.confirm !== 'function') return true;
-  const modifiedTime = file.modifiedTime ? `\n雲端檔案最後修改：${file.modifiedTime}` : '';
-  return window.confirm(`雲端已經有翻翻吧設定檔。上傳目前設定會覆寫雲端版本，另一台裝置之後下載會拿到這份新設定。${modifiedTime}\n\n確定要上傳並覆寫嗎？`);
-}
-
-function confirmCloudDownloadOverwrite(file = {}) {
-  if (typeof window === 'undefined' || typeof window.confirm !== 'function') return true;
-  const modifiedTime = file.modifiedTime ? `\n雲端檔案最後修改：${file.modifiedTime}` : '';
-  return window.confirm(`下載雲端設定會覆寫這台裝置目前的一般設定，但不會變更任何 API Key。${modifiedTime}\n\n確定要下載並套用嗎？`);
-}
-
-
-// ── 自訂動作：清單、編輯器與預覽 ──────────────────────
-// 資料模型與驗證都在 custom-actions.js；這裡只負責畫面。預覽用範例資料，不發任何網路請求。
-
-const ACTION_LAYOUT_NOTES = {
-  fields: '每個欄位一段，依序顯示欄位名與內容。',
-  annotate: '第一個欄位要回傳陣列：[{ "text": 原文片段, "type": 類型, "note": 說明 }]，片段會標在原文上。',
-  compare: '欄位代號用 before／after／notes；沒有 before 時以選取原文當修改前。'
-};
-
-// 內建動作的範本：prompt 是另外寫的簡化版，不是內建動作的原始 prompt
-const BUILTIN_ACTION_TEMPLATES = {
-  translate: {
-    name: '翻譯（自訂）', icon: 'globe', layout: 'fields',
-    userPrompt: '請把下面的文字翻成{{targetLanguage}}，語氣自然。\n\n{{selection}}',
-    fields: [{ key: 'translation', label: '譯文', description: '' }]
-  },
-  explain: {
-    name: '解釋（自訂）', icon: 'bulb', layout: 'fields',
-    userPrompt: '用{{targetLanguage}}解釋下面這段文字的意思與重點，必要時參考上下文。\n\n文字：{{selection}}\n\n上下文：{{context}}',
-    fields: [
-      { key: 'meaning', label: '意思', description: '' },
-      { key: 'points', label: '重點', description: '條列' }
-    ]
-  },
-  analyze: {
-    name: '長難句分析（自訂）', icon: 'list', layout: 'annotate',
-    systemPrompt: '說明一律使用{{targetLanguage}}。',
-    userPrompt: '分析下面這段文字的句子結構：把主詞、動詞、受詞、子句、修飾語、連接詞標出來，片段要逐字取自原文，並附上整段譯文。\n\n{{selection}}',
-    fields: [
-      { key: 'marks', label: '句子成分', description: '陣列：text 取自原文，type 用 subject／predicate／object／clause／modifier／connector' },
-      { key: 'translation', label: '譯文', description: '' }
-    ]
-  },
-  optimize: {
-    name: '優化（自訂）', icon: 'pen', layout: 'compare',
-    userPrompt: '把下面的文字改得更通順自然，保留原意，並說明改了什麼。\n\n{{selection}}',
-    fields: [
-      { key: 'after', label: '修改後', description: '' },
-      { key: 'notes', label: '說明', description: '' }
-    ]
-  }
-};
-
-// ── 術語表 ─────────────────────────────────────────
-// 編輯器直接用表格列當狀態，按「儲存設定」時才讀回、驗證、寫進 chrome.storage.local。
-// 還沒從 storage 讀完（或讀取失敗）就不寫，免得用空表蓋掉已存的術語表；
-// 讀到後記下當時的內容，存檔時沒改就不寫，免得蓋掉別的設定分頁剛存的術語。
-let glossaryEditorLoaded = false;
-let glossaryEditorBaseline = '';
-let glossaryLoadFailed = false; // 讀取失敗時儲存設定不寫術語表，儲存訊息也要講明
-let glossaryEditorDirty = false; // 使用者動過編輯器：別處更新術語表時不換掉手上的內容
-let glossaryPendingWrite = null; // 這頁正在寫入的內容：storage 變更事件回來時認得是自己寫的
-const GLOSSARY_CSV_MAX_BYTES = 1024 * 1024;
-
-function setGlossaryStatus(message) {
-  if ($('glossaryStatus')) $('glossaryStatus').textContent = message;
-}
-
-function buildGlossaryRow(term = {}) {
-  const input = (field, label, maxlength) => {
-    const el = Dom.ffbEl('input', { type: 'text', class: `glossary-${field}`, maxlength, 'aria-label': label, autocomplete: 'off', spellcheck: 'false' });
-    el.value = term[field] || '';
-    return el;
-  };
-  const remove = Dom.ffbEl('button', { class: 'btn-test', type: 'button', 'aria-label': '刪除這一列' }, '刪除');
-  const row = Dom.ffbEl('tr', { class: 'glossary-row' }, [
-    Dom.ffbEl('td', null, input('source', '原文', Glossary.MAX_SOURCE_CHARS)),
-    Dom.ffbEl('td', null, input('target', '譯文', Glossary.MAX_TARGET_CHARS)),
-    Dom.ffbEl('td', null, input('note', '備註', Glossary.MAX_NOTE_CHARS)),
-    Dom.ffbEl('td', null, remove)
-  ]);
-  // 改過內容就先拿掉錯誤標示，存檔時再重新檢查
-  row.addEventListener('input', () => row.classList.remove('is-invalid'));
-  remove.addEventListener('click', () => {
-    const rows = $('glossaryRows');
-    const next = row.nextElementSibling || row.previousElementSibling;
-    row.remove();
-    if (!rows.children.length) rows.append(buildGlossaryRow());
-    (next || rows.firstElementChild).querySelector('input').focus();
-  });
-  return row;
-}
-
-function readGlossaryRow(row) {
-  const value = field => row.querySelector(`.glossary-${field}`).value.trim();
-  return { source: value('source'), target: value('target'), note: value('note') };
-}
-
-function isBlankGlossaryRow(row) {
-  const { source, target, note } = readGlossaryRow(row);
-  return !source && !target && !note;
-}
-
-function renderGlossaryEditor(glossary) {
-  const rows = $('glossaryRows');
-  if (!rows) return;
-  const terms = glossary.terms.length ? glossary.terms : [{}];
-  Dom.ffbClear(rows).append(...terms.map(term => buildGlossaryRow(term)));
-  $('glossarySites').value = glossary.sites.join('\n');
-}
-
-// 讀回編輯器內容；有錯就列在 errors，呼叫端不存檔
-function readGlossaryEditor() {
-  const errors = [];
-  const terms = [];
-  const seen = new Set();
-  [...$('glossaryRows').querySelectorAll('.glossary-row')].forEach((row, index) => {
-    row.classList.remove('is-invalid');
-    if (isBlankGlossaryRow(row)) return;
-    const term = readGlossaryRow(row);
-    if (!term.source || !term.target) {
-      errors.push(`第 ${index + 1} 列缺${term.source ? '譯文' : '原文'}`);
-      row.classList.add('is-invalid');
+      showStatus('err', `術語表沒有存成功：${error.message}`);
       return;
     }
-    const key = term.source.toLowerCase();
-    if (seen.has(key)) {
-      errors.push(`原文重複：${term.source}`);
-      row.classList.add('is-invalid');
-      return;
-    }
-    seen.add(key);
-    terms.push(term);
-  });
-  if (terms.length > Glossary.MAX_TERMS) errors.push(`術語最多 ${Glossary.MAX_TERMS} 筆，目前 ${terms.length} 筆`);
-
-  const sites = $('glossarySites').value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  const badSites = sites.filter(site => !Glossary.normalizeSite(site));
-  if (badSites.length) errors.push(`看不懂的網站：${badSites.slice(0, 3).join('、')}`);
-  if (sites.length > Glossary.MAX_SITES) errors.push(`網站最多 ${Glossary.MAX_SITES} 個`);
-
-  return { errors, glossary: Glossary.normalizeGlossary({ terms, sites }) };
-}
-
-async function loadStoredGlossary() {
-  const { [Glossary.STORAGE_KEY]: stored } = await chrome.storage.local.get({ [Glossary.STORAGE_KEY]: null });
-  return Glossary.normalizeGlossary(stored);
-}
-
-// 編輯器內容與 storage 一致時記下基準；存檔只在內容跟基準不同時寫入
-function markGlossaryEditorSynced(glossary) {
-  glossaryEditorBaseline = JSON.stringify(Glossary.normalizeGlossary(glossary));
-  glossaryEditorLoaded = true;
-  glossaryLoadFailed = false;
-  glossaryEditorDirty = false;
-  clearSettingsDirty(['glossary']);
-}
-
-function isGlossaryDraftChanged(glossary) {
-  return JSON.stringify(Glossary.normalizeGlossary(glossary)) !== glossaryEditorBaseline;
-}
-
-// 寫入術語表並更新基準；寫入期間的 storage 變更事件靠 glossaryPendingWrite 認出是自己寫的
-async function writeGlossary(glossary) {
-  glossaryPendingWrite = JSON.stringify(Glossary.normalizeGlossary(glossary));
-  try {
-    await chrome.storage.local.set({ [Glossary.STORAGE_KEY]: glossary });
-    markGlossaryEditorSynced(glossary);
-  } finally {
-    glossaryPendingWrite = null;
   }
-}
-
-// 別的設定分頁、設定檔匯入或雲端同步改了術語表：編輯器沒動過就換上新內容；
-// 動過就保留手上的內容並提示，存檔時再由儲存流程擋下覆蓋
-function initGlossarySync() {
-  chrome.storage.onChanged?.addListener((changes, area) => {
-    if (area !== 'local' || !changes[Glossary.STORAGE_KEY] || !glossaryEditorLoaded) return;
-    const next = Glossary.normalizeGlossary(changes[Glossary.STORAGE_KEY].newValue);
-    const nextJson = JSON.stringify(next);
-    if (nextJson === glossaryEditorBaseline || nextJson === glossaryPendingWrite) return;
-    if (glossaryEditorDirty) {
-      setGlossaryStatus('術語表已在其他分頁更新；這頁改過的內容還在，但儲存時不會覆蓋，請先複製需要的內容再重新整理頁面。');
-      return;
-    }
-    renderGlossaryEditor(next);
-    markGlossaryEditorSynced(next);
-    setGlossaryStatus('術語表已在其他分頁更新，這裡已換上最新內容。');
-  });
-}
-
-async function loadGlossaryEditor() {
-  let glossary = Glossary.normalizeGlossary(null);
-  try {
-    glossary = await loadStoredGlossary();
-  } catch (error) {
-    console.warn('[翻翻吧] 術語表讀取失敗', error);
-    renderGlossaryEditor(glossary);
-    glossaryEditorLoaded = false;
-    glossaryLoadFailed = true;
-    setGlossaryStatus('術語表讀取失敗，儲存設定時不會動到術語表；請重新整理頁面再試。');
-    return glossary;
+  const savedText = removedProviderLabel ? `✓ 設定已儲存（${removedProviderLabel} API Key 已移除）` : '✓ 設定已儲存';
+  ctx.navigation.clearSettingsDirty(glossaryConflict || glossaryState.loadFailed ? ['model', 'language', 'obsidian'] : undefined);
+  if (glossaryConflict) {
+    showStatus('err', `${savedText}；但術語表已在其他分頁修改，這頁的術語表沒有存。請先複製需要的內容，重新整理頁面後再改`);
+  } else if (glossaryState.loadFailed) {
+    showStatus('err', `${savedText}；但術語表讀取失敗，術語表沒有儲存，請重新整理頁面再試`);
+  } else {
+    showStatus('ok', savedText);
   }
-  renderGlossaryEditor(glossary);
-  markGlossaryEditorSynced(glossary);
-  return glossary;
-}
+});
 
-async function saveImportedGlossary(raw) {
-  const glossary = Glossary.normalizeGlossary(raw);
-  await writeGlossary(glossary);
-  renderGlossaryEditor(glossary);
-  return glossary;
-}
+// ── 測試連線 ─────────────────────────────────────────
+$('btnTest').addEventListener('click', async () => {
+  const model = $('model').value || ModelRegistry.DEFAULT_MODEL;
+  if (ModelRegistry.getProvider(model) === 'custom') return testCustomEndpoint();
+  const isGroq = model.startsWith('groq:');
+  const isOpenRouter = model.startsWith('openrouter:');
+  const P = ModelRegistry.PROVIDERS;
 
-// 匯入的 CSV 接在現有列後面；原文和現有列重複的略過（保留先前那筆）
-async function importGlossaryCsvFile(file) {
-  if (file?.size > GLOSSARY_CSV_MAX_BYTES) {
-    setGlossaryStatus('檔案太大（上限 1MB），請確認是術語表 CSV。');
-    return null;
+  let apiKey, displayName, providerLabel, fetchUrl, fetchBody, fetchHeaders;
+
+  if (isGroq) {
+    apiKey = $('groqApiKey').value.trim();
+    providerLabel = P.groq.label;
+    displayName = `${ModelRegistry.getModel(model).name} (${P.groq.label})`;
+    fetchUrl = `${P.groq.apiBase}/chat/completions`;
+    fetchHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
+    fetchBody = buildOpenAICompatTestBody(ModelRegistry.toApiModelId(model));
+  } else if (isOpenRouter) {
+    apiKey = $('openrouterApiKey').value.trim();
+    providerLabel = P.openrouter.label;
+    displayName = ModelRegistry.toApiModelId(model);
+    fetchUrl = `${P.openrouter.apiBase}/chat/completions`;
+    fetchHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, ...P.openrouter.extraHeaders };
+    fetchBody = buildOpenAICompatTestBody(ModelRegistry.toApiModelId(model));
+  } else {
+    apiKey = $('apiKey').value.trim();
+    providerLabel = P.gemini.label;
+    displayName = model;
+    fetchUrl = `${P.gemini.apiBase}/${model}:generateContent`;
+    fetchHeaders = { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey };
+    fetchBody = JSON.stringify({ contents: [{ parts: [{ text: '回覆 OK 即可' }] }], generationConfig: { maxOutputTokens: 10 } });
   }
-  const { terms, skipped } = Glossary.parseGlossaryCsv(await readTextFile(file));
-  const rows = $('glossaryRows');
-  [...rows.children].forEach(row => { if (isBlankGlossaryRow(row)) row.remove(); });
-  const existing = new Set([...rows.children].map(row => readGlossaryRow(row).source.toLowerCase()));
-  let added = 0;
-  let duplicated = 0;
-  for (const term of terms) {
-    const key = term.source.toLowerCase();
-    if (existing.has(key)) { duplicated++; continue; }
-    existing.add(key);
-    rows.append(buildGlossaryRow(term));
-    added++;
-  }
-  if (!rows.children.length) rows.append(buildGlossaryRow());
-  if (added) {
-    glossaryEditorDirty = true;
-    markSettingsDirty('glossary');
-  }
-  const parts = [`已加入 ${added} 筆`];
-  if (duplicated) parts.push(`${duplicated} 筆原文重複略過`);
-  if (skipped) parts.push(`${skipped} 列缺原文或譯文略過`);
-  setGlossaryStatus(`${parts.join('，')}；按「儲存設定」才會生效。`);
-  return { added, duplicated, skipped };
-}
 
-function exportGlossaryCsv() {
-  const { terms } = readGlossaryEditor().glossary;
-  if (!terms.length) {
-    setGlossaryStatus('術語表是空的，沒有可匯出的內容。');
-    return null;
-  }
-  // 公式注入防護沿用單字本 CSV 的 escapeCsvCell
-  const csv = Glossary.buildGlossaryCsv(terms, VocabBackup.escapeCsvCell);
-  const blob = new Blob([csv], { type: VocabBackup.CSV_MIME_TYPE });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `fan-fan-ba-glossary-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-  setGlossaryStatus(`已匯出 ${terms.length} 筆術語成 CSV。`);
-  return csv;
-}
-
-function initGlossaryEditor() {
-  if (!$('glossaryRows')) return undefined;
-  // 打字、增刪列都算動過編輯器
-  $('glossaryRows').addEventListener('input', () => { glossaryEditorDirty = true; });
-  $('glossaryRows').addEventListener('click', event => { if (event.target.closest('button')) glossaryEditorDirty = true; });
-  $('glossarySites').addEventListener('input', () => { glossaryEditorDirty = true; });
-  initGlossarySync();
-  $('btnAddGlossaryTerm').addEventListener('click', () => {
-    const row = buildGlossaryRow();
-    $('glossaryRows').append(row);
-    row.querySelector('input').focus();
-  });
-  $('btnImportGlossary').addEventListener('click', () => $('glossaryCsvFile').click());
-  $('glossaryCsvFile').addEventListener('change', async event => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    try {
-      await importGlossaryCsvFile(file);
-    } catch {
-      setGlossaryStatus('CSV 讀取失敗，請確認檔案格式。');
-    }
-  });
-  $('btnExportGlossary').addEventListener('click', () => {
-    try {
-      exportGlossaryCsv();
-    } catch {
-      setGlossaryStatus('CSV 匯出失敗，請再試一次。');
-    }
-  });
-  return loadGlossaryEditor();
-}
-
-// ── 模型比較 ───────────────────────────────────────
-// 同一段文字同時送給勾選的模型，各自顯示譯文與耗時；一個失敗不影響其他。
-// 一律用非批次的全文翻譯模式送出：所有模型拿到同一份段落翻譯 prompt，瀏覽器內建翻譯也能一起比。
-const COMPARE_MAX_CHARS = 2000;
-let compareRunning = false;
-
-function setCompareStatus(message) {
-  if ($('compareStatus')) $('compareStatus').textContent = message;
-}
-
-// 只列已儲存金鑰的模型（自訂端點還要填好網址與模型名稱）與免金鑰的內建翻譯
-async function loadCompareModels() {
-  const [secrets, settings] = await Promise.all([
-    Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', customApiKey: '' }),
-    chrome.storage.sync.get({ customApiBase: '', customModelName: '' })
-  ]);
-  return ModelRegistry.MODELS.filter(model => ModelRegistry.isModelConfigured(model, secrets, settings));
-}
-
-function compareModelLabel(id) {
-  const model = ModelRegistry.getModel(id);
-  const provider = ModelRegistry.PROVIDERS[model?.provider];
-  return provider && !provider.keyless ? `${model.name}（${provider.label}）` : (model?.name || id);
-}
-
-// 重畫時保留原本勾選的項目（金鑰改了、清單變了也不會全部被取消）
-async function renderCompareModels() {
-  const list = $('compareModelList');
-  if (!list) return [];
-  let models = [];
-  try {
-    models = await loadCompareModels();
-  } catch (error) {
-    console.warn('[翻翻吧] 讀取可比較的模型失敗', error);
-  }
-  const checked = new Set([...list.querySelectorAll('input:checked')].map(input => input.value));
-  Dom.ffbClear(list).append(...models.map(model => {
-    const input = Dom.ffbEl('input', { type: 'checkbox', name: 'compareModel', value: model.id });
-    input.checked = checked.has(model.id);
-    return Dom.ffbEl('label', null, [input, compareModelLabel(model.id)]);
-  }));
-  $('compareModelEmpty').hidden = models.length > 0;
-  return models;
-}
-
-async function compareOneModel(modelId, text, targetLanguage) {
-  const started = Date.now();
-  try {
-    const response = await chrome.runtime.sendMessage({
-      type: 'GEMINI_REQUEST',
-      action: 'translate',
-      selectedText: text,
-      modelOverride: modelId,
-      pageTranslation: true,
-      targetLanguage,
-      browserLanguage: globalThis.navigator?.language || ''
-    });
-    const ms = Date.now() - started;
-    if (!response) return { modelId, ms, error: '沒有收到回應，請重試' };
-    if (response.error) return { modelId, ms, error: String(response.error) };
-    return { modelId, ms, result: String(response.result ?? ''), notice: response.notice ? String(response.notice) : '' };
-  } catch (error) {
-    return { modelId, ms: Date.now() - started, error: error?.message || '請求失敗' };
-  }
-}
-
-function formatCompareSeconds(ms) {
-  return `${(ms / 1000).toFixed(1)} 秒`;
-}
-
-function buildCompareCard(modelId) {
-  const meta = Dom.ffbEl('p', { class: 'compare-meta' }, '翻譯中…');
-  const output = Dom.ffbEl('p', { class: 'compare-output' });
-  const el = Dom.ffbEl('article', { class: 'compare-card', dataset: { model: modelId } }, [
-    Dom.ffbEl('h3', null, compareModelLabel(modelId)),
-    meta,
-    output
-  ]);
-  return { el, meta, output };
-}
-
-// 模型回傳的內容一律當純文字
-function fillCompareCard(card, outcome) {
-  card.el.classList.toggle('is-error', !!outcome.error);
-  if (outcome.error) {
-    card.meta.textContent = `失敗，${formatCompareSeconds(outcome.ms)}`;
-    card.output.textContent = outcome.error;
+  if (!apiKey) {
+    showStatus('err', `請先輸入 ${providerLabel} API Key`);
     return;
   }
-  card.meta.textContent = [formatCompareSeconds(outcome.ms), outcome.notice].filter(Boolean).join('，');
-  card.output.textContent = outcome.result;
-}
 
-async function runModelCompare() {
-  if (compareRunning) return null;
-  const text = $('compareText').value.trim();
-  const modelIds = [...$('compareModelList').querySelectorAll('input:checked')].map(input => input.value);
-  if (!text) {
-    setCompareStatus('請先輸入要翻譯的文字。');
-    $('compareText').focus();
-    return null;
-  }
-  if (text.length > COMPARE_MAX_CHARS) {
-    setCompareStatus(`文字最多 ${COMPARE_MAX_CHARS} 字。`);
-    return null;
-  }
-  if (!modelIds.length) {
-    setCompareStatus('請至少勾選一個模型。');
-    return null;
-  }
-
-  compareRunning = true;
-  $('btnRunCompare').disabled = true;
-  const targetLanguage = ModelRegistry.normalizeLanguage($('targetLanguage')?.value, 'zh-TW');
-  const cards = modelIds.map(buildCompareCard);
-  Dom.ffbClear($('compareResults')).append(...cards.map(card => card.el));
-  setCompareStatus(`比較中：${modelIds.length} 個模型同時送出…`);
+  showStatus('info', '測試中...');
+  $('btnTest').disabled = true;
 
   try {
-    // 全部同時送出；每張卡片收到自己的結果就更新，不等其他模型
-    const outcomes = await Promise.all(modelIds.map((modelId, index) =>
-      compareOneModel(modelId, text, targetLanguage).then(outcome => {
-        fillCompareCard(cards[index], outcome);
-        return outcome;
-      })
-    ));
-    const failed = outcomes.filter(outcome => outcome.error).length;
-    setCompareStatus(failed
-      ? `完成：${outcomes.length - failed} 個成功、${failed} 個失敗。`
-      : `完成：${outcomes.length} 個模型都有結果。`);
-    return outcomes;
+    let res = await fetchWithTimeout(fetchUrl, { method: 'POST', headers: fetchHeaders, body: fetchBody });
+    let fallbackUsed = false;
+    if ((isGroq || isOpenRouter) && !res.ok) {
+      const err = await res.clone().json().catch(() => ({}));
+      const fallbackModelId = ModelRegistry.getFallbackModelId(model);
+      if (ModelRegistry.shouldFallbackModel(model, res.status, err.error?.message)) {
+        fallbackUsed = true;
+        displayName = fallbackModelId;
+        fetchBody = buildOpenAICompatTestBody(fallbackModelId);
+        res = await fetchWithTimeout(fetchUrl, { method: 'POST', headers: fetchHeaders, body: fetchBody });
+      }
+    }
+    if (res.ok) {
+      showStatus('ok', `✓ 連線成功！模型：${displayName}${fallbackUsed ? '（備援）' : ''}`);
+    } else {
+      showStatus('err', formatConnectionTestError(res.status, providerLabel));
+    }
+  } catch (e) {
+    showStatus('err', e?.name === 'AbortError' ? '連線失敗：請求逾時，請稍後重試' : '網路錯誤：無法連線到 AI 服務');
   } finally {
-    compareRunning = false;
-    $('btnRunCompare').disabled = false;
+    $('btnTest').disabled = false;
   }
-}
-
-function initModelCompare() {
-  if (!$('compareForm')) return undefined;
-  $('compareForm').addEventListener('submit', event => {
-    event.preventDefault();
-    runModelCompare();
-  });
-  // 金鑰可能在別的分頁剛改過，切進來時重新列一次
-  document.querySelector('.settings-tab[data-panel="compare"]')?.addEventListener('click', () => renderCompareModels());
-  return renderCompareModels();
-}
-
-let actionListState = [];
-let actionEditorState = null; // { action, isNew }
-
-function initActionEditor() {
-  if (!$('actionList') || !$('actionEditor')) return undefined;
-  renderActionIconPicker();
-  renderActionVarButtons();
-  renderActionModelSelect();
-
-  $('btnNewAction').addEventListener('click', () => openActionEditor(createBlankCustomAction(), { isNew: true }));
-  $('btnCopyAiGuide').addEventListener('click', copyActionAiGuide);
-  $('btnAddActionField').addEventListener('click', () => {
-    const fields = readActionFieldRows();
-    if (fields.length >= CustomActions.MAX_FIELDS) {
-      setActionEditorError(`輸出欄位最多 ${CustomActions.MAX_FIELDS} 個`);
-      return;
-    }
-    renderActionFieldRows([...fields, { key: '', label: '', description: '' }]);
-    $('actionFields').querySelector('.action-field-row:last-child input')?.focus();
-    renderActionPreview();
-  });
-  $('actionEditor').addEventListener('submit', event => {
-    event.preventDefault();
-    saveActionFromEditor();
-  });
-  $('actionEditor').addEventListener('input', renderActionPreview);
-  $('actionEditor').addEventListener('change', renderActionPreview);
-  $('actionEditor').addEventListener('keydown', event => {
-    if (event.key === 'Escape') { event.preventDefault(); closeActionEditor(); }
-  });
-  $('btnCancelAction').addEventListener('click', closeActionEditor);
-  $('btnDeleteAction').addEventListener('click', deleteActionFromEditor);
-  document.querySelectorAll('[data-preview-width]').forEach(button => {
-    button.addEventListener('click', () => setActionPreviewWidth(Number(button.dataset.previewWidth)));
-  });
-
-  initActionListSync();
-  return loadActionEditorList();
-}
-
-async function loadActionEditorList() {
-  actionListState = await CustomActions.loadActionList();
-  renderActionList();
-  return actionListState;
-}
-
-function setActionListStatus(message, isError = false) {
-  const el = $('actionListStatus');
-  if (!el) return;
-  el.textContent = message;
-  el.classList.toggle('is-error', isError);
-}
-
-function renderActionList() {
-  const list = $('actionList');
-  if (!list) return;
-  const last = actionListState.length - 1;
-  Dom.ffbClear(list).append(...actionListState.map((action, index) => {
-    const moveButton = (delta, text) => Dom.ffbEl('button', {
-      class: 'btn-test', type: 'button', 'aria-label': `${text}：${action.name}`,
-      disabled: (delta < 0 && index === 0) || (delta > 0 && index === last)
-    }, delta < 0 ? '↑' : '↓');
-    const up = moveButton(-1, '上移');
-    const down = moveButton(1, '下移');
-    up.addEventListener('click', () => moveAction(action.id, -1));
-    down.addEventListener('click', () => moveAction(action.id, 1));
-
-    const enabled = Dom.ffbEl('input', { type: 'checkbox', 'aria-label': `啟用：${action.name}` });
-    enabled.checked = action.enabled;
-    enabled.addEventListener('change', () => setActionEnabled(action.id, enabled.checked));
-
-    const buttons = action.builtin
-      ? [Dom.ffbEl('button', { class: 'btn-test', type: 'button', dataset: { act: 'template' } }, '以此為範本')]
-      : [
-        Dom.ffbEl('button', { class: 'btn-test', type: 'button', dataset: { act: 'edit' } }, '編輯'),
-        Dom.ffbEl('button', { class: 'btn-test', type: 'button', dataset: { act: 'duplicate' } }, '複製')
-      ];
-    buttons.forEach(button => button.addEventListener('click', () => {
-      const act = button.dataset.act;
-      if (act === 'edit') openActionEditor(action, { isNew: false });
-      else if (act === 'duplicate') openActionEditor(duplicateCustomAction(action), { isNew: true });
-      else openActionEditor(createActionFromBuiltin(action.id), { isNew: true });
-    }));
-
-    const badgeKind = action.builtin ? ACTION_FEATURE_BADGES[action.id] : null;
-    const badgeId = badgeKind ? `action-${action.id}` : null;
-    return Dom.ffbEl('li', {
-      class: `action-row${action.enabled ? '' : ' is-disabled'}`,
-      dataset: { id: action.id, featureItem: badgeId }
-    }, [
-      enabled,
-      Dom.ffbEl('span', { class: 'action-row-name' }, [
-        ActionRender.buildCustomActionIcon(action.builtin ? builtinIconName(action.id) : action.icon, 16),
-        Dom.ffbEl('span', null, action.name),
-        action.builtin && Dom.ffbEl('span', {
-          class: 'action-badge is-locked',
-          title: '內建動作只能停用或調整順序；要改內容請按「以此為範本」'
-        }, '內建'),
-        badgeKind && buildFeatureBadge(badgeId, badgeKind)
-      ]),
-      up, down, ...buttons
-    ]);
-  }));
-  renderFeatureActionModelRows();
-  applyFeatureBadges();
-}
-
-function builtinIconName(id) {
-  return { translate: 'globe', explain: 'bulb', optimize: 'pen', analyze: 'list' }[id] || ActionRender.getDefaultCustomActionIcon();
-}
-
-// 存檔一律走 saveActionList（嚴格驗證）；失敗時畫面維持原狀並顯示原因
-async function persistActionList(list, message) {
-  try {
-    actionListState = await CustomActions.saveActionList(list);
-    renderActionList();
-    setActionListStatus(message);
-    return true;
-  } catch (error) {
-    setActionListStatus(`儲存失敗：${error.message}`, true);
-    renderActionList();
-    return false;
-  }
-}
-
-function reorderActions(list) {
-  return list.map((action, index) => ({ ...action, order: index }));
-}
-
-async function moveAction(id, delta) {
-  const index = actionListState.findIndex(action => action.id === id);
-  const target = index + delta;
-  if (index === -1 || target < 0 || target >= actionListState.length) return false;
-  const list = actionListState.slice();
-  [list[index], list[target]] = [list[target], list[index]];
-  const moved = await persistActionList(reorderActions(list), '✓ 已調整順序');
-  // 重畫後把焦點放回同一個動作的同方向按鈕，鍵盤可以連按
-  if (moved) {
-    const row = [...$('actionList').querySelectorAll('.action-row')].find(item => item.dataset.id === id);
-    const buttons = row ? [...row.querySelectorAll('button')].slice(0, 2) : [];
-    const preferred = buttons[delta < 0 ? 0 : 1];
-    (preferred && !preferred.disabled ? preferred : buttons[delta < 0 ? 1 : 0])?.focus();
-  }
-  return moved;
-}
-
-function setActionEnabled(id, enabled) {
-  const list = actionListState.map(action => (action.id === id ? { ...action, enabled } : action));
-  return persistActionList(list, enabled ? '✓ 已啟用' : '✓ 已停用');
-}
-
-function generateCustomActionId() {
-  const random = Math.random().toString(36).slice(2, 8);
-  return `custom-${Date.now().toString(36)}-${random}`;
-}
-
-function nextActionOrder() {
-  return Math.min(999, actionListState.reduce((max, action) => Math.max(max, action.order), -1) + 1);
-}
-
-function createBlankCustomAction() {
-  return {
-    id: generateCustomActionId(), name: '新動作', icon: ActionRender.getDefaultCustomActionIcon(),
-    builtin: false, enabled: true, pinned: false, order: nextActionOrder(), model: 'default',
-    systemPrompt: '', userPrompt: '{{selection}}',
-    fields: [{ key: 'result', label: '結果', description: '' }],
-    layout: 'fields', saveTo: 'none'
-  };
-}
-
-function createActionFromBuiltin(builtinId) {
-  const template = BUILTIN_ACTION_TEMPLATES[builtinId];
-  return {
-    ...createBlankCustomAction(),
-    ...template,
-    fields: template.fields.map(field => ({ ...field }))
-  };
-}
-
-function duplicateCustomAction(action) {
-  return {
-    ...action,
-    id: generateCustomActionId(),
-    name: `${action.name}（副本）`.slice(0, 40),
-    pinned: false,
-    order: nextActionOrder(),
-    fields: action.fields.map(field => ({ ...field }))
-  };
-}
-
-function renderActionIconPicker() {
-  const picker = $('actionIconPicker');
-  const legend = picker.querySelector('legend');
-  Dom.ffbClear(picker).append(legend, ...ActionRender.listCustomActionIcons().map(({ name, label }) => {
-    const input = Dom.ffbEl('input', { type: 'radio', name: 'actionIcon', value: name });
-    return Dom.ffbEl('label', { class: 'action-icon-option' }, [input, ActionRender.buildCustomActionIcon(name, 16), label]);
-  }));
-}
-
-// 設定頁列出的變數：{{pageUrl}} 目前一律換成空白（content 刻意不送網址），不列出來免得誤用；
-// 已存在的動作照樣能用，驗證仍走 CustomActions.VARIABLES
-function getEditorActionVariables() {
-  return CustomActions.VARIABLES.filter(name => name !== 'pageUrl');
-}
-
-function renderActionVarButtons() {
-  Dom.ffbClear($('actionVarButtons')).append(...getEditorActionVariables().map(name => {
-    const button = Dom.ffbEl('button', { class: 'btn-test', type: 'button', 'aria-label': `插入變數 ${name}` }, `{{${name}}}`);
-    button.addEventListener('click', () => insertActionVariable(name));
-    return button;
-  }));
-}
-
-function renderActionModelSelect() {
-  const models = ModelRegistry.MODELS.filter(model => !model.pageTranslationOnly);
-  Dom.ffbClear($('actionModel')).append(
-    Dom.ffbEl('option', { value: 'default' }, '跟隨主模型'),
-    ...models.map(model => Dom.ffbEl('option', { value: model.id }, model.name || model.id))
-  );
-}
-
-// 插在游標位置，插完游標停在變數後面
-function insertActionVariable(name) {
-  const textarea = $('actionUserPrompt');
-  const token = `{{${name}}}`;
-  const start = textarea.selectionStart ?? textarea.value.length;
-  const end = textarea.selectionEnd ?? textarea.value.length;
-  textarea.value = textarea.value.slice(0, start) + token + textarea.value.slice(end);
-  textarea.focus();
-  textarea.setSelectionRange(start + token.length, start + token.length);
-  renderActionPreview();
-}
-
-function renderActionFieldRows(fields) {
-  Dom.ffbClear($('actionFields')).append(...fields.map((field, index) => {
-    const input = (className, value, label, maxlength, placeholder) => {
-      const el = Dom.ffbEl('input', {
-        type: 'text', class: className, 'aria-label': `第 ${index + 1} 個欄位的${label}`,
-        maxlength, placeholder, autocomplete: 'off', spellcheck: 'false'
-      });
-      el.value = value || '';
-      return el;
-    };
-    const remove = Dom.ffbEl('button', { class: 'btn-test', type: 'button', 'aria-label': `刪除第 ${index + 1} 個欄位` }, '刪除');
-    remove.addEventListener('click', () => {
-      const rows = readActionFieldRows();
-      rows.splice(index, 1);
-      renderActionFieldRows(rows);
-      renderActionPreview();
-    });
-    return Dom.ffbEl('div', { class: 'action-field-row' }, [
-      input('action-field-key', field.key, '代號', 32, '代號，如 summary'),
-      input('action-field-label', field.label, '名稱', 40, '名稱'),
-      input('action-field-description', field.description, '說明', 200, '說明（選填，會寫進 prompt）'),
-      remove
-    ]);
-  }));
-}
-
-function readActionFieldRows() {
-  return [...$('actionFields').querySelectorAll('.action-field-row')].map(row => ({
-    key: row.querySelector('.action-field-key').value.trim(),
-    label: row.querySelector('.action-field-label').value.trim(),
-    description: row.querySelector('.action-field-description').value.trim()
-  }));
-}
-
-function openActionEditor(action, { isNew }) {
-  actionEditorState = { action, isNew };
-  $('actionEditorTitle').textContent = isNew ? '新增自訂動作' : `編輯：${action.name}`;
-  $('actionName').value = action.name;
-  $('actionModel').value = action.model || 'default';
-  const icons = [...$('actionIconPicker').querySelectorAll('input[name="actionIcon"]')];
-  (icons.find(input => input.value === action.icon)
-    || icons.find(input => input.value === ActionRender.getDefaultCustomActionIcon())).checked = true;
-  $('actionSystemPrompt').value = action.systemPrompt || '';
-  $('actionUserPrompt').value = action.userPrompt || '';
-  $('actionLayout').value = action.layout || 'fields';
-  $('actionSaveTo').value = action.saveTo || 'none';
-  $('btnDeleteAction').hidden = isNew;
-  renderActionFieldRows(action.fields || []);
-  setActionEditorError('');
-  $('actionEditor').hidden = false;
-  renderActionPreview();
-  $('actionName').focus();
-}
-
-function closeActionEditor() {
-  actionEditorState = null;
-  $('actionEditor').hidden = true;
-  setActionEditorError('');
-  $('btnNewAction')?.focus();
-}
-
-function setActionEditorError(message) {
-  const el = $('actionEditorError');
-  if (el) el.textContent = message;
-}
-
-function readActionEditorDraft() {
-  // 以清單裡最新的那筆為底：編輯器開著時別處改的釘選／啟用／順序不會被開啟當下的舊值蓋回
-  const opened = actionEditorState?.action;
-  const base = (opened && actionListState.find(item => item.id === opened.id)) || opened || createBlankCustomAction();
-  return {
-    ...base,
-    name: $('actionName').value.trim(),
-    icon: $('actionIconPicker').querySelector('input[name="actionIcon"]:checked')?.value || ActionRender.getDefaultCustomActionIcon(),
-    model: $('actionModel').value || 'default',
-    systemPrompt: $('actionSystemPrompt').value,
-    userPrompt: $('actionUserPrompt').value,
-    fields: readActionFieldRows(),
-    layout: $('actionLayout').value,
-    saveTo: $('actionSaveTo').value
-  };
-}
-
-async function saveActionFromEditor() {
-  if (!actionEditorState) return false;
-  let action;
-  try {
-    action = CustomActions.validateCustomAction(readActionEditorDraft());
-  } catch (error) {
-    setActionEditorError(error.message);
-    return false;
-  }
-  const exists = actionListState.some(item => item.id === action.id);
-  // 編輯期間這個動作在別處被刪了：不默默加回去，讓使用者選另存成新動作或放棄
-  if (!exists && !actionEditorState.isNew) {
-    if (!window.confirm(`「${action.name}」已在其他分頁刪除。要另存成新動作嗎？按「取消」會放棄這次的編輯。`)) {
-      closeActionEditor();
-      return false;
-    }
-    action = { ...action, id: generateCustomActionId(), order: nextActionOrder() };
-  }
-  const list = exists
-    ? actionListState.map(item => (item.id === action.id ? action : item))
-    : [...actionListState, action];
-  const saved = await persistActionList(list, `✓ 已儲存「${action.name}」`);
-  if (!saved) {
-    setActionEditorError($('actionListStatus').textContent);
-    return false;
-  }
-  closeActionEditor();
-  return true;
-}
-
-async function deleteActionFromEditor() {
-  if (!actionEditorState || actionEditorState.isNew) return false;
-  const { action } = actionEditorState;
-  if (!window.confirm(`確定刪除「${action.name}」？刪除後無法復原。`)) return false;
-  const saved = await persistActionList(
-    reorderActions(actionListState.filter(item => item.id !== action.id)),
-    `✓ 已刪除「${action.name}」`
-  );
-  if (saved) closeActionEditor();
-  return saved;
-}
-
-// 預覽只用範例資料渲染所選版面；欄位還沒填好時只畫填好的那幾個
-function renderActionPreview() {
-  const preview = $('actionPreview');
-  if (!preview || !actionEditorState) return;
-  const draft = readActionEditorDraft();
-  $('actionLayoutNote').textContent = ACTION_LAYOUT_NOTES[draft.layout] || '';
-  const fields = draft.fields.filter(field => field.key && field.label);
-  if (!fields.length) {
-    Dom.ffbClear(preview).append(Dom.ffbEl('p', { class: 'field-note' }, '至少填一個欄位的代號與名稱，這裡會顯示預覽。'));
-    return;
-  }
-  const action = { ...draft, fields };
-  const sample = ActionRender.buildCustomActionSample(action);
-  Dom.ffbClear(preview).append(
-    Dom.ffbEl('div', { class: 'action-preview-tag' }, [ActionRender.buildCustomActionIcon(draft.icon, 13), ` ${draft.name || '未命名動作'}`]),
-    ActionRender.buildCustomActionContent(action, sample.data, { selectedText: sample.selectedText })
-  );
-}
-
-function setActionPreviewWidth(width) {
-  const value = width === 500 ? 500 : 320;
-  $('actionPreview').style.width = `${value}px`;
-  document.querySelectorAll('[data-preview-width]').forEach(button => {
-    button.setAttribute('aria-pressed', Number(button.dataset.previewWidth) === value ? 'true' : 'false');
-  });
-}
-
-function buildActionAiGuideText() {
-  return [
-    '請幫我設計一個「翻翻吧」瀏覽器擴充功能的自訂動作。使用方式：在網頁上選取文字後執行這個動作，模型會回傳 JSON，擴充功能再依版面顯示。',
-    '',
-    '請依下面格式回覆，讓我逐欄貼進設定頁：',
-    '- 名稱：最多 40 字',
-    '- 系統提示（選填）：最多 4000 字，只能用變數 {{targetLanguage}}',
-    `- 使用者提示：最多 4000 字，可用變數 ${getEditorActionVariables().map(name => `{{${name}}}`).join('、')}`,
-    '  （{{selection}} 是選取文字、{{context}} 是鄰近段落、{{pageTitle}} 是頁面標題、{{targetLanguage}} 是目標語言）',
-    `- 輸出欄位：最多 ${CustomActions.MAX_FIELDS} 個，每個有「代號」（英文字母開頭，只能用英數與底線）、「名稱」、「說明」`,
-    '- 版面三選一：',
-    '  - 欄位卡：每個欄位一段',
-    '  - 原文標註：第一個欄位回傳 [{ "text": 原文片段, "type": 類型, "note": 說明 }]，片段必須和原文一字不差',
-    '  - 前後對照：欄位代號用 before／after／notes',
-    '',
-    '不需要在 prompt 裡要求輸出 JSON，擴充功能會自動加上格式要求。中文請用台灣慣用語。',
-    '',
-    '我想做的動作：'
-  ].join('\n');
-}
-
-async function copyActionAiGuide() {
-  try {
-    await navigator.clipboard.writeText(buildActionAiGuideText());
-    setActionListStatus('✓ 說明文字已複製，貼到任何 AI 並補上你想做的動作');
-  } catch {
-    setActionListStatus('複製失敗，請確認瀏覽器允許剪貼簿', true);
-  }
-}
+});
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -2990,78 +522,78 @@ if (typeof module !== 'undefined' && module.exports) {
     renderModelSelect,
     renderPageTranslationModelSelect,
     renderDictionaryModelSelect,
-    renderFeatureActionModelRows,
+    renderFeatureActionModelRows: ctx.actions.renderFeatureActionModelRows,
     updateFeatureModelHints,
-    renderOverviewShortcuts,
+    renderOverviewShortcuts: ctx.navigation.renderOverviewShortcuts,
     getFeatureModelGap,
     renderLanguageSelects,
-    initSettingsTabs,
-    activateSettingsPanel,
-    settingsPanelTitle,
-    showSettingsOverview,
-    routeSettingsFromHash,
-    buildSettingsOverview,
-    renderSettingsOverview,
-    markSettingsDirty,
-    clearSettingsDirty,
-    readGlossaryEditor,
-    renderCompareModels,
-    runModelCompare,
-    loadGlossaryEditor,
-    importGlossaryCsvFile,
-    exportGlossaryCsv,
-    searchSettings,
-    jumpToSettingsSearchResult,
-    markFeatureSeen,
-    initFeatureBadges,
+    initSettingsTabs: ctx.navigation.initSettingsTabs,
+    activateSettingsPanel: ctx.navigation.activateSettingsPanel,
+    settingsPanelTitle: ctx.navigation.settingsPanelTitle,
+    showSettingsOverview: ctx.navigation.showSettingsOverview,
+    routeSettingsFromHash: ctx.navigation.routeSettingsFromHash,
+    buildSettingsOverview: ctx.navigation.buildSettingsOverview,
+    renderSettingsOverview: ctx.navigation.renderSettingsOverview,
+    markSettingsDirty: ctx.navigation.markSettingsDirty,
+    clearSettingsDirty: ctx.navigation.clearSettingsDirty,
+    readGlossaryEditor: ctx.glossary.readGlossaryEditor,
+    renderCompareModels: ctx.compare.renderCompareModels,
+    runModelCompare: ctx.compare.runModelCompare,
+    loadGlossaryEditor: ctx.glossary.loadGlossaryEditor,
+    importGlossaryCsvFile: ctx.glossary.importGlossaryCsvFile,
+    exportGlossaryCsv: ctx.glossary.exportGlossaryCsv,
+    searchSettings: ctx.navigation.searchSettings,
+    jumpToSettingsSearchResult: ctx.navigation.jumpToSettingsSearchResult,
+    markFeatureSeen: ctx.navigation.markFeatureSeen,
+    initFeatureBadges: ctx.navigation.initFeatureBadges,
     loadSettings,
-    buildSettingsBackupPayload,
-    encryptBackupSecrets,
-    decryptBackupSecrets,
-    pickBackupSettings,
-    pickBackupSecrets,
-    buildSettingsBackupFilename,
-    parseSettingsBackup,
-    normalizeImportedSettings,
-    importSettingsBackupFile,
-    resolveImportedBackupSecrets,
-    formatImportSettingsStatus,
-    confirmSecretsExport,
-    confirmRemoveProviderKey,
+    buildSettingsBackupPayload: ctx.backup.buildSettingsBackupPayload,
+    encryptBackupSecrets: ctx.backup.encryptBackupSecrets,
+    decryptBackupSecrets: ctx.backup.decryptBackupSecrets,
+    pickBackupSettings: ctx.backup.pickBackupSettings,
+    pickBackupSecrets: ctx.backup.pickBackupSecrets,
+    buildSettingsBackupFilename: ctx.backup.buildSettingsBackupFilename,
+    parseSettingsBackup: ctx.backup.parseSettingsBackup,
+    normalizeImportedSettings: ctx.backup.normalizeImportedSettings,
+    importSettingsBackupFile: ctx.backup.importSettingsBackupFile,
+    resolveImportedBackupSecrets: ctx.backup.resolveImportedBackupSecrets,
+    formatImportSettingsStatus: ctx.backup.formatImportSettingsStatus,
+    confirmSecretsExport: ctx.backup.confirmSecretsExport,
+    confirmRemoveProviderKey: ctx.backup.confirmRemoveProviderKey,
     prepareCustomEndpointSettings,
     classifyCustomEndpointResponse,
     formatCustomEndpointTestResult,
     testCustomEndpoint,
-    confirmCloudUploadOverwrite,
-    confirmCloudDownloadOverwrite,
-    bindCloudSyncControls,
-    loadCloudWebAuthClientId,
-    buildCloudSettingsPayload,
-    renderCloudSyncStatus,
-    formatCloudSyncTime,
-    renderDiagnostics,
-    renderDiagnosticsSelfCheck,
-    formatDiagnosticsSummary,
-    buildDiagnosticsChecklist,
-    getVocabularyItemsMap,
-    importVocabularyBackup,
-    formatVocabularyBackupReminder,
-    formatSnapshotLabel,
-    renderVocabularySnapshots,
-    restoreVocabularySnapshot,
-    initActionEditor,
-    loadActionEditorList,
-    moveAction,
-    setActionEnabled,
-    openActionEditor,
-    saveActionFromEditor,
-    deleteActionFromEditor,
-    createBlankCustomAction,
-    createActionFromBuiltin,
-    duplicateCustomAction,
-    insertActionVariable,
-    buildActionAiGuideText,
-    copyActionAiGuide,
-    setActionPreviewWidth
+    confirmCloudUploadOverwrite: ctx.backup.confirmCloudUploadOverwrite,
+    confirmCloudDownloadOverwrite: ctx.backup.confirmCloudDownloadOverwrite,
+    bindCloudSyncControls: ctx.cloud.bindCloudSyncControls,
+    loadCloudWebAuthClientId: ctx.cloud.loadCloudWebAuthClientId,
+    buildCloudSettingsPayload: ctx.cloud.buildCloudSettingsPayload,
+    renderCloudSyncStatus: ctx.cloud.renderCloudSyncStatus,
+    formatCloudSyncTime: ctx.cloud.formatCloudSyncTime,
+    renderDiagnostics: ctx.diagnostics.renderDiagnostics,
+    renderDiagnosticsSelfCheck: ctx.diagnostics.renderDiagnosticsSelfCheck,
+    formatDiagnosticsSummary: ctx.diagnostics.formatDiagnosticsSummary,
+    buildDiagnosticsChecklist: ctx.diagnostics.buildDiagnosticsChecklist,
+    getVocabularyItemsMap: ctx.vocabulary.getVocabularyItemsMap,
+    importVocabularyBackup: ctx.vocabulary.importVocabularyBackup,
+    formatVocabularyBackupReminder: ctx.vocabulary.formatVocabularyBackupReminder,
+    formatSnapshotLabel: ctx.vocabulary.formatSnapshotLabel,
+    renderVocabularySnapshots: ctx.vocabulary.renderVocabularySnapshots,
+    restoreVocabularySnapshot: ctx.vocabulary.restoreVocabularySnapshot,
+    initActionEditor: ctx.actions.initActionEditor,
+    loadActionEditorList: ctx.actions.loadActionEditorList,
+    moveAction: ctx.actions.moveAction,
+    setActionEnabled: ctx.actions.setActionEnabled,
+    openActionEditor: ctx.actions.openActionEditor,
+    saveActionFromEditor: ctx.actions.saveActionFromEditor,
+    deleteActionFromEditor: ctx.actions.deleteActionFromEditor,
+    createBlankCustomAction: ctx.actions.createBlankCustomAction,
+    createActionFromBuiltin: ctx.actions.createActionFromBuiltin,
+    duplicateCustomAction: ctx.actions.duplicateCustomAction,
+    insertActionVariable: ctx.actions.insertActionVariable,
+    buildActionAiGuideText: ctx.actions.buildActionAiGuideText,
+    copyActionAiGuide: ctx.actions.copyActionAiGuide,
+    setActionPreviewWidth: ctx.actions.setActionPreviewWidth
   };
 }

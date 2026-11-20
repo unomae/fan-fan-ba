@@ -1,6 +1,7 @@
 'use strict';
 
 const FLOATING_POSITION_KEY = 'fanFanBaFloatingPosition';
+const FLOATING_POSITION_MAX_HOSTS = 50; // 僅保留最近使用站點，避免在 local storage 無限累積造訪網域清單
 // 浮球與收藏面板的線條圖示（形狀陣列；由 floatingBallIcon 建成 SVG namespace 節點）
 const FFB_ICON_HISTORY = [['path', { d: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' }], ['path', { d: 'M3 3v5h5' }], ['path', { d: 'M12 7v5l4 2' }]];
 const FFB_ICON_NOTEBOOK = [['path', { d: 'M2 6h4' }], ['path', { d: 'M2 10h4' }], ['path', { d: 'M2 14h4' }], ['path', { d: 'M2 18h4' }], ['rect', { x: 4, y: 2, width: 16, height: 20, rx: 2 }], ['path', { d: 'M9.5 8h5' }], ['path', { d: 'M9.5 12H16' }], ['path', { d: 'M9.5 16H14' }]];
@@ -217,12 +218,19 @@ async function saveFloatingBallPosition() {
     const top = Math.round(floatingBall.getBoundingClientRect().top);
     const side = floatingBall.classList.contains('ffb-side-left') ? 'left' : 'right';
     const { [FLOATING_POSITION_KEY]: positions = {} } = await chrome.storage.local.get(FLOATING_POSITION_KEY);
-    await chrome.storage.local.set({
-      [FLOATING_POSITION_KEY]: {
-        ...positions,
-        [host]: { top, side }
-      }
-    });
+    const nextPositions = {
+      ...positions,
+      [host]: { top, side, updatedAt: Date.now() }
+    };
+    const entries = Object.entries(nextPositions);
+    const trimmed = entries.length > FLOATING_POSITION_MAX_HOSTS
+      ? Object.fromEntries(
+        entries
+          .sort((a, b) => Number(b[1]?.updatedAt || 0) - Number(a[1]?.updatedAt || 0))
+          .slice(0, FLOATING_POSITION_MAX_HOSTS)
+      )
+      : nextPositions;
+    await chrome.storage.local.set({ [FLOATING_POSITION_KEY]: trimmed });
   } catch { /* 不影響主要功能 */ }
 }
 

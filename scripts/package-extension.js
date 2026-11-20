@@ -31,7 +31,7 @@ const INCLUDE_FILES = [
   'options.html', 'options.js',
   'welcome.html', 'welcome.js'
 ];
-const INCLUDE_DIRS = ['content', 'icons', 'fonts', 'reader'];
+const INCLUDE_DIRS = ['content', 'options', 'icons', 'fonts', 'reader'];
 const PDFJS_DIST = path.join(ROOT, 'node_modules', 'pdfjs-dist');
 const PDFJS_FILES = ['LICENSE', 'build/pdf.min.mjs', 'build/pdf.worker.min.mjs'];
 const PDFJS_DIRS = ['cmaps', 'standard_fonts'];
@@ -110,8 +110,11 @@ function zipStage(version) {
     ].join('\n');
     const psPath = path.join(OUT_DIR, '_pack.ps1');
     fs.writeFileSync(psPath, ps);
-    execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', psPath], { stdio: 'inherit' });
-    fs.rmSync(psPath, { force: true });
+    try {
+      execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', psPath], { stdio: 'inherit' });
+    } finally {
+      fs.rmSync(psPath, { force: true });
+    }
   } else {
     execFileSync('zip', ['-r', '-q', zipPath, '.'], { cwd: STAGE, stdio: 'inherit' });
   }

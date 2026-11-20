@@ -233,13 +233,16 @@
     });
   }
 
+  function createRandomHex(byteLength = 16) {
+    const bytes = new Uint8Array(byteLength);
+    (globalThis.crypto || crypto).getRandomValues(bytes);
+    return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  }
+
   function createOAuthState() {
     // OAuth state 用於 CSRF 防護，需密碼學亂數；改用 crypto.getRandomValues 取代
     // 非密碼學的 Math.random()。crypto 在 service worker / extension 頁面皆可用。
-    const bytes = new Uint8Array(16);
-    (globalThis.crypto || crypto).getRandomValues(bytes);
-    const rand = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
-    return `ffb-${rand}`;
+    return `ffb-${createRandomHex(16)}`;
   }
 
   async function signOut(token) {
@@ -328,7 +331,8 @@
   }
 
   function buildMultipartBody(metadata, payload) {
-    const boundary = `fan-fan-ba-${Date.now().toString(36)}`;
+    // 使用密碼學隨機 hex 作為 boundary，避免與使用者自訂內容或術語碰撞
+    const boundary = `fan-fan-ba-${createRandomHex(16)}`;
     const body = [
       `--${boundary}`,
       'Content-Type: application/json; charset=UTF-8',
