@@ -37,6 +37,7 @@
     - **Tier 3 中日文頁生字候選只抓英文**：實測抓 backlog／dashboard／inventory、日文不抓，請裁決可否接受。
     - **§7 Cloud Sync 登入同步**：「hover 設定」那半已於 `5f4c193` 隨按鈕移除，只剩這半。
     - **§2 存入 Obsidian 後切回原分頁**：擴充送出的 URI 已確認 Obsidian 寫得進去；Chrome 把 `obsidian://` 交給系統、再切回原分頁，只能在日常 Chrome 實際按一次「開啟 Obsidian」確認。
+    - **Alt+T 後的 popup 按鈕**（`a986292`）：單元測試已過；測試用 Chrome 拿不到真 popup 畫面。日常 Chrome 用 Alt+T 翻一段後開 popup，確認按鈕是「翻譯這一頁」、按下去翻整頁。
     - 全過才搬 `CHANGELOG.md`；證據等級與每格結果見 `MANUAL-QA.md`〈2026-11-20 Tier 3／4 補驗〉。
   - **詳情**：`MANUAL-QA.md`；`scripts/check-models.js`
 
