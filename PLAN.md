@@ -11,7 +11,7 @@
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
 | 自動化單元測試 | 全綠，數字以 `npm test` 輸出為準、文件不記（涵蓋設定頁總覽與未儲存提示、模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表、長難句分析、寫作批改、設定頁搜尋與新功能標籤、術語表（含多分頁同步）、模型比較、單字卡四級評分） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-10-23，首次確認測到現行 service worker；改 code 先 `npm run package`，啟動時自動比對建置指紋） |
-| 手動 QA | 全表 55/78；剩 23 項幾乎全卡「無 API key」或「需外部 App／帳號」（見 `MANUAL-QA.md` 執行順序節） |
+| 手動 QA | 全表 56/78（2026-11-20 重數）；剩 22 項＝Tier 3／4 的 19 項全卡「無 API key」或「需外部 App／帳號」，加 Tier 5 送審 3 項（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | **2026-09-20 裁決：暫緩送審，先做功能**，告一段落再回頭走上架流程。Chrome Web Store 仍是 release checkpoint |
 | 2026-08-26 全面審查 | 四路平行審查完成：code（30+ 項）、UI/UX（30 項）、流程（A1-A6＋B1-B5）；總評＝工程底子前段班，上架 blocker 集中在安全 P1×2、a11y、上架材料 |
 
@@ -31,9 +31,9 @@
 - **3. 清 Tier 3／4 剩餘項**
 
   - **目的**：補上自動測試無法代替的真實情境。
-  - **現況**：**清 Tier 3／4 剩餘項**：需要 KAKA 決定是否配真實 API key（2026-08-14 裁決：QA profile 不配 key，這些項不會被自動化涵蓋）；Obsidian 落檔需真 App。 ⚠️ **根 PLAN P-16 的①預設模型能實際翻譯、③404 備援實跑，兩項卡在同一個裁決上**（②四顆模型清冊已於 2026-09-09 用測試鎖住，見 `CHANGELOG.md` 2026-09-09）。維持不配 key 就只能由 KAKA 本人拿自己的 key 手動跑一次；`check-models.js` 也因此只涵蓋 OpenRouter、蓋不到預設模型。
-  - **接續**：KAKA 用真 key 完成 Tier 3／4；候選修改先裁決。
-  - **詳情**：`CHANGELOG.md`；`scripts/check-models.js`
+  - **現況**：Tier 3 剩 5 項、Tier 4 剩 14 項（2026-11-20 重數）。QA profile 不配 key（2026-08-14 裁決），只能 KAKA 本人跑：Groq key 13 項、Obsidian 3 項、Excel、真重裝、Google 帳號各 1 項。P-16 ①③ 已於 11-10 驗收（根 `CHANGELOG.md` 2026-11-16），不再卡本項。`check-models.js` 只對免 key 的 OpenRouter，屬設計限制。
+  - **接續**：KAKA 依 2026-11-20 產的勾選清單跑完 19 項、匯出結果貼回，再逐條寫回 `MANUAL-QA.md`；其中「中日文頁面生字候選只抓英文字是否可接受」由 KAKA 當場裁決。全過才搬 `CHANGELOG.md`。
+  - **詳情**：`MANUAL-QA.md`；`scripts/check-models.js`
 
 ### 上架準備與驗收（續 2）
 
