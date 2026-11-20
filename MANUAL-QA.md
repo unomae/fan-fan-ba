@@ -429,7 +429,7 @@ emoji、RTL override（`‮`）、`=cmd|' /C calc'!A0`、`<img src=x onerror=...
       看不出中間有沒有先扣回），故不勾
       → **2026-11-20 補驗（automation-driven／模擬 provider：真 Chrome＋真擴充，SW 的 fetch 換成固定回應，不用真 key、不連外）**：整頁 7 段全部回 500 →「已完成 0/7，失敗 7」；改回成功後點第一顆「重試此段」→「已完成 1/7，失敗 6」、錯誤區塊 7→6，失敗計數確實扣回
 - [x] 與整頁翻譯混用：雙語 / 譯文 / 原文模式切換、複製譯文 / 雙語、定位原文都正常
-      → **2026-11-20 補驗（automation-driven／模擬 provider：真 Chrome＋真擴充，SW 的 fetch 換成固定回應，不用真 key、不連外）**：先 Alt+T 一段，再從浮球開整頁：6/6 完成，每段最多 1 個譯文區塊（不重複）；譯文／原文／雙語三種模式的原文與譯文顯隱都正確；複製譯文只有譯文、複製雙語含「原文：／譯文：」；在僅譯文模式按定位原文，會切回雙語、捲到原文、標記該段，狀態列先顯示「已定位原文」再被捲動監聽改成「可見區域翻譯完成（6/6）」。⚠️ **疑點（未修）**：先 Alt+T 翻一段後改按全文翻譯快捷鍵（Alt+A，`toggle-page-translation`），不會翻整頁，而是把剛翻的那段也還原掉（`content/main.js` 的 `runPageTranslationTrigger` 把單段翻譯後的狀態當成已在全文翻譯）。是否算 bug 待 KAKA 裁決
+      → **2026-11-20 補驗（automation-driven／模擬 provider：真 Chrome＋真擴充，SW 的 fetch 換成固定回應，不用真 key、不連外）**：先 Alt+T 一段，再從浮球開整頁：6/6 完成，每段最多 1 個譯文區塊（不重複）；譯文／原文／雙語三種模式的原文與譯文顯隱都正確；複製譯文只有譯文、複製雙語含「原文：／譯文：」；在僅譯文模式按定位原文，會切回雙語、捲到原文、標記該段，狀態列先顯示「已定位原文」再被捲動監聽改成「可見區域翻譯完成（6/6）」。**疑點（同日已修）**：先 Alt+T 翻一段後改按全文翻譯快捷鍵（Alt+A，`toggle-page-translation`），原本不會翻整頁，而是把剛翻的那段也還原掉。KAKA 裁示修正，改後實測：按 Alt+A 翻整頁、每段譯文 1 個不重複，再按一次全部還原（見 `CHANGELOG.md` 2026-11-20）
 
 ## 5. v1.9.8 — 本機診斷 / 自檢表（Tier 4）
 - [x] 做幾次翻譯 / 解釋 / 優化 / 整頁翻譯 → 設定頁「隱私」分頁 →「本機診斷摘要」數字有累加，並顯示版本、模型 API Key、高亮設定、使用紀錄與隱私邊界自檢
@@ -527,7 +527,7 @@ emoji、RTL override（`‮`）、`=cmd|' /C calc'!A0`、`<img src=x onerror=...
 - **環境**：Win、Chrome for Testing（`ms-playwright/chromium-1161`）以 `--load-extension` 載入 `dist/pkg`（v1.11.1，build `88a7523edaa8`），全新拋棄式 profile。打包前先 `npm ci`：本機 `node_modules` 缺 lockfile 裡的 `pdfjs-dist`，`npm run package` 原本會失敗。
 - **證據等級**：AI 回應全由 service worker 內的模擬 provider 回固定內容（做法同 `e2e/suites/page-translation.js`），驗的是擴充自己的流程與畫面；**不代表真模型的譯文品質**。真模型路徑已由根 PLAN P-16 於 11-10 用真 key 驗過。
 - **結果**：補勾 15 格（Tier 3 四格、Tier 4 十一格），每格證據寫在各條下方。另有 4 格只驗到一半而不勾：中日文生字候選、譯文語境、Cloud Sync、存入 Obsidian 後切回原分頁。
-- **疑點（未修，待裁決）**：先 Alt+T 翻一段後按全文翻譯快捷鍵，會還原而不是翻整頁，細節見 §4「與整頁翻譯混用」那條。
+- **疑點（同日已修）**：先 Alt+T 翻一段後按全文翻譯快捷鍵，原本會還原而不是翻整頁；已改成翻整頁，細節見 §4「與整頁翻譯混用」那條與 `CHANGELOG.md`。
 - **Obsidian**：用臨時測試 vault（`C:\tmp\ffb-qa\obsidian-test-vault`），KAKA 手動信任並啟用 Advanced URI 後才寫得進去。Chrome for Testing 不會把 `obsidian://` 交給系統，所以改成兩段驗：擴充產生的 URI 記下來，再原封不動由系統交給 Obsidian。乾淨重送後週記裡單字區塊與翻譯區塊各 1 個、沒有重複。Chrome 交出協定與切回原分頁未涵蓋。
 - 腳本與截圖是一次性產物，留在本機 `C:\tmp\ffb-qa\tier34-out`，不進 repo。
 ---

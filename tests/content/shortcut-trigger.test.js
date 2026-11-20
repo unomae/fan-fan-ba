@@ -122,10 +122,18 @@ describe('快捷鍵／右鍵觸發（content 端）', () => {
     trigger(listener, { trigger: 'toggle-page-translation' });
     expect(context.startPageTranslationBeta).toHaveBeenCalledTimes(1);
 
-    vm.runInContext('pageTranslationState = { activated: true };', context);
+    vm.runInContext('pageTranslationState = { activated: true, fullPage: true };', context);
     trigger(listener, { trigger: 'toggle-page-translation' });
     expect(context.restorePageTranslationBeta).toHaveBeenCalledTimes(1);
     expect(context.startPageTranslationBeta).toHaveBeenCalledTimes(1);
+  });
+
+  it('只用 Alt+T 翻過單段時，切換快捷鍵改開整頁而不是還原', () => {
+    const { context, listener } = loadMain();
+    vm.runInContext('var pageTranslationState = { activated: true, fullPage: false };', context);
+    trigger(listener, { trigger: 'toggle-page-translation' });
+    expect(context.startPageTranslationBeta).toHaveBeenCalledTimes(1);
+    expect(context.restorePageTranslationBeta).not.toHaveBeenCalled();
   });
 
   it('右鍵「翻譯整頁」在已啟用時不會反過來把翻譯收掉', () => {

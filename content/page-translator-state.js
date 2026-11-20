@@ -33,6 +33,8 @@ let pageTranslationState = {
   stopped: false,
   stopping: false,
   activated: false,
+  // 只有整頁翻譯開過才為 true；Alt+T 單段翻譯不算
+  fullPage: false,
   autoContinue: false,
   canContinue: false,
   scrollBound: false,

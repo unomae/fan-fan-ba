@@ -81,7 +81,8 @@ function translateSelectionFromTrigger({ requireFocus = false } = {}) {
 // 全文翻譯只在最上層 frame 載入（manifest 第二組 content script）
 function runPageTranslationTrigger({ toggle }) {
   if (!fanFanBaIsTopFrame() || typeof startPageTranslationBeta !== 'function') return false;
-  const active = typeof pageTranslationState !== 'undefined' && pageTranslationState.activated;
+  // 只看整頁翻譯是否開過：先用 Alt+T 翻單段時，切換快捷鍵應該翻整頁而不是還原
+  const active = typeof pageTranslationState !== 'undefined' && pageTranslationState.fullPage;
   if (toggle && active) restorePageTranslationBeta();
   else startPageTranslationBeta();
   return true;
