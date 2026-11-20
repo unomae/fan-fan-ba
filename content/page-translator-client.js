@@ -69,7 +69,13 @@ function requestPageTranslation(text, options = {}) {
       return;
     }
     const requestId = `page-${++pageTranslationRequestCounter}`;
-    const port = chrome.runtime.connect({ name: 'ai-stream' });
+    let port;
+    try {
+      port = chrome.runtime.connect({ name: 'ai-stream' });
+    } catch {
+      reject(new Error('擴充功能已更新，請重新整理頁面'));
+      return;
+    }
     pageTranslationActivePort = port;
     let accumulated = '';
     let settled = false;
@@ -113,19 +119,29 @@ function requestPageTranslation(text, options = {}) {
       reject(new Error(pageTranslationState.stopped ? 'PAGE_TRANSLATION_CANCELLED' : '連線中斷'));
     });
 
+    // T5：高敏站點強制省略周邊上下文（使用 ?? 避免空字串又退回原文）
+    const omitContext = typeof shouldOmitPageTranslationContext === 'function' && shouldOmitPageTranslationContext();
+    const requestContext = omitContext ? '' : (options.context ?? text);
+
     recordPageTranslationRequest(options.requestKind || 'single');
-    port.postMessage({
-      requestId,
-      action: 'translate',
-      selectedText: text,
-      context: options.context || text,
-      pageTitle: document.title,
-      model: getPageTranslationModel(),
-      pageTranslation: options.pageTranslation || true,
-      targetLanguage,
-      explanationLanguage,
-      browserLanguage: navigator.language || ''
-    });
+    try {
+      port.postMessage({
+        requestId,
+        action: 'translate',
+        selectedText: text,
+        context: requestContext,
+        pageTitle: document.title,
+        model: getPageTranslationModel(),
+        pageTranslation: options.pageTranslation || true,
+        targetLanguage,
+        explanationLanguage,
+        browserLanguage: navigator.language || ''
+      });
+    } catch {
+      settled = true;
+      cleanup();
+      reject(new Error('擴充功能已更新，請重新整理頁面'));
+    }
   });
 }
 
@@ -139,6 +155,14 @@ function requestPageTranslationBatch(items, options = {}) {
       count: items.length
     }
   });
+}
+
+// 認證／缺金鑰／額度上限／未授權／擴充失效／使用者取消屬於致命錯誤：
+// 拆成逐段重送只會把 401/429 請求放大 3 倍，應直接把這批段落標記失敗
+function isFatalPageTranslationBatchError(error) {
+  const message = String(error?.message || '');
+  return message === 'PAGE_TRANSLATION_CANCELLED'
+    || /請先|尚未授權|驗證失敗|額度已達上限|請求過於頻繁|不支援|無法啟用|擴充功能已更新/.test(message);
 }
 
 async function translatePageBatch(items) {
@@ -164,6 +188,16 @@ async function translatePageBatch(items) {
       if (isPageTranslationAttemptCurrent(state, item, node)) completePageTranslationItem(item, results[index]);
     });
   } catch (error) {
+    if (isFatalPageTranslationBatchError(error)) {
+      for (const { item, node } of attempts) {
+        if (!isPageTranslationAttemptCurrent(state, item, node)) continue;
+        item.status = 'error';
+        pageTranslationState.errors += 1;
+        pageTranslationState.usage.failed += 1;
+        renderPageTranslationError(item, error.message || '翻譯失敗');
+      }
+      return;
+    }
     for (const { item, node } of attempts) {
       if (!isPageTranslationAttemptCurrent(state, item, node)) continue;
       await translatePageItem(item, { requestKind: 'fallback' });

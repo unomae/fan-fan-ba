@@ -288,10 +288,10 @@
     if (!key) return false;
     return enqueue(async () => {
       const legacy = await loadLegacyMap();
-      const existed = Boolean(legacy[key]);
+      if (!legacy[key]) return false; // 條目不存在時不重寫整個 storage，也不觸發多餘快照檢查
       delete legacy[key];
       await writeLegacyMap(legacy);
-      return existed;
+      return true;
     });
   }
 

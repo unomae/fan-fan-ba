@@ -139,6 +139,7 @@ function createResultCard() {
   // ── 寶石按鈕：有記錄資料夾 → 自動存入；否則展開面板 ─
   el.querySelector('.g-save-obs').addEventListener('click', async e => {
     e.stopPropagation();
+    if (obsidianSaving) return; // 防連點重複開啟多個 Obsidian 分頁
 
     const { obsidianDefaultFolder } = await chrome.storage.sync.get('obsidianDefaultFolder');
     const recentFolders = await loadRecentFolders();
@@ -148,10 +149,13 @@ function createResultCard() {
       // 自動存入：不展開面板
       hideAutoSaveToast(el); // 先清除上一筆提示
       const result = await saveToObsidian(autoFolder);
-      const gemBtn = el.querySelector('.g-save-obs');
-      gemBtn.classList.add('g-saved');
-      setTimeout(() => gemBtn.classList.remove('g-saved'), 1800);
-      showAutoSaveToast(el, result?.filePath || autoFolder, result?.ok === false, result?.action);
+      const failed = result?.ok === false;
+      if (!failed) {
+        const gemBtn = el.querySelector('.g-save-obs');
+        gemBtn.classList.add('g-saved');
+        setTimeout(() => gemBtn.classList.remove('g-saved'), 1800);
+      }
+      showAutoSaveToast(el, result?.filePath || autoFolder, failed, result?.action, result?.error);
     } else {
       // 第一次使用：展開面板讓使用者輸入資料夾
       openObsPanel(el);
@@ -257,6 +261,7 @@ function createResultCard() {
     const folder     = input.value.trim();
     const confirmBtn = el.querySelector('.g-obs-confirm-btn');
     const statusEl   = el.querySelector('.g-obs-status');
+    if (confirmBtn.disabled || obsidianSaving) return;
 
     if (!folder) {
       input.classList.add('g-obs-input-err');
@@ -266,14 +271,17 @@ function createResultCard() {
       return;
     }
 
+    confirmBtn.disabled = true;
     const result = await saveToObsidian(folder);
+    const failed = result?.ok === false;
 
-    const gemBtn = el.querySelector('.g-save-obs');
-    gemBtn.classList.add('g-saved');
-    setTimeout(() => gemBtn.classList.remove('g-saved'), 1800);
+    if (!failed) {
+      const gemBtn = el.querySelector('.g-save-obs');
+      gemBtn.classList.add('g-saved');
+      setTimeout(() => gemBtn.classList.remove('g-saved'), 1800);
+    }
 
-    confirmBtn.textContent = '已傳送 ✓';
-    confirmBtn.disabled    = true;
+    confirmBtn.textContent = failed ? '送出失敗' : '已傳送 ✓';
 
     // 關閉面板並顯示持久提示列
     setTimeout(() => {
@@ -281,7 +289,7 @@ function createResultCard() {
       statusEl.classList.remove('g-obs-status-show', 'g-obs-status-ok');
       confirmBtn.textContent = '新增到 Obsidian';
       confirmBtn.disabled    = false;
-      showAutoSaveToast(el, result?.filePath || folder, result?.ok === false, result?.action);
+      showAutoSaveToast(el, result?.filePath || folder, failed, result?.action, result?.error);
     }, 800);
   });
 
@@ -317,6 +325,7 @@ function applyHistoryState(text, action) {
   activeRequestId++;
   if (typeof cancelActiveStream === 'function') cancelActiveStream();
   setResultCardPanelMode(false);
+  setResultCardQueryMode(true);
   savedSel    = { text, range: null };
   userDragged = true;
   if (action) activeAction = action;
@@ -397,11 +406,12 @@ function formatHistoryTime(ts) {
 }
 
 // ── Autosave Toast 顯示 / 隱藏 ────────────────────────
-function showAutoSaveToast(el, path, failed = false, action = '') {
+function showAutoSaveToast(el, path, failed = false, action = '', errorMsg = '') {
   const bar  = el.querySelector('.g-autosave-bar');
   const text = el.querySelector('.g-autosave-text');
   const verb = action === 'write' ? '已建立並送出到 Obsidian' : '已送出到 Obsidian';
-  text.textContent = failed ? `⚠ Obsidian 送出失敗：${path}` : `✓ ${verb}：${path}`;
+  const failDetail = errorMsg ? `${errorMsg}（${path}）` : path;
+  text.textContent = failed ? `⚠ Obsidian 送出失敗：${failDetail}` : `✓ ${verb}：${path}`;
   bar.classList.add('show');
   clearTimeout(bar._hideTimer);
   bar._hideTimer = setTimeout(() => bar.classList.remove('show'), 4500);
@@ -416,6 +426,7 @@ function hideAutoSaveToast(el) {
 // ── 以下函式與原版相同 ────────────────────────────────
 
 function hideResultCard() {
+  stopActiveSpeech();
   resultCard?.classList.remove('g-show');
   closeSourceEditor();
   cardModelOverride = null;
@@ -943,7 +954,19 @@ function showResultNotice(msg) {
   body.prepend(ffbEl('div', { class: 'g-provider-notice' }, msg));
 }
 
+function stopActiveSpeech() {
+  if (typeof activeSpeakAudio !== 'undefined' && activeSpeakAudio) {
+    try { activeSpeakAudio.pause(); } catch {}
+    activeSpeakAudio = null;
+  }
+  if (typeof activeSpeakBtn !== 'undefined' && activeSpeakBtn) {
+    activeSpeakBtn.classList.remove('g-speaking');
+    activeSpeakBtn = null;
+  }
+}
+
 function speakWord(word, btn, lang) {
+  stopActiveSpeech();
   btn?.classList.add('g-speaking');
   const speakLang = resolveSpeechLanguage(lang);
   if (!chrome.runtime?.id) { speakFallback(word, btn, speakLang); return; }
@@ -952,10 +975,21 @@ function speakWord(word, btn, lang) {
       speakFallback(word, btn, speakLang);
       return;
     }
+    stopActiveSpeech();
+    btn?.classList.add('g-speaking');
     const audio = new Audio(`data:audio/mp3;base64,${response.audioContent}`);
-    audio.onended = () => btn?.classList.remove('g-speaking');
-    audio.onerror = () => { btn?.classList.remove('g-speaking'); speakFallback(word, btn, speakLang); };
-    audio.play().catch(() => btn?.classList.remove('g-speaking'));
+    activeSpeakAudio = audio;
+    activeSpeakBtn = btn || null;
+    const clearIfCurrent = () => {
+      if (activeSpeakAudio === audio) {
+        activeSpeakAudio = null;
+        activeSpeakBtn = null;
+      }
+      btn?.classList.remove('g-speaking');
+    };
+    audio.onended = clearIfCurrent;
+    audio.onerror = () => { clearIfCurrent(); speakFallback(word, btn, speakLang); };
+    audio.play().catch(clearIfCurrent);
   });
 }
 

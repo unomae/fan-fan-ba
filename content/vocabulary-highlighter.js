@@ -15,6 +15,7 @@ let vocabularyHighlightPendingRoots = new Set();
 let vocabularyHighlightRescanTimer = null;
 let vocabularyHighlightTooltip = null;
 let vocabularyHighlightUserToggled = false; // 使用者按過浮球開關就不讓初始讀取蓋回去
+let vocabularyHighlightRunId = 0; // 避免讀取期間關閉或重啟造成的非同步競態
 
 function getVocabularyHighlightStorageKey() {
   const host = location.hostname || 'local-file';
@@ -52,6 +53,7 @@ async function setVocabularyHighlightMode(mode = 'off') {
   }
   if (vocabularyHighlightEnabled) await applyVocabularyHighlights();
   else {
+    vocabularyHighlightRunId += 1; // 作廢飛行中的 applyVocabularyHighlights，避免讀取回來後仍畫上 mark
     stopVocabularyHighlightObserver();
     clearVocabularyHighlights();
   }
@@ -70,6 +72,7 @@ async function getVocabularyHighlightMode() {
 }
 
 async function applyVocabularyHighlights() {
+  const runId = ++vocabularyHighlightRunId;
   clearVocabularyHighlights();
   vocabularyHighlightMatcher = null;
   let allItems;
@@ -78,6 +81,8 @@ async function applyVocabularyHighlights() {
   } catch {
     return 0; // 讀取失敗＝跳過高亮（純顯示層降級）；資料層錯誤由主要 UI 浮出（WS-E A1'''）
   }
+  // 讀取單字本期間若已關閉高亮（runId 被遞增）或啟動新一輪掃描，此時不標記也不啟動監聽
+  if (runId !== vocabularyHighlightRunId) return 0;
   const terms = buildVocabularyHighlightTerms(allItems);
   if (!terms.length || !document.body) return 0;
 
@@ -87,8 +92,7 @@ async function applyVocabularyHighlights() {
     termMap: new Map(terms.map(term => [term.word.toLowerCase(), term]))
   };
   const markCount = highlightVocabularyWithin(document.body, 0);
-  // 讀取單字本期間使用者可能已關閉高亮，此時不再開始監聽
-  if (vocabularyHighlightEnabled) startVocabularyHighlightObserver();
+  if (vocabularyHighlightEnabled && runId === vocabularyHighlightRunId) startVocabularyHighlightObserver();
   return markCount;
 }
 

@@ -284,12 +284,31 @@
     return payload;
   }
 
+  const DRIVE_FETCH_TIMEOUT_MS = 20000;
+
   async function driveFetch(token, url, options = {}) {
     const headers = {
       ...(options.headers || {}),
       Authorization: `Bearer ${token}`
     };
-    const res = await fetch(url, { ...options, headers });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DRIVE_FETCH_TIMEOUT_MS);
+    const externalSignal = options.signal;
+    const onExternalAbort = () => controller.abort();
+    if (externalSignal) {
+      if (externalSignal.aborted) controller.abort();
+      else externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+    }
+    let res;
+    try {
+      res = await fetch(url, { ...options, headers, signal: controller.signal });
+    } catch (error) {
+      if (error?.name === 'AbortError') throw new Error('Google Drive API 請求逾時（timeout）');
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+      externalSignal?.removeEventListener?.('abort', onExternalAbort);
+    }
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error?.message || `Google Drive API 失敗：HTTP ${res.status}`);

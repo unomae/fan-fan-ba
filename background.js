@@ -157,12 +157,16 @@ function sleep(ms, signal) {
       reject(createAbortError());
       return;
     }
-    const timer = setTimeout(resolve, ms);
-    signal?.addEventListener('abort', () => {
+    const onAbort = () => {
       clearTimeout(timer);
       reject(createAbortError());
-    }, { once: true });
-  }, signal);
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener?.('abort', onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener?.('abort', onAbort, { once: true });
+  });
 }
 
 function jitteredDelay(attempt) {
@@ -301,7 +305,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return false;
     }
     chrome.runtime.openOptionsPage();
-    sendResponse({});
+    reply({});
   }
   if (request.type === 'OBSIDIAN_URI') {
     if (!isTrustedExtensionSender(sender)) {
@@ -429,7 +433,7 @@ chrome.runtime.onConnect.addListener(port => {
       const message = timedOut || err.name === 'AbortError'
         ? '請求逾時或已取消，請稍後重試'
         : err.message;
-      try { port.postMessage({ requestId: request.requestId, error: message }); } catch {}
+      try { port.postMessage({ requestId: request?.requestId, error: message }); } catch {}
     } finally {
       completed = true;
       clearTimeout(timeoutId);
@@ -732,7 +736,7 @@ async function handleWithModelFallback(params, model) {
   try {
     return await handleOpenAICompatRequest(params);
   } catch (err) {
-    if (!ModelRegistry.shouldFallbackModel(model, err.status, err.message)) throw err;
+    if (!ModelRegistry.shouldFallbackModel(model, err.status, err.rawMessage || err.message)) throw err;
     const result = await handleOpenAICompatRequest({
       ...params,
       modelId: ModelRegistry.getFallbackModelId(model)
@@ -778,14 +782,26 @@ async function handleBuiltinTranslateRequest({ action, selectedText, targetLangu
   }
 
   const isBatch = pageTranslation.batch === true;
-  const items = isBatch ? JSON.parse(selectedText) : [{ id: 1, text: String(selectedText || '') }];
+  let items;
+  if (isBatch) {
+    try {
+      items = JSON.parse(selectedText);
+    } catch {
+      throw new Error('批次翻譯資料格式不正確');
+    }
+    if (!Array.isArray(items) || !items.length) {
+      throw new Error('批次翻譯資料格式不正確');
+    }
+  } else {
+    items = [{ id: 1, text: String(selectedText || '') }];
+  }
   const target = ModelRegistry.toBuiltinLanguageCode(targetLanguage, browserLanguage);
-  const source = await detectBuiltinSourceLanguage(items.map(item => item.text).join('\n'), signal);
+  const source = await detectBuiltinSourceLanguage(items.map(item => String(item?.text || '')).join('\n'), signal);
 
   // 來源＝目標就不送翻譯：省一次呼叫，也避開相同語言對的未定義行為
   if (source === target) {
     return isBatch
-      ? { result: JSON.stringify({ translations: items.map(item => ({ id: item.id, translation: item.text })) }) }
+      ? { result: JSON.stringify({ translations: items.map(item => ({ id: item.id, translation: String(item?.text || '') })) }) }
       : { result: items[0].text };
   }
 
@@ -807,9 +823,12 @@ async function handleBuiltinTranslateRequest({ action, selectedText, targetLangu
 
     const translations = [];
     for (const item of items) {
+      if (signal?.aborted) throw createAbortError();
       try {
-        translations.push({ id: item.id, translation: await translator.translate(item.text) });
+        const translated = await waitWithSignal(translator.translate(String(item?.text || '')), signal);
+        translations.push({ id: item.id, translation: translated });
       } catch (err) {
+        if (err?.name === 'AbortError') throw err;
         // 實測模型沒下載完時會拋英文的「Model not available」，包成使用者看得懂的訊息
         throw new Error(`瀏覽器內建翻譯失敗（${source} → ${target}）：${err.message}`);
       }
@@ -913,12 +932,17 @@ async function handleOpenAICompatRequest({ action, selectedText, context, pageTi
 
   const data   = await response.json();
   if (data.error) {
-    const err = new Error(data.error.message || `${label}API 錯誤`);
     // code 在 OpenAI 相容格式常是字串（'429'、'model_not_found'）。下游 isRetryable 與
     // shouldFallbackModel 都用嚴格比較，照抄原值會讓重試與備援靜默失效，故正規化成數字，
     // 原值另存 code 供診斷；無法轉數字時是 0，不假裝自己是某個 HTTP status。
-    err.status = Number(data.error.code) || 0;
+    // 比照 checkedFetch（T3）：上游 rawMessage 僅保留在 err.rawMessage，不直接回顯到 UI。
+    const status = Number(data.error.code) || 0;
+    const rawMessage = data.error.message || '';
+    const provider = String(label || '').trim() || 'AI 服務';
+    const err = new Error(status ? formatApiErrorMessage(status, rawMessage, label) : `${provider}API 錯誤`);
+    err.status = status;
     err.code   = data.error.code;
+    err.rawMessage = rawMessage;
     throw err;
   }
   const result = data.choices?.[0]?.message?.content;
@@ -932,12 +956,9 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle, page
     chrome.storage.sync.get({ model: DEFAULT_MODEL, customApiBase: '', customModelName: '' }),
     Storage.getSecrets({ apiKey: '', groqApiKey: '', openrouterApiKey: '', customApiKey: '' })
   ]);
-  const { apiKey = '' } = secrets;
   const selectedModel = ModelRegistry.normalizeModel(modelOverride || requestedModel || model);
 
-  const glossary = await loadRequestGlossary({ action, selectedText, pageTranslation, siteUrl });
-  const { system, prompt } = buildRequestPrompt({ action, selectedText, context, pageTitle, pageUrl, customAction, targetLanguage, explanationLanguage, browserLanguage, pageTranslation, glossary });
-
+  // 先決策路由與權限（比照 _handleAIRequest），避免內建翻譯或無金鑰路徑白讀術語表與組 prompt
   const route = resolveRoute(selectedModel, secrets, settings);
   await assertRoutePermission(route);
 
@@ -951,6 +972,9 @@ async function _streamAIRequest({ action, selectedText, context, pageTitle, page
     onChunk(result);
     return;
   }
+
+  const glossary = await loadRequestGlossary({ action, selectedText, pageTranslation, siteUrl });
+  const { system, prompt } = buildRequestPrompt({ action, selectedText, context, pageTitle, pageUrl, customAction, targetLanguage, explanationLanguage, browserLanguage, pageTranslation, glossary });
 
   if (route.kind === 'openai-compat') {
     return streamWithModelFallback({
@@ -982,7 +1006,7 @@ async function streamWithModelFallback(params, model) {
     });
   } catch (err) {
     // 已經吐過字就不重跑：重跑會讓使用者看到同一段譯文接兩次
-    if (streamed || !ModelRegistry.shouldFallbackModel(model, err.status, err.message)) throw err;
+    if (streamed || !ModelRegistry.shouldFallbackModel(model, err.status, err.rawMessage || err.message)) throw err;
     params.onStatus?.(buildFallbackNotice(params.label));
     return streamOpenAICompat({
       ...params,
@@ -1048,11 +1072,15 @@ async function streamOpenAICompat({ system = '', prompt, action, pageTranslation
     } catch { return; }
     if (obj.error) {
       const status = Number(obj.error.code || obj.error.status) || 0;
+      const rawMessage = obj.error.message || '';
+      const provider = String(label || '').trim() || 'AI 服務';
+      // 比照 checkedFetch（T3）：上游 rawMessage 僅保留在 err.rawMessage，不直接回顯到 UI
       const err = new Error(status
-        ? formatApiErrorMessage(status, obj.error.message, label)
-        : (obj.error.message || `${label}串流錯誤`));
+        ? formatApiErrorMessage(status, rawMessage, label)
+        : `${provider}串流錯誤`);
       err.status = status;
       err.code   = obj.error.code || obj.error.status;
+      err.rawMessage = rawMessage;
       throw err;
     }
     const text = obj.choices?.[0]?.delta?.content;
@@ -1068,6 +1096,12 @@ async function parseSseStream(body, onData, signal) {
   const cancelReader = () => reader.cancel().catch(() => {});
   signal?.addEventListener('abort', cancelReader, { once: true });
 
+  const emitLine = rawLine => {
+    const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
+    // 依 WHATWG SSE 規範，data: 後的空白為選填（data:{...} 與 data: {...} 皆合法）
+    if (line.startsWith('data:')) onData(line.slice(5).trim());
+  };
+
   try {
     while (true) {
       if (signal?.aborted) throw createAbortError();
@@ -1079,20 +1113,22 @@ async function parseSseStream(body, onData, signal) {
       const lines = buffer.split('\n');
       buffer = lines.pop(); // 保留最後一段不完整的行
 
-      for (const line of lines) {
-        if (line.startsWith('data: ')) onData(line.slice(6).trim());
-      }
+      for (const line of lines) emitLine(line);
     }
 
-    // 處理最後剩餘的 buffer
+    // flush 結尾殘餘位元組並處理最後剩餘的 buffer
+    buffer += decoder.decode();
     if (signal?.aborted) throw createAbortError();
-    if (buffer.startsWith('data: ')) onData(buffer.slice(6).trim());
+    if (buffer) {
+      for (const line of buffer.split('\n')) emitLine(line);
+    }
   } finally {
     signal?.removeEventListener?.('abort', cancelReader);
   }
 }
 
 // ── Google Cloud TTS（Chirp HD，依語言自動切換語音）──
+const TTS_REQUEST_TIMEOUT_MS = 15000;
 const CHIRP_VOICE_MAP = {
   en: { lang: 'en-US', name: 'en-US-Chirp-HD-D' },
   ja: { lang: 'ja-JP', name: 'ja-JP-Chirp-HD-D' },
@@ -1111,18 +1147,29 @@ async function handleTtsRequest({ text, lang }) {
   const langCode = (lang || 'en').split('-')[0].toLowerCase();
   const voice    = CHIRP_VOICE_MAP[langCode] || CHIRP_VOICE_MAP['en'];
 
-  const res = await fetch(
-    'https://texttospeech.googleapis.com/v1/text:synthesize',
-    {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': ttsApiKey },
-      body: JSON.stringify({
-        input:       { text },
-        voice:       { languageCode: voice.lang, name: voice.name },
-        audioConfig: { audioEncoding: 'MP3' }
-      })
-    }
-  );
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TTS_REQUEST_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(
+      'https://texttospeech.googleapis.com/v1/text:synthesize',
+      {
+        method:  'POST',
+        signal:  controller.signal,
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': ttsApiKey },
+        body: JSON.stringify({
+          input:       { text },
+          voice:       { languageCode: voice.lang, name: voice.name },
+          audioConfig: { audioEncoding: 'MP3' }
+        })
+      }
+    );
+  } catch (err) {
+    if (err?.name === 'AbortError') throw new Error('Google TTS 請求逾時，請稍後重試');
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

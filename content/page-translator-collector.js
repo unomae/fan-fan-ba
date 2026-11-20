@@ -171,7 +171,15 @@ function isPageTranslationListLine(text) {
   return /^\s*(?:[-*•・‧]|[0-9０-９]+[.)．、])\s+/.test(String(text || ''));
 }
 
+function shouldOmitPageTranslationContext() {
+  return typeof fanFanBaShouldOmitPageContext === 'function'
+    && typeof fanFanBaCurrentHostname === 'function'
+    && fanFanBaShouldOmitPageContext(fanFanBaCurrentHostname());
+}
+
 function buildPageTranslationContextDigest(item, items = pageTranslationState.items, options = {}) {
+  // T5：金融／醫療等高敏站點不外送周邊段落與頁面標題作為上下文
+  if (shouldOmitPageTranslationContext()) return '';
   const allItems = Array.isArray(items) ? items : [];
   const index = Math.max(0, allItems.indexOf(item));
   const nearby = allItems
@@ -210,6 +218,29 @@ function normalizePageTranslationComparableText(text) {
     .trim();
 }
 
+// 同一同步回合內重用 open shadow root 掃描結果，避免 detectEmbeddedTranslationTargets 與
+// collectEmbeddedTranslationTargets 接連執行兩次全頁 querySelectorAll('*')
+let openShadowHostsCache = new WeakMap();
+let openShadowHostsCacheScheduled = false;
+
+function findOpenShadowHosts(root = document) {
+  if (root && typeof root === 'object' && openShadowHostsCache.has(root)) {
+    return openShadowHostsCache.get(root);
+  }
+  const hosts = Array.from(root.querySelectorAll?.('*') || []).filter(node => node.shadowRoot);
+  if (root && typeof root === 'object') {
+    openShadowHostsCache.set(root, hosts);
+    if (!openShadowHostsCacheScheduled) {
+      openShadowHostsCacheScheduled = true;
+      Promise.resolve().then(() => {
+        openShadowHostsCache = new WeakMap();
+        openShadowHostsCacheScheduled = false;
+      });
+    }
+  }
+  return hosts;
+}
+
 function detectEmbeddedTranslationTargets(root = document) {
   const queryAll = selector => Array.from(root.querySelectorAll?.(selector) || []);
   const iframeCount = queryAll('iframe').filter(isVisiblePageTranslationEmbeddedNode).length;
@@ -218,7 +249,7 @@ function detectEmbeddedTranslationTargets(root = document) {
     .filter(node => isVisiblePageTranslationEmbeddedNode(node.closest?.('svg') || node) && isVisiblePageTranslationEmbeddedNode(node))
     .filter(node => (node.getAttribute?.('aria-label') || node.textContent || '').trim())
     .length;
-  const openShadowRootCount = queryAll('*').filter(node => node.shadowRoot).length;
+  const openShadowRootCount = findOpenShadowHosts(root).length;
 
   const total = iframeCount + canvasCount + svgTextCount + openShadowRootCount;
   return {
@@ -332,7 +363,7 @@ function getSvgTranslationTargetText(node) {
 }
 
 function collectOpenShadowDomTranslationBlocks(root = document) {
-  const hosts = Array.from(root.querySelectorAll?.('*') || []).filter(node => node.shadowRoot);
+  const hosts = findOpenShadowHosts(root);
   const items = [];
   const seenTexts = new Set();
   hosts.forEach(host => {

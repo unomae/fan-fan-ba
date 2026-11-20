@@ -7,7 +7,9 @@
 // 「一次只翻一段、按需加入佇列」。只在 top frame 啟用（與浮球同一 guard）。
 
 const SINGLE_TRANSLATE_BLOCK_SELECTOR = 'h1,h2,h3,h4,h5,h6,p,li,blockquote';
-let ffbSingleLastBlock = null;      // 最近 hover 到的可翻譯區塊（給快捷鍵 fallback）
+const SINGLE_TRANSLATE_FAST_SKIP_SELECTOR = '#gemini-ai-toolbar, #gemini-result-card, #fanfanba-floating, .ffb-page-translation-panel, .ffb-page-translation-block, nav, header, footer, aside, button, script, style, pre, code, [aria-hidden="true"]';
+let ffbSingleLastBlock = null;      // 最近 hover 到的候選區塊（給快捷鍵 fallback）
+let ffbSingleRecentBlocks = [];     // 保留最近幾個不重複候選，避免滑過短段落蓋掉前一個有效區塊
 let ffbSingleBound = false;
 
 function initSingleParagraphTranslate() {
@@ -28,11 +30,18 @@ function findSinglePageTranslatableBlock(node) {
   return block;
 }
 
-// 只記錄滑鼠所在段落，供 Alt+T 使用；不在網頁上建立浮動按鈕。
+// 只記錄滑鼠所在候選段落，不在 mouseover 跑 getBoundingClientRect／getComputedStyle／innerText
+// （避免所有網頁滑鼠移動就觸發同步強制排版）；完整驗證延後到真正按下 Alt+T 時執行。
 function trackSingleTranslateTarget(e) {
   if (fanFanBaPaused) return;
-  const block = findSinglePageTranslatableBlock(e.target);
-  if (block) ffbSingleLastBlock = block;
+  const node = e.target;
+  const start = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+  if (!start?.closest) return;
+  if (start.closest(SINGLE_TRANSLATE_FAST_SKIP_SELECTOR)) return;
+  const block = start.closest(SINGLE_TRANSLATE_BLOCK_SELECTOR);
+  if (!block || block === ffbSingleLastBlock) return;
+  ffbSingleLastBlock = block;
+  ffbSingleRecentBlocks = [block, ...ffbSingleRecentBlocks.filter(item => item !== block)].slice(0, 3);
 }
 
 // ── 鍵盤快捷鍵 Alt+T ─────────────────────────────────
@@ -54,9 +63,14 @@ function getSingleTranslateShortcutTarget() {
     const fromSelection = findSinglePageTranslatableBlock(sel.getRangeAt(0).commonAncestorContainer);
     if (fromSelection) return fromSelection;
   }
-  // 2) 最近 hover 到、且仍可翻譯的區塊
-  if (ffbSingleLastBlock?.isConnected && isPageTranslatableElement(ffbSingleLastBlock)) {
-    return ffbSingleLastBlock;
+  // 2) 最近 hover 到、且實際通過可翻譯檢查的區塊
+  const candidates = ffbSingleRecentBlocks.length
+    ? ffbSingleRecentBlocks
+    : (ffbSingleLastBlock ? [ffbSingleLastBlock] : []);
+  for (const candidate of candidates) {
+    if (candidate?.isConnected && findSinglePageTranslatableBlock(candidate)) {
+      return candidate;
+    }
   }
   return null;
 }
@@ -109,6 +123,8 @@ async function translateSinglePageBlock(el) {
 // 用 block 在 DOM 中前後 ±2 個可翻譯區塊組成上下文（含 block 自己，
 // 讓 buildPageTranslationContextDigest 的 indexOf 能正確標 Before/After）
 function buildSinglePageContext(item) {
+  // T5：高敏站點不擷取周邊段落作為上下文
+  if (typeof shouldOmitPageTranslationContext === 'function' && shouldOmitPageTranslationContext()) return '';
   const block = item.el;
   const all = Array.from(document.querySelectorAll(SINGLE_TRANSLATE_BLOCK_SELECTOR));
   const idx = all.indexOf(block);

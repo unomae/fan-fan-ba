@@ -219,7 +219,10 @@ describe('設定頁', () => {
       fillCustom();
       global.fetch = jest.fn(async () => { throw new TypeError('Failed to fetch'); });
       await options.testCustomEndpoint();
-      expect(global.fetch).toHaveBeenCalledWith('https://llm.example.com/v1/models', { headers: { Authorization: 'Bearer dummy-key' } });
+      expect(global.fetch).toHaveBeenCalledWith('https://llm.example.com/v1/models', {
+        headers: { Authorization: 'Bearer dummy-key' },
+        signal: expect.any(AbortSignal)
+      });
       expect($('status').textContent).toContain('（網路）');
     });
 

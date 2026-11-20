@@ -397,7 +397,9 @@ async function showFloatingHistoryPanel() {
         const item = history[parseInt(btn.dataset.index, 10)];
         if (!item) return;
         applyHistoryState(item.text, item.action);
-        resultCard.querySelector('.g-rc-tag').textContent = ({ translate: '翻譯', explain: '解釋', optimize: '優化' }[item.action] || item.action);
+        const tagEl = resultCard.querySelector('.g-rc-tag');
+        if (typeof setResultCardTag === 'function') setResultCardTag(tagEl, item.action);
+        else tagEl.textContent = ({ translate: '翻譯', explain: '解釋', optimize: '優化' }[item.action] || item.action);
         renderResult(item.action, item.result, item.text, { fromHistory: true });
       });
     });
@@ -501,8 +503,8 @@ function renderFloatingVocabularyPanel(body, initialItems) {
         try {
           const updated = await updateVocabularyEntryStatus?.(id, nextStatus);
           if (updated) {
-            const refreshedItems = typeof listVocabularyItems === 'function' ? await listVocabularyItems() : items;
-            items = updateVocabularyPanelItems(refreshedItems, updated);
+            // 直接在記憶體更新剛回傳的單筆資料，避免每次切換都透過 IPC 重拉整份單字本
+            items = updateVocabularyPanelItems(items, updated);
             render();
           }
         } catch {
@@ -518,8 +520,8 @@ function renderFloatingVocabularyPanel(body, initialItems) {
         try {
           const updated = await reviewVocabularyEntry?.(id, button.dataset.reviewGrade);
           if (updated) {
-            const refreshedItems = typeof listVocabularyItems === 'function' ? await listVocabularyItems() : items;
-            items = updateVocabularyPanelItems(refreshedItems, updated);
+            // 同上：直接使用寫回後的最新條目更新清單
+            items = updateVocabularyPanelItems(items, updated);
             render();
           }
         } catch {

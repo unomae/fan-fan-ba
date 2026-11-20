@@ -78,6 +78,14 @@
   // 純本機計數，僅累計「用了幾次」，不含任何選取文字 / 網址 / 內容；
   // 不上傳、不 telemetry，使用者可隨時在設定頁清除。
   const DIAGNOSTICS_KEY = 'fanFanBaDiagnostics';
+  // 並發請求完成時序列化讀改寫，避免同時累計覆寫彼此的計數
+  let diagnosticQueue = Promise.resolve();
+
+  function enqueueDiagnostic(task) {
+    const run = diagnosticQueue.then(task, task);
+    diagnosticQueue = run.then(() => {}, () => {});
+    return run;
+  }
 
   function emptyDiagnostics() {
     return {
@@ -108,20 +116,24 @@
     return normalizeDiagnostics(stored?.[DIAGNOSTICS_KEY]);
   }
 
-  async function recordDiagnosticEvent(kind) {
-    const current = await getDiagnostics();
-    if (kind === 'pageTranslation') current.pageTranslations += 1;
-    else if (kind === 'error') current.errors += 1;
-    else if (kind && Object.prototype.hasOwnProperty.call(current.actions, kind)) current.actions[kind] += 1;
-    else return current; // 未知類型不記
-    await setArea('local', { [DIAGNOSTICS_KEY]: current });
-    return current;
+  function recordDiagnosticEvent(kind) {
+    return enqueueDiagnostic(async () => {
+      const current = await getDiagnostics();
+      if (kind === 'pageTranslation') current.pageTranslations += 1;
+      else if (kind === 'error') current.errors += 1;
+      else if (kind && Object.prototype.hasOwnProperty.call(current.actions, kind)) current.actions[kind] += 1;
+      else return current; // 未知類型不記
+      await setArea('local', { [DIAGNOSTICS_KEY]: current });
+      return current;
+    });
   }
 
-  async function clearDiagnostics() {
-    const fresh = emptyDiagnostics();
-    await setArea('local', { [DIAGNOSTICS_KEY]: fresh });
-    return fresh;
+  function clearDiagnostics() {
+    return enqueueDiagnostic(async () => {
+      const fresh = emptyDiagnostics();
+      await setArea('local', { [DIAGNOSTICS_KEY]: fresh });
+      return fresh;
+    });
   }
 
   const storage = {

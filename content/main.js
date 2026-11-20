@@ -392,7 +392,7 @@ function triggerAction(action) {
   cancelActiveStream();
   if (!isPinned) userDragged = false; // pin 住時保留位置
 
-  toolbar.querySelectorAll('.g-btn').forEach(b =>
+  toolbar?.querySelectorAll('.g-btn').forEach(b =>
     b.classList.toggle('g-active', action === 'custom'
       ? b.dataset.actionId === activeCustomAction.id
       : b.dataset.action === action)
@@ -458,9 +458,10 @@ function triggerAction(action) {
     return;
   }
 
-  // 快取命中：直接渲染，不發 API 請求
+  // 快取命中：直接渲染並更新 LRU 順序，不發 API 請求
   if (responseCache.has(cacheKey)) {
-    renderResult(action, responseCache.get(cacheKey), savedSel.text);
+    const cached = getResponseCache(cacheKey);
+    renderResult(action, cached, savedSel.text);
     requestAnimationFrame(() => positionResultCard(resultCardAnchorRect));
     return;
   }
@@ -523,6 +524,24 @@ function readGoogleDocsSelectionFromCopyEvent() {
   });
 }
 
+function getResponseCache(key) {
+  if (!responseCache.has(key)) return undefined;
+  const value = responseCache.get(key);
+  responseCache.delete(key);
+  responseCache.set(key, value);
+  return value;
+}
+
+function setResponseCache(key, value) {
+  if (!key) return;
+  if (responseCache.has(key)) responseCache.delete(key);
+  responseCache.set(key, value);
+  while (responseCache.size > RESPONSE_CACHE_MAX_SIZE) {
+    const oldestKey = responseCache.keys().next().value;
+    responseCache.delete(oldestKey);
+  }
+}
+
 function cancelActiveStream() {
   if (!activeStreamPort) return;
   try { activeStreamPort.disconnect(); } catch {}
@@ -551,7 +570,7 @@ function sendNonStreaming(action, selectedText, context, pageTitle, cacheKey, re
           setError(response.error, () => triggerAction(activeAction));
           return;
         }
-        responseCache.set(cacheKey, response.result);
+        setResponseCache(cacheKey, response.result);
         renderResult(action, response.result, selectedText);
         if (response.notice) showResultNotice(response.notice);
         // 用箭頭函式傳入 anchorRect，否則 rAF 會把 timestamp 當 anchorRect → 掉進選字置中分支（卡片亂跑）
@@ -565,12 +584,69 @@ function sendNonStreaming(action, selectedText, context, pageTitle, cacheKey, re
 
 // ── Streaming（翻譯段落 / 解釋 / 優化）──────────────
 function startStreaming(action, selectedText, context, pageTitle, cacheKey, requestId) {
-  const port        = chrome.runtime.connect({ name: 'ai-stream' });
+  let port;
+  try {
+    port = chrome.runtime.connect({ name: 'ai-stream' });
+  } catch {
+    setError('擴充功能已更新，請重新整理頁面（F5）');
+    return;
+  }
   activeStreamPort = port;
   let   accumulated = '';
   const body        = resultCard?.querySelector('.g-rc-body');
   let   portDone    = false;
   let   streamNotice = '';
+  let   streamContainer = null;
+  let   streamTailTextNode = null;
+  let   lastStructuredSignature = null;
+
+  const ensurePlainStreamContainer = () => {
+    if (!body) return null;
+    if (streamContainer && body.contains(streamContainer)) return streamContainer;
+    streamContainer = ffbEl('div', { class: 'g-text-body g-streaming' });
+    streamTailTextNode = null;
+    ffbClear(body).append(
+      ...(streamNotice ? [ffbEl('div', { class: 'g-provider-notice' }, streamNotice)] : []),
+      streamContainer
+    );
+    return streamContainer;
+  };
+
+  const appendPlainStreamChunk = (chunk) => {
+    const container = ensurePlainStreamContainer();
+    if (!container) return;
+    // 若跨 chunk 邊界出現 ===DEEP===，以完整重建確保分隔線正確
+    const seam = accumulated.slice(Math.max(0, accumulated.length - chunk.length - 10));
+    if (seam.includes('===DEEP===')) {
+      ffbClear(container).append(...buildStreamingText(accumulated).filter(Boolean));
+      const last = container.lastChild;
+      streamTailTextNode = last && last.nodeType === Node.TEXT_NODE ? last : null;
+      return;
+    }
+    if (!chunk.includes('\n')) {
+      if (streamTailTextNode) {
+        streamTailTextNode.data += chunk;
+      } else {
+        streamTailTextNode = ffbText(chunk);
+        container.appendChild(streamTailTextNode);
+      }
+      return;
+    }
+    const parts = chunk.split('\n');
+    parts.forEach((part, index) => {
+      if (index > 0) {
+        container.appendChild(ffbEl('br'));
+        streamTailTextNode = null;
+      }
+      if (!part) return;
+      if (streamTailTextNode) {
+        streamTailTextNode.data += part;
+      } else {
+        streamTailTextNode = ffbText(part);
+        container.appendChild(streamTailTextNode);
+      }
+    });
+  };
 
   port.onMessage.addListener(msg => {
     if (requestId !== activeRequestId || (msg.requestId && String(msg.requestId) !== String(requestId))) return;
@@ -590,7 +666,7 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey, requ
       // Stream 完成：交由 renderResult 做結構化渲染
       renderResult(action, accumulated, selectedText);
       if (streamNotice) showResultNotice(streamNotice);
-      if (cacheKey) responseCache.set(cacheKey, accumulated);
+      if (cacheKey) setResponseCache(cacheKey, accumulated);
       // 同上：箭頭函式傳 anchorRect，避免 rAF timestamp 觸發選字置中分支
       requestAnimationFrame(() => positionResultCard(resultCardAnchorRect));
       if (activeStreamPort === port) activeStreamPort = null;
@@ -599,20 +675,21 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey, requ
     }
     if (msg.chunk) {
       accumulated += msg.chunk;
-      // 依版面渲染的動作：只顯示已完整收到的欄位，其餘顯示骨架
+      // 依版面渲染的動作：只顯示已完整收到的欄位，其餘顯示骨架；僅在已完成欄位有變化時重畫 DOM
       const structuredAction = getStructuredAction(action);
       if (body && structuredAction) {
         const partial = readCompletedCustomFields(accumulated, structuredAction.fields);
-        ffbClear(body).append(
-          ...(streamNotice ? [ffbEl('div', { class: 'g-provider-notice' }, streamNotice)] : []),
-          buildCustomActionContent(structuredAction, partial, { selectedText, pending: true })
-        );
-      // 串流進行中：純文字 + 游標，DEEP 標記顯示為分隔線
+        const signature = `${streamNotice}\n${JSON.stringify(partial)}`;
+        if (signature !== lastStructuredSignature) {
+          lastStructuredSignature = signature;
+          ffbClear(body).append(
+            ...(streamNotice ? [ffbEl('div', { class: 'g-provider-notice' }, streamNotice)] : []),
+            buildCustomActionContent(structuredAction, partial, { selectedText, pending: true })
+          );
+        }
+      // 串流進行中：增量追加純文字節點，避免每個 token 重建整塊 DOM
       } else if (body) {
-        ffbClear(body).append(
-          ...(streamNotice ? [ffbEl('div', { class: 'g-provider-notice' }, streamNotice)] : []),
-          ffbEl('div', { class: 'g-text-body g-streaming' }, buildStreamingText(accumulated))
-        );
+        appendPlainStreamChunk(msg.chunk);
       }
     }
   });
@@ -626,12 +703,17 @@ function startStreaming(action, selectedText, context, pageTitle, cacheKey, requ
   });
 
   // 自訂動作只多帶動作定義；刻意不送網址（{{pageUrl}} 在 background 會替換成空白）
-  port.postMessage({
-    requestId, action, selectedText, context, pageTitle,
-    ...(action === 'custom' ? { customAction: activeCustomAction } : {}),
-    model: getFeatureModel(action, selectedText),
-    modelOverride: cardModelOverride || '', targetLanguage, explanationLanguage, browserLanguage: navigator.language || ''
-  });
+  try {
+    port.postMessage({
+      requestId, action, selectedText, context, pageTitle,
+      ...(action === 'custom' ? { customAction: activeCustomAction } : {}),
+      model: getFeatureModel(action, selectedText),
+      modelOverride: cardModelOverride || '', targetLanguage, explanationLanguage, browserLanguage: navigator.language || ''
+    });
+  } catch {
+    if (activeStreamPort === port) activeStreamPort = null;
+    setError('擴充功能已更新，請重新整理頁面（F5）');
+  }
 }
 
 // 串流中的暫時顯示：純文字，換行 → <br>，DEEP 標記 → 分隔線

@@ -18,6 +18,11 @@ const SETTINGS_BACKUP_APP = 'fan-fan-ba';
 const SETTINGS_BACKUP_SCHEMA_VERSION = 1;
 const SECRET_BACKUP_CRYPTO_VERSION = 1;
 const SECRET_BACKUP_KDF_ITERATIONS = 210000;
+const MIN_SECRET_BACKUP_KDF_ITERATIONS = 100000;
+const MAX_SECRET_BACKUP_KDF_ITERATIONS = 1000000;
+const MAX_SETTINGS_IMPORT_BYTES = 2 * 1024 * 1024;
+const TEST_CONNECTION_TIMEOUT_MS = 20000;
+let statusClearTimer = null;
 const SYNC_SETTING_KEYS = [
   'model',
   'pageTranslationModel',
@@ -36,7 +41,9 @@ const DIAGNOSTICS_SETTING_KEYS = [
   'model',
   'pageTranslationModel',
   'targetLanguage',
-  'vocabularyHighlightMode'
+  'vocabularyHighlightMode',
+  'customApiBase',
+  'customModelName'
 ];
 // A1''' 補償控制（最小版）：mirror-only 後 storage.local 是單一副本，
 // 損毀即全滅。這裡只做「上次備份多久前」的 staleness 提醒，推使用者定期
@@ -357,24 +364,33 @@ function formatDiagnosticsDate(value = '') {
   return Number.isFinite(t) ? new Date(t).toLocaleDateString() : '未知日期';
 }
 
+function formatDiagnosticModelStatus(model, ready) {
+  const provider = ModelRegistry.PROVIDERS[model?.provider];
+  if (provider?.keyless) return `${providerName(model.provider)} / ${model.name}：免金鑰（本機執行）`;
+  if (provider?.userConfigured) {
+    return `${providerName(model.provider)} / ${model.name}${ready ? '：端點與金鑰已設定' : '：缺端點網址、模型名稱或 API Key'}`;
+  }
+  return `${providerName(model.provider)} / ${model.name}${ready ? '：API Key 已設定' : '：缺 API Key'}`;
+}
+
 function buildDiagnosticsChecklist(diagnostics = Storage.emptyDiagnostics(), settings = {}, secrets = {}, appVersion = '') {
   const model = ModelRegistry.getModel(settings.model);
   const pageTranslationModel = ModelRegistry.getModel(settings.pageTranslationModel || model.id);
-  const modelKeyReady = hasProviderKey(model, secrets);
-  const pageModelKeyReady = hasProviderKey(pageTranslationModel, secrets);
+  const modelKeyReady = hasProviderKey(model, secrets, settings);
+  const pageModelKeyReady = hasProviderKey(pageTranslationModel, secrets, settings);
   const total = diagnostics.actions.translate + diagnostics.actions.explain + diagnostics.actions.optimize + diagnostics.pageTranslations;
   const targetLanguage = ModelRegistry.getLanguageOption?.(ModelRegistry.normalizeLanguage(settings.targetLanguage, 'zh-TW'))?.name || '繁體中文';
   const rows = [
     {
       status: modelKeyReady ? 'ok' : 'warn',
       label: '單段翻譯模型',
-      value: `${providerName(model.provider)} / ${model.name}${modelKeyReady ? '：API Key 已設定' : '：缺 API Key'}`,
+      value: formatDiagnosticModelStatus(model, modelKeyReady),
       detail: modelKeyReady ? '可按「測試連線」確認 API 是否可用。' : `目前選用 ${model.name}，請先填入 ${providerName(model.provider)} API Key。`
     },
     {
       status: pageModelKeyReady ? 'ok' : 'warn',
       label: '全文翻譯模型',
-      value: `${providerName(pageTranslationModel.provider)} / ${pageTranslationModel.name}${pageModelKeyReady ? '：API Key 已設定' : '：缺 API Key'}`,
+      value: formatDiagnosticModelStatus(pageTranslationModel, pageModelKeyReady),
       detail: `目標語言：${targetLanguage}；此檢查不會發送測試請求。`
     },
     {
@@ -409,7 +425,14 @@ function buildDiagnosticsChecklist(diagnostics = Storage.emptyDiagnostics(), set
   return rows;
 }
 
-function hasProviderKey(model = {}, secrets = {}) {
+function hasProviderKey(model = {}, secrets = {}, settings = {}) {
+  const provider = ModelRegistry.PROVIDERS[model.provider];
+  if (provider?.keyless) return true;
+  if (provider?.userConfigured) {
+    return !!String(settings.customApiBase || '').trim()
+      && !!String(settings.customModelName || '').trim()
+      && !!String(secrets[provider.apiKeyName] || '').trim();
+  }
   const keyName = model.apiKeyName || providerApiKeyName(model.provider);
   return !!String(secrets[keyName] || '').trim();
 }
@@ -1321,6 +1344,25 @@ $('btnSave').addEventListener('click', async () => {
 });
 
 // ── 測試連線 ─────────────────────────────────────────
+async function fetchWithTimeout(url, options = {}, timeoutMs = TEST_CONNECTION_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+// 不把上游錯誤原文直接回顯到 UI（比照 background.js 的 T3 原則）
+function formatConnectionTestError(status, providerLabel) {
+  const provider = String(providerLabel || '').trim() || 'AI 服務';
+  if (status === 401 || status === 403) return `連線失敗：${provider}驗證失敗，請檢查 API Key 或模型存取權限`;
+  if (status === 429) return `連線失敗：${provider}請求過於頻繁或額度已達上限，請稍後再試`;
+  if (status >= 500) return `連線失敗：${provider}目前忙碌或暫時不可用（HTTP ${status}）`;
+  return `連線失敗：${provider}回應錯誤（HTTP ${status}）`;
+}
+
 $('btnTest').addEventListener('click', async () => {
   const model        = $('model').value || ModelRegistry.DEFAULT_MODEL;
   if (ModelRegistry.getProvider(model) === 'custom') return testCustomEndpoint();
@@ -1328,30 +1370,33 @@ $('btnTest').addEventListener('click', async () => {
   const isOpenRouter = model.startsWith('openrouter:');
   const P            = ModelRegistry.PROVIDERS; // URL / 顯示名單一來源（WS-E M3''）
 
-  let apiKey, displayName, fetchUrl, fetchBody, fetchHeaders;
+  let apiKey, displayName, providerLabel, fetchUrl, fetchBody, fetchHeaders;
 
   if (isGroq) {
-    apiKey      = $('groqApiKey').value.trim();
-    displayName = `${ModelRegistry.getModel(model).name} (${P.groq.label})`;
-    fetchUrl    = `${P.groq.apiBase}/chat/completions`;
-    fetchHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
-    fetchBody    = buildOpenAICompatTestBody(ModelRegistry.toApiModelId(model));
+    apiKey        = $('groqApiKey').value.trim();
+    providerLabel = P.groq.label;
+    displayName   = `${ModelRegistry.getModel(model).name} (${P.groq.label})`;
+    fetchUrl      = `${P.groq.apiBase}/chat/completions`;
+    fetchHeaders  = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
+    fetchBody     = buildOpenAICompatTestBody(ModelRegistry.toApiModelId(model));
   } else if (isOpenRouter) {
-    apiKey      = $('openrouterApiKey').value.trim();
-    displayName = ModelRegistry.toApiModelId(model);
-    fetchUrl    = `${P.openrouter.apiBase}/chat/completions`;
-    fetchHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, ...P.openrouter.extraHeaders };
-    fetchBody    = buildOpenAICompatTestBody(ModelRegistry.toApiModelId(model));
+    apiKey        = $('openrouterApiKey').value.trim();
+    providerLabel = P.openrouter.label;
+    displayName   = ModelRegistry.toApiModelId(model);
+    fetchUrl      = `${P.openrouter.apiBase}/chat/completions`;
+    fetchHeaders  = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, ...P.openrouter.extraHeaders };
+    fetchBody     = buildOpenAICompatTestBody(ModelRegistry.toApiModelId(model));
   } else {
-    apiKey      = $('apiKey').value.trim();
-    displayName = model;
-    fetchUrl    = `${P.gemini.apiBase}/${model}:generateContent`;
-    fetchHeaders = { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey };
-    fetchBody    = JSON.stringify({ contents: [{ parts: [{ text: '回覆 OK 即可' }] }], generationConfig: { maxOutputTokens: 10 } });
+    apiKey        = $('apiKey').value.trim();
+    providerLabel = P.gemini.label;
+    displayName   = model;
+    fetchUrl      = `${P.gemini.apiBase}/${model}:generateContent`;
+    fetchHeaders  = { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey };
+    fetchBody     = JSON.stringify({ contents: [{ parts: [{ text: '回覆 OK 即可' }] }], generationConfig: { maxOutputTokens: 10 } });
   }
 
   if (!apiKey) {
-    showStatus('err', `請先輸入 ${isGroq ? 'Groq' : isOpenRouter ? 'OpenRouter' : 'Gemini'} API Key`);
+    showStatus('err', `請先輸入 ${providerLabel} API Key`);
     return;
   }
 
@@ -1359,7 +1404,7 @@ $('btnTest').addEventListener('click', async () => {
   $('btnTest').disabled = true;
 
   try {
-    let res = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body: fetchBody });
+    let res = await fetchWithTimeout(fetchUrl, { method: 'POST', headers: fetchHeaders, body: fetchBody });
     let fallbackUsed = false;
     // Groq／OpenRouter 共用：主模型被下架時測試連線也要試備援，
     // 否則會出現「測試連線失敗、實際翻譯卻正常」的分裂結果
@@ -1370,17 +1415,16 @@ $('btnTest').addEventListener('click', async () => {
         fallbackUsed = true;
         displayName = fallbackModelId;
         fetchBody = buildOpenAICompatTestBody(fallbackModelId);
-        res = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body: fetchBody });
+        res = await fetchWithTimeout(fetchUrl, { method: 'POST', headers: fetchHeaders, body: fetchBody });
       }
     }
     if (res.ok) {
       showStatus('ok', `✓ 連線成功！模型：${displayName}${fallbackUsed ? '（備援）' : ''}`);
     } else {
-      const err = await res.json().catch(() => ({}));
-      showStatus('err', `連線失敗：${err.error?.message || `HTTP ${res.status}`}`);
+      showStatus('err', formatConnectionTestError(res.status, providerLabel));
     }
   } catch (e) {
-    showStatus('err', `網路錯誤：${e.message}`);
+    showStatus('err', e?.name === 'AbortError' ? '連線失敗：請求逾時，請稍後重試' : '網路錯誤：無法連線到 AI 服務');
   } finally {
     $('btnTest').disabled = false;
   }
@@ -1465,7 +1509,7 @@ async function testCustomEndpoint() {
   try {
     let res;
     try {
-      res = await fetch(`${endpoint.base}/models`, { headers: { Authorization: `Bearer ${apiKey}` } });
+      res = await fetchWithTimeout(`${endpoint.base}/models`, { headers: { Authorization: `Bearer ${apiKey}` } });
     } catch (error) {
       show(formatCustomEndpointTestResult({ kind: 'network' }));
       return;
@@ -1480,9 +1524,17 @@ async function testCustomEndpoint() {
 // ── 工具函式 ─────────────────────────────────────────
 function showStatus(type, msg) {
   const el = $('status');
+  clearTimeout(statusClearTimer);
+  statusClearTimer = null;
   el.className   = type;
   el.textContent = msg;
-  if (type === 'ok') setTimeout(() => { el.className = ''; el.textContent = ''; }, 3000);
+  if (type === 'ok') {
+    statusClearTimer = setTimeout(() => {
+      statusClearTimer = null;
+      el.className = '';
+      el.textContent = '';
+    }, 3000);
+  }
 }
 
 function buildOpenAICompatTestBody(modelId) {
@@ -1808,14 +1860,19 @@ async function encryptBackupSecrets(secrets = {}, password = '') {
 async function decryptBackupSecrets(encrypted = {}, password = '') {
   if (!encrypted) return {};
   assertBackupPassword(password);
-  if (encrypted.version !== SECRET_BACKUP_CRYPTO_VERSION || encrypted.algorithm !== 'AES-GCM') {
+  const iterations = encrypted.iterations == null ? SECRET_BACKUP_KDF_ITERATIONS : Number(encrypted.iterations);
+  if (encrypted.version !== SECRET_BACKUP_CRYPTO_VERSION
+    || encrypted.algorithm !== 'AES-GCM'
+    || !Number.isInteger(iterations)
+    || iterations < MIN_SECRET_BACKUP_KDF_ITERATIONS
+    || iterations > MAX_SECRET_BACKUP_KDF_ITERATIONS) {
     throw new Error('API Key 加密備份格式不支援');
   }
   try {
     const cryptoImpl = getCryptoImpl();
     const salt = base64ToBytes(encrypted.salt);
     const iv = base64ToBytes(encrypted.iv);
-    const key = await deriveBackupSecretKey(password, salt, encrypted.iterations || SECRET_BACKUP_KDF_ITERATIONS);
+    const key = await deriveBackupSecretKey(password, salt, iterations);
     const decrypted = await cryptoImpl.subtle.decrypt(
       { name: 'AES-GCM', iv },
       key,
@@ -1919,6 +1976,9 @@ function buildSettingsBackupFilename(date = new Date()) {
 }
 
 async function importSettingsBackupFile(file, options = {}) {
+  if (file?.size > MAX_SETTINGS_IMPORT_BYTES) {
+    throw new Error('設定檔太大（上限 2MB），請確認是翻翻吧的設定備份');
+  }
   const payload = parseSettingsBackup(await readTextFile(file));
   const settings = normalizeImportedSettings(payload.settings || {});
   const secrets = await resolveImportedBackupSecrets(payload, options.password || '');
@@ -1994,6 +2054,13 @@ function normalizeImportedSettings(values = {}) {
 function normalizeImportedSetting(key, value) {
   // 全文翻譯的空字串＝跟隨主模型，不能被 normalizeModel 補成預設模型
   if (key === 'pageTranslationModel' && !String(value || '').trim()) return '';
+  if (key === 'dictionaryModel') {
+    const raw = String(value || '').trim();
+    if (!raw || raw === 'default') return '';
+    const normalized = ModelRegistry.normalizeModel(raw);
+    const entry = ModelRegistry.MODELS.find(item => item.id === normalized);
+    return entry && !entry.pageTranslationOnly ? normalized : '';
+  }
   if (key === 'model' || key === 'pageTranslationModel') {
     return ModelRegistry.normalizeModel(String(value || ''));
   }

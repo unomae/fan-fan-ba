@@ -294,12 +294,14 @@ async function translatePage() {
     if (!route?.model || route.error) throw new Error(route?.error || '無法讀取翻譯設定。');
     const chunks = splitPage(text);
     const results = [];
-    for (const chunk of chunks) {
-      translationStatus.textContent = '正在翻譯第 ' + pageIndex + ' 頁…';
-      results.push(await translateChunk(chunk, route.model, settings, controller.signal));
+    for (let i = 0; i < chunks.length; i += 1) {
+      const progress = chunks.length > 1 ? `（${i + 1}/${chunks.length}）` : '';
+      translationStatus.textContent = `正在翻譯第 ${pageIndex} 頁${progress}…`;
+      results.push(await translateChunk(chunks[i], route.model, settings, controller.signal));
       controller.signal.throwIfAborted();
+      // 每段完成就先顯示，長頁不必等到最後一段才看到譯文
+      translationText.textContent = results.join('\n\n');
     }
-    translationText.textContent = results.join('\n\n');
     translationStatus.textContent = '第 ' + pageIndex + ' 頁已翻譯。';
   } catch (error) {
     if (!controller.signal.aborted) translationStatus.textContent = error.message;

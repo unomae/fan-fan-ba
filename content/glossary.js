@@ -83,17 +83,21 @@
     }).join('');
   }
 
-  function containsTerm(haystack, needle) {
-    const lowerHay = lowerSameLength(haystack);
+  function containsTerm(haystack, needle, lowerHay = lowerSameLength(haystack)) {
     const lowerNeedle = lowerSameLength(needle);
-    const headIsWord = WORD_CHAR.test(Array.from(needle)[0]);
-    const tailIsWord = WORD_CHAR.test(Array.from(needle).pop());
+    if (!lowerNeedle) return false;
+    const needleChars = Array.from(needle);
+    const headIsWord = WORD_CHAR.test(needleChars[0]);
+    const tailIsWord = WORD_CHAR.test(needleChars[needleChars.length - 1]);
     let from = 0;
     while (from <= lowerHay.length) {
       const index = lowerHay.indexOf(lowerNeedle, from);
       if (index === -1) return false;
-      const before = Array.from(haystack.slice(0, index)).pop();
-      const after = Array.from(haystack.slice(index + needle.length))[0];
+      // 只切前後各最多 2 個 UTF-16 code unit（足以包住 surrogate pair），避免每輪配置整段前／後綴
+      const before = index > 0 ? Array.from(haystack.slice(Math.max(0, index - 2), index)).pop() : '';
+      const after = index + needle.length < haystack.length
+        ? Array.from(haystack.slice(index + needle.length, index + needle.length + 2))[0]
+        : '';
       const okBefore = !headIsWord || !before || !WORD_CHAR.test(before);
       const okAfter = !tailIsWord || !after || !WORD_CHAR.test(after);
       if (okBefore && okAfter) return true;
@@ -106,8 +110,10 @@
   function findMatchingTerms(terms, text) {
     const haystack = String(text || '');
     if (!haystack || !Array.isArray(terms)) return [];
+    // 整段內文只轉小寫一次，避免大量術語逐條重算
+    const lowerHay = lowerSameLength(haystack);
     return terms
-      .filter(term => term && term.source && containsTerm(haystack, term.source))
+      .filter(term => term && term.source && containsTerm(haystack, term.source, lowerHay))
       .sort((a, b) => b.source.length - a.source.length)
       .slice(0, MAX_TERMS_PER_REQUEST);
   }
@@ -128,7 +134,7 @@
   // 加 BOM 與 CRLF 讓 Excel 正確顯示中文。
   function buildGlossaryCsv(terms, escapeCell) {
     const rows = [CSV_HEADER, ...(terms || []).map(term => [term.source, term.target, term.note || ''])];
-    return `﻿${rows.map(row => row.map(escapeCell).join(',')).join('\r\n')}`;
+    return `\ufeff${rows.map(row => row.map(escapeCell).join(',')).join('\r\n')}`;
   }
 
   // RFC 4180 的最小實作：雙引號包裹、"" 代表一個引號、引號內可換行
@@ -137,7 +143,7 @@
     let row = [];
     let cell = '';
     let quoted = false;
-    const input = String(text || '').replace(/^﻿/, '');
+    const input = String(text || '').replace(/^\ufeff/, '');
     for (let i = 0; i < input.length; i++) {
       const ch = input[i];
       if (quoted) {

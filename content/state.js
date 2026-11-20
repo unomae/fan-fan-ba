@@ -30,5 +30,8 @@ let activeRequestId = 0;    // 最新 AI 請求序號，用於忽略舊回應
 let activeStreamPort = null; // 目前 streaming port，新請求會主動斷開舊 port
 let resultCardAnchorRect = null; // 結果卡優先錨定在觸發時的工具列位置下方
 
-// 相同文字快取：key = `${action}:${text}`，tab 生命週期內有效
+// 相同文字快取：tab 生命週期內有效，設上限避免長駐 SPA 分頁無限成長
+const RESPONSE_CACHE_MAX_SIZE = 100;
 const responseCache = new Map();
+let activeSpeakAudio = null; // 目前播放中的 Cloud TTS Audio，避免連點重疊出聲
+let activeSpeakBtn = null;
