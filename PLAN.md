@@ -31,8 +31,12 @@
 - **3. 清 Tier 3／4 剩餘項**
 
   - **目的**：補上自動測試無法代替的真實情境。
-  - **現況**：Tier 3 剩 5 項、Tier 4 剩 14 項（2026-11-20 重數）。QA profile 不配 key（2026-08-14 裁決），只能 KAKA 本人跑：Groq key 13 項、Obsidian 3 項、Excel、真重裝、Google 帳號各 1 項。P-16 ①③ 已於 11-10 驗收（根 `CHANGELOG.md` 2026-11-16），不再卡本項。`check-models.js` 只對免 key 的 OpenRouter，屬設計限制。
-  - **接續**：KAKA 依 2026-11-20 產的勾選清單跑完 19 項、匯出結果貼回，再逐條寫回 `MANUAL-QA.md`；其中「中日文頁面生字候選只抓英文字是否可接受」由 KAKA 當場裁決。全過才搬 `CHANGELOG.md`。
+  - **現況**：Tier 3 剩 5 項、Tier 4 剩 14 項（2026-11-20 重數）。QA profile 仍不配 key（2026-08-14 裁決）；11-20 改成 Claude 用模擬 provider 與本機 App 測大部分、KAKA 只留 3 項，分工見接續，尚未開測。P-16 ①③ 已於 11-10 驗收（根 `CHANGELOG.md` 2026-11-16），不再卡本項。`check-models.js` 只對免 key 的 OpenRouter，屬設計限制。
+  - **接續**：**2026-11-20 KAKA 裁示：能測的都交 Claude，之後排一輪一起測。**
+    - **Claude 測（17 項）**：用真 Chrome＋e2e 既有的模擬 provider 手法（`e2e/suites/page-translation.js` 換掉 SW 的 fetch），不用真 key。範圍：§1 iframe／主頁翻譯；§4 Alt+T 翻譯、已譯段定位、局部重試扣回計數、與整頁混用；§5 診斷成功計數；§7 串流翻譯／解釋／優化、字典卡與朗讀（朗讀只驗有發出語音呼叫，聽不到聲音）；Tier 3 學習摘要前兩條；§6 Excel 實際顯示（Excel 開檔讀格子＋截圖）、真移除重裝（測試 profile；同路徑重載擴充 ID 不變，蓋不到商店重裝換 ID）；§7 hover 設定隨檔備份；Tier 3 收藏→Obsidian 兩條與 §2 存入 Obsidian（只用臨時測試 vault，不碰真 vault；Chrome 開 `obsidian://` 若跳允許對話框要 KAKA 點一次）。
+    - **仍歸 KAKA（3 項）**：§4 譯文合不合上下文（需真模型；Claude 先驗請求有帶前後文）；Tier 3 中日文頁生字候選只抓英文字可否接受（裁決，Claude 附截圖）；§7 Cloud Sync 登入同步（Google 帳號登入，且正式 OAuth client ID 屬 Tier 5 未定）。
+    - **計數**：§7「設定儲存／匯出／匯入、Cloud Sync」那一格拆成 hover 備份（Claude）與 Cloud Sync（KAKA）兩半，兩半都過才勾，所以 19 格對應 20 份工作。
+    - **勾選規則**：模擬 provider 的結果在 `MANUAL-QA.md` 標證據等級「automation-driven／模擬 provider」，不寫成真模型或人眼驗過。全過才搬 `CHANGELOG.md`。
   - **詳情**：`MANUAL-QA.md`；`scripts/check-models.js`
 
 ### 上架準備與驗收（續 2）
