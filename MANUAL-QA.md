@@ -17,8 +17,8 @@
 
 ## ⚠️ 執行順序（2026-08-10 排定，先讀這段再開工）
 
-**進度（2026-11-20 補驗後）：Tier 0、1、2 完成；Tier 3 16/19；Tier 4 28/31 → 全表 69/78，剩 9 項。**
-（2026-11-20 先重數為 56/78，同日 Claude 以模擬 provider 與本機 Excel 補驗 13 格，見下方〈2026-11-20 Tier 3／4 補驗〉。）
+**進度（2026-11-20 補驗後）：Tier 0、1、2 完成；Tier 3 18/19；Tier 4 28/31 → 全表 71/78，剩 7 項。**
+（2026-11-20 先重數為 56/78，同日 Claude 以模擬 provider、本機 Excel 與臨時 Obsidian 測試 vault 補驗 15 格，見下方〈2026-11-20 Tier 3／4 補驗〉。）
 （2026-08-13 原為 55/78；§6 CSV 檔案結構那格 2026-09-13 改由自動化驗證後打勾，Tier 4 才多 1 格。）
 剩下的 Tier 3／4 共 19 項幾乎都卡在同兩件事：**沒有 API key**（翻譯／解釋／優化／串流／單段 Alt+T／摘要／診斷成功計數）
 與**需要外部 App／帳號**（Obsidian 落檔、Excel 開 CSV、Cloud Sync 登入）。
@@ -31,8 +31,8 @@ Tier 1 那道「一旦錯過就補不回來」的閘已經過了，之後都可�
 | **0** | §0 前置 | 2 | 15 分 | ✅ 08-10 | 版本號相同不代表內容新，一律重打包 |
 | **1** | ⭐〈cutover 一次性資料層遷移〉 | 6 | 40 分 | ✅ 08-10 **6/6 PASS** | **單向不可逆、每個 profile 只發生一次** |
 | **2** | 〈2026-07-30 單字本資料層〉 | 17 | 60 分 | ✅ 08-13 **16 PASS＋1 跳過**（快照還原 7・DevTools 2＋1 跳過・匯入 7）| 資料遺失類 |
-| **3** | 〈2026-07-28 三缺陷回歸〉4 ＋〈半接線 6 條〉15 | 19 | 90 分 | 🔶 **16/19**（08-13 automation-driven＋11-20 模擬 provider 2 格）| 剩 3 格＝Obsidian 落檔 2、中日文生字候選裁決 1 |
-| **4** | §1–§7 legacy 回歸 | 31 | 90 分 | 🔶 **28/31**（08-13 16 格＋09-13 CSV 結構 1 格＋11-20 補驗 11 格）| 剩 3 項＝§2 存入 Obsidian、§4 譯文語境（需真模型）、§7 Cloud Sync |
+| **3** | 〈2026-07-28 三缺陷回歸〉4 ＋〈半接線 6 條〉15 | 19 | 90 分 | 🔶 **18/19**（08-13 automation-driven＋11-20 補驗 4 格）| 剩 1 格＝中日文生字候選裁決 |
+| **4** | §1–§7 legacy 回歸 | 31 | 90 分 | 🔶 **28/31**（08-13 16 格＋09-13 CSV 結構 1 格＋11-20 補驗 11 格）| 剩 3 項＝§2 存入 Obsidian 後切回原分頁、§4 譯文語境（需真模型）、§7 Cloud Sync |
 | **5** | §8 送審前 gating | 3 | 另計 | ⬜ | 非 code，最後做 |
 
 原始計數 78 ＝ 舊有 71 ＋ 新增 cutover 6 與 Tier 0 前置 2，− §6 那條被 TC-CUT-001 取代的舊遷移項。
@@ -180,11 +180,13 @@ fire-and-forget 出佇列鏈、下次啟動補刪的路徑——三個 profile �
 **自動化只驗到「有呼叫、狀態有寫入、UI 入口存在且可見」；下面這些只有真實瀏覽器 / 外部 App 驗得了。**
 
 ### 收藏 → Obsidian 自動匯出（manual gate，**尚未驗證**）
-- [ ] 設定頁填好 Obsidian Vault 與資料夾 → 選字翻譯 → 結果卡按「收藏」
+- [x] 設定頁填好 Obsidian Vault 與資料夾 → 選字翻譯 → 結果卡按「收藏」
       → 按鈕變「**已收藏並匯出**」，且 Obsidian 週記 `YYYY-W##.md` **真的多出**該單字區塊
       （自動化只鎖到：收藏成功會呼叫匯出、狀態機正確；`obsidian://` URI 有沒有真的被 Obsidian 接走驗不到）
+      → **2026-11-20 補驗（模擬 provider＋臨時測試 vault；擴充產生的 URI 由系統轉交 Obsidian）**：選字 → 字典卡按收藏，按鈕變「已收藏並匯出」，擴充送出 1 個 `obsidian://advanced-uri`（含 filepath、data、mode=append、newline、vault）。把這個 URI 原封不動交給系統後，測試 vault 的 `FFB-QA/2026-W47.md` 多出完整的 `### serendipity` 區塊（詞性、音標、涵義、解釋、例句、來源、Tags）。**未涵蓋**：Chrome 把 `obsidian://` 交給系統那一步。Chrome for Testing 試了兩種方法都沒交出去（預先在 profile 允許協定也沒用），改由系統直接轉交；日常 Chrome 會先跳「要開啟 Obsidian 嗎」確認框
 - [x] 未設定資料夾時按鈕停在「已收藏」，不謊報匯出
-- [ ] 同一個字在別的頁面再收藏一次 → **週記不會多出第二份**（已匯出過就不重複 append）
+- [x] 同一個字在別的頁面再收藏一次 → **週記不會多出第二份**（已匯出過就不重複 append）
+      → **2026-11-20 補驗（模擬 provider＋臨時測試 vault；擴充產生的 URI 由系統轉交 Obsidian）**：另一頁同一個字，卡片一開就是「已收藏」，再按一次後擴充沒有再送 URI（0 個）；週記裡 `### serendipity` 始終只有 1 個
 - [x] 浮球 →「收藏 / 紀錄」→ 單字本，該筆顯示「已匯出」badge
 
 ### 浮球單字高亮開關
@@ -400,6 +402,7 @@ emoji、RTL override（`‮`）、`=cmd|' /C calc'!A0`、`<img src=x onerror=...
 
 ## 2. v1.9.6 — 訊息硬化（Tier 4）
 - [ ] 設定 Obsidian Vault → 結果卡存入 Obsidian → 正常開啟、存入後切回原分頁（只允許 `obsidian://`）
+      → **2026-11-20 補驗（模擬 provider＋臨時測試 vault；擴充產生的 URI 由系統轉交 Obsidian）**：段落譯文按「存入 Obsidian」：提示「✓ 已送出到 Obsidian：FFB-QA/2026-W47.md」，擴充送出 1 個 URI，交給系統後週記多出 1 個 `### 翻譯` 區塊。**「存入後切回原分頁」需要 Chrome 真的把協定交出去才驗得到，這段未涵蓋**，故不勾
 - [x] 浮球「設定」→ 正常開設定頁
       → 08-13 實測：開出 `chrome-extension://<id>/options.html`、分頁鈕存在。
       **注意 `openOptionsPage()` 會聚焦既有的設定分頁而不是開新的**，驗這條前要先關掉已開的設定頁
@@ -523,9 +526,9 @@ emoji、RTL override（`‮`）、`=cmd|' /C calc'!A0`、`<img src=x onerror=...
 
 - **環境**：Win、Chrome for Testing（`ms-playwright/chromium-1161`）以 `--load-extension` 載入 `dist/pkg`（v1.11.1，build `88a7523edaa8`），全新拋棄式 profile。打包前先 `npm ci`：本機 `node_modules` 缺 lockfile 裡的 `pdfjs-dist`，`npm run package` 原本會失敗。
 - **證據等級**：AI 回應全由 service worker 內的模擬 provider 回固定內容（做法同 `e2e/suites/page-translation.js`），驗的是擴充自己的流程與畫面；**不代表真模型的譯文品質**。真模型路徑已由根 PLAN P-16 於 11-10 用真 key 驗過。
-- **結果**：補勾 13 格（Tier 3 兩格、Tier 4 十一格），每格證據寫在各條下方。另有 3 格只驗到一半而不勾：中日文生字候選、譯文語境、Cloud Sync。
+- **結果**：補勾 15 格（Tier 3 四格、Tier 4 十一格），每格證據寫在各條下方。另有 4 格只驗到一半而不勾：中日文生字候選、譯文語境、Cloud Sync、存入 Obsidian 後切回原分頁。
 - **疑點（未修，待裁決）**：先 Alt+T 翻一段後按全文翻譯快捷鍵，會還原而不是翻整頁，細節見 §4「與整頁翻譯混用」那條。
-- **Obsidian 三格未完成**：擴充端已確認（按鈕變「已收藏並匯出」、送出 `obsidian://advanced-uri`、別頁再收藏不重送），但臨時測試 vault 沒寫出檔案。直接從系統送同格式 URI 也沒寫入，問題在 Obsidian 端；推測是新 vault 尚未信任作者、Advanced URI 插件沒啟用，需人工點一次。
+- **Obsidian**：用臨時測試 vault（`C:\tmp\ffb-qa\obsidian-test-vault`），KAKA 手動信任並啟用 Advanced URI 後才寫得進去。Chrome for Testing 不會把 `obsidian://` 交給系統，所以改成兩段驗：擴充產生的 URI 記下來，再原封不動由系統交給 Obsidian。乾淨重送後週記裡單字區塊與翻譯區塊各 1 個、沒有重複。Chrome 交出協定與切回原分頁未涵蓋。
 - 腳本與截圖是一次性產物，留在本機 `C:\tmp\ffb-qa\tier34-out`，不進 repo。
 ---
 

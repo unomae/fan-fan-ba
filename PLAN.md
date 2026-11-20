@@ -11,7 +11,7 @@
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
 | 自動化單元測試 | 全綠，數字以 `npm test` 輸出為準、文件不記（涵蓋設定頁總覽與未儲存提示、模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表、長難句分析、寫作批改、設定頁搜尋與新功能標籤、術語表（含多分頁同步）、模型比較、單字卡四級評分） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-10-23，首次確認測到現行 service worker；改 code 先 `npm run package`，啟動時自動比對建置指紋） |
-| 手動 QA | 全表 69/78（2026-11-20 補驗後）；剩 9 項＝Tier 3／4 的 6 格（Obsidian 3、需 KAKA 3）加 Tier 5 送審 3 項（見 `MANUAL-QA.md` 執行順序節） |
+| 手動 QA | 全表 71/78（2026-11-20 補驗後）；剩 7 項＝Tier 3／4 的 4 格（都需 KAKA）加 Tier 5 送審 3 項（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | **2026-09-20 裁決：暫緩送審，先做功能**，告一段落再回頭走上架流程。Chrome Web Store 仍是 release checkpoint |
 | 2026-08-26 全面審查 | 四路平行審查完成：code（30+ 項）、UI/UX（30 項）、流程（A1-A6＋B1-B5）；總評＝工程底子前段班，上架 blocker 集中在安全 P1×2、a11y、上架材料 |
 
@@ -31,10 +31,12 @@
 - **3. 清 Tier 3／4 剩餘項**
 
   - **目的**：補上自動測試無法代替的真實情境。
-  - **現況**：2026-11-20 Claude 以模擬 provider 與本機 Excel 補驗，Tier 3 16/19、Tier 4 28/31（全表 69/78）。剩 6 格：Obsidian 3 格卡在測試 vault 未信任插件；KAKA 的譯文語境、中日文生字裁決、Cloud Sync 3 格。另有 1 個疑點待裁決。P-16 ①③ 已於 11-10 驗收。
+  - **現況**：2026-11-20 Claude 用模擬 provider、本機 Excel 與臨時 Obsidian 測試 vault 補驗，Tier 3 18/19、Tier 4 28/31（全表 71/78）。剩 4 格都要 KAKA：譯文語境、中日文生字裁決、Cloud Sync，以及存入 Obsidian 後切回原分頁。另有 1 個疑點待裁決。
   - **接續**：
-    - **Obsidian 3 格**：擴充端已驗過，測試 vault 沒寫出檔；從系統直接送 URI 也沒寫入，判斷是 Obsidian 端。KAKA 在 Obsidian 開 `obsidian-test-vault`（路徑 `C:\tmp\ffb-qa\obsidian-test-vault`），按「信任作者並啟用插件」後，由 Claude 重跑。結束後還原 `%APPDATA%\obsidian\obsidian.json`（備份在 `C:\tmp\ffb-qa\obsidian.json.bak`）。
-    - **KAKA 3 格**：§4 譯文合不合上下文（需真模型；請求已確認帶前後段）；Tier 3 中日文頁生字只抓英文（實測抓到 backlog／dashboard／inventory，日文不抓）可否接受；§7 Cloud Sync 登入同步。§7 那格的「hover 設定」已於 `5f4c193` 隨按鈕移除，無可備份，只剩 Cloud Sync。
+    - **§4 譯文合不合上下文**：需真模型；已確認請求帶前後段。
+    - **Tier 3 中日文頁生字候選只抓英文**：實測抓 backlog／dashboard／inventory、日文不抓，請裁決可否接受。
+    - **§7 Cloud Sync 登入同步**：「hover 設定」那半已於 `5f4c193` 隨按鈕移除，只剩這半。
+    - **§2 存入 Obsidian 後切回原分頁**：擴充送出的 URI 已確認 Obsidian 寫得進去；Chrome 把 `obsidian://` 交給系統、再切回原分頁，只能在日常 Chrome 實際按一次「開啟 Obsidian」確認。
     - **疑點待裁決**：先 Alt+T 翻一段後按全文翻譯快捷鍵（Alt+A），會把那段還原而不是翻整頁（`content/main.js` 的 `runPageTranslationTrigger`）；從浮球開全文翻譯則正常。要不要改另開一項。
     - 全過才搬 `CHANGELOG.md`；證據等級與每格結果見 `MANUAL-QA.md`〈2026-11-20 Tier 3／4 補驗〉。
   - **詳情**：`MANUAL-QA.md`；`scripts/check-models.js`
