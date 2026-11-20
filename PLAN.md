@@ -11,7 +11,7 @@
 | 版本 | v1.11.1（package.json；尚未發布到 Chrome Web Store） |
 | 自動化單元測試 | 全綠，數字以 `npm test` 輸出為準、文件不記（涵蓋設定頁總覽與未儲存提示、模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表、長難句分析、寫作批改、設定頁搜尋與新功能標籤、術語表（含多分頁同步）、模型比較、單字卡四級評分） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-10-23，首次確認測到現行 service worker；改 code 先 `npm run package`，啟動時自動比對建置指紋） |
-| 手動 QA | 全表 56/78（2026-11-20 重數）；剩 22 項＝Tier 3／4 的 19 項全卡「無 API key」或「需外部 App／帳號」，加 Tier 5 送審 3 項（見 `MANUAL-QA.md` 執行順序節） |
+| 手動 QA | 全表 69/78（2026-11-20 補驗後）；剩 9 項＝Tier 3／4 的 6 格（Obsidian 3、需 KAKA 3）加 Tier 5 送審 3 項（見 `MANUAL-QA.md` 執行順序節） |
 | 上架 | **2026-09-20 裁決：暫緩送審，先做功能**，告一段落再回頭走上架流程。Chrome Web Store 仍是 release checkpoint |
 | 2026-08-26 全面審查 | 四路平行審查完成：code（30+ 項）、UI/UX（30 項）、流程（A1-A6＋B1-B5）；總評＝工程底子前段班，上架 blocker 集中在安全 P1×2、a11y、上架材料 |
 
@@ -31,12 +31,12 @@
 - **3. 清 Tier 3／4 剩餘項**
 
   - **目的**：補上自動測試無法代替的真實情境。
-  - **現況**：Tier 3 剩 5 項、Tier 4 剩 14 項（2026-11-20 重數）。QA profile 仍不配 key（2026-08-14 裁決）；11-20 改成 Claude 用模擬 provider 與本機 App 測大部分、KAKA 只留 3 項，分工見接續，尚未開測。P-16 ①③ 已於 11-10 驗收（根 `CHANGELOG.md` 2026-11-16），不再卡本項。`check-models.js` 只對免 key 的 OpenRouter，屬設計限制。
-  - **接續**：**2026-11-20 KAKA 裁示：能測的都交 Claude，之後排一輪一起測。**
-    - **Claude 測（17 項）**：用真 Chrome＋e2e 既有的模擬 provider 手法（`e2e/suites/page-translation.js` 換掉 SW 的 fetch），不用真 key。範圍：§1 iframe／主頁翻譯；§4 Alt+T 翻譯、已譯段定位、局部重試扣回計數、與整頁混用；§5 診斷成功計數；§7 串流翻譯／解釋／優化、字典卡與朗讀（朗讀只驗有發出語音呼叫，聽不到聲音）；Tier 3 學習摘要前兩條；§6 Excel 實際顯示（Excel 開檔讀格子＋截圖）、真移除重裝（測試 profile；同路徑重載擴充 ID 不變，蓋不到商店重裝換 ID）；§7 hover 設定隨檔備份；Tier 3 收藏→Obsidian 兩條與 §2 存入 Obsidian（只用臨時測試 vault，不碰真 vault；Chrome 開 `obsidian://` 若跳允許對話框要 KAKA 點一次）。
-    - **仍歸 KAKA（3 項）**：§4 譯文合不合上下文（需真模型；Claude 先驗請求有帶前後文）；Tier 3 中日文頁生字候選只抓英文字可否接受（裁決，Claude 附截圖）；§7 Cloud Sync 登入同步（Google 帳號登入，且正式 OAuth client ID 屬 Tier 5 未定）。
-    - **計數**：§7「設定儲存／匯出／匯入、Cloud Sync」那一格拆成 hover 備份（Claude）與 Cloud Sync（KAKA）兩半，兩半都過才勾，所以 19 格對應 20 份工作。
-    - **勾選規則**：模擬 provider 的結果在 `MANUAL-QA.md` 標證據等級「automation-driven／模擬 provider」，不寫成真模型或人眼驗過。全過才搬 `CHANGELOG.md`。
+  - **現況**：2026-11-20 Claude 以模擬 provider 與本機 Excel 補驗，Tier 3 16/19、Tier 4 28/31（全表 69/78）。剩 6 格：Obsidian 3 格卡在測試 vault 未信任插件；KAKA 的譯文語境、中日文生字裁決、Cloud Sync 3 格。另有 1 個疑點待裁決。P-16 ①③ 已於 11-10 驗收。
+  - **接續**：
+    - **Obsidian 3 格**：擴充端已驗過，測試 vault 沒寫出檔；從系統直接送 URI 也沒寫入，判斷是 Obsidian 端。KAKA 在 Obsidian 開 `obsidian-test-vault`（路徑 `C:\tmp\ffb-qa\obsidian-test-vault`），按「信任作者並啟用插件」後，由 Claude 重跑。結束後還原 `%APPDATA%\obsidian\obsidian.json`（備份在 `C:\tmp\ffb-qa\obsidian.json.bak`）。
+    - **KAKA 3 格**：§4 譯文合不合上下文（需真模型；請求已確認帶前後段）；Tier 3 中日文頁生字只抓英文（實測抓到 backlog／dashboard／inventory，日文不抓）可否接受；§7 Cloud Sync 登入同步。§7 那格的「hover 設定」已於 `5f4c193` 隨按鈕移除，無可備份，只剩 Cloud Sync。
+    - **疑點待裁決**：先 Alt+T 翻一段後按全文翻譯快捷鍵（Alt+A），會把那段還原而不是翻整頁（`content/main.js` 的 `runPageTranslationTrigger`）；從浮球開全文翻譯則正常。要不要改另開一項。
+    - 全過才搬 `CHANGELOG.md`；證據等級與每格結果見 `MANUAL-QA.md`〈2026-11-20 Tier 3／4 補驗〉。
   - **詳情**：`MANUAL-QA.md`；`scripts/check-models.js`
 
 ### 上架準備與驗收（續 2）
