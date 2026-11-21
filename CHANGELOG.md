@@ -3,6 +3,15 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-11-21 — 強制 Trusted Types 的頁面實機驗過，PLAN 項目結案
+
+KAKA 指示用 ego lite 驗收。**沒有改程式**。
+
+- **背景**：2026-09-30 content script 的 HTML 字串寫入點全部改用 DOM builder，但當時只有 jsdom 模擬的證據；實機驗卡在自動化 Chrome 被 Google 導到機器人驗證頁。
+- **這次怎麼驗**：`npm run package`（build `d090f51ee51f`）後，把 `dist/pkg` 用「載入未封裝項目」裝進 ego lite。Google 搜尋結果頁這次測試**沒有強制** Trusted Types（頁內寫 `innerHTML` 不會丟錯），驗不到要驗的情境，改用 `news.google.com`：它的 CSP 帶 `require-trusted-types-for 'script'`，實測頁內寫 `innerHTML` 會丟錯。
+- **結果**：選字後工具列出現，按翻譯後結果卡顯示缺 key 錯誤；浮球 4 個選單圖示正常；「收藏 / 紀錄」、「單字本」、「最近查詢」三個面板都打得開。`securitypolicyviolation` 只記到 Claude 自己測試寫入的那 1 筆，擴充沒有觸發任何違規。詳見 `MANUAL-QA.md`「頁面 UI 改用 DOM builder」。
+- **未涵蓋**：選字是用腳本設定選取範圍再送 mouseup，不是真的拖曳滑鼠；沒有讀 content script 的 Console 例外，判斷依據是 UI 實際有畫出來，加上沒有收到違規事件；全文翻譯清單排版沿用 2026-11-07 的複驗結果，這次沒有重跑。
+
 ## 2026-11-21 — 字串型 error code 不對映成 HTTP 語意（結案：不做）
 
 **裁決**：KAKA 同意「不做，有真實樣本再重開」，從 `PLAN.md` 缺資料區移除。只讀了程式碼，沒有改程式。

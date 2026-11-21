@@ -83,13 +83,6 @@
 
 ### 介面與操作體驗（續 3）
 
-- **innerHTML 主流路徑遇 Trusted Types 頁面（Google 系）UI 全滅**
-
-  - **目的**：確認嚴格 Trusted Types 頁面仍能操作。
-  - **現況**：2026-09-30 content script 的 HTML 字串寫入點已全數改用 DOM builder（見 `CHANGELOG.md` 同日「頁面 UI 改用 DOM builder」），jsdom 內模擬 Trusted Types 的 32 個情境都不再觸發寫入點；未用 `createPolicy` 過渡包裝。
-  - **接續**：在 Google 搜尋結果頁實機操作一次（`MANUAL-QA.md`「頁面 UI 改用 DOM builder」），確認後結案。
-  - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
-
 - **設定頁、popup、網頁浮層與歡迎頁改版：KAKA 日常 Chrome 實機看觀感**
 
   - **目的**：設定頁「總覽首頁＋卡片」、說明文字精簡，以及 popup／設定頁改用 Radix 色票並刪掉重複元素後，確認日常用起來順手、深色模式好讀。

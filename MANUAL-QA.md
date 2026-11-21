@@ -568,9 +568,11 @@ emoji、RTL override（`‮`）、`=cmd|' /C calc'!A0`、`<img src=x onerror=...
 - [ ] 在原文輸入框裡用方向鍵移動游標、打字，卡片不會被收掉，網頁本身的快捷鍵也不會被觸發
 
 ### 頁面 UI 改用 DOM builder（實機，不需 API key 也能驗）
-- [ ] 在 Google 搜尋結果頁選一段文字：工具列出現，按翻譯後結果卡正常顯示（沒有 key 時顯示缺 key 錯誤也算正常）；DevTools Console 沒有 `TrustedHTML` 相關錯誤
-- [ ] 同一頁滑到右側浮球：選單圖示正常；開「收藏 / 紀錄」→「單字本」「最近查詢」面板都能開
-- [ ] 在一般網站點浮球「全文翻譯 Beta」：控制面板與譯文段落顯示正常，清單（• / 1.）排版與改版前相同
+- [x] 在 Google 搜尋結果頁選一段文字：工具列出現，按翻譯後結果卡正常顯示（沒有 key 時顯示缺 key 錯誤也算正常）；DevTools Console 沒有 `TrustedHTML` 相關錯誤
+- [x] 同一頁滑到右側浮球：選單圖示正常；開「收藏 / 紀錄」→「單字本」「最近查詢」面板都能開
+- [x] 在一般網站點浮球「全文翻譯 Beta」：控制面板與譯文段落顯示正常，清單（• / 1.）排版與改版前相同
+
+> **2026-11-21 實機驗（Claude 用 ego lite＋載入未封裝的 `dist/pkg`，build `d090f51ee51f`）**：Google 搜尋結果頁在這次測試**沒有強制** Trusted Types（頁內寫 `innerHTML` 不會丟錯），所以驗不到本項要驗的情境，改在 `news.google.com` 驗。這一頁的 CSP 帶 `require-trusted-types-for 'script'`，實測頁內寫 `innerHTML` 會丟「This document requires 'TrustedHTML' assignment」。1：選字後工具列出現（翻譯、解釋這個、優化精進、更多動作），按翻譯後結果卡顯示「請先在設定頁面輸入 Groq API Key」；2：浮球 4 個選單項目都有 SVG 圖示，「收藏 / 紀錄」、「單字本」（空）、「最近查詢」（無紀錄）三個面板都有內容。全程用 `securitypolicyviolation` 監聽，只記到 Claude 自己測試寫入的 `<b>x</b>` 那 1 筆，擴充沒有觸發任何違規。選字是用腳本設定選取範圍再送 mouseup，不是真的拖曳滑鼠；沒有另外讀 content script 的 Console 例外。3：見下方 2026-11-07「修復與複驗」第 3 列。
 
 ### 深色模式第一階段（實機，不需 API key 也能驗）
 - [ ] 系統切到深色，在一般網站選字：工具列與結果卡是暗色，文字清楚；切回淺色後恢復原本樣子
