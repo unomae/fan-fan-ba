@@ -3,6 +3,14 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-11-21 — 設定頁、popup、網頁浮層與歡迎頁改版實機觀感驗收，PLAN 項目結案
+
+KAKA 看完截圖集回覆「全部 OK 結案」。**沒有改程式**。
+
+- **客觀 5 項**（ego lite 載入 `dist/pkg`，build `d090f51ee51f`，全過）：popup「填寫金鑰」直達 `options.html#model`；改語言欄位不存就回總覽，出現「有未儲存的變更／回去儲存」且未寫入；勾「加密包含 API Keys」才出現密碼欄；總覽頁尾 ⌃⇧S／⌃⇧A＝`chrome.commands.getAll()`＝快捷鍵頁；金鑰狀態標籤（缺 Key／未填）與 ⓘ 說明有內容。
+- **觀感**：17 組亮暗截圖（popup、設定頁總覽、模型分類、歡迎頁；工具列、結果卡、浮球選單、收藏紀錄在白色／深色／圖片多的網站，加全文翻譯面板），KAKA 全部判 OK。
+- **未涵蓋**：不是 KAKA 日常 Chrome；沒填 key，結果卡與全文翻譯只看到錯誤狀態；popup 以 400px 分頁模擬；深色是瀏覽器模擬 `prefers-color-scheme`；選字用腳本觸發。
+
 ## 2026-11-21 — 強制 Trusted Types 的頁面實機驗過，PLAN 項目結案
 
 KAKA 指示用 ego lite 驗收。**沒有改程式**。
