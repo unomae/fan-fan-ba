@@ -3,6 +3,17 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-11-21 — 字串型 error code 不對映成 HTTP 語意（結案：不做）
+
+**裁決**：KAKA 同意「不做，有真實樣本再重開」，從 `PLAN.md` 缺資料區移除。只讀了程式碼，沒有改程式。
+
+- **為什麼不做**：
+  - `rate_limit_exceeded` 對映成 429 不會改變行為。`withRetry` 只包住 HTTP fetch，body 層的 `data.error` 在 retry 外面才解析，所以非串流路徑就算 body 寫數字 `'429'` 也不會重試（`handleOpenAICompatRequest` 讀碼確認；`streamOpenAICompat` 沒查）。429 本來就刻意排除在備援之外。
+  - 只有 `model_not_found` 對映成 404 會多觸發備援，而且只影響有設 `fallbackModelId` 的 Groq／OpenRouter 模型。真正的模型下架通常回 HTTP 404，`checkedFetch` 已經接住；「HTTP 200＋body `model_not_found`」會不會發生不知道，repo 裡唯一的樣本是 `tests/background.test.js` 的 mock。
+  - 「QA 不配 key」的裁決下拿不到真實 provider 樣本，不憑猜測建表。
+- **重開條件**：真實 log 出現 HTTP 200＋body `model_not_found`，而且備援沒啟動。屆時只補 `model_not_found → 404` 一條，不建整張表。
+- **相關程式**：`background.js` 的 `handleOpenAICompatRequest`／`streamOpenAICompat`／`isRetryable`／`withRetry`；`models.js` 的 `shouldFallbackModel`。
+
 ## 2026-11-20 — Alt+T 翻過單段後，全文翻譯快捷鍵改成翻整頁
 
 Tier 3／4 補驗時發現，KAKA 裁示修正。

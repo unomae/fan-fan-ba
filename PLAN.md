@@ -81,15 +81,6 @@
   - **接續**：維持 deferred，等明確核准再整理。
   - **詳情**：`MANUAL-QA.md`
 
-### 翻譯與資料可靠性（續 3）
-
-- **字串型 error code 要不要對映成 HTTP 語意**〔待裁決〕
-
-  - **目的**：決定非數字的 body 層 error code 是否該觸發重試或備援。
-  - **現況**：型別汙染本體已修（2026-09-20，見 `CHANGELOG.md`）：`err.status` 一律是數字、原值存 `err.code`。但 `model_not_found`／`rate_limit_exceeded` 這類**純字串 code 會是 `status = 0`**，既不重試也不切備援——只是不再假裝成數字。要不要建對映表，會擴大 `shouldFallbackModel` 的行為範圍。
-  - **接續**：KAKA 裁決要不要做；要做先蒐集實際 provider 回傳的 code 樣本，不憑猜測建表。
-  - **詳情**：`background.js` 的 `handleOpenAICompatRequest`／`streamOpenAICompat`（**引用符號不引行號**）；`models.js` 的 `shouldFallbackModel`
-
 ### 介面與操作體驗（續 3）
 
 - **innerHTML 主流路徑遇 Trusted Types 頁面（Google 系）UI 全滅**
