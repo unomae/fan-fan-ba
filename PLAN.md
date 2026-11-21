@@ -88,6 +88,7 @@
   - **目的**：設定頁「總覽首頁＋卡片」、說明文字精簡，以及 popup／設定頁改用 Radix 色票並刪掉重複元素後，確認日常用起來順手、深色模式好讀。
   - **現況**：2026-10-23 完成總覽卡片、網址直達、未儲存提示、深色模式與說明文字精簡三階段；同晚 popup 與設定頁改用 `ui-tokens.css`（Radix Colors），刪掉重複的狀態卡、數字列、裝飾標籤與「·」分隔，視覺依 KAKA 選擇保留上一版（光暈背景、毛玻璃外框、圓角、hover 上浮），PR #2 已合進 master（見 `CHANGELOG.md` 同日兩條）。KAKA 看過預覽截圖認可；Jest、e2e 41/0/4 已過，真擴充只有自動截圖。
   - **接續**：KAKA 用日常 Chrome 載入 `dist/pkg`，看 popup（缺金鑰提醒、「填寫金鑰」直達模型分類、logo 光暈）、設定頁總覽、進出 3～4 個分類、改欄位後回總覽看提示，再切系統深色看一遍；另看金鑰狀態標籤、ⓘ 說明、備份勾選加密才出現密碼欄、總覽頁尾快捷鍵是否等於 chrome://extensions/shortcuts 實際綁的鍵。2026-11-18 起浮層與歡迎頁也換成 Radix（見 `CHANGELOG.md` 同日條目），一併看：選字跳出的工具列、結果卡（含錯誤卡、收藏與 Obsidian 標籤）、浮球選單、全文翻譯面板，各在白色、深色、彩色圖片多的網站上看毛玻璃是否看得清楚；歡迎頁（`chrome-extension://<ID>/welcome.html`）亮暗各一遍。有要調的直接記在這項，沒有就搬 `CHANGELOG.md`。
+  - **2026-11-21 進度**：客觀 5 項已在 ego lite＋`dist/pkg`（build d090f51ee51f）實機驗過、全過：填寫金鑰直達 `options.html#model`；改語言欄位沒存→回總覽出現「有未儲存的變更／回去儲存」；勾加密才出現密碼欄；頁尾 ⌃⇧S／⌃⇧A＝`chrome.commands.getAll()`＝快捷鍵頁；金鑰狀態標籤與 ⓘ 有內容。另做 17 組亮暗截圖集（擴充 4 頁＋浮層 5 種 × 白／深／圖片多的網站，沒填 key 只看得到錯誤狀態），**剩觀感由 KAKA 看截圖集判斷**（每張 OK／要調），回饋貼回後再決定調整或結案。
   - **詳情**：`ui-tokens.css`；`content.css`；`welcome.html`；`design.md` 1.5 節與第 2 節；`options.html`；`popup.html`；`options.js` 的 `buildSettingsOverview`／`activateSettingsPanel`、`popup.js` 的 `renderKeyAlert`（**引用符號不引行號**）
 
 ### 整版 review 遺留（2026-10-19）
