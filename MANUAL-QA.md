@@ -17,7 +17,7 @@
 
 ## ⚠️ 執行順序（2026-08-10 排定，先讀這段再開工）
 
-**進度（2026-11-20 補驗後）：Tier 0、1、2 完成；Tier 3 18/19；Tier 4 28/31 → 全表 71/78，剩 7 項。**
+**進度（2026-11-24）：Tier 0、1、2、3 完成；Tier 4 28/31 → 全表 72/78，剩 6 項（Tier 4 的 3 項＋Tier 5 送審 3 項）。**
 （2026-11-20 先重數為 56/78，同日 Claude 以模擬 provider、本機 Excel 與臨時 Obsidian 測試 vault 補驗 15 格，見下方〈2026-11-20 Tier 3／4 補驗〉。）
 （2026-08-13 原為 55/78；§6 CSV 檔案結構那格 2026-09-13 改由自動化驗證後打勾，Tier 4 才多 1 格。）
 剩下的 Tier 3／4 共 19 項幾乎都卡在同兩件事：**沒有 API key**（翻譯／解釋／優化／串流／單段 Alt+T／摘要／診斷成功計數）
@@ -31,7 +31,7 @@ Tier 1 那道「一旦錯過就補不回來」的閘已經過了，之後都可�
 | **0** | §0 前置 | 2 | 15 分 | ✅ 08-10 | 版本號相同不代表內容新，一律重打包 |
 | **1** | ⭐〈cutover 一次性資料層遷移〉 | 6 | 40 分 | ✅ 08-10 **6/6 PASS** | **單向不可逆、每個 profile 只發生一次** |
 | **2** | 〈2026-07-30 單字本資料層〉 | 17 | 60 分 | ✅ 08-13 **16 PASS＋1 跳過**（快照還原 7・DevTools 2＋1 跳過・匯入 7）| 資料遺失類 |
-| **3** | 〈2026-07-28 三缺陷回歸〉4 ＋〈半接線 6 條〉15 | 19 | 90 分 | 🔶 **18/19**（08-13 automation-driven＋11-20 補驗 4 格）| 剩 1 格＝中日文生字候選裁決 |
+| **3** | 〈2026-07-28 三缺陷回歸〉4 ＋〈半接線 6 條〉15 | 19 | 90 分 | ✅ **19/19**（08-13 automation-driven＋11-20 補驗 4 格＋11-24 中日文生字改版複驗）| — |
 | **4** | §1–§7 legacy 回歸 | 31 | 90 分 | 🔶 **28/31**（08-13 16 格＋09-13 CSV 結構 1 格＋11-20 補驗 11 格）| 剩 3 項＝§2 存入 Obsidian 後切回原分頁、§4 譯文語境（需真模型）、§7 Cloud Sync |
 | **5** | §8 送審前 gating | 3 | 另計 | ⬜ | 非 code，最後做 |
 
@@ -286,8 +286,9 @@ emoji、RTL override（`‮`）、`=cmd|' /C calc'!A0`、`<img src=x onerror=...
       → **2026-11-20 補驗（automation-driven／模擬 provider：真 Chrome＋真擴充，SW 的 fetch 換成固定回應，不用真 key、不連外）**：標題「本頁重點（已譯 7 段）」、關鍵句 3 條、生字列出；高 132px、opacity 1、實心背景 rgb(248, 250, 243)、本身 overflow-y:auto 可捲動
 - [x] 翻譯進行中不先亮摘要；按「還原」後摘要跟著消失
       → **2026-11-20 補驗（automation-driven／模擬 provider：真 Chrome＋真擴充，SW 的 fetch 換成固定回應，不用真 key、不連外）**：回應刻意放慢，有 loading 期間摘要始終不可見；按「還原」後摘要與譯文區塊都移除
-- [ ] 中日文為主的頁面：生字候選只抓英文字（現行實作），確認這個行為可接受
-      → **2026-11-20 補驗（automation-driven／模擬 provider：真 Chrome＋真擴充，SW 的 fetch 換成固定回應，不用真 key、不連外）**：中文夾英文的頁面（模擬譯文照抄原文，等同中文頁譯成中文時英文詞原樣保留），生字區為「backlog ×1、dashboard ×1、inventory ×1」，日文段落沒有被抓。**行為可否接受仍待 KAKA 裁決**，故不勾
+- [x] 中日文為主的頁面：生字候選也要抓中日文（2026-11-24 KAKA 裁決，原本只抓英文）
+      → **2026-11-20 補驗（automation-driven／模擬 provider：真 Chrome＋真擴充，SW 的 fetch 換成固定回應，不用真 key、不連外）**：中文夾英文的頁面（模擬譯文照抄原文，等同中文頁譯成中文時英文詞原樣保留），生字區為「backlog ×1、dashboard ×1、inventory ×1」，日文段落沒有被抓。
+      → **2026-11-24 改版後複驗（automation-driven／模擬 provider，同上；build `455ce2ef8f49`）**：KAKA 裁決要抓中日文，生字也改從原文抓。日文頁列出「旅館 ×2、温泉 ×2、オンライン、予約、富士山、新幹線…」、中文頁「庫存 ×2、採購、倉儲…」，英文頁譯成中文後仍是英文原文詞、沒有混入譯文。細節見 `CHANGELOG.md` 2026-11-24
 
 ---
 
@@ -526,7 +527,7 @@ emoji、RTL override（`‮`）、`=cmd|' /C calc'!A0`、`<img src=x onerror=...
 
 - **環境**：Win、Chrome for Testing（`ms-playwright/chromium-1161`）以 `--load-extension` 載入 `dist/pkg`（v1.11.1，build `88a7523edaa8`），全新拋棄式 profile。打包前先 `npm ci`：本機 `node_modules` 缺 lockfile 裡的 `pdfjs-dist`，`npm run package` 原本會失敗。
 - **證據等級**：AI 回應全由 service worker 內的模擬 provider 回固定內容（做法同 `e2e/suites/page-translation.js`），驗的是擴充自己的流程與畫面；**不代表真模型的譯文品質**。真模型路徑已由根 PLAN P-16 於 11-10 用真 key 驗過。
-- **結果**：補勾 15 格（Tier 3 四格、Tier 4 十一格），每格證據寫在各條下方。另有 4 格只驗到一半而不勾：中日文生字候選、譯文語境、Cloud Sync、存入 Obsidian 後切回原分頁。
+- **結果**：補勾 15 格（Tier 3 四格、Tier 4 十一格），每格證據寫在各條下方。另有 4 格只驗到一半而不勾：中日文生字候選、譯文語境、Cloud Sync、存入 Obsidian 後切回原分頁（中日文生字候選已於 11-24 改版後勾掉）。
 - **疑點（同日已修）**：先 Alt+T 翻一段後按全文翻譯快捷鍵，原本會還原而不是翻整頁；已改成翻整頁，細節見 §4「與整頁翻譯混用」那條與 `CHANGELOG.md`。
 - **Obsidian**：用臨時測試 vault（`C:\tmp\ffb-qa\obsidian-test-vault`），KAKA 手動信任並啟用 Advanced URI 後才寫得進去。Chrome for Testing 不會把 `obsidian://` 交給系統，所以改成兩段驗：擴充產生的 URI 記下來，再原封不動由系統交給 Obsidian。乾淨重送後週記裡單字區塊與翻譯區塊各 1 個、沒有重複。Chrome 交出協定與切回原分頁未涵蓋。
 - 腳本與截圖是一次性產物，留在本機 `C:\tmp\ffb-qa\tier34-out`，不進 repo。

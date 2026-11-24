@@ -621,9 +621,10 @@ describe('page translator helpers', () => {
   });
 
   it('builds a local learning summary seed for v1.9.3', () => {
+    // 第 2 段帶真實情境的中文譯文：關鍵句取譯文（給人讀），生字取原文（2026-11-24 起）
     const summary = buildPageLearningSummary([
       { text: 'Supply planners reduced allocation risk after volatility increased.' },
-      { translatedText: 'Teams reviewed procurement scenarios and inventory discipline.' },
+      { text: 'Teams reviewed procurement scenarios and inventory discipline.', translatedText: '團隊檢視了採購情境與庫存紀律，並調整排程。' },
       { text: 'Allocation planning improved after repeated scenario reviews.' }
     ], {
       title: 'Learning article',
@@ -636,7 +637,7 @@ describe('page translator helpers', () => {
       sourceCount: 3,
       keySentences: [
         'Supply planners reduced allocation risk after volatility increased.',
-        'Teams reviewed procurement scenarios and inventory discipline.'
+        '團隊檢視了採購情境與庫存紀律，並調整排程。'
       ]
     });
     expect(summary.vocabularyCandidates).toEqual([
@@ -644,6 +645,60 @@ describe('page translator helpers', () => {
       { word: 'discipline', count: 1 },
       { word: 'improved', count: 1 }
     ]);
+  });
+
+  // 2026-11-24 KAKA 裁決：中日文頁也要抓生字；生字一律取原文，不取譯文。
+  describe('生字候選：中日文與原文來源', () => {
+    const words = summary => summary.vocabularyCandidates.map(({ word }) => word);
+    const PURE_HIRAGANA = /^[\p{Script=Hiragana}ー]+$/u;
+
+    it('英文頁譯成中文時，生字仍從英文原文抓，不會抓到譯文的中文詞', () => {
+      const summary = buildPageLearningSummary([
+        { text: 'Procurement teams monitored inventory volatility closely.', translatedText: '採購團隊密切監控庫存波動。' },
+        { text: 'Inventory planners escalated shortages immediately.', translatedText: '庫存規劃人員立即上報缺料狀況。' }
+      ], { maxVocabulary: 20 });
+
+      expect(summary.vocabularyCandidates[0]).toEqual({ word: 'inventory', count: 2 });
+      expect(words(summary)).toEqual(expect.arrayContaining(['procurement', 'volatility', 'shortages']));
+      expect(words(summary).some(word => /\p{Script=Han}/u.test(word))).toBe(false);
+    });
+
+    it('日文頁抓含漢字或片假名的詞，濾掉純平假名的助詞與語尾，也不抓中文譯文', () => {
+      const summary = buildPageLearningSummary([
+        { text: '東京駅から新幹線に乗って、富士山の近くにある温泉旅館に泊まりました。', translatedText: '從東京站搭乘新幹線，住在富士山附近的溫泉旅館。' },
+        { text: '温泉旅館の予約はオンラインで簡単にできます。', translatedText: '溫泉旅館可以在線上輕鬆預約。' }
+      ], { maxVocabulary: 20 });
+
+      expect(words(summary)).toEqual(expect.arrayContaining(['新幹線', '富士山', '温泉', '旅館', '予約', 'オンライン']));
+      expect(summary.vocabularyCandidates.find(({ word }) => word === '温泉')).toEqual({ word: '温泉', count: 2 });
+      expect(words(summary).filter(word => PURE_HIRAGANA.test(word))).toEqual([]);
+      expect(words(summary)).not.toEqual(expect.arrayContaining(['搭乘']));
+      expect(words(summary)).not.toEqual(expect.arrayContaining(['溫泉']));
+    });
+
+    it('中文頁抓兩字以上的詞，單字詞與常用虛詞不列', () => {
+      const summary = buildPageLearningSummary([
+        { text: '供應鏈管理需要即時掌握庫存水位。' },
+        { text: '採購部門與倉儲團隊每週檢討安全庫存與交期風險。' }
+      ], { maxVocabulary: 20 });
+
+      expect(summary.vocabularyCandidates[0]).toEqual({ word: '庫存', count: 2 });
+      expect(words(summary)).toEqual(expect.arrayContaining(['採購', '倉儲', '風險']));
+      expect(words(summary).every(word => word.length >= 2)).toBe(true);
+      expect(words(summary)).not.toEqual(expect.arrayContaining(['需要']));
+    });
+
+    it('中英日混在同一頁時一起排序，總數仍受上限限制', () => {
+      const summary = buildPageLearningSummary([
+        { text: 'Kubernetes deployment pipelines need monitoring.' },
+        { text: '新幹線の予約はオンラインでできます。新幹線は速いです。' },
+        { text: '庫存管理與庫存週轉是重點。' }
+      ], { maxVocabulary: 4 });
+
+      expect(summary.vocabularyCandidates).toHaveLength(4);
+      expect(words(summary)).toEqual(expect.arrayContaining(['新幹線', '庫存']));
+      expect(summary.vocabularyCandidates.slice(0, 2).map(({ count }) => count)).toEqual([2, 2]);
+    });
   });
 });
 
@@ -1688,7 +1743,11 @@ describe('page learning summary wiring (半接線接線完工)', () => {
       'Allocation planning improved after repeated scenario reviews.',
       'Regional teams rebuilt allocation buffers.'
     ]);
-    expect(learning.querySelector('.ffb-page-learning-vocab').textContent).toContain('allocation ×2');
+    // 生字取原文（2026-11-24 起）：原文的詞要出現，只在譯文裡的 buffers 不該出現
+    const vocabText = learning.querySelector('.ffb-page-learning-vocab').textContent;
+    expect(vocabText).toContain('allocation ×1');
+    expect(vocabText).toContain('volatility ×1');
+    expect(vocabText).not.toContain('buffers');
   });
 
   it('還沒有任何譯文時摘要維持隱藏', () => {

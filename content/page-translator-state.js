@@ -56,6 +56,14 @@ const PAGE_LEARNING_STOP_WORDS = new Set([
   'around', 'before', 'between', 'during', 'should', 'through', 'without'
 ]);
 
+// 中文常用虛詞／連接詞：斷詞後會大量出現但不是值得學的生字（日文純平假名另由規則濾掉）
+const PAGE_LEARNING_CJK_STOP_WORDS = new Set([
+  '可以', '需要', '我們', '你們', '他們', '這個', '那個', '這些', '那些', '因為', '所以', '但是',
+  '如果', '沒有', '一個', '什麼', '已經', '還是', '就是', '自己', '時候', '以及', '或是', '並且',
+  '透過', '進行', '目前', '相關', '其中', '包括', '這樣', '如何', '為了', '可能', '應該', '主要',
+  '之後', '之前', '一些', '不是', '而且', '每週', '每天'
+]);
+
 function createPageTranslationPairId() {
   pageTranslationPairCounter += 1;
   return `ffb-pair-${Date.now().toString(36)}-${pageTranslationPairCounter}`;

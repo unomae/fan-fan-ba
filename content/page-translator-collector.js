@@ -424,15 +424,16 @@ function buildEmbeddedTranslationTargetDetail(targets) {
 }
 
 function buildPageLearningSummary(items = [], options = {}) {
-  const sourceItems = (Array.isArray(items) ? items : [])
-    .map(item => String(item?.translatedText || item?.text || '').replace(/\s+/g, ' ').trim())
-    .filter(Boolean);
-  const text = sourceItems.join(' ');
+  const list = Array.isArray(items) ? items : [];
+  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
+  // 關鍵句給人讀，優先取譯文；生字是要學的外語，一律取原文（譯文多半是中文，會抓錯語言）
+  const readableItems = list.map(item => clean(item?.translatedText || item?.text)).filter(Boolean);
+  const originalText = list.map(item => clean(item?.text)).filter(Boolean).join(' ');
   return {
     title: String(options.title || document.title || '').trim(),
-    keySentences: splitPageLearningSentences(text).slice(0, options.maxSentences || 3),
-    vocabularyCandidates: extractPageLearningVocabularyCandidates(text, options.maxVocabulary || 8),
-    sourceCount: sourceItems.length
+    keySentences: splitPageLearningSentences(readableItems.join(' ')).slice(0, options.maxSentences || 3),
+    vocabularyCandidates: extractPageLearningVocabularyCandidates(originalText, options.maxVocabulary || 8),
+    sourceCount: readableItems.length
   };
 }
 
@@ -445,12 +446,45 @@ function splitPageLearningSentences(text) {
 
 function extractPageLearningVocabularyCandidates(text, limit = 8) {
   const counts = new Map();
+  const add = word => counts.set(word, (counts.get(word) || 0) + 1);
+  // 英文：6 個字母以上，規則不變
   String(text || '').toLowerCase().match(/[a-z][a-z'-]{5,}/g)?.forEach(word => {
     if (PAGE_LEARNING_STOP_WORDS.has(word)) return;
-    counts.set(word, (counts.get(word) || 0) + 1);
+    add(word);
   });
+  // 中日文：沒有空格分詞，交給瀏覽器內建斷詞
+  extractPageLearningCjkWords(text).forEach(add);
   return Array.from(counts.entries())
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, limit)
     .map(([word, count]) => ({ word, count }));
+}
+
+const PAGE_LEARNING_KANA = /[\p{Script=Hiragana}\p{Script=Katakana}]/u;
+const PAGE_LEARNING_CJK_ONLY = /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー々]+$/u;
+const PAGE_LEARNING_PURE_HIRAGANA = /^[\p{Script=Hiragana}ー]+$/u;
+
+// 回傳中日文生字（可重複，供計次）。依空白切塊（段落以空白串接），每塊有假名就用日文斷詞、
+// 否則用中文斷詞，避免同頁中日混排時整頁套錯語系；至少 2 字、排除純平假名（助詞、語尾）
+// 與中文常用虛詞。瀏覽器不支援 Intl.Segmenter 時回空陣列。
+function extractPageLearningCjkWords(text) {
+  if (typeof Intl === 'undefined' || typeof Intl.Segmenter !== 'function') return [];
+  const chunks = String(text || '').split(/\s+/)
+    .filter(chunk => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(chunk));
+  if (!chunks.length) return [];
+  const segmenters = {};
+  const getSegmenter = locale => segmenters[locale]
+    || (segmenters[locale] = new Intl.Segmenter(locale, { granularity: 'word' }));
+  const words = [];
+  chunks.forEach(chunk => {
+    const segmenter = getSegmenter(PAGE_LEARNING_KANA.test(chunk) ? 'ja' : 'zh');
+    for (const { segment, isWordLike } of segmenter.segment(chunk)) {
+      if (!isWordLike || segment.length < 2) continue;
+      if (!PAGE_LEARNING_CJK_ONLY.test(segment)) continue;
+      if (PAGE_LEARNING_PURE_HIRAGANA.test(segment)) continue;
+      if (PAGE_LEARNING_CJK_STOP_WORDS.has(segment)) continue;
+      words.push(segment);
+    }
+  });
+  return words;
 }

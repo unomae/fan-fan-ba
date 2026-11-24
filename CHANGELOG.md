@@ -3,6 +3,19 @@
 > 已結案的工作紀錄，新的在上。`PLAN.md` 只放「現在與下一步」，完成項搬來這裡。
 > 更早的歷史脈絡在 `MANUAL-QA.md`、`project-overview.html`、`TESTING.md` 與 git 歷史。
 
+## 2026-11-24 — 全文翻譯「本頁重點」的生字候選改從原文抓，並支援中日文
+
+**裁決**：KAKA 在 Tier 3「中日文頁生字只抓英文」那格回覆「要抓中日文」，並核准「生字一律改從原文抓」。
+
+- **順帶發現的問題**：生字原本取 `translatedText || text`，也就是有譯文就先用譯文。英文頁譯成繁中時譯文是中文，英文正規式抓不到東西，生字區平常多半是空的；日文頁同理，日文詞永遠不會出現。11-20 補驗抓得到 backlog／dashboard，是因為模擬 provider 把原文照抄成譯文；單元測試的 `translatedText` 也寫成英文，所以一直沒抓到。這個判斷來自讀碼加片段實測，沒有在真模型上重現「修前是空的」。
+- **改了什麼**（`content/page-translator-collector.js`、`content/page-translator-state.js`）：
+  - `buildPageLearningSummary`：關鍵句照舊優先用譯文（給人讀）；生字改成只從原文 `item.text` 抓。
+  - 新增 `extractPageLearningCjkWords`：用瀏覽器內建 `Intl.Segmenter` 斷詞，依空白切塊、每塊有假名就用日文斷詞，否則用中文。保留 2 字以上的中日文詞，排除純平假名（助詞、語尾）與中文常用虛詞（`PAGE_LEARNING_CJK_STOP_WORDS`）。不支援 `Intl.Segmenter` 時只回英文生字。
+  - 英文規則（6 字母以上＋停用詞）與上限 8 個不變，中英日一起依次數排序。
+- **測試**：新增 4 案（英文頁譯成中文仍抓英文原文、日文頁、中文頁、中英日混排）；舊的摘要案把第 2 段譯文改成中文，接線案改成斷言「原文的詞出現、只在譯文裡的 `buffers` 不出現」。5 案先在舊程式上跑紅，改完轉綠；全套 56 suites／925 tests 全過、0 skip。
+- **實機**：`npm run package`（build `455ce2ef8f49`）後，用 Chrome for Testing 1161、全新拋棄式 profile 載入 `dist/pkg`，service worker 的 fetch 換成固定中文譯文（不用真 key、不連外）。日文頁生字為「旅館 ×2、温泉 ×2、オンライン、予約、富士山、新幹線、東京、泊まり」，中文頁「庫存 ×2、供應、倉儲、即時、團隊、安全、掌握、採購」，英文頁「inventory ×2、procurement…」且沒有中文譯文的詞，3 案全過。一次性腳本與截圖不進 repo。
+- **未涵蓋**：真模型、真網頁的長文；韓文沒處理；中文停用詞表是手列的小清單，實際頁面可能還有常見詞混進來。
+
 ## 2026-11-21 — 設定頁、popup、網頁浮層與歡迎頁改版實機觀感驗收，PLAN 項目結案
 
 KAKA 看完截圖集回覆「全部 OK 結案」。**沒有改程式**。
