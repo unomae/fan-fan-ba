@@ -12,19 +12,10 @@
 | 自動化單元測試 | 全綠，數字以 `npm test` 輸出為準、文件不記（涵蓋設定頁總覽與未儲存提示、模型清冊完整性鎖、錯誤碼型別回歸、字典例句加粗、快捷鍵／右鍵選單分派、結果卡單次模型與自訂端點、自訂動作資料層與內建 prompt 逐字比對、自訂動作三種版面與串流、設定頁動作編輯器、工具列更多動作選單、各功能模型對照表、長難句分析、寫作批改、設定頁搜尋與新功能標籤、術語表（含多分頁同步）、模型比較、單字卡四級評分） |
 | e2e | `npm run e2e`：Playwright 驅動真 Chrome ＋ 真擴充，45 案＝41 PASS / 0 FAIL / 4 PARTIAL（2026-10-23，首次確認測到現行 service worker；改 code 先 `npm run package`，啟動時自動比對建置指紋） |
 | 手動 QA | 全表 71/78（2026-11-20 補驗後）；剩 7 項＝Tier 3／4 的 4 格（都需 KAKA）加 Tier 5 送審 3 項（見 `MANUAL-QA.md` 執行順序節） |
-| 上架 | **2026-09-20 裁決：暫緩送審，先做功能**，告一段落再回頭走上架流程。Chrome Web Store 仍是 release checkpoint |
+| 上架 | **2026-09-20 裁決：暫緩送審，先做功能**；2026-11-24 上架專屬兩項移到「上架時再開」段。Chrome Web Store 仍是 release checkpoint |
 | 2026-08-26 全面審查 | 四路平行審查完成：code（30+ 項）、UI/UX（30 項）、流程（A1-A6＋B1-B5）；總評＝工程底子前段班，上架 blocker 集中在安全 P1×2、a11y、上架材料 |
 
 ## 下一步（依序）— 2026-08-26 審查後重排
-
-### 上架準備與驗收
-
-- **1. Sprint 1 上架 blocker**
-
-  - **目的**：補齊擴充功能上架前的阻塞項。
-  - **現況**：只剩 1280×800 截圖產出（Tier 5 gating，需人工）。**2026-09-20 裁決：暫緩**——KAKA 要先做功能，等告一段落再回頭。
-  - **接續**：暫緩中，不主動推進也不列為阻塞；KAKA 說回頭做上架時再補商店截圖及剩餘人工驗收。商店小圖 `screenshots/promo-small.png` 已於 2026-11-19 把「・」改成頓號，上架時要重新上傳（大圖不用）。
-  - **詳情**：`MANUAL-QA.md`；`TESTING.md`；`CHANGELOG.md`
 
 ### 翻譯與資料可靠性
 
@@ -40,15 +31,6 @@
     - **Alt+T 後的 popup 按鈕**（`a986292`）：單元測試已過；測試用 Chrome 拿不到真 popup 畫面。日常 Chrome 用 Alt+T 翻一段後開 popup，確認按鈕是「翻譯這一頁」、按下去翻整頁。
     - 全過才搬 `CHANGELOG.md`；證據等級與每格結果見 `MANUAL-QA.md`〈2026-11-20 Tier 3／4 補驗〉。
   - **詳情**：`MANUAL-QA.md`；`scripts/check-models.js`
-
-### 上架準備與驗收（續 2）
-
-- **4. Tier 5 送審前 gating**
-
-  - **目的**：達到送審前的 OAuth 與商店條件。
-  - **現況**：**Tier 5 送審前 gating**：正式 OAuth client_id 確認（T7，需人工進 Google Cloud Console）、依 `STORE-SUBMISSION.md` 打包送審。
-  - **接續**：**2026-09-20 裁決暫緩**，與 Sprint 1 上架 blocker 同步；回頭做上架時才由 KAKA 處理 client ID 與 console／商店人工項，再核對 Tier 5。
-  - **詳情**：`STORE-SUBMISSION.md`
 
 ### 內建翻譯 provider
 
@@ -89,6 +71,13 @@
   - **現況**：2026-10-19 修正後動作保留、模型退回 `default`，之後存檔就固定寫回 `default`；沒有任何提示。
   - **接續**：KAKA 裁決要不要在設定頁或結果卡提示；要做再定提示位置與文案。
   - **詳情**：`custom-actions.js` 的 `normalizeActionList`
+
+## 上架時再開（2026-11-24 收起）
+
+> 2026-11-24 KAKA：還沒要上架，下列兩項先移出「下一步」，看板不再列為待辦。決定上架時整段搬回「下一步」，依序做完再送審。
+
+- **1. Sprint 1 上架 blocker**：只剩 1280×800 商店截圖（需人工）；商店小圖 `screenshots/promo-small.png` 已於 2026-11-19 把「・」改成頓號，上架時要重新上傳（大圖不用）。詳情：`MANUAL-QA.md`；`TESTING.md`
+- **4. Tier 5 送審前 gating**：KAKA 進 Google Cloud Console 確認正式 OAuth client_id（T7），再依 `STORE-SUBMISSION.md` 打包送審，最後核對 Tier 5 那 3 項。詳情：`STORE-SUBMISSION.md`
 
 ## 驗證指令速查
 
