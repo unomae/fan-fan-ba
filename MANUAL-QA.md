@@ -523,6 +523,14 @@ emoji、RTL override（`‮`）、`=cmd|' /C calc'!A0`、`<img src=x onerror=...
    拿「有無重疊」判「有沒有遮住原文」要先排除它。
 
 
+### 第 3、7 項補驗（2026-11-25）
+
+Windows，全新隔離 profile，Chrome for Testing 158.0.8127.88。載入 v1.11.1 的 `dist/pkg`，從執行中的 service worker 讀得 build `455ce2ef8f49`。B-2 Jest 56/56 suites、925/925 tests，0 skipped，exit 0。
+
+- **第 3 項，popup**。本機 24 段英文頁，使用固定 provider 回應。游標移到第 2 段按 Alt+T，面板顯示成功 1/1。開啟真正的擴充 popup，讀到「翻譯這一頁」並點擊後，待翻變 7 段，觀測到成功 4/7；捲動後已有 15 個結果節點，按還原後為 0。這驗到了單段成功後，popup 能啟動其他段落的翻譯。
+- **第 3 項，語境與 Obsidian**。全新 profile 改用真內建模型，前文描述洪水，目標句為「By morning the bank had collapsed.」。Alt+T 回「請求逾時或已取消，請稍後重試」，無譯文可供判讀。日常 Chrome 交出 Obsidian URI 後的焦點切換仍待實測。
+- **第 7 項，免金鑰設定與公開長文**。從設定頁選「瀏覽器內建翻譯」並儲存，重載設定頁後選項仍在。service worker 對英翻繁中回報 `downloadable`。開啟 W3C〈Cool URIs don't change〉並啟動全文翻譯，面板收進 7 段；約 270 秒顯示成功 0、失敗 7，至 330 秒仍顯示「翻譯中 0/7」，段落錯誤為「請求逾時或已取消，請稍後重試」。未取得模型下載完成、譯文順序、品質及成功後捲動續翻的證據。測試網址為 https://www.w3.org/Provider/Style/URI.html 。
+
 ### 2026-11-20 Tier 3／4 補驗（Claude，模擬 provider）
 
 - **環境**：Win、Chrome for Testing（`ms-playwright/chromium-1161`）以 `--load-extension` 載入 `dist/pkg`（v1.11.1，build `88a7523edaa8`），全新拋棄式 profile。打包前先 `npm ci`：本機 `node_modules` 缺 lockfile 裡的 `pdfjs-dist`，`npm run package` 原本會失敗。

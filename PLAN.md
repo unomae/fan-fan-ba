@@ -26,7 +26,7 @@
   - **接續**：
     - **§4 譯文合不合上下文**：需真模型；已確認請求帶前後段。
     - **§2 存入 Obsidian 後切回原分頁**：擴充送出的 URI 已確認 Obsidian 寫得進去；Chrome 把 `obsidian://` 交給系統、再切回原分頁，只能在日常 Chrome 實際按一次「開啟 Obsidian」確認。
-    - **Alt+T 後的 popup 按鈕**（`a986292`）：單元測試已過；測試用 Chrome 拿不到真 popup 畫面。日常 Chrome 用 Alt+T 翻一段後開 popup，確認按鈕是「翻譯這一頁」、按下去翻整頁。
+    - **Alt+T 後的 popup 按鈕**（`a986292`）：11-25 已在 Chrome for Testing 158 操作真 popup，單段成功後按「翻譯這一頁」會翻其他段落；固定回應與真模型的結果見 `MANUAL-QA.md`〈第 3、7 項補驗〉。
     - 全過才搬 `CHANGELOG.md`；證據等級與每格結果見 `MANUAL-QA.md`〈2026-11-20 Tier 3／4 補驗〉。
   - **詳情**：`MANUAL-QA.md`；`scripts/check-models.js`
 
@@ -37,6 +37,7 @@
   - **目的**：讓沒有金鑰的人也能用全文翻譯，有金鑰者這條路徑改走本機；詞典與 optimize 不動。
   - **現況**：主體與自動接續已完成，仍保留真人驗收。2026-10-27 全新 Chrome 155 profile、真 storage／真內建模型已驗無 API key 儲存重開、18 段捲動接續、動態追加、停止與還原；首次下載超過 30 秒的情境仍只有單元測試。模型下載受測試啟動參數影響，細節見 CHANGELOG 同日紀錄；腳本實測不代替人眼譯文品質與日常瀏覽器驗收。
   - **接續**：KAKA 實機人驗（不需 API key）：①`npm run package` 後用全新測試 profile 載入 `dist/pkg` ②設定頁「全文翻譯」選「瀏覽器內建翻譯」並儲存，重開確認 ③英文長文啟動全文翻譯後捲動，譯文須自動接續、不需再點；首次下載檢查進度條 ④確認譯文品質與順序，再驗停止／還原。人驗通過才勾掉本項並搬 CHANGELOG。
+  - **11-25 補驗**：Chrome for Testing 158 全新 profile 已驗免金鑰儲存、重開設定。W3C 英文長文出現請求逾時，本輪未取得可判讀的譯文。下次先釐清模型建立與逾時，再驗續翻、品質、順序與還原；見 `MANUAL-QA.md`〈第 3、7 項補驗〉。
   - **詳情**：`background.js` 的 `resolveRoute`／`handleOpenAICompatRequest`（引用符號不引行號）；`models.js` 的 `PROVIDERS`；可行性實測見 `CHANGELOG.md` 2026-10-22「PLAN 第 6 項結案」與 memory `reference_chrome_builtin_ai_probe`
 
 ## 缺資料／風險處置待決
